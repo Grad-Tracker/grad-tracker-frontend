@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "chakra-ui": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@anthropic-ai/mcp-chakra-ui"]
+    }
+  }
+}
