@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(curl:*)",
+      "Bash(npm run build:*)",
+      "Bash(npm run dev:*)",
+      "mcp__chakra-ui__get_theme",
+      "mcp__chakra-ui__get_component_example",
+      "mcp__chakra-ui__get_component_props",
+      "mcp__chakra-ui__v2_to_v3_code_review"
+    ]
+  },
+  "enableAllProjectMcpServers": true,
+  "enabledMcpjsonServers": [
+    "chakra-ui"
+  ]
+}
