@@ -7,7 +7,8 @@
       "mcp__chakra-ui__get_theme",
       "mcp__chakra-ui__get_component_example",
       "mcp__chakra-ui__get_component_props",
-      "mcp__chakra-ui__v2_to_v3_code_review"
+      "mcp__chakra-ui__v2_to_v3_code_review",
+      "Bash(git -C /Users/jack/Desktop/Parkside/grad-tracker-frontend log --oneline)"
     ]
   },
   "enableAllProjectMcpServers": true,
