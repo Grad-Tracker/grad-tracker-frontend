@@ -62,7 +62,13 @@ import {
   LuSparkles,
   LuShield,
   LuZap,
+  LuLoader,
 } from "react-icons/lu";
+import Link from "next/link";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
+import { toaster } from "@/components/ui/toaster";
 
 const features = [
   {
@@ -133,6 +139,49 @@ const steps = [
 ];
 
 export default function Home() {
+  const router = useRouter();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  async function handleSignin() {
+    if (!email || !password) {
+      toaster.create({
+        title: "Missing fields",
+        description: "Please enter your email and password.",
+        type: "error",
+      });
+      return;
+    }
+
+    setLoading(true);
+
+    const supabase = createClient();
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    setLoading(false);
+
+    if (error) {
+      toaster.create({
+        title: "Sign in failed",
+        description: error.message,
+        type: "error",
+      });
+      return;
+    }
+
+    toaster.create({
+      title: "Welcome back!",
+      description: "Redirecting to your dashboard...",
+      type: "success",
+    });
+
+    router.push("/dashboard");
+  }
+
   return (
     <Box
       minH="100vh"
@@ -208,6 +257,8 @@ export default function Home() {
                           placeholder="your.name@uwp.edu"
                           rounded="lg"
                           size="lg"
+                          value={email}
+                          onChange={(e) => setEmail(e.target.value)}
                         />
                       </Field>
                       <Field label="Password">
@@ -215,6 +266,8 @@ export default function Home() {
                           placeholder="Enter your password"
                           rounded="lg"
                           size="lg"
+                          value={password}
+                          onChange={(e) => setPassword(e.target.value)}
                         />
                       </Field>
                       <Button
@@ -223,20 +276,33 @@ export default function Home() {
                         size="lg"
                         rounded="lg"
                         fontWeight="600"
+                        onClick={handleSignin}
+                        disabled={loading}
                       >
-                        Sign In
+                        {loading ? (
+                          <>
+                            <Icon className="animate-spin" mr="2">
+                              <LuLoader />
+                            </Icon>
+                            Signing In...
+                          </>
+                        ) : (
+                          "Sign In"
+                        )}
                       </Button>
                       <Text fontSize="sm" color="fg.muted">
                         Don&apos;t have an account?{" "}
-                        <Text
-                          as="span"
-                          color="green.solid"
-                          cursor="pointer"
-                          fontWeight="600"
-                          _hover={{ textDecoration: "underline" }}
-                        >
-                          Create one
-                        </Text>
+                        <Link href="/signup">
+                          <Text
+                            as="span"
+                            color="green.solid"
+                            cursor="pointer"
+                            fontWeight="600"
+                            _hover={{ textDecoration: "underline" }}
+                          >
+                            Create one
+                          </Text>
+                        </Link>
                       </Text>
                     </VStack>
                   </DialogBody>
@@ -346,23 +412,26 @@ export default function Home() {
                 flexWrap="wrap"
                 justify={{ base: "center", lg: "start" }}
               >
-                <Button
-                  size="lg"
-                  colorPalette="green"
-                  rounded="full"
-                  px="8"
-                  fontWeight="600"
-                  _hover={{
-                    transform: "translateY(-2px)",
-                    boxShadow: "lg",
-                  }}
-                  transition="all 0.2s"
-                >
-                  Get Started Free
-                  <Icon ml="2">
-                    <LuArrowRight />
-                  </Icon>
-                </Button>
+                <Link href="/signup">
+                  <Button
+                    size="lg"
+                    colorPalette="green"
+                    rounded="full"
+                    px="8"
+                    fontWeight="600"
+                    _hover={{
+                      transform: "translateY(-2px)",
+                      boxShadow: "lg",
+                    }}
+                    transition="all 0.2s"
+                  >
+                    Get Started Free
+                    <Icon ml="2">
+                      <LuArrowRight />
+                    </Icon>
+                  </Button>
+                </Link>
+
                 <Button
                   size="lg"
                   variant="outline"
@@ -971,7 +1040,11 @@ export default function Home() {
             {[
               {
                 title: "Resources",
-                links: ["Degree Programs", "Course Catalog", "Academic Calendar"],
+                links: [
+                  "Degree Programs",
+                  "Course Catalog",
+                  "Academic Calendar",
+                ],
               },
               {
                 title: "Support",

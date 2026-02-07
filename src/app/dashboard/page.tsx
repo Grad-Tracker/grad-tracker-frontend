@@ -20,6 +20,9 @@ import {
   VStack,
 } from "@chakra-ui/react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
+import { toaster } from "@/components/ui/toaster";
 import { ColorModeButton } from "@/components/ui/color-mode";
 import {
   ProgressBar,
@@ -71,10 +74,34 @@ const mockProgress = {
 };
 
 const mockRequirements = [
-  { name: "General Education", completed: 36, total: 36, percentage: 100, color: "green" },
-  { name: "Major Core", completed: 32, total: 42, percentage: 76, color: "blue" },
-  { name: "Major Electives", completed: 9, total: 15, percentage: 60, color: "purple" },
-  { name: "Free Electives", completed: 9, total: 27, percentage: 33, color: "orange" },
+  {
+    name: "General Education",
+    completed: 36,
+    total: 36,
+    percentage: 100,
+    color: "green",
+  },
+  {
+    name: "Major Core",
+    completed: 32,
+    total: 42,
+    percentage: 76,
+    color: "blue",
+  },
+  {
+    name: "Major Electives",
+    completed: 9,
+    total: 15,
+    percentage: 60,
+    color: "purple",
+  },
+  {
+    name: "Free Electives",
+    completed: 9,
+    total: 27,
+    percentage: 33,
+    color: "orange",
+  },
 ];
 
 const mockUpcomingCourses = [
@@ -84,26 +111,72 @@ const mockUpcomingCourses = [
 ];
 
 const mockRecentActivity = [
-  { type: "course_added", message: "Added CS 350 to current semester", time: "2 hours ago" },
-  { type: "requirement_met", message: "Completed General Education requirements", time: "1 day ago" },
-  { type: "alert", message: "CS 361 has a prerequisite you haven't completed", time: "2 days ago" },
+  {
+    type: "course_added",
+    message: "Added CS 350 to current semester",
+    time: "2 hours ago",
+  },
+  {
+    type: "requirement_met",
+    message: "Completed General Education requirements",
+    time: "1 day ago",
+  },
+  {
+    type: "alert",
+    message: "CS 361 has a prerequisite you haven't completed",
+    time: "2 days ago",
+  },
 ];
 
 const navItems = [
-  { icon: LuLayoutDashboard, label: "Dashboard", href: "/dashboard", active: true },
-  { icon: LuBookOpen, label: "Courses", href: "/dashboard/courses", active: false },
-  { icon: LuTarget, label: "Requirements", href: "/dashboard/requirements", active: false },
-  { icon: LuCalendar, label: "Planner", href: "/dashboard/planner", active: false },
-  { icon: LuFileText, label: "Reports", href: "/dashboard/reports", active: false },
+  {
+    icon: LuLayoutDashboard,
+    label: "Dashboard",
+    href: "/dashboard",
+    active: true,
+  },
+  {
+    icon: LuBookOpen,
+    label: "Courses",
+    href: "/dashboard/courses",
+    active: false,
+  },
+  {
+    icon: LuTarget,
+    label: "Requirements",
+    href: "/dashboard/requirements",
+    active: false,
+  },
+  {
+    icon: LuCalendar,
+    label: "Planner",
+    href: "/dashboard/planner",
+    active: false,
+  },
+  {
+    icon: LuFileText,
+    label: "Reports",
+    href: "/dashboard/reports",
+    active: false,
+  },
 ];
 
 export default function Dashboard() {
+  const router = useRouter();
+
+  async function handleSignOut() {
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    toaster.create({
+      title: "Signed out",
+      description: "You've been signed out successfully.",
+      type: "success",
+    });
+    router.push("/signin");
+  }
+
   return (
-    <Box
-      minH="100vh"
-      bg="bg"
-      fontFamily="'Plus Jakarta Sans', sans-serif"
-    >
+    <Box minH="100vh" bg="bg" fontFamily="'Plus Jakarta Sans', sans-serif">
       <Flex>
         {/* Sidebar */}
         <Box
@@ -120,7 +193,13 @@ export default function Dashboard() {
           flexDirection="column"
         >
           {/* Logo */}
-          <HStack gap="3" px="6" py="5" borderBottomWidth="1px" borderColor="border.subtle">
+          <HStack
+            gap="3"
+            px="6"
+            py="5"
+            borderBottomWidth="1px"
+            borderColor="border.subtle"
+          >
             <Box p="2" bg="green.solid" borderRadius="lg">
               <Icon color="white" boxSize="5">
                 <LuGraduationCap />
@@ -139,7 +218,11 @@ export default function Dashboard() {
           {/* Navigation */}
           <VStack align="stretch" flex="1" py="4" px="3" gap="1">
             {navItems.map((item) => (
-              <Link key={item.label} href={item.href} style={{ textDecoration: "none" }}>
+              <Link
+                key={item.label}
+                href={item.href}
+                style={{ textDecoration: "none" }}
+              >
                 <HStack
                   px="4"
                   py="2.5"
@@ -165,7 +248,13 @@ export default function Dashboard() {
           </VStack>
 
           {/* Bottom section */}
-          <VStack align="stretch" p="4" gap="2" borderTopWidth="1px" borderColor="border.subtle">
+          <VStack
+            align="stretch"
+            p="4"
+            gap="2"
+            borderTopWidth="1px"
+            borderColor="border.subtle"
+          >
             <Link href="/dashboard/settings" style={{ textDecoration: "none" }}>
               <HStack
                 px="4"
@@ -192,6 +281,7 @@ export default function Dashboard() {
               fontWeight="500"
               _hover={{ bg: "red.subtle", color: "red.fg" }}
               transition="all 0.15s"
+              onClick={handleSignOut}
             >
               <Icon boxSize="5">
                 <LuLogOut />
@@ -296,7 +386,11 @@ export default function Dashboard() {
                     borderRadius="full"
                   />
 
-                  <Card.Body p={{ base: "6", md: "8" }} position="relative" zIndex="1">
+                  <Card.Body
+                    p={{ base: "6", md: "8" }}
+                    position="relative"
+                    zIndex="1"
+                  >
                     <Flex
                       direction={{ base: "column", md: "row" }}
                       justify="space-between"
@@ -318,12 +412,18 @@ export default function Dashboard() {
                           </Icon>
                         </Flex>
                         <Box>
-                          <Heading size="md" color="white" fontWeight="600" mb="1">
+                          <Heading
+                            size="md"
+                            color="white"
+                            fontWeight="600"
+                            mb="1"
+                          >
                             Complete Your Profile Setup
                           </Heading>
                           <Text color="whiteAlpha.800" fontSize="sm" maxW="md">
-                            Add your completed courses and select your degree program to get
-                            personalized graduation tracking and recommendations.
+                            Add your completed courses and select your degree
+                            program to get personalized graduation tracking and
+                            recommendations.
                           </Text>
                         </Box>
                       </HStack>
@@ -354,7 +454,11 @@ export default function Dashboard() {
               )}
 
               {/* Stats Grid */}
-              <SimpleGrid columns={{ base: 1, sm: 2, lg: 4 }} gap="4" className="animate-fade-up-delay-1">
+              <SimpleGrid
+                columns={{ base: 1, sm: 2, lg: 4 }}
+                gap="4"
+                className="animate-fade-up-delay-1"
+              >
                 {/* Overall Progress Card */}
                 <Card.Root
                   bg="bg"
@@ -365,7 +469,12 @@ export default function Dashboard() {
                   <Card.Body p="5">
                     <HStack justify="space-between" align="start" mb="4">
                       <Box>
-                        <Text fontSize="sm" color="fg.muted" fontWeight="500" mb="1">
+                        <Text
+                          fontSize="sm"
+                          color="fg.muted"
+                          fontWeight="500"
+                          mb="1"
+                        >
                           Overall Progress
                         </Text>
                         <Text fontSize="2xl" fontWeight="700">
@@ -377,7 +486,10 @@ export default function Dashboard() {
                         size="md"
                         colorPalette="green"
                       >
-                        <ProgressCircleRing cap="round" css={{ "--thickness": "4px" }} />
+                        <ProgressCircleRing
+                          cap="round"
+                          css={{ "--thickness": "4px" }}
+                        />
                       </ProgressCircleRoot>
                     </HStack>
                     <HStack gap="1" fontSize="xs" color="fg.muted">
@@ -399,7 +511,12 @@ export default function Dashboard() {
                   <Card.Body p="5">
                     <HStack justify="space-between" align="start" mb="4">
                       <Box>
-                        <Text fontSize="sm" color="fg.muted" fontWeight="500" mb="1">
+                        <Text
+                          fontSize="sm"
+                          color="fg.muted"
+                          fontWeight="500"
+                          mb="1"
+                        >
                           Credits Completed
                         </Text>
                         <HStack align="baseline" gap="1">
@@ -425,7 +542,9 @@ export default function Dashboard() {
                       </Flex>
                     </HStack>
                     <HStack gap="1" fontSize="xs" color="fg.muted">
-                      <Text>{mockProgress.remainingCredits} credits remaining</Text>
+                      <Text>
+                        {mockProgress.remainingCredits} credits remaining
+                      </Text>
                     </HStack>
                   </Card.Body>
                 </Card.Root>
@@ -440,7 +559,12 @@ export default function Dashboard() {
                   <Card.Body p="5">
                     <HStack justify="space-between" align="start" mb="4">
                       <Box>
-                        <Text fontSize="sm" color="fg.muted" fontWeight="500" mb="1">
+                        <Text
+                          fontSize="sm"
+                          color="fg.muted"
+                          fontWeight="500"
+                          mb="1"
+                        >
                           In Progress
                         </Text>
                         <HStack align="baseline" gap="1">
@@ -481,7 +605,12 @@ export default function Dashboard() {
                   <Card.Body p="5">
                     <HStack justify="space-between" align="start" mb="4">
                       <Box>
-                        <Text fontSize="sm" color="fg.muted" fontWeight="500" mb="1">
+                        <Text
+                          fontSize="sm"
+                          color="fg.muted"
+                          fontWeight="500"
+                          mb="1"
+                        >
                           Current GPA
                         </Text>
                         <Text fontSize="2xl" fontWeight="700">
@@ -552,7 +681,10 @@ export default function Dashboard() {
                                   <Text fontSize="xs" color="fg.muted">
                                     {req.completed}/{req.total} credits
                                   </Text>
-                                  <ProgressValueText fontWeight="600" fontSize="sm" />
+                                  <ProgressValueText
+                                    fontWeight="600"
+                                    fontSize="sm"
+                                  />
                                 </HStack>
                               </HStack>
                               <ProgressBar borderRadius="full" />
@@ -628,11 +760,17 @@ export default function Dashboard() {
                                 {course.credits} credits
                               </Text>
                               <Badge
-                                colorPalette={course.status === "enrolled" ? "green" : "orange"}
+                                colorPalette={
+                                  course.status === "enrolled"
+                                    ? "green"
+                                    : "orange"
+                                }
                                 variant="subtle"
                                 size="sm"
                               >
-                                {course.status === "enrolled" ? "Enrolled" : "Waitlist"}
+                                {course.status === "enrolled"
+                                  ? "Enrolled"
+                                  : "Waitlist"}
                               </Badge>
                             </HStack>
                           </Flex>
@@ -690,7 +828,11 @@ export default function Dashboard() {
                             <Text fontSize="sm" color="fg.muted">
                               Expected Graduation
                             </Text>
-                            <Badge colorPalette="green" variant="subtle" size="sm">
+                            <Badge
+                              colorPalette="green"
+                              variant="subtle"
+                              size="sm"
+                            >
                               {mockStudent.expectedGraduation}
                             </Badge>
                           </HStack>
@@ -725,8 +867,8 @@ export default function Dashboard() {
                                 activity.type === "alert"
                                   ? "orange.subtle"
                                   : activity.type === "requirement_met"
-                                  ? "green.subtle"
-                                  : "blue.subtle"
+                                    ? "green.subtle"
+                                    : "blue.subtle"
                               }
                               borderRadius="full"
                               flexShrink={0}
@@ -737,8 +879,8 @@ export default function Dashboard() {
                                   activity.type === "alert"
                                     ? "orange.fg"
                                     : activity.type === "requirement_met"
-                                    ? "green.fg"
-                                    : "blue.fg"
+                                      ? "green.fg"
+                                      : "blue.fg"
                                 }
                               >
                                 {activity.type === "alert" ? (
@@ -751,7 +893,11 @@ export default function Dashboard() {
                               </Icon>
                             </Flex>
                             <Box flex="1">
-                              <Text fontSize="sm" fontWeight="500" lineHeight="short">
+                              <Text
+                                fontSize="sm"
+                                fontWeight="500"
+                                lineHeight="short"
+                              >
                                 {activity.message}
                               </Text>
                               <Text fontSize="xs" color="fg.muted" mt="0.5">
