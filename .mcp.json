@@ -3,7 +3,14 @@
     "chakra-ui": {
       "type": "stdio",
       "command": "npx",
-      "args": ["-y", "@anthropic-ai/mcp-chakra-ui"]
+      "args": [
+        "-y",
+        "@anthropic-ai/mcp-chakra-ui"
+      ]
+    },
+    "supabase": {
+      "type": "http",
+      "url": "https://mcp.supabase.com/mcp?project_ref=cglvofdezdajrzszbjun"
     }
   }
 }
