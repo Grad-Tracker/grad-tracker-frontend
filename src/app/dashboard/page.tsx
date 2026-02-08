@@ -70,7 +70,6 @@ const mockProgress = {
   completedCredits: 86,
   inProgressCredits: 12,
   remainingCredits: 22,
-  gpa: 3.45,
 };
 
 const mockRequirements = [
@@ -359,10 +358,14 @@ export default function Dashboard() {
               {/* Onboarding Banner */}
               {!mockStudent.hasCompletedOnboarding && (
                 <Card.Root
-                  className="onboarding-gradient animate-fade-up"
+                  className="animate-fade-up"
                   borderRadius="2xl"
                   overflow="hidden"
                   position="relative"
+                  bgGradient="to-br"
+                  gradientFrom="green.600"
+                  gradientVia="green.500"
+                  gradientTo="teal.500"
                 >
                   {/* Decorative elements */}
                   <Box
@@ -371,8 +374,7 @@ export default function Dashboard() {
                     right="-10%"
                     w="300px"
                     h="300px"
-                    bg="white"
-                    opacity="0.05"
+                    bg="whiteAlpha.100"
                     borderRadius="full"
                   />
                   <Box
@@ -381,8 +383,7 @@ export default function Dashboard() {
                     left="20%"
                     w="200px"
                     h="200px"
-                    bg="white"
-                    opacity="0.05"
+                    bg="whiteAlpha.100"
                     borderRadius="full"
                   />
 
@@ -453,103 +454,106 @@ export default function Dashboard() {
                 </Card.Root>
               )}
 
-              {/* Stats Grid */}
-              <SimpleGrid
-                columns={{ base: 1, sm: 2, lg: 4 }}
-                gap="4"
+              {/* Stats Grid - 2/3 + 1/3 layout to match main grid below */}
+              <Grid
+                templateColumns={{ base: "1fr", xl: "2fr 1fr" }}
+                gap="6"
                 className="animate-fade-up-delay-1"
               >
-                {/* Overall Progress Card */}
-                <Card.Root
-                  bg="bg"
-                  borderRadius="xl"
-                  borderWidth="1px"
-                  borderColor="border.subtle"
-                >
-                  <Card.Body p="5">
-                    <HStack justify="space-between" align="start" mb="4">
-                      <Box>
-                        <Text
-                          fontSize="sm"
-                          color="fg.muted"
-                          fontWeight="500"
-                          mb="1"
-                        >
-                          Overall Progress
-                        </Text>
-                        <Text fontSize="2xl" fontWeight="700">
-                          {mockProgress.overall}%
-                        </Text>
-                      </Box>
-                      <ProgressCircleRoot
-                        value={mockProgress.overall}
-                        size="md"
-                        colorPalette="green"
-                      >
-                        <ProgressCircleRing
-                          cap="round"
-                          css={{ "--thickness": "4px" }}
-                        />
-                      </ProgressCircleRoot>
-                    </HStack>
-                    <HStack gap="1" fontSize="xs" color="fg.muted">
-                      <Icon color="green.fg">
-                        <LuTrendingUp />
-                      </Icon>
-                      <Text>On track to graduate</Text>
-                    </HStack>
-                  </Card.Body>
-                </Card.Root>
-
-                {/* Credits Completed */}
-                <Card.Root
-                  bg="bg"
-                  borderRadius="xl"
-                  borderWidth="1px"
-                  borderColor="border.subtle"
-                >
-                  <Card.Body p="5">
-                    <HStack justify="space-between" align="start" mb="4">
-                      <Box>
-                        <Text
-                          fontSize="sm"
-                          color="fg.muted"
-                          fontWeight="500"
-                          mb="1"
-                        >
-                          Credits Completed
-                        </Text>
-                        <HStack align="baseline" gap="1">
+                {/* Left side: 2 stat cards taking 2/3 */}
+                <SimpleGrid columns={{ base: 1, sm: 2 }} gap="4">
+                  {/* Overall Progress Card */}
+                  <Card.Root
+                    bg="bg"
+                    borderRadius="xl"
+                    borderWidth="1px"
+                    borderColor="border.subtle"
+                  >
+                    <Card.Body p="5">
+                      <HStack justify="space-between" align="start" mb="4">
+                        <Box>
+                          <Text
+                            fontSize="sm"
+                            color="fg.muted"
+                            fontWeight="500"
+                            mb="1"
+                          >
+                            Overall Progress
+                          </Text>
                           <Text fontSize="2xl" fontWeight="700">
-                            {mockProgress.completedCredits}
+                            {mockProgress.overall}%
                           </Text>
-                          <Text fontSize="sm" color="fg.muted">
-                            / {mockProgress.totalCredits}
-                          </Text>
-                        </HStack>
-                      </Box>
-                      <Flex
-                        align="center"
-                        justify="center"
-                        w="10"
-                        h="10"
-                        bg="blue.subtle"
-                        borderRadius="lg"
-                      >
-                        <Icon color="blue.fg" boxSize="5">
-                          <LuCircleCheck />
+                        </Box>
+                        <ProgressCircleRoot
+                          value={mockProgress.overall}
+                          size="md"
+                          colorPalette="green"
+                        >
+                          <ProgressCircleRing
+                            cap="round"
+                            css={{ "--thickness": "4px" }}
+                          />
+                        </ProgressCircleRoot>
+                      </HStack>
+                      <HStack gap="1" fontSize="xs" color="fg.muted">
+                        <Icon color="green.fg">
+                          <LuTrendingUp />
                         </Icon>
-                      </Flex>
-                    </HStack>
-                    <HStack gap="1" fontSize="xs" color="fg.muted">
-                      <Text>
-                        {mockProgress.remainingCredits} credits remaining
-                      </Text>
-                    </HStack>
-                  </Card.Body>
-                </Card.Root>
+                        <Text>On track to graduate</Text>
+                      </HStack>
+                    </Card.Body>
+                  </Card.Root>
 
-                {/* In Progress */}
+                  {/* Credits Completed */}
+                  <Card.Root
+                    bg="bg"
+                    borderRadius="xl"
+                    borderWidth="1px"
+                    borderColor="border.subtle"
+                  >
+                    <Card.Body p="5">
+                      <HStack justify="space-between" align="start" mb="4">
+                        <Box>
+                          <Text
+                            fontSize="sm"
+                            color="fg.muted"
+                            fontWeight="500"
+                            mb="1"
+                          >
+                            Credits Completed
+                          </Text>
+                          <HStack align="baseline" gap="1">
+                            <Text fontSize="2xl" fontWeight="700">
+                              {mockProgress.completedCredits}
+                            </Text>
+                            <Text fontSize="sm" color="fg.muted">
+                              / {mockProgress.totalCredits}
+                            </Text>
+                          </HStack>
+                        </Box>
+                        <Flex
+                          align="center"
+                          justify="center"
+                          w="10"
+                          h="10"
+                          bg="blue.subtle"
+                          borderRadius="lg"
+                        >
+                          <Icon color="blue.fg" boxSize="5">
+                            <LuCircleCheck />
+                          </Icon>
+                        </Flex>
+                      </HStack>
+                      <HStack gap="1" fontSize="xs" color="fg.muted">
+                        <Text>
+                          {mockProgress.remainingCredits} credits remaining
+                        </Text>
+                      </HStack>
+                    </Card.Body>
+                  </Card.Root>
+                </SimpleGrid>
+
+                {/* Right side: 1 stat card taking 1/3 */}
                 <Card.Root
                   bg="bg"
                   borderRadius="xl"
@@ -557,7 +561,7 @@ export default function Dashboard() {
                   borderColor="border.subtle"
                 >
                   <Card.Body p="5">
-                    <HStack justify="space-between" align="start" mb="4">
+                    <HStack justify="space-between" align="start" mb="3">
                       <Box>
                         <Text
                           fontSize="sm"
@@ -594,48 +598,7 @@ export default function Dashboard() {
                     </HStack>
                   </Card.Body>
                 </Card.Root>
-
-                {/* GPA */}
-                <Card.Root
-                  bg="bg"
-                  borderRadius="xl"
-                  borderWidth="1px"
-                  borderColor="border.subtle"
-                >
-                  <Card.Body p="5">
-                    <HStack justify="space-between" align="start" mb="4">
-                      <Box>
-                        <Text
-                          fontSize="sm"
-                          color="fg.muted"
-                          fontWeight="500"
-                          mb="1"
-                        >
-                          Current GPA
-                        </Text>
-                        <Text fontSize="2xl" fontWeight="700">
-                          {mockProgress.gpa.toFixed(2)}
-                        </Text>
-                      </Box>
-                      <Flex
-                        align="center"
-                        justify="center"
-                        w="10"
-                        h="10"
-                        bg="purple.subtle"
-                        borderRadius="lg"
-                      >
-                        <Icon color="purple.fg" boxSize="5">
-                          <LuTrendingUp />
-                        </Icon>
-                      </Flex>
-                    </HStack>
-                    <HStack gap="1" fontSize="xs" color="fg.muted">
-                      <Text>Cumulative</Text>
-                    </HStack>
-                  </Card.Body>
-                </Card.Root>
-              </SimpleGrid>
+              </Grid>
 
               {/* Main Grid */}
               <Grid templateColumns={{ base: "1fr", xl: "2fr 1fr" }} gap="6">

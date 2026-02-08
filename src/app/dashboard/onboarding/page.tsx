@@ -194,23 +194,25 @@ export default function OnboardingPage() {
 
           {/* CTA */}
           <VStack gap="4" className="animate-fade-up-delay-2">
-            <Button
-              size="lg"
-              colorPalette="green"
-              rounded="full"
-              px="8"
-              fontWeight="600"
-              _hover={{
-                transform: "translateY(-2px)",
-                boxShadow: "lg",
-              }}
-              transition="all 0.2s"
-            >
-              Begin Setup
-              <Icon ml="2">
-                <LuArrowRight />
-              </Icon>
-            </Button>
+            <Link href="/dashboard/onboarding/wizard">
+              <Button
+                size="lg"
+                colorPalette="green"
+                rounded="full"
+                px="8"
+                fontWeight="600"
+                _hover={{
+                  transform: "translateY(-2px)",
+                  boxShadow: "lg",
+                }}
+                transition="all 0.2s"
+              >
+                Begin Setup
+                <Icon ml="2">
+                  <LuArrowRight />
+                </Icon>
+              </Button>
+            </Link>
             <Text fontSize="sm" color="fg.muted">
               Takes about 5 minutes to complete
             </Text>
