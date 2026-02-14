@@ -9,7 +9,6 @@ import {
   Container,
   HStack,
   Icon,
-  Input,
   Text,
   VStack,
 } from "@chakra-ui/react";
@@ -17,25 +16,22 @@ import { ColorModeButton } from "@/components/ui/color-mode";
 import { Field } from "@/components/ui/field";
 import { PasswordInput } from "@/components/ui/password-input";
 import { toaster } from "@/components/ui/toaster";
-import { LuGraduationCap, LuArrowRight, LuLoader } from "react-icons/lu";
+import { LuGraduationCap, LuLoader, LuCheck } from "react-icons/lu";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
-export default function SignupPage() {
+export default function ResetPasswordPage() {
   const router = useRouter();
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
-  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
 
-  async function handleSignup() {
-    if (!firstName || !lastName || !email || !password) {
+  async function handleUpdatePassword() {
+    if (!password || !confirmPassword) {
       toaster.create({
         title: "Missing fields",
-        description: "Please fill in all fields.",
+        description: "Please fill in both password fields.",
         type: "error",
       });
       return;
@@ -62,45 +58,22 @@ export default function SignupPage() {
     setLoading(true);
 
     const supabase = createClient();
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: {
-          first_name: firstName,
-          last_name: lastName,
-        },
-      },
-    });
+    const { error } = await supabase.auth.updateUser({ password });
 
     setLoading(false);
 
     if (error) {
       toaster.create({
-        title: "Sign up failed",
+        title: "Update failed",
         description: error.message,
         type: "error",
       });
       return;
     }
 
-    // Supabase returns a user with empty identities when the email is already
-    // taken (instead of an error, to prevent email enumeration attacks).
-    // Detect this and show a friendly message without granting access.
-    if (data.user?.identities?.length === 0) {
-      // Sign out immediately so no session lingers
-      await supabase.auth.signOut();
-      toaster.create({
-        title: "Account already exists",
-        description: "An account with this email already exists. Please sign in instead.",
-        type: "error",
-      });
-      return;
-    }
-
     toaster.create({
-      title: "Account created!",
-      description: "Welcome to GradTracker, Ranger.",
+      title: "Password updated!",
+      description: "Redirecting to your dashboard...",
       type: "success",
     });
 
@@ -162,7 +135,7 @@ export default function SignupPage() {
         </Container>
       </Box>
 
-      {/* Signup Section */}
+      {/* Reset Password Section */}
       <Box
         className="mesh-gradient noise-overlay"
         py={{ base: "16", md: "24" }}
@@ -240,50 +213,17 @@ export default function SignupPage() {
                       fontFamily="'DM Serif Display', serif"
                       letterSpacing="-0.02em"
                     >
-                      Create Your Account
+                      Set New Password
                     </Text>
                     <Text color="fg.muted" fontSize="sm">
-                      Join fellow Rangers and start tracking your path to
-                      graduation
+                      Choose a strong password for your account
                     </Text>
                   </VStack>
 
                   <VStack gap="5">
-                    <HStack gap="4" w="full">
-                      <Field label="First Name">
-                        <Input
-                          placeholder="First name"
-                          rounded="lg"
-                          size="lg"
-                          value={firstName}
-                          onChange={(e) => setFirstName(e.target.value)}
-                        />
-                      </Field>
-                      <Field label="Last Name">
-                        <Input
-                          placeholder="Last name"
-                          rounded="lg"
-                          size="lg"
-                          value={lastName}
-                          onChange={(e) => setLastName(e.target.value)}
-                        />
-                      </Field>
-                    </HStack>
-
-                    <Field label="Email">
-                      <Input
-                        placeholder="your.name@uwp.edu"
-                        type="email"
-                        rounded="lg"
-                        size="lg"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                      />
-                    </Field>
-
-                    <Field label="Password">
+                    <Field label="New Password">
                       <PasswordInput
-                        placeholder="Create a password"
+                        placeholder="Enter new password"
                         rounded="lg"
                         size="lg"
                         value={password}
@@ -291,9 +231,9 @@ export default function SignupPage() {
                       />
                     </Field>
 
-                    <Field label="Confirm Password">
+                    <Field label="Confirm New Password">
                       <PasswordInput
-                        placeholder="Confirm your password"
+                        placeholder="Confirm new password"
                         rounded="lg"
                         size="lg"
                         value={confirmPassword}
@@ -313,7 +253,7 @@ export default function SignupPage() {
                       boxShadow: "lg",
                     }}
                     transition="all 0.2s"
-                    onClick={handleSignup}
+                    onClick={handleUpdatePassword}
                     disabled={loading}
                   >
                     {loading ? (
@@ -321,32 +261,17 @@ export default function SignupPage() {
                         <Icon className="animate-spin" mr="2">
                           <LuLoader />
                         </Icon>
-                        Creating Account...
+                        Updating...
                       </>
                     ) : (
                       <>
-                        Create Account
-                        <Icon ml="2">
-                          <LuArrowRight />
+                        <Icon mr="2">
+                          <LuCheck />
                         </Icon>
+                        Update Password
                       </>
                     )}
                   </Button>
-
-                  <Text fontSize="sm" color="fg.muted" textAlign="center">
-                    Already have an account?{" "}
-                    <Link href="/signin">
-                      <Text
-                        as="span"
-                        color="green.solid"
-                        cursor="pointer"
-                        fontWeight="600"
-                        _hover={{ textDecoration: "underline" }}
-                      >
-                        Sign in
-                      </Text>
-                    </Link>
-                  </Text>
                 </VStack>
               </Card.Body>
             </Card.Root>

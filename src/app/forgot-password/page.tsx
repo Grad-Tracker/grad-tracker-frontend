@@ -15,24 +15,21 @@ import {
 } from "@chakra-ui/react";
 import { ColorModeButton } from "@/components/ui/color-mode";
 import { Field } from "@/components/ui/field";
-import { PasswordInput } from "@/components/ui/password-input";
 import { toaster } from "@/components/ui/toaster";
-import { LuGraduationCap, LuArrowRight, LuLoader } from "react-icons/lu";
+import { LuGraduationCap, LuArrowLeft, LuLoader, LuMail } from "react-icons/lu";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
-export default function SigninPage() {
-  const router = useRouter();
+export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [sent, setSent] = useState(false);
 
-  async function handleSignin() {
-    if (!email || !password) {
+  async function handleReset() {
+    if (!email) {
       toaster.create({
-        title: "Missing fields",
-        description: "Please enter your email and password.",
+        title: "Missing email",
+        description: "Please enter your email address.",
         type: "error",
       });
       return;
@@ -41,29 +38,27 @@ export default function SigninPage() {
     setLoading(true);
 
     const supabase = createClient();
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/auth/callback?next=/reset-password`,
     });
 
     setLoading(false);
 
     if (error) {
       toaster.create({
-        title: "Sign in failed",
+        title: "Something went wrong",
         description: error.message,
         type: "error",
       });
       return;
     }
 
+    setSent(true);
     toaster.create({
-      title: "Welcome back!",
-      description: "Redirecting to your dashboard...",
+      title: "Check your email",
+      description: "We sent you a password reset link.",
       type: "success",
     });
-
-    router.push("/dashboard");
   }
 
   return (
@@ -121,7 +116,7 @@ export default function SigninPage() {
         </Container>
       </Box>
 
-      {/* Signin Section */}
+      {/* Forgot Password Section */}
       <Box
         className="mesh-gradient noise-overlay"
         py={{ base: "16", md: "24" }}
@@ -199,94 +194,96 @@ export default function SigninPage() {
                       fontFamily="'DM Serif Display', serif"
                       letterSpacing="-0.02em"
                     >
-                      Welcome Back, Ranger
+                      Reset Your Password
                     </Text>
                     <Text color="fg.muted" fontSize="sm">
-                      Sign in to continue tracking your path to graduation
+                      {sent
+                        ? "Check your inbox for a reset link. You can close this page."
+                        : "Enter your email and we'll send you a link to reset your password."}
                     </Text>
                   </VStack>
 
-                  <VStack gap="5">
-                    <Field label="Email">
-                      <Input
-                        placeholder="your.name@uwp.edu"
-                        type="email"
-                        rounded="lg"
-                        size="lg"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                      />
-                    </Field>
-
-                    <Field label="Password">
-                      <PasswordInput
-                        placeholder="Enter your password"
-                        rounded="lg"
-                        size="lg"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                      />
-                    </Field>
-
-                    <Link href="/forgot-password">
-                      <Text
-                        fontSize="sm"
-                        color="green.solid"
-                        cursor="pointer"
-                        fontWeight="600"
-                        alignSelf="flex-end"
-                        _hover={{ textDecoration: "underline" }}
+                  {sent ? (
+                    <VStack gap="4" py="4">
+                      <Box
+                        p="4"
+                        bg="green.500"
+                        opacity="0.9"
+                        borderRadius="full"
                       >
-                        Forgot password?
+                        <Icon color="white" boxSize="8">
+                          <LuMail />
+                        </Icon>
+                      </Box>
+                      <Text fontSize="sm" color="fg.muted" textAlign="center">
+                        Didn&apos;t get the email? Check your spam folder or try again.
                       </Text>
-                    </Link>
-                  </VStack>
-
-                  <Button
-                    w="full"
-                    colorPalette="green"
-                    size="lg"
-                    rounded="lg"
-                    fontWeight="600"
-                    _hover={{
-                      transform: "translateY(-2px)",
-                      boxShadow: "lg",
-                    }}
-                    transition="all 0.2s"
-                    onClick={handleSignin}
-                    disabled={loading}
-                  >
-                    {loading ? (
-                      <>
-                        <Icon className="animate-spin" mr="2">
-                          <LuLoader />
-                        </Icon>
-                        Signing In...
-                      </>
-                    ) : (
-                      <>
-                        Sign In
-                        <Icon ml="2">
-                          <LuArrowRight />
-                        </Icon>
-                      </>
-                    )}
-                  </Button>
-
-                  <Text fontSize="sm" color="fg.muted" textAlign="center">
-                    Don&apos;t have an account?{" "}
-                    <Link href="/signup">
-                      <Text
-                        as="span"
-                        color="green.solid"
-                        cursor="pointer"
-                        fontWeight="600"
-                        _hover={{ textDecoration: "underline" }}
+                      <Button
+                        variant="outline"
+                        colorPalette="green"
+                        size="sm"
+                        onClick={() => setSent(false)}
                       >
-                        Create one
-                      </Text>
-                    </Link>
-                  </Text>
+                        Try again
+                      </Button>
+                    </VStack>
+                  ) : (
+                    <>
+                      <Field label="Email">
+                        <Input
+                          placeholder="your.name@uwp.edu"
+                          type="email"
+                          rounded="lg"
+                          size="lg"
+                          value={email}
+                          onChange={(e) => setEmail(e.target.value)}
+                        />
+                      </Field>
+
+                      <Button
+                        w="full"
+                        colorPalette="green"
+                        size="lg"
+                        rounded="lg"
+                        fontWeight="600"
+                        _hover={{
+                          transform: "translateY(-2px)",
+                          boxShadow: "lg",
+                        }}
+                        transition="all 0.2s"
+                        onClick={handleReset}
+                        disabled={loading}
+                      >
+                        {loading ? (
+                          <>
+                            <Icon className="animate-spin" mr="2">
+                              <LuLoader />
+                            </Icon>
+                            Sending...
+                          </>
+                        ) : (
+                          "Send Reset Link"
+                        )}
+                      </Button>
+                    </>
+                  )}
+
+                  <Link href="/signin">
+                    <HStack
+                      gap="1"
+                      justify="center"
+                      color="green.solid"
+                      fontWeight="600"
+                      fontSize="sm"
+                      cursor="pointer"
+                      _hover={{ textDecoration: "underline" }}
+                    >
+                      <Icon>
+                        <LuArrowLeft />
+                      </Icon>
+                      <Text>Back to sign in</Text>
+                    </HStack>
+                  </Link>
                 </VStack>
               </Card.Body>
             </Card.Root>

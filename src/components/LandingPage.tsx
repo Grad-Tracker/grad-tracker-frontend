@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import {
   Badge,
   Box,
@@ -63,6 +64,10 @@ import {
   LuShield,
   LuZap,
 } from "react-icons/lu";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
+import { toaster } from "@/components/ui/toaster";
 
 const features = [
   {
@@ -133,6 +138,49 @@ const steps = [
 ];
 
 export default function LandingPage() {
+  const router = useRouter();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  async function handleSignin() {
+    if (!email || !password) {
+      toaster.create({
+        title: "Missing fields",
+        description: "Please enter your email and password.",
+        type: "error",
+      });
+      return;
+    }
+
+    setLoading(true);
+
+    const supabase = createClient();
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    setLoading(false);
+
+    if (error) {
+      toaster.create({
+        title: "Sign in failed",
+        description: error.message,
+        type: "error",
+      });
+      return;
+    }
+
+    toaster.create({
+      title: "Welcome back!",
+      description: "Redirecting to your dashboard...",
+      type: "success",
+    });
+
+    router.push("/dashboard");
+  }
+
   return (
     <Box
       minH="100vh"
@@ -206,8 +254,11 @@ export default function LandingPage() {
                       <Field label="Email">
                         <Input
                           placeholder="your.name@uwp.edu"
+                          type="email"
                           rounded="lg"
                           size="lg"
+                          value={email}
+                          onChange={(e) => setEmail(e.target.value)}
                         />
                       </Field>
                       <Field label="Password">
@@ -215,6 +266,8 @@ export default function LandingPage() {
                           placeholder="Enter your password"
                           rounded="lg"
                           size="lg"
+                          value={password}
+                          onChange={(e) => setPassword(e.target.value)}
                         />
                       </Field>
                       <Button
@@ -223,20 +276,24 @@ export default function LandingPage() {
                         size="lg"
                         rounded="lg"
                         fontWeight="600"
+                        onClick={handleSignin}
+                        disabled={loading}
                       >
-                        Sign In
+                        {loading ? "Signing In..." : "Sign In"}
                       </Button>
                       <Text fontSize="sm" color="fg.muted">
                         Don&apos;t have an account?{" "}
-                        <Text
-                          as="span"
-                          color="green.solid"
-                          cursor="pointer"
-                          fontWeight="600"
-                          _hover={{ textDecoration: "underline" }}
-                        >
-                          Create one
-                        </Text>
+                        <Link href="/signup">
+                          <Text
+                            as="span"
+                            color="green.solid"
+                            cursor="pointer"
+                            fontWeight="600"
+                            _hover={{ textDecoration: "underline" }}
+                          >
+                            Create one
+                          </Text>
+                        </Link>
                       </Text>
                     </VStack>
                   </DialogBody>
@@ -346,23 +403,25 @@ export default function LandingPage() {
                 flexWrap="wrap"
                 justify={{ base: "center", lg: "start" }}
               >
-                <Button
-                  size="lg"
-                  colorPalette="green"
-                  rounded="full"
-                  px="8"
-                  fontWeight="600"
-                  _hover={{
-                    transform: "translateY(-2px)",
-                    boxShadow: "lg",
-                  }}
-                  transition="all 0.2s"
-                >
-                  Get Started Free
-                  <Icon ml="2">
-                    <LuArrowRight />
-                  </Icon>
-                </Button>
+                <Link href="/signup">
+                  <Button
+                    size="lg"
+                    colorPalette="green"
+                    rounded="full"
+                    px="8"
+                    fontWeight="600"
+                    _hover={{
+                      transform: "translateY(-2px)",
+                      boxShadow: "lg",
+                    }}
+                    transition="all 0.2s"
+                  >
+                    Get Started Free
+                    <Icon ml="2">
+                      <LuArrowRight />
+                    </Icon>
+                  </Button>
+                </Link>
                 <Button
                   size="lg"
                   variant="outline"
@@ -897,25 +956,27 @@ export default function LandingPage() {
               UW-Parkside students.
             </Text>
             <HStack gap="4" pt="4" flexWrap="wrap" justify="center">
-              <Button
-                size="lg"
-                bg="white"
-                color="green.700"
-                rounded="full"
-                px="8"
-                fontWeight="600"
-                _hover={{
-                  bg: "whiteAlpha.900",
-                  transform: "translateY(-2px)",
-                  boxShadow: "xl",
-                }}
-                transition="all 0.2s"
-              >
-                Get Started Free
-                <Icon ml="2">
-                  <LuArrowRight />
-                </Icon>
-              </Button>
+              <Link href="/signup">
+                <Button
+                  size="lg"
+                  bg="white"
+                  color="green.700"
+                  rounded="full"
+                  px="8"
+                  fontWeight="600"
+                  _hover={{
+                    bg: "whiteAlpha.900",
+                    transform: "translateY(-2px)",
+                    boxShadow: "xl",
+                  }}
+                  transition="all 0.2s"
+                >
+                  Get Started Free
+                  <Icon ml="2">
+                    <LuArrowRight />
+                  </Icon>
+                </Button>
+              </Link>
               <Button
                 size="lg"
                 variant="outline"
