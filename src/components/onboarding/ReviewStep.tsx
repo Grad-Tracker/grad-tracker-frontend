@@ -19,30 +19,27 @@ import {
   LuAward,
   LuBookOpen,
   LuCircleCheck,
+  LuCalendar,
 } from "react-icons/lu";
-import { mockMajors } from "@/data/mock/majors";
-import { mockCertificates } from "@/data/mock/certificates";
-import { mockCourses } from "@/data/mock/courses";
+import type { Program, CourseRow } from "@/types/onboarding";
 
 interface ReviewStepProps {
-  selectedMajor: string | null;
-  selectedCertificates: string[];
-  selectedClasses: string[];
+  major: Program | null;
+  certificates: Program[];
+  classes: CourseRow[];
+  expectedGradSemester: string | null;
+  expectedGradYear: number | null;
   onEditStep: (stepIndex: number) => void;
 }
 
 export default function ReviewStep({
-  selectedMajor,
-  selectedCertificates,
-  selectedClasses,
+  major,
+  certificates,
+  classes,
+  expectedGradSemester,
+  expectedGradYear,
   onEditStep,
 }: ReviewStepProps) {
-  const major = mockMajors.find((m) => m.id === selectedMajor);
-  const certificates = mockCertificates.filter((c) =>
-    selectedCertificates.includes(c.id)
-  );
-  const classes = mockCourses.filter((c) => selectedClasses.includes(c.id));
-
   const totalClassCredits = classes.reduce((sum, c) => sum + c.credits, 0);
 
   return (
@@ -103,11 +100,8 @@ export default function ReviewStep({
                   {major.name}
                 </Text>
                 <Text color="fg.muted" fontSize="sm" mt="1">
-                  {major.description}
+                  {major.catalog_year}
                 </Text>
-                <Badge mt="3" colorPalette="green" variant="subtle">
-                  {major.totalCredits} total credits
-                </Badge>
               </Box>
             ) : (
               <Text color="fg.muted" fontStyle="italic">
@@ -158,7 +152,7 @@ export default function ReviewStep({
                       {cert.name}
                     </Text>
                     <Text color="fg.muted" fontSize="xs">
-                      {cert.totalCredits} credits
+                      {cert.catalog_year}
                     </Text>
                   </Box>
                 ))}
@@ -186,7 +180,7 @@ export default function ReviewStep({
                 <LuBookOpen />
               </Icon>
               <Text fontWeight="600" fontSize="sm" color="fg.muted">
-                CURRENT CLASSES
+                COMPLETED CLASSES
               </Text>
               {classes.length > 0 && (
                 <Badge colorPalette="purple" variant="subtle" size="sm">
@@ -216,10 +210,10 @@ export default function ReviewStep({
                   py="2"
                 >
                   <Text fontWeight="600" fontSize="sm">
-                    {course.code}
+                    {course.subject} {course.number}
                   </Text>
                   <Text color="fg.muted" fontSize="xs" lineClamp={1}>
-                    {course.name}
+                    {course.title}
                   </Text>
                 </Box>
               ))}
@@ -227,6 +221,49 @@ export default function ReviewStep({
           ) : (
             <Text color="fg.muted" fontStyle="italic" fontSize="sm">
               No classes selected
+            </Text>
+          )}
+        </Card.Body>
+      </Card.Root>
+
+      {/* Graduation */}
+      <Card.Root
+        bg="bg"
+        borderRadius="xl"
+        borderWidth="1px"
+        borderColor="border.subtle"
+      >
+        <Card.Body p="5">
+          <HStack justify="space-between" mb="4">
+            <HStack gap="2">
+              <Icon color="purple.fg" boxSize="5">
+                <LuCalendar />
+              </Icon>
+              <Text fontWeight="600" fontSize="sm" color="fg.muted">
+                EXPECTED GRADUATION
+              </Text>
+            </HStack>
+            <Button
+              size="xs"
+              variant="ghost"
+              colorPalette="green"
+              onClick={() => onEditStep(0)}
+            >
+              <LuPencil />
+              Edit
+            </Button>
+          </HStack>
+          {expectedGradSemester && expectedGradYear ? (
+            <Text
+              fontFamily="'DM Serif Display', serif"
+              fontSize="xl"
+              fontWeight="400"
+            >
+              {expectedGradSemester} {expectedGradYear}
+            </Text>
+          ) : (
+            <Text color="fg.muted" fontStyle="italic" fontSize="sm">
+              Not specified
             </Text>
           )}
         </Card.Body>
@@ -248,10 +285,10 @@ export default function ReviewStep({
                 fontWeight="400"
                 color="green.fg"
               >
-                {major?.totalCredits || 0}
+                {certificates.length + (major ? 1 : 0)}
               </Text>
               <Text fontSize="xs" color="fg.muted">
-                Degree Credits
+                Programs Selected
               </Text>
             </VStack>
             <Separator orientation="vertical" h="10" />
@@ -262,10 +299,10 @@ export default function ReviewStep({
                 fontWeight="400"
                 color="green.fg"
               >
-                {certificates.reduce((sum, c) => sum + c.totalCredits, 0)}
+                {classes.length}
               </Text>
               <Text fontSize="xs" color="fg.muted">
-                Certificate Credits
+                Courses Completed
               </Text>
             </VStack>
             <Separator orientation="vertical" h="10" />

@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import {
   Avatar,
   Badge,
@@ -22,6 +23,7 @@ import {
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { checkOnboardingStatus } from "@/lib/supabase/queries/onboarding";
 import { toaster } from "@/components/ui/toaster";
 import { ColorModeButton } from "@/components/ui/color-mode";
 import {
@@ -61,7 +63,6 @@ const mockStudent = {
   email: "alex.johnson@uwp.edu",
   major: "Computer Science",
   expectedGraduation: "Spring 2026",
-  hasCompletedOnboarding: false,
 };
 
 const mockProgress = {
@@ -162,6 +163,22 @@ const navItems = [
 
 export default function Dashboard() {
   const router = useRouter();
+  const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState(true);
+
+  useEffect(() => {
+    async function checkStatus() {
+      try {
+        const supabase = createClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+        const completed = await checkOnboardingStatus(user.id);
+        setHasCompletedOnboarding(completed);
+      } catch {
+        // Default to hiding banner on error
+      }
+    }
+    checkStatus();
+  }, []);
 
   async function handleSignOut() {
     const supabase = createClient();
@@ -356,7 +373,7 @@ export default function Dashboard() {
           <Box px={{ base: "4", md: "8" }} py="6">
             <Stack gap="6">
               {/* Onboarding Banner */}
-              {!mockStudent.hasCompletedOnboarding && (
+              {!hasCompletedOnboarding && (
                 <Card.Root
                   className="animate-fade-up"
                   borderRadius="2xl"
