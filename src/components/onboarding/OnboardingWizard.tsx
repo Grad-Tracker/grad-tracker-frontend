@@ -127,7 +127,7 @@ export default function OnboardingWizard() {
         const courses = await fetchCoursesByIds(state.selectedClasses);
         setReviewClasses(courses);
       } catch (error) {
-        console.error('Failed to load review classes:', error);
+        console.error('Failed to fetch review classes:', error);
         // Fall back to what we have from requirement blocks
         const allCourses = requirementBlocks.flatMap((b) => b.courses);
         const selected = allCourses.filter((c) =>
