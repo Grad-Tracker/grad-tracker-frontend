@@ -122,4 +122,46 @@ describe("ProgramSelectionStep", () => {
     const radioCards = container.querySelectorAll("[data-part='item']");
     expect(radioCards.length).toBe(0);
   });
+
+  describe("Default graduation date (getAsapGraduation)", () => {
+    // Helper function to mock Date and test graduation logic
+    function testGraduationDate(
+      dateStr: string,
+      expectedSemester: string,
+      expectedYear: number,
+      description: string
+    ) {
+      const originalDate = Date;
+      const mockDate = new originalDate(dateStr);
+      vi.spyOn(global, "Date").mockImplementation((...args: any[]) => 
+        args.length === 0 ? new originalDate(mockDate) : new originalDate(...args)
+      );
+
+      const onGradChange = vi.fn();
+      renderWithChakra(<ProgramSelectionStep {...defaultProps} onGradChange={onGradChange} />);
+
+      const asapButton = screen.getByText("As soon as possible");
+      fireEvent.click(asapButton);
+
+      expect(onGradChange).toHaveBeenCalledWith(expectedSemester, expectedYear);
+
+      vi.restoreAllMocks();
+    }
+
+    it("sets Spring of current year for January-April (months 0-3)", () => {
+      testGraduationDate("2024-03-15", "Spring", 2024, "March");
+    });
+
+    it("sets Summer of current year for May-July (months 4-6)", () => {
+      testGraduationDate("2024-06-15", "Summer", 2024, "June");
+    });
+
+    it("sets Fall of current year for August-November (months 7-10)", () => {
+      testGraduationDate("2024-10-15", "Fall", 2024, "October");
+    });
+
+    it("sets Spring of next year for December (month 11)", () => {
+      testGraduationDate("2024-12-15", "Spring", 2025, "December");
+    });
+  });
 });

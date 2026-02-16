@@ -46,9 +46,11 @@ function getAsapGraduation(): { semester: string; year: number } {
   const month = now.getMonth(); // 0-indexed
   const year = now.getFullYear();
 
+  // Month ranges: 0-3 (Jan-Apr), 4-6 (May-Jul), 7-10 (Aug-Nov), 11 (Dec)
   if (month < 4) return { semester: "Spring", year };
   if (month < 7) return { semester: "Summer", year };
   if (month < 11) return { semester: "Fall", year };
+  // December graduates in Spring of next year
   return { semester: "Spring", year: year + 1 };
 }
 
