@@ -221,7 +221,7 @@ export async function checkOnboardingStatus(
   if (error) throw error;
   // No student record yet means onboarding not completed
   if (!data) return false;
-  return data.has_completed_onboarding;
+  return data.has_completed_onboarding ?? false;
 }
 
 /**
