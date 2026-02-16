@@ -1,5 +1,7 @@
 "use client";
 
+import * as React from "react";
+
 import {
   Avatar,
   Badge,
@@ -55,60 +57,6 @@ import {
   LuLogOut,
 } from "react-icons/lu";
 
-// Mock data - in real app this would come from API/state
-const mockStudent = {
-  name: "Alex Johnson",
-  email: "alex.johnson@uwp.edu",
-  major: "Computer Science",
-  expectedGraduation: "Spring 2026",
-  hasCompletedOnboarding: false,
-};
-
-const mockProgress = {
-  overall: 72,
-  totalCredits: 120,
-  completedCredits: 86,
-  inProgressCredits: 12,
-  remainingCredits: 22,
-};
-
-const mockRequirements = [
-  {
-    name: "General Education",
-    completed: 36,
-    total: 36,
-    percentage: 100,
-    color: "green",
-  },
-  {
-    name: "Major Core",
-    completed: 32,
-    total: 42,
-    percentage: 76,
-    color: "blue",
-  },
-  {
-    name: "Major Electives",
-    completed: 9,
-    total: 15,
-    percentage: 60,
-    color: "purple",
-  },
-  {
-    name: "Free Electives",
-    completed: 9,
-    total: 27,
-    percentage: 33,
-    color: "orange",
-  },
-];
-
-const mockUpcomingCourses = [
-  { code: "CS 350", name: "Algorithms", credits: 3, status: "enrolled" },
-  { code: "CS 361", name: "Database Systems", credits: 3, status: "enrolled" },
-  { code: "MATH 221", name: "Calculus I", credits: 4, status: "waitlist" },
-];
-
 const mockRecentActivity = [
   {
     type: "course_added",
@@ -163,6 +111,381 @@ const navItems = [
 export default function Dashboard() {
   const router = useRouter();
 
+  type StudentRow = {
+  id: number
+  name: string | null
+  email: string | null
+  has_completed_onboarding: boolean | null
+  expected_graduation_term: string | null
+  expected_graduation_year: number | null
+}
+
+type DashboardStudent = {
+  id: number
+  name: string
+  email: string
+  major: string
+  expectedGraduation: string
+  hasCompletedOnboarding: boolean
+}
+
+const [student, setStudent] = React.useState<DashboardStudent | null>(null)
+const [loadingStudent, setLoadingStudent] = React.useState(true)
+
+type ProgressSummary = {
+  overall: number
+  totalCredits: number
+  completedCredits: number
+  inProgressCredits: number
+  remainingCredits: number
+}
+
+const TOTAL_REQUIRED_CREDITS = 120
+
+const [progress, setProgress] = React.useState<ProgressSummary>({
+  overall: 0,
+  totalCredits: TOTAL_REQUIRED_CREDITS,
+  completedCredits: 0,
+  inProgressCredits: 0,
+  remainingCredits: TOTAL_REQUIRED_CREDITS,
+})
+
+const [loadingProgress, setLoadingProgress] = React.useState(true)
+
+type RequirementBar = {
+  name: string
+  completed: number
+  total: number
+  percentage: number
+  color: "green" | "blue" | "purple" | "orange"
+}
+
+const DEFAULT_REQUIREMENTS: RequirementBar[] = [
+  { name: "General Education", completed: 0, total: 0, percentage: 0, color: "green" },
+  { name: "Major Core", completed: 0, total: 0, percentage: 0, color: "blue" },
+  { name: "Major Electives", completed: 0, total: 0, percentage: 0, color: "purple" },
+  { name: "Free Electives", completed: 0, total: 0, percentage: 0, color: "orange" },
+]
+
+const [requirements, setRequirements] =
+  React.useState<RequirementBar[]>(DEFAULT_REQUIREMENTS)
+
+const [loadingRequirements, setLoadingRequirements] =
+  React.useState(true)
+
+type PlannedCourseCard = {
+  code: string
+  name: string
+  credits: number
+  status: "enrolled" | "waitlist" | "planned" | "unknown"
+}
+
+const [currentCourses, setCurrentCourses] = React.useState<PlannedCourseCard[]>([])
+const [loadingCourses, setLoadingCourses] = React.useState(true)
+
+React.useEffect(() => {
+  const loadStudent = async () => {
+    setLoadingStudent(true)
+    const supabase = createClient()
+
+    // 1) Logged-in user
+      const { data: userData, error: userErr } = await supabase.auth.getUser()
+      if (userErr || !userData.user) {
+        router.push("/signin")
+        return
+      }
+
+    // 2) Student row via auth_user_id
+      const { data: studentRow, error: studentErr } = await supabase
+        .from("students")
+        .select(
+          "id,name,email,has_completed_onboarding,expected_graduation_semester,expected_graduation_year"
+        )
+        .eq("auth_user_id", userData.user.id)
+        .maybeSingle<StudentRow>()
+
+        console.log("studentErr:", studentErr)
+        console.log("studentRow:", studentRow)
+        console.log("LOGGED IN AUTH ID:", userData.user.id)
+        console.log("LOGGED IN EMAIL:", userData.user.email)
+
+      if (studentErr || !studentRow) {
+        toaster.create({
+          title: "Profile not found",
+          description: "We couldn't load your student profile.",
+          type: "error",
+        })
+        setLoadingStudent(false)
+        return
+      }
+
+    // 3) Major (student_programs -> programs)
+      let majorName = "Unknown"
+      let majorProgramId: number | null = null  // ✅ moved OUTSIDE so it’s in scope later
+
+      const { data: studentPrograms, error: spErr } = await supabase
+        .from("student_programs")
+        .select("program_id")
+        .eq("student_id", studentRow.id)
+
+      if (!spErr && studentPrograms?.length) {
+        const programIds = studentPrograms.map((sp: any) => sp.program_id)
+
+        const { data: majorProgram, error: majorProgramErr } = await supabase
+          .from("programs")
+          .select("id,name")
+          .in("id", programIds)
+          .eq("program_type", "major")
+          .maybeSingle()
+
+        if (!majorProgramErr && majorProgram?.name) {
+          majorName = majorProgram.name
+          majorProgramId = majorProgram.id
+        }
+      }
+
+
+    // 4) Degree requirements progress (blocks + courses vs student history)
+      setLoadingRequirements(true)
+
+      if (!majorProgramId) {
+        setRequirements(DEFAULT_REQUIREMENTS)
+        setLoadingRequirements(false)
+      } else {
+    // 4a) Get completed course ids (and credits)
+        const { data: completedCourseRows, error: completedCoursesErr } = await supabase
+          .from("student_course_history")
+          .select(`
+            course_id,
+            courses:course_id (
+              credits
+            )
+          `)
+          .eq("student_id", studentRow.id)
+
+        if (completedCoursesErr) {
+          console.log("completedCoursesErr:", completedCoursesErr)
+        }
+
+        const completedCourseIds = new Set<number>(
+          (completedCourseRows ?? [])
+            .map((r: any) => Number(r?.course_id))
+            .filter((x: number) => !Number.isNaN(x))
+        )
+
+    // 4b) Pull requirement blocks and the courses inside each block
+        const { data: blocks, error: blocksErr } = await supabase
+          .from("program_requirement_blocks")
+          .select(`
+            id,
+            name,
+            credits_required,
+            program_requirement_courses (
+              course_id,
+              courses:course_id (
+                credits
+              )
+            )
+          `)
+          .eq("program_id", majorProgramId)
+
+        if (blocksErr) {
+          console.log("blocksErr:", blocksErr)
+          setRequirements(DEFAULT_REQUIREMENTS)
+          setLoadingRequirements(false)
+        } else {
+          // helper to map block -> dashboard category + color
+          const categorize = (blockName: string) => {
+            const n = blockName.toLowerCase()
+            if (n.includes("general")) return { key: "General Education", color: "green" as const }
+            if (n.includes("core")) return { key: "Major Core", color: "blue" as const }
+            if (n.includes("elective")) return { key: "Major Electives", color: "purple" as const }
+            // fallback
+            return { key: "Free Electives", color: "orange" as const }
+          }
+
+          // accumulate into the 4 fixed bars
+          const agg: Record<string, { completed: number; total: number; color: RequirementBar["color"] }> =
+            {
+              "General Education": { completed: 0, total: 0, color: "green" },
+              "Major Core": { completed: 0, total: 0, color: "blue" },
+              "Major Electives": { completed: 0, total: 0, color: "purple" },
+              "Free Electives": { completed: 0, total: 0, color: "orange" },
+            }
+
+          for (const b of blocks ?? []) {
+            const { key, color } = categorize(String(b.name ?? ""))
+
+            // total credits required: prefer credits_required, fallback to sum of credits in block
+            const blockCourseRows = (b as any).program_requirement_courses ?? []
+            const fallbackTotal = blockCourseRows.reduce((sum: number, r: any) => {
+              return sum + Number(r?.courses?.credits ?? 0)
+            }, 0)
+
+            const total = Number((b as any).credits_required ?? fallbackTotal ?? 0)
+
+            // completed credits in block: sum credits of block courses that appear in student_course_history
+            const completed = blockCourseRows.reduce((sum: number, r: any) => {
+              const cid = Number(r?.course_id)
+              if (!completedCourseIds.has(cid)) return sum
+              return sum + Number(r?.courses?.credits ?? 0)
+            }, 0)
+
+            agg[key].total += total
+            agg[key].completed += completed
+            agg[key].color = color
+          }
+
+          const bars: RequirementBar[] = Object.entries(agg).map(([name, v]) => {
+            const total = Math.max(0, Math.round(v.total))
+            const completed = Math.min(total, Math.round(v.completed))
+            const percentage = total === 0 ? 0 : Math.min(100, Math.round((completed / total) * 100))
+            return { name, completed, total, percentage, color: v.color }
+          })
+
+          setRequirements(bars)
+          setLoadingRequirements(false)
+        }
+      }
+
+    // 5) Current semester planned courses
+      setLoadingCourses(true)
+
+      const { data: plannedRows, error: plannedErr } = await supabase
+        .from("student_planned_courses")
+        .select(`
+          status,
+          courses:course_id (
+            subject,
+            number,
+            title,
+            credits
+          )
+        `)
+        .eq("student_id", studentRow.id)
+
+      if (plannedErr) {
+        console.log("plannedErr:", plannedErr)
+        // Don’t hard-fail the page if this section can’t load
+        setCurrentCourses([])
+        setLoadingCourses(false)
+      } else {
+        const mapped: PlannedCourseCard[] =
+          (plannedRows ?? [])
+            .map((r: any) => {
+              const c = r.courses
+              if (!c) return null
+
+              const rawStatus = String(r.status ?? "").toLowerCase()
+              const status: PlannedCourseCard["status"] =
+                rawStatus === "enrolled"
+                  ? "enrolled"
+                  : rawStatus === "waitlist"
+                    ? "waitlist"
+                    : rawStatus
+                      ? "planned"
+                      : "unknown"
+
+              return {
+                code: `${c.subject} ${c.number}`.trim(),
+                name: c.title ?? "Untitled course",
+                credits: Number(c.credits ?? 0),
+                status,
+              }
+            })
+            .filter((c): c is PlannedCourseCard => c !== null)
+
+        setCurrentCourses(mapped as PlannedCourseCard[])
+        setLoadingCourses(false)
+      }
+
+    // 6) Progress (completed + in-progress credits)
+      setLoadingProgress(true)
+
+    // 6a) Completed credits from student_course_history -> courses
+      const { data: completedRows, error: completedErr } = await supabase
+        .from("student_course_history")
+        .select(
+          `
+            courses:course_id (
+              credits
+            )
+          `
+        )
+        .eq("student_id", studentRow.id)
+
+      if (completedErr) {
+        console.log("completedErr:", completedErr)
+      }
+
+      // Sum completed credits
+      const completedCredits =
+        (completedRows ?? []).reduce((sum: number, r: any) => {
+          const credits = Number(r?.courses?.credits ?? 0)
+          return sum + credits
+        }, 0)
+
+    
+    // 6b) In-progress credits from student_planned_courses -> courses
+      const { data: plannedCreditRows, error: plannedCreditErr } = await supabase
+        .from("student_planned_courses")
+        .select(`
+          status,
+          courses:course_id (
+            credits
+          )
+        `)
+        .eq("student_id", studentRow.id)
+
+      if (plannedCreditErr) {
+        console.log("plannedCreditErr:", plannedCreditErr)
+      }
+
+      // only enrolled/waitlist
+      const inProgressCredits =
+        (plannedCreditRows ?? []).reduce((sum: number, r: any) => {
+          const s = String(r?.status ?? "").toLowerCase()
+          if (s !== "enrolled" && s !== "waitlist") return sum
+          return sum + Number(r?.courses?.credits ?? 0)
+        }, 0)
+
+      // Compute summary
+      const totalCredits = TOTAL_REQUIRED_CREDITS
+      const remainingCredits = Math.max(totalCredits - completedCredits, 0)
+      const overall = Math.min(
+        100,
+        Math.round((completedCredits / totalCredits) * 100)
+      )
+
+      setProgress({
+        overall,
+        totalCredits,
+        completedCredits,
+        inProgressCredits,
+        remainingCredits,
+      })
+
+      setLoadingProgress(false)  
+
+    // 7) Expected graduation display
+      const expectedGraduation =
+        `${studentRow.expected_graduation_term ?? ""} ${studentRow.expected_graduation_year ?? ""}`.trim() || "—"
+
+      setStudent({
+        id: studentRow.id,
+        name: studentRow.name ?? "",
+        email: studentRow.email ?? "",
+        major: majorName,
+        expectedGraduation,
+        hasCompletedOnboarding: !!studentRow.has_completed_onboarding,
+      })
+
+      setLoadingStudent(false)
+  }
+
+  loadStudent()
+}, [router])
+
   async function handleSignOut() {
     const supabase = createClient();
     await supabase.auth.signOut();
@@ -173,6 +496,14 @@ export default function Dashboard() {
     });
     router.push("/signin");
   }
+
+  if (loadingStudent) {
+  return <Box p="8">Loading...</Box>
+}
+
+if (!student) {
+  return null
+}
 
   return (
     <Box minH="100vh" bg="bg" fontFamily="'Plus Jakarta Sans', sans-serif">
@@ -324,7 +655,7 @@ export default function Dashboard() {
                   fontWeight="400"
                   letterSpacing="-0.02em"
                 >
-                  {mockStudent.name}
+                  {student.name}
                 </Heading>
               </Box>
 
@@ -346,7 +677,7 @@ export default function Dashboard() {
                 </IconButton>
                 <ColorModeButton variant="ghost" size="sm" />
                 <Avatar.Root size="sm">
-                  <Avatar.Fallback name={mockStudent.name} />
+                  <Avatar.Fallback name={student.name} />
                 </Avatar.Root>
               </HStack>
             </Flex>
@@ -356,7 +687,7 @@ export default function Dashboard() {
           <Box px={{ base: "4", md: "8" }} py="6">
             <Stack gap="6">
               {/* Onboarding Banner */}
-              {!mockStudent.hasCompletedOnboarding && (
+              {!student.hasCompletedOnboarding && (
                 <Card.Root
                   className="animate-fade-up"
                   borderRadius="2xl"
@@ -481,11 +812,11 @@ export default function Dashboard() {
                             Overall Progress
                           </Text>
                           <Text fontSize="2xl" fontWeight="700">
-                            {mockProgress.overall}%
+                            {loadingProgress ? "—" : `${progress.overall}%`}
                           </Text>
                         </Box>
                         <ProgressCircleRoot
-                          value={mockProgress.overall}
+                          value={progress.overall}
                           size="md"
                           colorPalette="green"
                         >
@@ -524,10 +855,10 @@ export default function Dashboard() {
                           </Text>
                           <HStack align="baseline" gap="1">
                             <Text fontSize="2xl" fontWeight="700">
-                              {mockProgress.completedCredits}
+                              {progress.completedCredits}
                             </Text>
                             <Text fontSize="sm" color="fg.muted">
-                              / {mockProgress.totalCredits}
+                              / {progress.totalCredits}
                             </Text>
                           </HStack>
                         </Box>
@@ -546,7 +877,7 @@ export default function Dashboard() {
                       </HStack>
                       <HStack gap="1" fontSize="xs" color="fg.muted">
                         <Text>
-                          {mockProgress.remainingCredits} credits remaining
+                          {progress.remainingCredits} credits remaining
                         </Text>
                       </HStack>
                     </Card.Body>
@@ -573,7 +904,7 @@ export default function Dashboard() {
                         </Text>
                         <HStack align="baseline" gap="1">
                           <Text fontSize="2xl" fontWeight="700">
-                            {mockProgress.inProgressCredits}
+                            {progress.inProgressCredits}
                           </Text>
                           <Text fontSize="sm" color="fg.muted">
                             credits
@@ -629,7 +960,7 @@ export default function Dashboard() {
                     </Card.Header>
                     <Card.Body p="5">
                       <Stack gap="5">
-                        {mockRequirements.map((req) => (
+                        {requirements.map((req) => (
                           <Box key={req.name}>
                             <ProgressRoot
                               value={req.percentage}
@@ -642,7 +973,7 @@ export default function Dashboard() {
                                 </ProgressLabel>
                                 <HStack gap="2">
                                   <Text fontSize="xs" color="fg.muted">
-                                    {req.completed}/{req.total} credits
+                                    {loadingRequirements ? "Loading..." : `${req.completed}/${req.total} credits`}
                                   </Text>
                                   <ProgressValueText
                                     fontWeight="600"
@@ -683,61 +1014,77 @@ export default function Dashboard() {
                     </Card.Header>
                     <Card.Body p="5">
                       <Stack gap="3">
-                        {mockUpcomingCourses.map((course) => (
-                          <Flex
-                            key={course.code}
-                            p="4"
-                            bg="bg.subtle"
-                            borderRadius="lg"
-                            justify="space-between"
-                            align="center"
-                            _hover={{ bg: "bg.muted" }}
-                            transition="background 0.15s"
-                            cursor="pointer"
-                          >
-                            <HStack gap="4">
-                              <Box
-                                w="10"
-                                h="10"
-                                bg="green.subtle"
-                                borderRadius="lg"
-                                display="flex"
-                                alignItems="center"
-                                justifyContent="center"
-                              >
-                                <Icon color="green.fg" boxSize="5">
-                                  <LuBookOpen />
-                                </Icon>
-                              </Box>
-                              <Box>
-                                <Text fontWeight="600" fontSize="sm">
-                                  {course.code}
+                        {loadingCourses ? (
+                          <Box p="4" bg="bg.subtle" borderRadius="lg">
+                            <Text fontSize="sm" color="fg.muted">
+                              Loading current semester courses...
+                            </Text>
+                          </Box>
+                        ) : currentCourses.length === 0 ? (
+                          <Box p="4" bg="bg.subtle" borderRadius="lg">
+                            <Text fontWeight="600" fontSize="sm" mb="1">
+                              No courses planned yet
+                            </Text>
+                            <Text fontSize="sm" color="fg.muted">
+                              Once you complete onboarding and add your semester plan, your courses will appear here.
+                            </Text>
+                          </Box>
+                        ) : (
+                          currentCourses.map((course) => (
+                            <Flex
+                              key={`${course.code}-${course.name}`}
+                              p="4"
+                              bg="bg.subtle"
+                              borderRadius="lg"
+                              justify="space-between"
+                              align="center"
+                              _hover={{ bg: "bg.muted" }}
+                              transition="background 0.15s"
+                              cursor="pointer"
+                            >
+                              <HStack gap="4">
+                                <Box
+                                  w="10"
+                                  h="10"
+                                  bg="green.subtle"
+                                  borderRadius="lg"
+                                  display="flex"
+                                  alignItems="center"
+                                  justifyContent="center"
+                                >
+                                  <Icon color="green.fg" boxSize="5">
+                                    <LuBookOpen />
+                                  </Icon>
+                                </Box>
+                                <Box>
+                                  <Text fontWeight="600" fontSize="sm">
+                                    {course.code}
+                                  </Text>
+                                  <Text color="fg.muted" fontSize="sm">
+                                    {course.name}
+                                  </Text>
+                                </Box>
+                              </HStack>
+
+                              <HStack gap="3">
+                                <Text fontSize="sm" color="fg.muted">
+                                  {course.credits} credits
                                 </Text>
-                                <Text color="fg.muted" fontSize="sm">
-                                  {course.name}
-                                </Text>
-                              </Box>
-                            </HStack>
-                            <HStack gap="3">
-                              <Text fontSize="sm" color="fg.muted">
-                                {course.credits} credits
-                              </Text>
-                              <Badge
-                                colorPalette={
-                                  course.status === "enrolled"
-                                    ? "green"
-                                    : "orange"
-                                }
-                                variant="subtle"
-                                size="sm"
-                              >
-                                {course.status === "enrolled"
-                                  ? "Enrolled"
-                                  : "Waitlist"}
-                              </Badge>
-                            </HStack>
-                          </Flex>
-                        ))}
+                                <Badge
+                                  colorPalette={course.status === "enrolled" ? "green" : course.status === "waitlist" ? "orange" : "gray"}
+                                  variant="subtle"
+                                  size="sm"
+                                >
+                                  {course.status === "enrolled"
+                                    ? "Enrolled"
+                                    : course.status === "waitlist"
+                                      ? "Waitlist"
+                                      : "Planned"}
+                                </Badge>
+                              </HStack>
+                            </Flex>
+                          ))
+                        )}
                         <Button
                           variant="outline"
                           size="sm"
@@ -768,14 +1115,14 @@ export default function Dashboard() {
                     <Card.Body p="5">
                       <VStack align="center" gap="4">
                         <Avatar.Root size="xl" colorPalette="green">
-                          <Avatar.Fallback name={mockStudent.name} />
+                          <Avatar.Fallback name={student.name} />
                         </Avatar.Root>
                         <VStack gap="1">
                           <Text fontWeight="600" fontSize="lg">
-                            {mockStudent.name}
+                            {student.name}
                           </Text>
                           <Text color="fg.muted" fontSize="sm">
-                            {mockStudent.email}
+                            {student.email}
                           </Text>
                         </VStack>
                         <VStack gap="2" w="full" pt="2">
@@ -784,7 +1131,7 @@ export default function Dashboard() {
                               Major
                             </Text>
                             <Text fontSize="sm" fontWeight="500">
-                              {mockStudent.major}
+                              {student.major}
                             </Text>
                           </HStack>
                           <HStack justify="space-between" w="full">
@@ -796,7 +1143,7 @@ export default function Dashboard() {
                               variant="subtle"
                               size="sm"
                             >
-                              {mockStudent.expectedGraduation}
+                              {student.expectedGraduation}
                             </Badge>
                           </HStack>
                         </VStack>
