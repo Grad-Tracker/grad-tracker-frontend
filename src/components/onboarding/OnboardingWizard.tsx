@@ -234,7 +234,7 @@ export default function OnboardingWizard() {
 
       router.push("/dashboard");
     } catch (error) {
-      console.error('Failed to save selections:', error);
+      console.error('Failed to save onboarding selections:', error);
       toaster.error({
         title: "Failed to save selections",
         description: "Please try again.",
