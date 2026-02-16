@@ -70,7 +70,8 @@ export default function OnboardingWizard() {
       try {
         const majorsData = await fetchPrograms("MAJOR");
         setMajors(majorsData);
-      } catch {
+      } catch (error) {
+        console.error('Failed to load majors:', error);
         toaster.error({
           title: "Failed to load programs",
           description: "Please try refreshing the page.",
@@ -100,7 +101,8 @@ export default function OnboardingWizard() {
         ]);
         setCertificates(certs);
         setRequirementBlocks(blocks);
-      } catch {
+      } catch (error) {
+        console.error('Failed to load program data:', error);
         toaster.error({
           title: "Failed to load program data",
           description: "Please try selecting your major again.",
@@ -231,7 +233,8 @@ export default function OnboardingWizard() {
       });
 
       router.push("/dashboard");
-    } catch {
+    } catch (error) {
+      console.error('Failed to save selections:', error);
       toaster.error({
         title: "Failed to save selections",
         description: "Please try again.",
