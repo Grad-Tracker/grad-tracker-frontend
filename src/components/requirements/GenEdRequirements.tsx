@@ -15,7 +15,7 @@ import {
   VStack,
 } from "@chakra-ui/react";
 import { createClient } from "@/app/utils/supabase/client";
-
+console.log("GenEdRequirements loaded - v1");
 type Bucket = {
   id: number;
   code: string;
@@ -37,7 +37,7 @@ type BucketCourseRow = {
 };
 
 type HistoryRow = {
-  course_id: number;
+  course_id: number;              // <-- matches table column name: "course"
   grade: string | null;
   completed: boolean | null;
 };
@@ -84,14 +84,11 @@ export default function GenEdRequirements({ studentId }: { studentId: number }) 
         const mappings = (mapData ?? []) as BucketCourseRow[];
         setBucketCourses(mappings);
 
-        // Collect all Gen Ed course IDs
         const allCourseIds = Array.from(
-          new Set(
-            mappings.map((m) => Number(m.course_id)).filter((n) => Number.isFinite(n))
-          )
+          new Set(mappings.map((m) => Number(m.course_id)).filter((n) => Number.isFinite(n)))
         );
 
-        // 3) Student history
+        // 3) Student history (IMPORTANT: column is "course", not "course_id")
         const { data: historyData, error: historyErr } = await supabase
           .from("student_course_history")
           .select("course_id, grade, completed")
@@ -144,8 +141,8 @@ export default function GenEdRequirements({ studentId }: { studentId: number }) 
     return new Set<number>(
       (history ?? [])
         .filter((h) => h.completed === true || (h.grade && String(h.grade).trim() !== ""))
-        .map((h) => Number(h.course_id))
-    ); 
+        .map((h) => Number(h.course_id)) // <-- use "course"
+    );
   }, [history]);
 
   const bucketToCourseIds = useMemo(() => {
@@ -261,8 +258,8 @@ export default function GenEdRequirements({ studentId }: { studentId: number }) 
                         </Badge>
                       </HStack>
                       <Text mt="1" fontSize="sm" color="fg.muted">
-                        Completed <strong>{b.completedCredits}</strong> / {b.credits_required} credits{" "}
-                        · Remaining <strong>{b.remaining}</strong>
+                        Completed <strong>{b.completedCredits}</strong> / {b.credits_required} credits ·
+                        Remaining <strong>{b.remaining}</strong>
                       </Text>
                     </Box>
 
@@ -271,7 +268,6 @@ export default function GenEdRequirements({ studentId }: { studentId: number }) 
                     </Badge>
                   </Flex>
 
-                  {/* Chakra v3 Progress (your version uses Range, not Indicator) */}
                   <Progress.Root value={b.pct} max={100} colorPalette="green" size="sm">
                     <Progress.Track borderRadius="md">
                       <Progress.Range borderRadius="md" />
