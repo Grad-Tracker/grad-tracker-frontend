@@ -124,9 +124,15 @@ describe("ProgramSelectionStep", () => {
   });
 
   describe("Default graduation date (getAsapGraduation)", () => {
-    it("sets Spring of current year for January-April (months 0-3)", () => {
+    // Helper function to mock Date and test graduation logic
+    function testGraduationDate(
+      dateStr: string,
+      expectedSemester: string,
+      expectedYear: number,
+      description: string
+    ) {
       const originalDate = Date;
-      const mockDate = new originalDate("2024-03-15"); // March (month 2)
+      const mockDate = new originalDate(dateStr);
       vi.spyOn(global, "Date").mockImplementation((...args: any[]) => 
         args.length === 0 ? mockDate : new originalDate(...args)
       );
@@ -134,67 +140,28 @@ describe("ProgramSelectionStep", () => {
       const onGradChange = vi.fn();
       renderWithChakra(<ProgramSelectionStep {...defaultProps} onGradChange={onGradChange} />);
 
-      // Click "As soon as possible" to trigger default date
       const asapButton = screen.getByText("As soon as possible");
       fireEvent.click(asapButton);
 
-      expect(onGradChange).toHaveBeenCalledWith("Spring", 2024);
+      expect(onGradChange).toHaveBeenCalledWith(expectedSemester, expectedYear);
 
       vi.restoreAllMocks();
+    }
+
+    it("sets Spring of current year for January-April (months 0-3)", () => {
+      testGraduationDate("2024-03-15", "Spring", 2024, "March");
     });
 
     it("sets Summer of current year for May-July (months 4-6)", () => {
-      const originalDate = Date;
-      const mockDate = new originalDate("2024-06-15"); // June (month 5)
-      vi.spyOn(global, "Date").mockImplementation((...args: any[]) => 
-        args.length === 0 ? mockDate : new originalDate(...args)
-      );
-
-      const onGradChange = vi.fn();
-      renderWithChakra(<ProgramSelectionStep {...defaultProps} onGradChange={onGradChange} />);
-
-      const asapButton = screen.getByText("As soon as possible");
-      fireEvent.click(asapButton);
-
-      expect(onGradChange).toHaveBeenCalledWith("Summer", 2024);
-
-      vi.restoreAllMocks();
+      testGraduationDate("2024-06-15", "Summer", 2024, "June");
     });
 
     it("sets Fall of current year for August-November (months 7-10)", () => {
-      const originalDate = Date;
-      const mockDate = new originalDate("2024-10-15"); // October (month 9)
-      vi.spyOn(global, "Date").mockImplementation((...args: any[]) => 
-        args.length === 0 ? mockDate : new originalDate(...args)
-      );
-
-      const onGradChange = vi.fn();
-      renderWithChakra(<ProgramSelectionStep {...defaultProps} onGradChange={onGradChange} />);
-
-      const asapButton = screen.getByText("As soon as possible");
-      fireEvent.click(asapButton);
-
-      expect(onGradChange).toHaveBeenCalledWith("Fall", 2024);
-
-      vi.restoreAllMocks();
+      testGraduationDate("2024-10-15", "Fall", 2024, "October");
     });
 
     it("sets Spring of next year for December (month 11)", () => {
-      const originalDate = Date;
-      const mockDate = new originalDate("2024-12-15"); // December (month 11)
-      vi.spyOn(global, "Date").mockImplementation((...args: any[]) => 
-        args.length === 0 ? mockDate : new originalDate(...args)
-      );
-
-      const onGradChange = vi.fn();
-      renderWithChakra(<ProgramSelectionStep {...defaultProps} onGradChange={onGradChange} />);
-
-      const asapButton = screen.getByText("As soon as possible");
-      fireEvent.click(asapButton);
-
-      expect(onGradChange).toHaveBeenCalledWith("Spring", 2025);
-
-      vi.restoreAllMocks();
+      testGraduationDate("2024-12-15", "Spring", 2025, "December");
     });
   });
 });
