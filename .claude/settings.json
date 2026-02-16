@@ -1,26 +1,25 @@
 {
+  "enabledPlugins": {
+    "frontend-design@claude-plugins-official": true
+  },
   "permissions": {
     "allow": [
-      "Bash(curl:*)",
       "Bash(npm run build:*)",
       "Bash(npm run dev:*)",
+      "Bash(npm run test:*)",
       "mcp__chakra-ui__get_theme",
       "mcp__chakra-ui__get_component_example",
       "mcp__chakra-ui__get_component_props",
       "mcp__chakra-ui__v2_to_v3_code_review",
-      "Bash(git -C /Users/jack/Desktop/Parkside/grad-tracker-frontend log --oneline)",
-      "Bash(git fetch:*)",
-      "Bash(git -C /Users/jack/Desktop/Parkside/grad-tracker-frontend for-each-ref refs/remotes/)",
-      "Bash(git -C /Users/jack/Desktop/Parkside/grad-tracker-frontend status)",
       "mcp__supabase__list_tables",
       "mcp__supabase__execute_sql",
       "mcp__supabase__apply_migration",
-      "Bash(npm run test:*)",
       "mcp__supabase__get_advisors"
     ]
   },
   "enableAllProjectMcpServers": true,
   "enabledMcpjsonServers": [
     "chakra-ui"
-  ]
+  ],
+  "includeCoAuthoredBy": false
 }
