@@ -134,7 +134,7 @@ describe("ProgramSelectionStep", () => {
       const originalDate = Date;
       const mockDate = new originalDate(dateStr);
       vi.spyOn(global, "Date").mockImplementation((...args: any[]) => 
-        args.length === 0 ? mockDate : new originalDate(...args)
+        args.length === 0 ? new originalDate(mockDate) : new originalDate(...args)
       );
 
       const onGradChange = vi.fn();
