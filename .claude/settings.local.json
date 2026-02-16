@@ -12,7 +12,11 @@
       "Bash(git fetch:*)",
       "Bash(git -C /Users/jack/Desktop/Parkside/grad-tracker-frontend for-each-ref refs/remotes/)",
       "Bash(git -C /Users/jack/Desktop/Parkside/grad-tracker-frontend status)",
-      "mcp__supabase__list_tables"
+      "mcp__supabase__list_tables",
+      "mcp__supabase__execute_sql",
+      "mcp__supabase__apply_migration",
+      "Bash(npm run test:*)",
+      "mcp__supabase__get_advisors"
     ]
   },
   "enableAllProjectMcpServers": true,

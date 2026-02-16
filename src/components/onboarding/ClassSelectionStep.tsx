@@ -13,20 +13,41 @@ import {
 } from "@chakra-ui/react";
 import { LuInfo, LuBookMarked } from "react-icons/lu";
 import { CheckboxCard } from "@/components/ui/checkbox-card";
-import { mockCourses } from "@/data/mock/courses";
+import type { RequirementBlock } from "@/types/onboarding";
 
 interface ClassSelectionStepProps {
-  selectedClasses: string[];
-  onClassesChange: (classIds: string[]) => void;
+  requirementBlocks: RequirementBlock[];
+  selectedClasses: number[];
+  onClassesChange: (classIds: number[]) => void;
+}
+
+function ruleLabel(block: RequirementBlock): string {
+  switch (block.rule) {
+    case "ALL_OF":
+      return "Complete all";
+    case "ANY_OF":
+      return "Complete any";
+    case "N_OF":
+      return block.n_required ? `Choose ${block.n_required}` : "Choose from";
+    case "CREDITS_OF":
+      return block.credits_required
+        ? `${block.credits_required} credits required`
+        : "Credits required";
+    default:
+      return "";
+  }
 }
 
 export default function ClassSelectionStep({
+  requirementBlocks,
   selectedClasses,
   onClassesChange,
 }: ClassSelectionStepProps) {
-  const totalCredits = selectedClasses.reduce((sum, classId) => {
-    const course = mockCourses.find((c) => c.id === classId);
-    return sum + (course?.credits || 0);
+  // Compute total credits from all selected courses across all blocks
+  const allCourses = requirementBlocks.flatMap((b) => b.courses);
+  const totalCredits = selectedClasses.reduce((sum, courseId) => {
+    const course = allCourses.find((c) => c.id === courseId);
+    return sum + (course?.credits ?? 0);
   }, 0);
 
   return (
@@ -91,37 +112,55 @@ export default function ClassSelectionStep({
         </Box>
       )}
 
-      {/* Course Selection */}
+      {/* Course Selection — Grouped by Requirement Block */}
       <CheckboxGroup
-        value={selectedClasses}
-        onValueChange={(values) => onClassesChange(values)}
+        value={selectedClasses.map(String)}
+        onValueChange={(values) => onClassesChange(values.map(Number))}
       >
-        <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} gap="3">
-          {mockCourses.map((course) => (
-            <CheckboxCard
-              key={course.id}
-              value={course.id}
-              label={course.code}
-              description={
-                <Box>
-                  <Text fontSize="sm" color="fg.muted" lineClamp={1}>
-                    {course.name}
-                  </Text>
-                  <Badge
-                    mt="1.5"
-                    colorPalette="gray"
-                    variant="subtle"
-                    size="sm"
-                  >
-                    {course.credits} credits
+        <VStack gap="8" align="stretch">
+          {requirementBlocks.map((block) => {
+            if (block.courses.length === 0) return null;
+
+            return (
+              <Box key={block.id}>
+                <VStack gap="1" align="start" mb="3">
+                  <Heading size="md" fontWeight="600">
+                    {block.name}
+                  </Heading>
+                  <Badge colorPalette="gray" variant="subtle" size="sm">
+                    {ruleLabel(block)}
                   </Badge>
-                </Box>
-              }
-              colorPalette="green"
-              borderRadius="xl"
-            />
-          ))}
-        </SimpleGrid>
+                </VStack>
+                <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} gap="3">
+                  {block.courses.map((course) => (
+                    <CheckboxCard
+                      key={course.id}
+                      value={course.id.toString()}
+                      label={`${course.subject} ${course.number}`}
+                      description={
+                        <Box>
+                          <Text fontSize="sm" color="fg.muted" lineClamp={1}>
+                            {course.title}
+                          </Text>
+                          <Badge
+                            mt="1.5"
+                            colorPalette="gray"
+                            variant="subtle"
+                            size="sm"
+                          >
+                            {course.credits} credits
+                          </Badge>
+                        </Box>
+                      }
+                      colorPalette="green"
+                      borderRadius="xl"
+                    />
+                  ))}
+                </SimpleGrid>
+              </Box>
+            );
+          })}
+        </VStack>
       </CheckboxGroup>
     </VStack>
   );
