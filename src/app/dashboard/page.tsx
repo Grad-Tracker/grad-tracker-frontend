@@ -2,6 +2,7 @@
 
 import * as React from "react";
 
+import { useState, useEffect } from "react";
 import {
   Avatar,
   Badge,
@@ -24,6 +25,7 @@ import {
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { checkOnboardingStatus } from "@/lib/supabase/queries/onboarding";
 import { toaster } from "@/components/ui/toaster";
 import { ColorModeButton } from "@/components/ui/color-mode";
 import {
@@ -110,6 +112,22 @@ const navItems = [
 
 export default function Dashboard() {
   const router = useRouter();
+  const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState(true);
+
+  useEffect(() => {
+    async function checkStatus() {
+      try {
+        const supabase = createClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+        const completed = await checkOnboardingStatus(user.id);
+        setHasCompletedOnboarding(completed);
+      } catch {
+        // Default to hiding banner on error
+      }
+    }
+    checkStatus();
+  }, []);
 
   type StudentRow = {
   id: number
