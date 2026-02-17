@@ -1,11 +1,20 @@
-# Grad Tracker Frontend
+# GradTracker
 
-A graduation progress tracking application built with Next.js, React, and Chakra UI v3.
+A graduation progress tracking application that helps university students visualize their path to graduation. Track completed credits, monitor degree requirements, browse course catalogs, and plan future semesters.
+
+## Features
+
+- **Dashboard** - View overall graduation progress, credits completed/in-progress/remaining, and quick access to all features
+- **Degree Requirements** - Track progress across General Education, Major Core, Major Electives, and Free Electives
+- **Course Catalog** - Browse courses with search and subject filtering, organized by undergraduate and graduate levels
+- **Onboarding Wizard** - Guided setup for new students to configure their degree program
+- **Dark/Light Mode** - Full theme support
 
 ## Tech Stack
 
 - **Framework**: Next.js 16 (App Router)
 - **UI Library**: Chakra UI v3
+- **Backend**: Supabase
 - **Language**: TypeScript
 
 ## Getting Started
@@ -31,59 +40,21 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000) to view the app.
 
-## AI-Assisted Development Setup
-
-This project is configured for AI-assisted development with Chakra UI MCP (Model Context Protocol).
-
-### For Claude Code Users
-
-1. Open the project in Claude Code:
-   ```bash
-   cd grad-tracker-frontend
-   claude
-   ```
-
-2. Claude Code will automatically detect `.mcp.json` and load the Chakra UI MCP server.
-
-3. The AI can now use Chakra UI tools to:
-   - Look up component props and examples
-   - Get theme tokens and colors
-   - Validate v3 compatibility
-
-### For Cursor Users
-
-1. Open the project in Cursor
-2. Add to `.cursor/mcp.json` (create if it doesn't exist):
-   ```json
-   {
-     "mcpServers": {
-       "chakra-ui": {
-         "command": "npx",
-         "args": ["-y", "@anthropic-ai/mcp-chakra-ui"]
-       }
-     }
-   }
-   ```
-3. Restart Cursor to load the MCP server
-
-### For Other AI Tools
-
-If your AI tool supports MCP, configure it to run:
-```bash
-npx -y @anthropic-ai/mcp-chakra-ui
-```
-
 ## Project Structure
 
 ```
 src/
-├── app/                 # Next.js App Router pages
-│   ├── layout.tsx       # Root layout with Chakra Provider
-│   ├── page.tsx         # Home page
-│   └── globals.css      # Global styles
+├── app/
+│   ├── dashboard/
+│   │   ├── courses/        # Course catalog
+│   │   ├── onboarding/     # Onboarding wizard
+│   │   └── page.tsx        # Main dashboard
+│   ├── layout.tsx          # Root layout with Chakra Provider
+│   └── page.tsx            # Landing page
 ├── components/
-│   └── ui/              # Chakra UI component wrappers
-└── lib/                 # Utilities and helpers
+│   └── ui/                 # Chakra UI component wrappers
+├── lib/                    # Utilities and helpers
+└── types/                  # TypeScript types
 ```
 
 ## Available Scripts
@@ -106,4 +77,4 @@ src/
 
 - [Chakra UI v3 Docs](https://chakra-ui.com/docs)
 - [Next.js Docs](https://nextjs.org/docs)
-- [CLAUDE.md](./CLAUDE.md) - AI assistant instructions
+- [Supabase Docs](https://supabase.com/docs)

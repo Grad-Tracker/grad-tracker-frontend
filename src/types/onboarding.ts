@@ -1,32 +1,35 @@
-export interface Major {
-  id: string;
+export interface Program {
+  id: number;
   name: string;
-  code: string;
-  description: string;
-  totalCredits: number;
+  catalog_year: string;
+  program_type: "MAJOR" | "CERTIFICATE" | "MINOR";
 }
 
-export interface Certificate {
-  id: string;
+export interface RequirementBlock {
+  id: number;
+  program_id: number;
   name: string;
-  code: string;
-  description: string;
-  totalCredits: number;
+  rule: "ALL_OF" | "ANY_OF" | "N_OF" | "CREDITS_OF";
+  n_required: number | null;
+  credits_required: number | null;
+  courses: CourseRow[];
 }
 
-export interface Course {
-  id: string;
-  code: string;
-  name: string;
+export interface CourseRow {
+  id: number;
+  subject: string;
+  number: string;
+  title: string;
   credits: number;
-  department: string;
 }
 
 export interface OnboardingState {
   currentStep: number;
-  selectedMajor: string | null;
-  selectedCertificates: string[];
-  selectedClasses: string[];
+  selectedMajor: number | null;
+  selectedCertificates: number[];
+  selectedClasses: number[];
+  expectedGradSemester: string | null;
+  expectedGradYear: number | null;
 }
 
 export interface StepChangeDetails {
