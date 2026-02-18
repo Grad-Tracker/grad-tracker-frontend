@@ -11,6 +11,10 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage"
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+    
+>>>>>>> ed055af (Add test coverage for GenEdRequirements component)
 =======
     
 >>>>>>> ed055af (Add test coverage for GenEdRequirements component)

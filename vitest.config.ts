@@ -9,6 +9,7 @@ export default defineConfig({
     setupFiles: ["./src/__tests__/setup.ts"],
     include: ["src/**/*.test.{ts,tsx}"],
 <<<<<<< HEAD
+<<<<<<< HEAD
     coverage: {
       provider: "v8",
       reporter: ["text", "html"],
@@ -21,6 +22,8 @@ export default defineConfig({
         ".next/**",
         "node_modules/**",
 =======
+=======
+>>>>>>> ed055af (Add test coverage for GenEdRequirements component)
 
     coverage: {
       provider: "v8",
@@ -39,6 +42,9 @@ export default defineConfig({
         "**/dist/**",
         "**/coverage/**",
         "**/*.d.ts",
+<<<<<<< HEAD
+>>>>>>> ed055af (Add test coverage for GenEdRequirements component)
+=======
 >>>>>>> ed055af (Add test coverage for GenEdRequirements component)
       ],
     },
