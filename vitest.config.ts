@@ -10,21 +10,22 @@ export default defineConfig({
     include: ["src/**/*.test.{ts,tsx}"],
     coverage: {
       provider: "v8",
-      reporter: ["text", "html"],
+      reporter: ["text", "html", "lcov"],
+      reportsDirectory: "./coverage",
       exclude: [
-        "src/components/ui/**",
-        "src/__tests__/**",
+        "**/node_modules/**",
+        "**/.next/**",
+        "**/dist/**",
+        "**/coverage/**",
         "**/*.d.ts",
         "**/*.config.*",
-        "next.config.*",
-        ".next/**",
-        "node_modules/**",
-      ],
-    },
+        "next.config.*"
+      ]
+    }
   },
   resolve: {
     alias: {
-      "@": path.resolve(__dirname, "./src"),
-    },
-  },
+      "@": path.resolve(__dirname, "./src")
+    }
+  }
 });
