@@ -8,6 +8,7 @@ export default defineConfig({
     environment: "jsdom",
     setupFiles: ["./src/__tests__/setup.ts"],
     include: ["src/**/*.test.{ts,tsx}"],
+<<<<<<< HEAD
     coverage: {
       provider: "v8",
       reporter: ["text", "html"],
@@ -19,9 +20,30 @@ export default defineConfig({
         "next.config.*",
         ".next/**",
         "node_modules/**",
+=======
+
+    coverage: {
+      provider: "v8",
+      reporter: ["text", "html", "lcov"],
+      reportsDirectory: "./coverage",
+
+      // ✅ Only measure coverage for the files you worked on
+      include: [
+        "src/components/requirements/**",
+        "src/app/dashboard/requirements/**",
+      ],
+
+      exclude: [
+        "**/node_modules/**",
+        "**/.next/**",
+        "**/dist/**",
+        "**/coverage/**",
+        "**/*.d.ts",
+>>>>>>> ed055af (Add test coverage for GenEdRequirements component)
       ],
     },
   },
+
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
