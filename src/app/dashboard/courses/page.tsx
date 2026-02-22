@@ -1,12 +1,13 @@
 import { createClient } from "@/lib/supabase/server";
 import CoursesClient from "./CoursesClient";
 import type { Course } from "@/types/course";
+import { DB_TABLES } from "@/lib/supabase/queries/schema";
 
 export default async function CoursesPage() {
   const supabase = await createClient();
 
   const { data: courses, error } = await supabase
-    .from("courses")
+    .from(DB_TABLES.courses)
     .select("*")
     .order("subject", { ascending: true })
     .order("number", { ascending: true });

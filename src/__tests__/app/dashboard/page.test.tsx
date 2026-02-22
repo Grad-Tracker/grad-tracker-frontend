@@ -3,7 +3,16 @@ import { render, screen, waitFor, fireEvent, act } from "@testing-library/react"
 import { ChakraProvider, defaultSystem } from "@chakra-ui/react";
 
 // Mocks — use vi.hoisted to avoid hoisting issues
-const { mockPush, mockReplace, mockRefresh, mockGetUser, mockSignOut, mockFrom, mockCheckOnboardingStatus } = vi.hoisted(() => ({
+const {
+  mockPush,
+  mockReplace,
+  mockRefresh,
+  mockGetUser,
+  mockSignOut,
+  mockFrom,
+  mockCheckOnboardingStatus,
+  mockGetOrCreateStudent,
+} = vi.hoisted(() => ({
   mockPush: vi.fn(),
   mockReplace: vi.fn(),
   mockRefresh: vi.fn(),
@@ -11,6 +20,7 @@ const { mockPush, mockReplace, mockRefresh, mockGetUser, mockSignOut, mockFrom, 
   mockSignOut: vi.fn(),
   mockFrom: vi.fn(),
   mockCheckOnboardingStatus: vi.fn(),
+  mockGetOrCreateStudent: vi.fn(),
 }));
 
 // Stable router reference prevents infinite useEffect re-runs
@@ -30,6 +40,7 @@ vi.mock("@/lib/supabase/client", () => ({
 }));
 vi.mock("@/lib/supabase/queries/onboarding", () => ({
   checkOnboardingStatus: (...args: any[]) => mockCheckOnboardingStatus(...args),
+  getOrCreateStudent: (...args: any[]) => mockGetOrCreateStudent(...args),
 }));
 vi.mock("@/components/ui/toaster", () => ({
   toaster: { create: vi.fn(), success: vi.fn(), error: vi.fn() },
@@ -77,6 +88,7 @@ describe("Dashboard", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockSignOut.mockResolvedValue({ error: null });
+    mockGetOrCreateStudent.mockResolvedValue({ id: 1 });
   });
 
   it("shows loading state initially", () => {
@@ -113,7 +125,10 @@ describe("Dashboard", () => {
         const chain = createChainMock();
         chain.maybeSingle = vi.fn().mockResolvedValue({
           data: {
-            id: 1, name: "Test Student", email: "test@uwp.edu",
+            id: 1,
+            first_name: "Test",
+            last_name: "Student",
+            email: "test@uwp.edu",
             has_completed_onboarding: true,
             expected_graduation_semester: "Spring",
             expected_graduation_year: 2027,
@@ -147,7 +162,10 @@ describe("Dashboard", () => {
 
   function setupStudentMock(studentOverrides: Record<string, any> = {}) {
     const studentData = {
-      id: 1, name: "Test Student", email: "test@uwp.edu",
+      id: 1,
+      first_name: "Test",
+      last_name: "Student",
+      email: "test@uwp.edu",
       has_completed_onboarding: true,
       expected_graduation_semester: "Spring",
       expected_graduation_year: 2027,
@@ -172,7 +190,14 @@ describe("Dashboard", () => {
   }
 
   it("shows onboarding banner when not completed", async () => {
-    setupStudentMock({ name: "New Student", email: "new@uwp.edu", has_completed_onboarding: false, expected_graduation_semester: null, expected_graduation_year: null });
+    setupStudentMock({
+      first_name: "New",
+      last_name: "Student",
+      email: "new@uwp.edu",
+      has_completed_onboarding: false,
+      expected_graduation_semester: null,
+      expected_graduation_year: null,
+    });
 
     await act(async () => { renderWithChakra(<Dashboard />); });
 

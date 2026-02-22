@@ -25,7 +25,8 @@ import {
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { checkOnboardingStatus } from "@/lib/supabase/queries/onboarding";
+import { checkOnboardingStatus, getOrCreateStudent } from "@/lib/supabase/queries/onboarding";
+import { DB_TABLES, PROGRAM_TYPES, STUDENT_COLUMNS } from "@/lib/supabase/queries/schema";
 import { toaster } from "@/components/ui/toaster";
 import { ColorModeButton } from "@/components/ui/color-mode";
 import {
@@ -131,10 +132,13 @@ export default function Dashboard() {
 
   type StudentRow = {
   id: number
-  name: string | null
+  name?: string | null
+  first_name: string | null
+  last_name: string | null
   email: string | null
   has_completed_onboarding: boolean | null
-  expected_graduation_term: string | null
+  expected_graduation_semester: string | null
+  expected_graduation_term?: string | null
   expected_graduation_year: number | null
 }
 
@@ -206,6 +210,7 @@ React.useEffect(() => {
     setLoadingStudent(true)
     const supabase = createClient()
 
+    try {
     // 1) Logged-in user
       const { data: userData, error: userErr } = await supabase.auth.getUser()
       if (userErr || !userData.user) {
@@ -213,28 +218,94 @@ React.useEffect(() => {
         return
       }
 
-    // 2) Student row via auth_user_id
-      const { data: studentRow, error: studentErr } = await supabase
-        .from("students")
+    // 2) Student row via auth_user_id (new schema first, then legacy fallback)
+      const { data: studentRowNew, error: studentErrNew } = await supabase
+        .from(DB_TABLES.students)
         .select(
-          "id,name,email,has_completed_onboarding,expected_graduation_semester,expected_graduation_year"
+          "id,first_name,last_name,email,has_completed_onboarding,expected_graduation_semester,expected_graduation_year"
         )
-        .eq("auth_user_id", userData.user.id)
+        .eq(STUDENT_COLUMNS.authUserId, userData.user.id)
         .maybeSingle<StudentRow>()
+
+      let studentRow = studentRowNew
+      let studentErr = studentErrNew
+
+      if (studentErrNew && String(studentErrNew.message ?? "").includes("column")) {
+        const { data: studentRowLegacy, error: studentErrLegacy } = await supabase
+          .from(DB_TABLES.students)
+          .select(
+            "id,name,email,has_completed_onboarding,expected_graduation_term,expected_graduation_year"
+          )
+          .eq(STUDENT_COLUMNS.authUserId, userData.user.id)
+          .maybeSingle<{
+            id: number
+            name: string | null
+            email: string | null
+            has_completed_onboarding: boolean | null
+            expected_graduation_term: string | null
+            expected_graduation_year: number | null
+          }>()
+
+        studentErr = studentErrLegacy
+        studentRow = studentRowLegacy
+          ? {
+              id: studentRowLegacy.id,
+              name: studentRowLegacy.name,
+              first_name: null,
+              last_name: null,
+              email: studentRowLegacy.email,
+              has_completed_onboarding: studentRowLegacy.has_completed_onboarding,
+              expected_graduation_semester: studentRowLegacy.expected_graduation_term,
+              expected_graduation_term: studentRowLegacy.expected_graduation_term,
+              expected_graduation_year: studentRowLegacy.expected_graduation_year,
+            }
+          : null
+      }
 
         console.log("studentErr:", studentErr)
         console.log("studentRow:", studentRow)
         console.log("LOGGED IN AUTH ID:", userData.user.id)
         console.log("LOGGED IN EMAIL:", userData.user.email)
 
-      if (studentErr || !studentRow) {
+      if (studentErr) {
         toaster.create({
           title: "Profile not found",
-          description: "We couldn't load your student profile.",
+          description: studentErr.message ?? "We couldn't load your student profile.",
           type: "error",
         })
-        setLoadingStudent(false)
+        await supabase.auth.signOut()
+        router.push("/signin")
         return
+      }
+
+      let resolvedStudentRow = studentRow
+      if (!resolvedStudentRow) {
+        const displayName =
+          userData.user.user_metadata?.first_name
+            ? `${userData.user.user_metadata.first_name} ${userData.user.user_metadata?.last_name ?? ""}`.trim()
+            : userData.user.email ?? "Student"
+
+        const created = await getOrCreateStudent(
+          userData.user.id,
+          userData.user.email ?? "",
+          displayName
+        )
+
+        resolvedStudentRow = {
+          id: created.id,
+          first_name: userData.user.user_metadata?.first_name ?? null,
+          last_name: userData.user.user_metadata?.last_name ?? null,
+          email: userData.user.email ?? null,
+          has_completed_onboarding: false,
+          expected_graduation_semester: null,
+          expected_graduation_year: null,
+        }
+
+        toaster.create({
+          title: "Profile restored",
+          description: "Your student profile was missing and has been recreated.",
+          type: "info",
+        })
       }
 
     // 3) Major (student_programs -> programs)
@@ -242,18 +313,18 @@ React.useEffect(() => {
       let majorProgramId: number | null = null  // ✅ moved OUTSIDE so it’s in scope later
 
       const { data: studentPrograms, error: spErr } = await supabase
-        .from("student_programs")
+        .from(DB_TABLES.studentPrograms)
         .select("program_id")
-        .eq("student_id", studentRow.id)
+        .eq("student_id", resolvedStudentRow.id)
 
       if (!spErr && studentPrograms?.length) {
         const programIds = studentPrograms.map((sp: any) => sp.program_id)
 
         const { data: majorProgram, error: majorProgramErr } = await supabase
-          .from("programs")
+          .from(DB_TABLES.programs)
           .select("id,name")
           .in("id", programIds)
-          .eq("program_type", "major")
+          .eq("program_type", PROGRAM_TYPES.major)
           .maybeSingle()
 
         if (!majorProgramErr && majorProgram?.name) {
@@ -272,14 +343,14 @@ React.useEffect(() => {
       } else {
     // 4a) Get completed course ids (and credits)
         const { data: completedCourseRows, error: completedCoursesErr } = await supabase
-          .from("student_course_history")
+          .from(DB_TABLES.studentCourseHistory)
           .select(`
             course_id,
             courses:course_id (
               credits
             )
           `)
-          .eq("student_id", studentRow.id)
+          .eq("student_id", resolvedStudentRow.id)
 
         if (completedCoursesErr) {
           console.log("completedCoursesErr:", completedCoursesErr)
@@ -293,7 +364,7 @@ React.useEffect(() => {
 
     // 4b) Pull requirement blocks and the courses inside each block
         const { data: blocks, error: blocksErr } = await supabase
-          .from("program_requirement_blocks")
+          .from(DB_TABLES.programRequirementBlocks)
           .select(`
             id,
             name,
@@ -370,7 +441,7 @@ React.useEffect(() => {
       setLoadingCourses(true)
 
       const { data: plannedRows, error: plannedErr } = await supabase
-        .from("student_planned_courses")
+        .from(DB_TABLES.studentPlannedCourses)
         .select(`
           status,
           courses:course_id (
@@ -380,7 +451,7 @@ React.useEffect(() => {
             credits
           )
         `)
-        .eq("student_id", studentRow.id)
+        .eq("student_id", resolvedStudentRow.id)
 
       if (plannedErr) {
         console.log("plannedErr:", plannedErr)
@@ -422,7 +493,7 @@ React.useEffect(() => {
 
     // 6a) Completed credits from student_course_history -> courses
       const { data: completedRows, error: completedErr } = await supabase
-        .from("student_course_history")
+        .from(DB_TABLES.studentCourseHistory)
         .select(
           `
             courses:course_id (
@@ -430,7 +501,7 @@ React.useEffect(() => {
             )
           `
         )
-        .eq("student_id", studentRow.id)
+        .eq("student_id", resolvedStudentRow.id)
 
       if (completedErr) {
         console.log("completedErr:", completedErr)
@@ -446,14 +517,14 @@ React.useEffect(() => {
     
     // 6b) In-progress credits from student_planned_courses -> courses
       const { data: plannedCreditRows, error: plannedCreditErr } = await supabase
-        .from("student_planned_courses")
+        .from(DB_TABLES.studentPlannedCourses)
         .select(`
           status,
           courses:course_id (
             credits
           )
         `)
-        .eq("student_id", studentRow.id)
+        .eq("student_id", resolvedStudentRow.id)
 
       if (plannedCreditErr) {
         console.log("plannedCreditErr:", plannedCreditErr)
@@ -487,18 +558,33 @@ React.useEffect(() => {
 
     // 7) Expected graduation display
       const expectedGraduation =
-        `${studentRow.expected_graduation_term ?? ""} ${studentRow.expected_graduation_year ?? ""}`.trim() || "—"
+        `${resolvedStudentRow.expected_graduation_semester ?? ""} ${resolvedStudentRow.expected_graduation_year ?? ""}`.trim() || "—"
+
+      const fullName =
+        [resolvedStudentRow.first_name, resolvedStudentRow.last_name]
+          .filter(Boolean)
+          .join(" ")
+          .trim() || resolvedStudentRow.name || ""
 
       setStudent({
-        id: studentRow.id,
-        name: studentRow.name ?? "",
-        email: studentRow.email ?? "",
+        id: resolvedStudentRow.id,
+        name: fullName || "Student",
+        email: resolvedStudentRow.email ?? "",
         major: majorName,
         expectedGraduation,
-        hasCompletedOnboarding: !!studentRow.has_completed_onboarding,
+        hasCompletedOnboarding: !!resolvedStudentRow.has_completed_onboarding,
       })
 
       setLoadingStudent(false)
+    } catch {
+      await supabase.auth.signOut()
+      toaster.create({
+        title: "Session reset required",
+        description: "We had trouble loading your profile after the database reset. Please sign in again.",
+        type: "error",
+      })
+      router.push("/signin")
+    }
   }
 
   loadStudent()

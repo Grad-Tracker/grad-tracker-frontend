@@ -19,7 +19,9 @@
   },
   "enableAllProjectMcpServers": true,
   "enabledMcpjsonServers": [
-    "chakra-ui"
+    "chakra-ui",
+    "supabase"
   ],
-  "includeCoAuthoredBy": false
+  "includeCoAuthoredBy": false,
+  "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"
 }
