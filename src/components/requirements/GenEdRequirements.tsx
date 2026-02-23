@@ -15,7 +15,7 @@ import {
   VStack,
 } from "@chakra-ui/react";
 import { createClient } from "@/app/utils/supabase/client";
-console.log("GenEdRequirements loaded - v1");
+import { DB_TABLES } from "@/lib/supabase/queries/schema";
 type Bucket = {
   id: number;
   code: string;
@@ -63,7 +63,7 @@ export default function GenEdRequirements({ studentId }: { studentId: number }) 
       try {
         // 1) Buckets
         const { data: bucketsData, error: bucketsErr } = await supabase
-          .from("gen_ed_buckets")
+          .from(DB_TABLES.genEdBuckets)
           .select("id, code, name, credits_required")
           .order("id", { ascending: true });
 
@@ -75,7 +75,7 @@ export default function GenEdRequirements({ studentId }: { studentId: number }) 
 
         // 2) Bucket -> course mappings
         const { data: mapData, error: mapErr } = await supabase
-          .from("gen_ed_bucket_courses")
+          .from(DB_TABLES.genEdBucketCourses)
           .select("bucket_id, course_id");
 
         if (mapErr) throw new Error(`Error loading bucket courses: ${mapErr.message}`);
@@ -90,7 +90,7 @@ export default function GenEdRequirements({ studentId }: { studentId: number }) 
 
         // 3) Student history (IMPORTANT: column is "course", not "course_id")
         const { data: historyData, error: historyErr } = await supabase
-          .from("student_course_history")
+          .from(DB_TABLES.studentCourseHistory)
           .select("course_id, grade, completed")
           .eq("student_id", studentId);
 
@@ -102,7 +102,7 @@ export default function GenEdRequirements({ studentId }: { studentId: number }) 
         // 4) Course details
         if (allCourseIds.length > 0) {
           const { data: coursesData, error: coursesErr } = await supabase
-            .from("courses")
+            .from(DB_TABLES.courses)
             .select("id, subject, number, title, credits")
             .in("id", allCourseIds);
 
