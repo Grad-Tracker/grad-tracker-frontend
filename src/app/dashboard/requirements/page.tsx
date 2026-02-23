@@ -1,5 +1,5 @@
 import { createClient } from "@/app/utils/supabase/server";
-import GenEdRequirements from "@/components/requirements/GenEdRequirements";
+import RequirementsDashboard from "@/components/requirements/RequirementsDashboard";
 import { DB_TABLES, STUDENT_COLUMNS } from "@/lib/supabase/queries/schema";
 
 export default async function RequirementsPage() {
@@ -32,5 +32,5 @@ export default async function RequirementsPage() {
   }
 
   // 3) Pass the correct studentId to the client component
-  return <GenEdRequirements studentId={student.id} />;
+return <RequirementsDashboard studentId={student.id} />;
 }
