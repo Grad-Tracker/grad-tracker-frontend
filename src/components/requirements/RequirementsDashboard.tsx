@@ -4,11 +4,12 @@ import * as React from "react";
 import {
   Badge,
   Box,
+  Button,
   Card,
   Flex,
   Heading,
   HStack,
-  Icon,
+  Separator as Divider,
   Text,
   VStack,
 } from "@chakra-ui/react";
@@ -55,6 +56,15 @@ type BlockUI = {
 
 function normalizeCourseCode(c: CourseRow) {
   return `${c.subject ?? ""} ${c.number ?? ""}`.trim();
+}
+
+function sortByCode(a: CourseRow, b: CourseRow) {
+  const aSubject = (a.subject ?? "").toString();
+  const bSubject = (b.subject ?? "").toString();
+  if (aSubject !== bSubject) return aSubject.localeCompare(bSubject);
+  const aNumber = (a.number ?? "").toString();
+  const bNumber = (b.number ?? "").toString();
+  return aNumber.localeCompare(bNumber);
 }
 
 function statusMeta(status: "completed" | "inProgress" | "remaining") {
@@ -318,15 +328,36 @@ export default function RequirementsDashboard({
     load();
   }, [studentId]);
 
+  const computeStatus = React.useCallback(
+    (courseId: number) => {
+      if (completedIds.has(courseId)) return "completed" as const;
+      if (inProgressIds.has(courseId)) return "inProgress" as const;
+      return "remaining" as const;
+    },
+    [completedIds, inProgressIds]
+  );
+
+  const splitCourses = React.useCallback(
+    (requiredCourses: CourseRow[]) => {
+      const completedCourses = requiredCourses
+        .filter((c) => computeStatus(c.id) === "completed")
+        .sort(sortByCode);
+      const inProgressCourses = requiredCourses
+        .filter((c) => computeStatus(c.id) === "inProgress")
+        .sort(sortByCode);
+      const remainingCourses = requiredCourses
+        .filter((c) => computeStatus(c.id) === "remaining")
+        .sort(sortByCode);
+
+      return { completedCourses, inProgressCourses, remainingCourses };
+    },
+    [computeStatus]
+  );
+
   const renderCourseRow = (blkTitle: string, c: CourseRow) => {
     const cid = c.id;
 
-    const status =
-      completedIds.has(cid)
-        ? ("completed" as const)
-        : inProgressIds.has(cid)
-          ? ("inProgress" as const)
-          : ("remaining" as const);
+    const status = computeStatus(cid);
 
     const meta = statusMeta(status);
     const code = normalizeCourseCode(c);
@@ -342,10 +373,10 @@ export default function RequirementsDashboard({
         borderWidth="1px"
         bg={
           status === "completed"
-            ? "green.subtle"
+            ? "green.muted"
             : status === "inProgress"
               ? "orange.subtle"
-              : "gray.subtle"
+              : "bg.subtle"
         }
         borderColor={
           status === "completed"
@@ -357,18 +388,15 @@ export default function RequirementsDashboard({
       >
         <HStack gap="3">
           <Box>
-            <Icon as={meta.icon} />
-          </Box>
-          <Box>
             <Text fontWeight="600" fontSize="sm">
               {code}
               {c.credits ? ` • ${c.credits} cr` : ""}
             </Text>
-            <Text color="fg.muted" fontSize="sm">
+            <Text color="fg.subtle" fontSize="sm" fontWeight="500">
               {c.title ?? "Untitled course"}
             </Text>
             {showPrereqWarning && prereq.summary.length > 0 ? (
-              <Text color="orange.600" fontSize="xs">
+              <Text color="orange.600" fontSize="xs" fontWeight="400">
                 {prereq.summary.join(" • ")}
               </Text>
             ) : null}
@@ -398,14 +426,8 @@ export default function RequirementsDashboard({
     const percentage =
       total === 0 ? 0 : Math.min(100, Math.round((completed / total) * 100));
 
-    const completedCourses = blk.requiredCourses.filter((c) =>
-      completedIds.has(c.id)
-    );
-    const inProgressCourses = blk.requiredCourses.filter(
-      (c) => !completedIds.has(c.id) && inProgressIds.has(c.id)
-    );
-    const remainingCourses = blk.requiredCourses.filter(
-      (c) => !completedIds.has(c.id) && !inProgressIds.has(c.id)
+    const { completedCourses, inProgressCourses, remainingCourses } = splitCourses(
+      blk.requiredCourses
     );
 
     const isRemainingOpen = !!showRemaining[blk.title];
@@ -422,11 +444,6 @@ export default function RequirementsDashboard({
             <Flex justify="space-between" align="start">
               <Box>
                 <Heading size="md">{blk.title}</Heading>
-                <Text color="fg.muted" fontSize="sm">
-                  Completed {completed} / {total} credits
-                  {inProg > 0 ? ` • In progress ${inProg}` : ""} • Remaining{" "}
-                  {remaining}
-                </Text>
               </Box>
 
               <Badge
@@ -436,6 +453,18 @@ export default function RequirementsDashboard({
                 {percentage}% complete
               </Badge>
             </Flex>
+
+            <HStack gap="2" wrap="wrap">
+              <Badge colorPalette="green" variant="subtle">
+                Completed ({completedCourses.length}) • {completed} cr
+              </Badge>
+              <Badge colorPalette="orange" variant="subtle">
+                In progress ({inProgressCourses.length}) • {inProg} cr
+              </Badge>
+              <Badge colorPalette="gray" variant="outline">
+                Remaining ({remainingCourses.length}) • {remaining} cr
+              </Badge>
+            </HStack>
 
             <ProgressRoot value={percentage} colorPalette="green" size="sm">
               <HStack justify="space-between" mb="2">
@@ -448,27 +477,9 @@ export default function RequirementsDashboard({
             </ProgressRoot>
 
             <Box>
-              <HStack justify="space-between" align="center" mb="2">
-                <Text fontSize="sm" fontWeight="600" color="fg.muted">
-                  Required courses
-                </Text>
-
-                <Text
-                  fontSize="sm"
-                  color="fg.muted"
-                  cursor="pointer"
-                  onClick={() =>
-                    setShowRemaining((prev) => ({
-                      ...prev,
-                      [blk.title]: !prev[blk.title],
-                    }))
-                  }
-                >
-                  {isRemainingOpen
-                    ? "Hide remaining"
-                    : `Show remaining (${remainingCourses.length})`}
-                </Text>
-              </HStack>
+              <Text fontSize="sm" fontWeight="600" color="fg.muted" mb="2">
+                Required courses
+              </Text>
 
               {blk.requiredCourses.length === 0 ? (
                 <Text color="fg.muted" fontSize="sm">
@@ -476,15 +487,64 @@ export default function RequirementsDashboard({
                 </Text>
               ) : (
                 <VStack align="stretch" gap="2">
-                  {/* Completed first */}
-                  {completedCourses.map((c) => renderCourseRow(blk.title, c))}
+                  {completedCourses.length > 0 ? (
+                    <>
+                      <Divider opacity={0.4} mt="3" mb="2" />
+                      <HStack justify="space-between" mt="3" mb="2">
+                        <Text fontSize="sm" fontWeight="600" color="fg.muted">
+                          Completed
+                        </Text>
+                        <Badge variant="subtle" colorPalette="green">
+                          {completedCourses.length}
+                        </Badge>
+                      </HStack>
+                      {completedCourses.map((c) => renderCourseRow(blk.title, c))}
+                    </>
+                  ) : null}
 
-                  {/* In progress next */}
-                  {inProgressCourses.map((c) => renderCourseRow(blk.title, c))}
+                  {inProgressCourses.length > 0 ? (
+                    <>
+                      <Divider opacity={0.4} mt="3" mb="2" />
+                      <HStack justify="space-between" mt="3" mb="2">
+                        <Text fontSize="sm" fontWeight="600" color="fg.muted">
+                          In progress
+                        </Text>
+                        <Badge variant="subtle" colorPalette="orange">
+                          {inProgressCourses.length}
+                        </Badge>
+                      </HStack>
+                      {inProgressCourses.map((c) => renderCourseRow(blk.title, c))}
+                    </>
+                  ) : null}
 
-                  {/* Remaining only when toggled */}
-                  {isRemainingOpen &&
-                    remainingCourses.map((c) => renderCourseRow(blk.title, c))}
+                  {remainingCourses.length > 0 ? (
+                    <>
+                      <Divider opacity={0.4} mt="3" mb="2" />
+                      <HStack justify="flex-end" align="center" mt="3" mb="2">
+                        <Button
+                          variant="ghost"
+                          size="xs"
+                          color="fg.muted"
+                          px="1"
+                          minH="unset"
+                          height="auto"
+                          onClick={() =>
+                            setShowRemaining((prev) => ({
+                              ...prev,
+                              [blk.title]: !prev[blk.title],
+                            }))
+                          }
+                        >
+                          {isRemainingOpen
+                            ? "Hide remaining"
+                            : `Show remaining (${remainingCourses.length})`}
+                        </Button>
+                      </HStack>
+                      {isRemainingOpen
+                        ? remainingCourses.map((c) => renderCourseRow(blk.title, c))
+                        : null}
+                    </>
+                  ) : null}
                 </VStack>
               )}
             </Box>
