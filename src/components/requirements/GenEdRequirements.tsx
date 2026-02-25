@@ -337,22 +337,30 @@ export default function GenEdRequirements({ studentId }: { studentId: number }) 
                           py="1"
                           px="2"
                           borderRadius="md"
+                          border={completed ? "1px solid" : undefined}
                           borderWidth="1px"
-                          bg={completed ? "green.muted" : "bg.subtle"}
-                          borderColor={completed ? "green.muted" : "border.subtle"}
-                          _hover={{ bg: "bg.subtle" }}
+                          boxShadow={
+                            completed ? "0 0 0 1px rgba(34,197,94,0.25)" : undefined
+                          }
+                          bg={completed ? "green.700" : "bg.subtle"}
+                          borderColor={completed ? "green.500" : "border.subtle"}
+                          _hover={{ bg: completed ? "green.600" : "bg.subtle" }}
                         >
                           <HStack gap="3">
                             <Box>
-                              <Text fontWeight="600" fontSize="sm">
+                              <Text
+                                fontWeight={completed ? "bold" : "600"}
+                                fontSize="sm"
+                                color={completed ? "white" : undefined}
+                              >
                                 {(course.subject ?? "").toString()} {(course.number ?? "").toString()}
                                 {course.credits != null ? ` · ${course.credits} cr` : ""}
                               </Text>
                               {course.title ? (
                                 <Text
                                   fontSize="sm"
-                                  color="fg.subtle"
-                                  fontWeight="500"
+                                  color={completed ? "whiteAlpha.900" : "fg.subtle"}
+                                  fontWeight={completed ? "bold" : "500"}
                                   lineClamp={1}
                                 >
                                   {course.title}

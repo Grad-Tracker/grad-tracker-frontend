@@ -370,29 +370,44 @@ export default function RequirementsDashboard({
         justify="space-between"
         p="3"
         borderRadius="lg"
+        border={status === "completed" ? "1px solid" : undefined}
         borderWidth="1px"
+        boxShadow={
+          status === "completed"
+            ? "0 0 0 1px rgba(34,197,94,0.25)"
+            : undefined
+        }
         bg={
           status === "completed"
-            ? "green.muted"
+            ? "green.700"
             : status === "inProgress"
               ? "orange.subtle"
               : "bg.subtle"
         }
         borderColor={
           status === "completed"
-            ? "green.muted"
+            ? "green.500"
             : status === "inProgress"
               ? "orange.muted"
               : "border.subtle"
         }
+        _hover={status === "completed" ? { bg: "green.600" } : undefined}
       >
         <HStack gap="3">
           <Box>
-            <Text fontWeight="600" fontSize="sm">
+            <Text
+              fontWeight={status === "completed" ? "bold" : "600"}
+              fontSize="sm"
+              color={status === "completed" ? "white" : undefined}
+            >
               {code}
               {c.credits ? ` • ${c.credits} cr` : ""}
             </Text>
-            <Text color="fg.subtle" fontSize="sm" fontWeight="500">
+            <Text
+              color={status === "completed" ? "whiteAlpha.900" : "fg.subtle"}
+              fontSize="sm"
+              fontWeight={status === "completed" ? "bold" : "500"}
+            >
               {c.title ?? "Untitled course"}
             </Text>
             {showPrereqWarning && prereq.summary.length > 0 ? (
