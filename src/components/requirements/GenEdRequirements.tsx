@@ -15,6 +15,7 @@ import {
   VStack,
 } from "@chakra-ui/react";
 import { createClient } from "@/app/utils/supabase/client";
+import { evaluatePrereqsForCourses, type PrereqEvaluationMap } from "@/lib/prereq";
 import { DB_TABLES } from "@/lib/supabase/queries/schema";
 type Bucket = {
   id: number;
@@ -52,6 +53,7 @@ export default function GenEdRequirements({ studentId }: { studentId: number }) 
   const [bucketCourses, setBucketCourses] = useState<BucketCourseRow[]>([]);
   const [history, setHistory] = useState<HistoryRow[]>([]);
   const [coursesById, setCoursesById] = useState<Map<number, Course>>(new Map());
+  const [prereqByCourse, setPrereqByCourse] = useState<PrereqEvaluationMap>(new Map());
 
   useEffect(() => {
     let cancelled = false;
@@ -124,6 +126,10 @@ export default function GenEdRequirements({ studentId }: { studentId: number }) 
         } else {
           setCoursesById(new Map());
         }
+
+        const prereqMap = await evaluatePrereqsForCourses(allCourseIds, studentId);
+        if (cancelled) return;
+        setPrereqByCourse(prereqMap);
       } catch (e: any) {
         if (!cancelled) setError(e?.message ?? "Unknown error");
       } finally {
@@ -287,35 +293,53 @@ export default function GenEdRequirements({ studentId }: { studentId: number }) 
                       </Text>
                     ) : (
                       <VStack align="stretch" gap="1">
-                        {b.detailed.map(({ course, completed }) => (
-                          <HStack
-                            key={course.id}
-                            justify="space-between"
-                            py="1"
-                            px="2"
-                            borderRadius="md"
-                            _hover={{ bg: "bg.subtle" }}
-                          >
-                            <HStack gap="3">
-                              <Text>{completed ? "✅" : "⬜"}</Text>
-                              <Box>
-                                <Text fontWeight="600" fontSize="sm">
-                                  {(course.subject ?? "").toString()} {(course.number ?? "").toString()}
-                                  {course.credits != null ? ` · ${course.credits} cr` : ""}
-                                </Text>
-                                {course.title ? (
-                                  <Text fontSize="sm" color="fg.muted" lineClamp={1}>
-                                    {course.title}
-                                  </Text>
-                                ) : null}
-                              </Box>
-                            </HStack>
+                        {b.detailed.map(({ course, completed }) => {
+                          const prereq = prereqByCourse.get(course.id);
+                          const showPrereqWarning =
+                            !completed && prereq != null && !prereq.unlocked;
 
-                            <Text fontSize="xs" color="fg.muted">
-                              id: {course.id}
-                            </Text>
-                          </HStack>
-                        ))}
+                          return (
+                            <HStack
+                              key={course.id}
+                              justify="space-between"
+                              py="1"
+                              px="2"
+                              borderRadius="md"
+                              _hover={{ bg: "bg.subtle" }}
+                            >
+                              <HStack gap="3">
+                                <Text>{completed ? "✅" : "⬜"}</Text>
+                                <Box>
+                                  <Text fontWeight="600" fontSize="sm">
+                                    {(course.subject ?? "").toString()} {(course.number ?? "").toString()}
+                                    {course.credits != null ? ` · ${course.credits} cr` : ""}
+                                  </Text>
+                                  {course.title ? (
+                                    <Text fontSize="sm" color="fg.muted" lineClamp={1}>
+                                      {course.title}
+                                    </Text>
+                                  ) : null}
+                                  {showPrereqWarning && prereq.summary.length > 0 ? (
+                                    <Text fontSize="xs" color="orange.600">
+                                      {prereq.summary.join(" • ")}
+                                    </Text>
+                                  ) : null}
+                                </Box>
+                              </HStack>
+
+                              <HStack gap="2">
+                                {showPrereqWarning ? (
+                                  <Badge colorPalette="orange" variant="subtle" size="sm">
+                                    Prereq not met
+                                  </Badge>
+                                ) : null}
+                                <Text fontSize="xs" color="fg.muted">
+                                  id: {course.id}
+                                </Text>
+                              </HStack>
+                            </HStack>
+                          );
+                        })}
                       </VStack>
                     )}
                   </Box>

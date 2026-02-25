@@ -8,6 +8,10 @@ vi.mock("@/app/utils/supabase/client", () => ({
   createClient: () => ({ from: mockFrom }),
 }));
 
+vi.mock("@/lib/prereq", () => ({
+  evaluatePrereqsForCourses: vi.fn(async () => new Map()),
+}));
+
 import GenEdRequirements from "@/components/requirements/GenEdRequirements";
 
 function createChainMock() {

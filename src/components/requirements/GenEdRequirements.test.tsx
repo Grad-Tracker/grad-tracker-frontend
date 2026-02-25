@@ -77,6 +77,12 @@ vi.mock("@/app/utils/supabase/client", () => {
   };
 });
 
+vi.mock("@/lib/prereq", () => {
+  return {
+    evaluatePrereqsForCourses: vi.fn(async () => new Map()),
+  };
+});
+
 /* ---------------- TEST ---------------- */
 
 describe("GenEdRequirements", () => {

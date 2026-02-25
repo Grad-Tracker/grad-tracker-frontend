@@ -16,6 +16,7 @@ import { LuCircleCheck, LuClock, LuMinus } from "react-icons/lu";
 
 import GenEdRequirements from "@/components/requirements/GenEdRequirements";
 import { createClient } from "@/lib/supabase/client";
+import { evaluatePrereqsForCourses, type PrereqEvaluationMap } from "@/lib/prereq";
 import {
   ProgressBar,
   ProgressLabel,
@@ -100,6 +101,9 @@ export default function RequirementsDashboard({
   const [blocks, setBlocks] = React.useState<BlockUI[]>([]);
   const [completedIds, setCompletedIds] = React.useState<Set<number>>(new Set());
   const [inProgressIds, setInProgressIds] = React.useState<Set<number>>(new Set());
+  const [prereqByCourse, setPrereqByCourse] = React.useState<PrereqEvaluationMap>(
+    new Map()
+  );
 
   // Per-block toggle for remaining list
   const [showRemaining, setShowRemaining] = React.useState<Record<string, boolean>>({});
@@ -129,6 +133,7 @@ export default function RequirementsDashboard({
           setBlocks([]);
           setCompletedIds(new Set());
           setInProgressIds(new Set());
+          setPrereqByCourse(new Map());
           setLoading(false);
           return;
         }
@@ -147,6 +152,7 @@ export default function RequirementsDashboard({
           setBlocks([]);
           setCompletedIds(new Set());
           setInProgressIds(new Set());
+          setPrereqByCourse(new Map());
           setLoading(false);
           return;
         }
@@ -283,9 +289,15 @@ export default function RequirementsDashboard({
           return { ...blk, requiredCourses: unique };
         });
 
+        const displayedCourseIds = Array.from(
+          new Set(finalized.flatMap((blk) => blk.requiredCourses.map((c) => c.id)))
+        );
+        const prereqMap = await evaluatePrereqsForCourses(displayedCourseIds, studentId);
+
         setBlocks(finalized);
         setCompletedIds(completedSet);
         setInProgressIds(inProgressSet);
+        setPrereqByCourse(prereqMap);
 
         // Initialize showRemaining flags (default false) without wiping user toggles
         setShowRemaining((prev) => {
@@ -318,6 +330,8 @@ export default function RequirementsDashboard({
 
     const meta = statusMeta(status);
     const code = normalizeCourseCode(c);
+    const prereq = prereqByCourse.get(cid);
+    const showPrereqWarning = status !== "completed" && prereq != null && !prereq.unlocked;
 
     return (
       <HStack
@@ -353,12 +367,24 @@ export default function RequirementsDashboard({
             <Text color="fg.muted" fontSize="sm">
               {c.title ?? "Untitled course"}
             </Text>
+            {showPrereqWarning && prereq.summary.length > 0 ? (
+              <Text color="orange.600" fontSize="xs">
+                {prereq.summary.join(" • ")}
+              </Text>
+            ) : null}
           </Box>
         </HStack>
 
-        <Badge colorPalette={meta.colorPalette} variant="subtle" size="sm">
-          {meta.label}
-        </Badge>
+        <HStack gap="2">
+          {showPrereqWarning ? (
+            <Badge colorPalette="orange" variant="subtle" size="sm">
+              Prereq not met
+            </Badge>
+          ) : null}
+          <Badge colorPalette={meta.colorPalette} variant="subtle" size="sm">
+            {meta.label}
+          </Badge>
+        </HStack>
       </HStack>
     );
   };
