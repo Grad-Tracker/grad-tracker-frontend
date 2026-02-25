@@ -333,9 +333,6 @@ export default function GenEdRequirements({ studentId }: { studentId: number }) 
                                     Prereq not met
                                   </Badge>
                                 ) : null}
-                                <Text fontSize="xs" color="fg.muted">
-                                  id: {course.id}
-                                </Text>
                               </HStack>
                             </HStack>
                           );
