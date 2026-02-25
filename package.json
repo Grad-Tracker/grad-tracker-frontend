@@ -9,7 +9,9 @@
     "lint": "eslint",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "sonar": "sonar-scanner",
+    "test:sonar": "vitest run --coverage && sonar-scanner"
   },
   "dependencies": {
     "@chakra-ui/react": "^3.31.0",
@@ -39,6 +41,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.1.6",
     "jsdom": "^27.0.1",
+    "sonarqube-scanner": "^4.3.4",
     "typescript": "^5",
     "vitest": "^3.2.4"
   }

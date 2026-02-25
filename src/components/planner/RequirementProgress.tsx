@@ -22,15 +22,35 @@ interface RequirementProgressProps {
   plannedCourses: PlannedCourseWithDetails[];
   completedCourseIds: Set<number>;
   hasBreadthPackageSelected?: boolean;
+  isGraduatePlan?: boolean;
 }
 
 const BLOCK_COLORS = ["green", "blue", "purple", "orange", "teal", "cyan", "pink", "yellow"];
+const GRADUATE_TOTAL_CREDITS = 30;
+
+function graduateBlockColor(name: string): string {
+  const n = name.toLowerCase();
+  if (n.includes("core")) return "green";
+  if (n === "electives") return "orange";
+  return "purple";
+}
+
+interface BlockStat {
+  id: number | string;
+  name: string;
+  completedCredits: number;
+  plannedCredits: number;
+  totalRequired: number;
+  percentage: number;
+  color: string;
+}
 
 export default function RequirementProgress({
   blocks,
   plannedCourses,
   completedCourseIds,
   hasBreadthPackageSelected = true,
+  isGraduatePlan = false,
 }: RequirementProgressProps) {
   const plannedCourseIdSet = useMemo(
     () => new Set(plannedCourses.map((pc) => pc.course_id)),
@@ -38,7 +58,7 @@ export default function RequirementProgress({
   );
 
   const blockStats = useMemo(() => {
-    return blocks.map((block, index) => {
+    const stats: BlockStat[] = blocks.map((block, index) => {
       const breadthNoSelection = isBreadthBlock(block) && !hasBreadthPackageSelected;
       let completedCredits = 0;
       let plannedCredits = 0;
@@ -58,25 +78,32 @@ export default function RequirementProgress({
         : (block.credits_required ?? block.courses.reduce((s, c) => s + c.credits, 0));
       const filledCredits = completedCredits + plannedCredits;
       const percentage = totalRequired > 0 ? Math.min(100, Math.round((filledCredits / totalRequired) * 100)) : 0;
-      const color = BLOCK_COLORS[index % BLOCK_COLORS.length];
+      const displayName = breadthNoSelection ? "Breadth (select package)" : block.name;
+      const color = isGraduatePlan
+        ? graduateBlockColor(displayName)
+        : BLOCK_COLORS[index % BLOCK_COLORS.length];
 
       return {
         id: block.id,
-        name: breadthNoSelection ? "Breadth (select package)" : block.name,
-        completedCredits,
-        plannedCredits,
+        name: displayName,
+        completedCredits: Math.min(completedCredits, totalRequired),
+        plannedCredits: Math.min(plannedCredits, Math.max(0, totalRequired - completedCredits)),
         totalRequired,
         percentage,
         color,
       };
     });
-  }, [blocks, completedCourseIds, plannedCourseIdSet, hasBreadthPackageSelected]);
+
+    return stats;
+  }, [blocks, completedCourseIds, plannedCourseIdSet, hasBreadthPackageSelected, isGraduatePlan]);
 
   if (blocks.length === 0) return null;
 
   const totalCompleted = blockStats.reduce((s, b) => s + b.completedCredits, 0);
   const totalPlanned = blockStats.reduce((s, b) => s + b.plannedCredits, 0);
-  const totalRequired = blockStats.reduce((s, b) => s + b.totalRequired, 0);
+  const totalRequired = isGraduatePlan
+    ? GRADUATE_TOTAL_CREDITS
+    : blockStats.reduce((s, b) => s + b.totalRequired, 0);
   const overallPct = totalRequired > 0
     ? Math.min(100, Math.round(((totalCompleted + totalPlanned) / totalRequired) * 100))
     : 0;
@@ -96,7 +123,7 @@ export default function RequirementProgress({
           Degree Progress
         </Text>
         <Badge size="sm" variant="subtle" colorPalette="green">
-          {overallPct}%
+          {totalCompleted + totalPlanned}/{totalRequired} cr
         </Badge>
       </HStack>
 
@@ -108,7 +135,7 @@ export default function RequirementProgress({
                 {stat.name}
               </Text>
               <Text fontSize="xs" color="fg.muted" flexShrink={0}>
-                {stat.completedCredits + stat.plannedCredits}/{stat.totalRequired}
+                {stat.completedCredits + stat.plannedCredits}/{stat.totalRequired} cr
               </Text>
             </HStack>
             <ProgressRoot

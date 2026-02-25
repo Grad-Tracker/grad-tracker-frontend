@@ -14,11 +14,12 @@ import {
   Badge,
 } from "@chakra-ui/react";
 import { LuSearch, LuChevronDown, LuBookOpen, LuArrowDownToLine, LuGripVertical } from "react-icons/lu";
-import type { RequirementBlockWithCourses, PlannedCourseWithDetails } from "@/types/planner";
+import type { RequirementBlockWithCourses, PlannedCourseWithDetails, GraduateTrack } from "@/types/planner";
 import { isBreadthBlock } from "@/types/planner";
 import DraggableCourseCard from "./DraggableCourseCard";
 import RequirementProgress from "./RequirementProgress";
 import BreadthPackageSelector from "./BreadthPackageSelector";
+import GraduateTrackSelector from "./GraduateTrackSelector";
 
 const MIN_PANEL_WIDTH = 300;
 const MAX_PANEL_WIDTH = 550;
@@ -32,6 +33,10 @@ interface CoursePanelProps {
   isDragActive?: boolean;
   selectedBreadthPackageId: string | null;
   onBreadthPackageSelect: (packageId: string) => void;
+  isGraduatePlan?: boolean;
+  graduateTracks?: GraduateTrack[];
+  selectedTrackId?: number | null;
+  onTrackSelect?: (trackId: number) => void;
 }
 
 export default function CoursePanel({
@@ -43,6 +48,10 @@ export default function CoursePanel({
   isDragActive = false,
   selectedBreadthPackageId,
   onBreadthPackageSelect,
+  isGraduatePlan = false,
+  graduateTracks = [],
+  selectedTrackId = null,
+  onTrackSelect,
 }: CoursePanelProps) {
   const { isOver, setNodeRef } = useDroppable({ id: "course-panel" });
   const [search, setSearch] = useState("");
@@ -178,20 +187,34 @@ export default function CoursePanel({
         plannedCourses={plannedCourses}
         completedCourseIds={completedCourseIds}
         hasBreadthPackageSelected={!!selectedBreadthPackageId}
+        isGraduatePlan={isGraduatePlan}
       />
+
+      {/* Graduate Track Selector */}
+      {isGraduatePlan && graduateTracks.length >= 2 && onTrackSelect && (
+        <GraduateTrackSelector
+          tracks={graduateTracks}
+          selectedTrackId={selectedTrackId}
+          onSelect={onTrackSelect}
+        />
+      )}
 
       {/* Course Blocks */}
       <VStack align="stretch" gap="0" pb="4">
         {filteredBlocks.length === 0 && (
           <Box px="4" py="8" textAlign="center">
             <Text fontSize="sm" color="fg.muted">
-              {query ? "No courses match your search." : "No requirement courses found."}
+              {query
+                ? "No courses match your search."
+                : isGraduatePlan && graduateTracks.length >= 2 && !selectedTrackId
+                  ? "Select a concentration above to see courses."
+                  : "No requirement courses found."}
             </Text>
           </Box>
         )}
 
         {filteredBlocks.map((block) => {
-          const isBreadth = isBreadthBlock(block);
+          const isBreadth = !isGraduatePlan && isBreadthBlock(block);
           const allBreadthCourses = isBreadth
             ? (allDedupedBlocks.find(isBreadthBlock)?.courses ?? [])
             : [];

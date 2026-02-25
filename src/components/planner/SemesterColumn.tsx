@@ -21,6 +21,7 @@ interface SemesterColumnProps {
   onRemoveTerm: (termId: number) => void;
   isCollapsed?: boolean;
   onToggleCollapse?: () => void;
+  isGraduatePlan?: boolean;
 }
 
 const SEASON_COLORS: Record<string, string> = {
@@ -29,11 +30,24 @@ const SEASON_COLORS: Record<string, string> = {
   Summer: "yellow",
 };
 
-function getCreditLoadInfo(credits: number, isSummer: boolean): {
-  color: string;
-  label: string;
-} | null {
+function getCreditLoadInfo(
+  credits: number,
+  isSummer: boolean,
+  isGraduate: boolean
+): { color: string; label: string } | null {
   if (credits === 0) return null;
+
+  if (isGraduate) {
+    if (isSummer) {
+      if (credits > 9) return { color: "red", label: "Heavy" };
+      return null;
+    }
+    if (credits >= 15) return { color: "red", label: "Overloaded" };
+    if (credits >= 12) return { color: "orange", label: "Heavy" };
+    if (credits < 6) return { color: "gray", label: "Part-time" };
+    return null;
+  }
+
   if (isSummer) {
     if (credits > 12) return { color: "red", label: "Heavy" };
     return null;
@@ -50,6 +64,7 @@ export default function SemesterColumn({
   onRemoveTerm,
   isCollapsed = false,
   onToggleCollapse,
+  isGraduatePlan = false,
 }: SemesterColumnProps) {
   const { isOver, setNodeRef } = useDroppable({
     id: `term-${term.id}`,
@@ -144,7 +159,7 @@ export default function SemesterColumn({
               {totalCredits} cr
             </Badge>
             {(() => {
-              const load = getCreditLoadInfo(totalCredits, term.season === "Summer");
+              const load = getCreditLoadInfo(totalCredits, term.season === "Summer", isGraduatePlan);
               if (!load) return null;
               return (
                 <Badge

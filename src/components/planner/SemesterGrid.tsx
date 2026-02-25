@@ -11,6 +11,7 @@ interface SemesterGridProps {
   terms: Term[];
   plannedCourses: PlannedCourseWithDetails[];
   onRemoveTerm: (termId: number) => void;
+  isGraduatePlan?: boolean;
 }
 
 function getAcademicYear(term: Term): string {
@@ -24,6 +25,7 @@ export default function SemesterGrid({
   terms,
   plannedCourses,
   onRemoveTerm,
+  isGraduatePlan = false,
 }: SemesterGridProps) {
   const [collapsedSummers, setCollapsedSummers] = useState<Set<number>>(
     () => new Set(terms.filter((t) => t.season === "Summer").map((t) => t.id))
@@ -103,6 +105,7 @@ export default function SemesterGrid({
                     ? () => toggleSummerCollapse(term.id)
                     : undefined
                 }
+                isGraduatePlan={isGraduatePlan}
               />
             ))}
           </HStack>
