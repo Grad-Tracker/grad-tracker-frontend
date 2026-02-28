@@ -3,6 +3,8 @@ export const DB_TABLES = {
   genEdBuckets: "gen_ed_buckets",
   genEdBucketCourses: "gen_ed_bucket_courses",
   majorCertificateMappings: "major_certificate_mappings",
+  plans: "plans",
+  planPrograms: "plan_programs",
   programRequirementBlocks: "program_requirement_blocks",
   programRequirementCourses: "program_requirement_courses",
   programs: "programs",
@@ -34,4 +36,5 @@ export const PROGRAM_TYPES = {
   major: "MAJOR",
   certificate: "CERTIFICATE",
   minor: "MINOR",
+  graduate: "GRADUATE",
 } as const;
