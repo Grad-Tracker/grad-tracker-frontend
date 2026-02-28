@@ -1,0 +1,29 @@
+language: "en-US"
+reviews:
+  request_changes_workflow: false
+  high_level_summary: true
+  poem: false
+  review_status: true
+  collapse_walkthrough: false
+  path_filters:
+    - "!**/node_modules/**"
+    - "!**/.next/**"
+    - "!**/coverage/**"
+    - "!src/components/ui/**"
+  path_instructions:
+    - path: "src/**/*.tsx"
+      instructions: |
+        Review for Chakra UI v3 correctness. Flag any v2 API usage (isDisabled→disabled,
+        colorScheme→colorPalette). Ensure semantic tokens are used (bg.subtle, fg.muted)
+        instead of hard-coded colors. Check imports come from @/components/ui/ wrappers
+        where available.
+    - path: "src/**/*.ts"
+      instructions: |
+        Review for TypeScript strictness — flag any `any` types, missing null checks
+        on Supabase responses, and N+1 query patterns.
+    - path: "src/**/*.test.tsx"
+      instructions: |
+        Ensure tests use getAllByText (not getByText) for Chakra components.
+        Check for afterEach cleanup in test files.
+chat:
+  auto_reply: true
