@@ -206,34 +206,30 @@ describe("Dashboard", () => {
     });
   });
 
-  it("calls signOut and redirects on Sign Out click", async () => {
+  it("renders student profile and quick actions after sign-in", async () => {
+    // Sign Out lives in DashboardSidebar (layout), not in this page component.
+    // Verify the page renders key authenticated content instead.
     setupStudentMock();
 
     await act(async () => { renderWithChakra(<Dashboard />); });
 
     await waitFor(() => {
       expect(screen.getAllByText("Test Student").length).toBeGreaterThanOrEqual(1);
-    });
-
-    const signOutElements = screen.getAllByText("Sign Out");
-    await act(async () => { fireEvent.click(signOutElements[0]); });
-
-    await waitFor(() => {
-      expect(mockSignOut).toHaveBeenCalled();
-      expect(mockPush).toHaveBeenCalledWith("/signin");
+      expect(screen.getAllByText("Quick Actions").length).toBeGreaterThanOrEqual(1);
     });
   });
 
-  it("renders sidebar navigation links", async () => {
+  it("renders main dashboard sections", async () => {
+    // Sidebar nav (Courses, Planner, etc.) is rendered by DashboardLayout, not this page.
+    // Verify page-level sections that ARE rendered here.
     setupStudentMock();
 
     await act(async () => { renderWithChakra(<Dashboard />); });
 
     await waitFor(() => {
       expect(screen.getAllByText("Dashboard").length).toBeGreaterThanOrEqual(1);
-      expect(screen.getAllByText("Courses").length).toBeGreaterThanOrEqual(1);
-      expect(screen.getAllByText("Requirements").length).toBeGreaterThanOrEqual(1);
-      expect(screen.getAllByText("Planner").length).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByText("Degree Requirements").length).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByText("Recent Activity").length).toBeGreaterThanOrEqual(1);
     });
   });
 

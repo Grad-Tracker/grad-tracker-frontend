@@ -54,7 +54,12 @@ import {
   LuFileText,
   LuCalendar,
   LuTarget,
+  LuTrash2,
+  LuGraduationCap,
+  LuTriangleAlert,
 } from "react-icons/lu";
+import { fetchPrograms } from "@/lib/supabase/queries/onboarding";
+import type { Program } from "@/types/onboarding";
 
 const mockRecentActivity = [
   {
@@ -166,6 +171,16 @@ export default function Dashboard() {
 
   const [currentCourses, setCurrentCourses] = React.useState<PlannedCourseCard[]>([]);
   const [loadingCourses, setLoadingCourses] = React.useState(true);
+
+  const [majors, setMajors] = React.useState<Program[]>([]);
+  const [selectedMajorId, setSelectedMajorId] = React.useState<number | null>(null);
+  const [currentMajorProgramId, setCurrentMajorProgramId] = React.useState<number | null>(null);
+  const [changingMajor, setChangingMajor] = React.useState(false);
+
+  const [resetConfirming, setResetConfirming] = React.useState(false);
+  const [resetting, setResetting] = React.useState(false);
+  const [studentIdForReset, setStudentIdForReset] = React.useState<number | null>(null);
+  const [refreshKey, setRefreshKey] = React.useState(0);
 
   React.useEffect(() => {
     const loadStudent = async () => {
@@ -286,6 +301,17 @@ export default function Dashboard() {
             majorName = majorProgram.name;
             majorProgramId = majorProgram.id;
           }
+        }
+
+        // Load all majors for the change-major selector
+        setStudentIdForReset(resolvedStudentRow.id);
+        setCurrentMajorProgramId(majorProgramId);
+        setSelectedMajorId(majorProgramId);
+        try {
+          const allMajors = await fetchPrograms("MAJOR");
+          setMajors(allMajors);
+        } catch {
+          // Non-critical – skip if it fails
         }
 
         // 4) Degree requirements progress (blocks + courses vs student history)
@@ -504,7 +530,75 @@ export default function Dashboard() {
     };
 
     loadStudent();
-  }, [router]);
+  }, [router, refreshKey]);
+
+  const handleChangeMajor = async () => {
+    if (!selectedMajorId || !studentIdForReset || selectedMajorId === currentMajorProgramId) return;
+    setChangingMajor(true);
+    try {
+      const supabase = createClient();
+
+      // Remove existing major program entries for this student
+      if (currentMajorProgramId) {
+        await supabase
+          .from(DB_TABLES.studentPrograms)
+          .delete()
+          .eq("student_id", studentIdForReset)
+          .eq("program_id", currentMajorProgramId);
+      }
+
+      // Insert the new major
+      const { error } = await supabase
+        .from(DB_TABLES.studentPrograms)
+        .insert({ student_id: studentIdForReset, program_id: selectedMajorId });
+
+      if (error) throw error;
+
+      setCurrentMajorProgramId(selectedMajorId);
+      const newMajor = majors.find((m) => m.id === selectedMajorId);
+      if (newMajor && student) {
+        setStudent({ ...student, major: newMajor.name });
+      }
+      toaster.create({ title: "Major updated", type: "success" });
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : "Unknown error";
+      toaster.create({ title: "Failed to change major", description: msg, type: "error" });
+    } finally {
+      setChangingMajor(false);
+    }
+  };
+
+  const handleResetProgress = async () => {
+    if (!studentIdForReset) return;
+    setResetting(true);
+    try {
+      const supabase = createClient();
+
+      const [historyResult, plannedResult, programsResult] = await Promise.all([
+        supabase.from(DB_TABLES.studentCourseHistory).delete().eq("student_id", studentIdForReset),
+        supabase.from(DB_TABLES.studentPlannedCourses).delete().eq("student_id", studentIdForReset),
+        supabase.from(DB_TABLES.studentPrograms).delete().eq("student_id", studentIdForReset),
+      ]);
+
+      if (historyResult.error) throw historyResult.error;
+      if (plannedResult.error) throw plannedResult.error;
+      if (programsResult.error) throw programsResult.error;
+
+      await supabase
+        .from(DB_TABLES.students)
+        .update({ has_completed_onboarding: false })
+        .eq(STUDENT_COLUMNS.id, studentIdForReset);
+
+      toaster.create({ title: "Progress reset", description: "Your progress has been cleared. Use the setup wizard to start fresh.", type: "success" });
+      setRefreshKey((k) => k + 1);
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : "Unknown error";
+      toaster.create({ title: "Failed to reset progress", description: msg, type: "error" });
+    } finally {
+      setResetting(false);
+      setResetConfirming(false);
+    }
+  };
 
   if (loadingStudent) {
     return <Box p="8">Loading...</Box>;
@@ -886,6 +980,60 @@ export default function Dashboard() {
             </Card.Body>
           </Card.Root>
 
+          {/* Change Major */}
+          {majors.length > 0 && (
+            <Card.Root bg="bg" borderRadius="xl" borderWidth="1px" borderColor="border.subtle">
+              <Card.Header p="5" pb="3">
+                <Flex align="center" gap="2">
+                  <Icon color="green.fg">
+                    <LuGraduationCap />
+                  </Icon>
+                  <Heading size="sm" fontWeight="600">
+                    Change Major
+                  </Heading>
+                </Flex>
+              </Card.Header>
+              <Card.Body p="5" pt="0">
+                <Stack gap="3">
+                  <Box
+                    as="select"
+                    value={selectedMajorId ?? ""}
+                    onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
+                      setSelectedMajorId(Number(e.target.value))
+                    }
+                    w="full"
+                    px="3"
+                    py="2"
+                    borderRadius="lg"
+                    borderWidth="1px"
+                    borderColor="border.subtle"
+                    bg="bg"
+                    fontSize="sm"
+                    color="fg"
+                    _focus={{ outline: "2px solid", outlineColor: "green.fg", outlineOffset: "2px" }}
+                    cursor="pointer"
+                  >
+                    {majors.map((m) => (
+                      <option key={m.id} value={m.id}>
+                        {m.name}
+                      </option>
+                    ))}
+                  </Box>
+                  <Button
+                    colorPalette="green"
+                    size="sm"
+                    borderRadius="lg"
+                    loading={changingMajor}
+                    disabled={!selectedMajorId || selectedMajorId === currentMajorProgramId}
+                    onClick={handleChangeMajor}
+                  >
+                    Save Major
+                  </Button>
+                </Stack>
+              </Card.Body>
+            </Card.Root>
+          )}
+
           <Card.Root bg="bg" borderRadius="xl" borderWidth="1px" borderColor="border.subtle" className="animate-fade-up-delay-3">
             <Card.Header p="5" pb="0">
               <Heading size="md" fontWeight="600">
@@ -971,6 +1119,57 @@ export default function Dashboard() {
                   </Icon>
                   Review Requirements
                 </Button>
+
+                {/* Reset All Progress — only shown after onboarding is complete */}
+                {student.hasCompletedOnboarding && (
+                  !resetConfirming ? (
+                    <Button
+                      variant="outline"
+                      colorPalette="red"
+                      justifyContent="start"
+                      size="sm"
+                      fontWeight="500"
+                      onClick={() => setResetConfirming(true)}
+                    >
+                      <Icon mr="2">
+                        <LuTrash2 />
+                      </Icon>
+                      Reset All Progress
+                    </Button>
+                  ) : (
+                    <Stack gap="2" p="3" bg="red.subtle" borderWidth="1px" borderColor="red.muted" borderRadius="lg">
+                      <HStack gap="2">
+                        <Icon color="red.fg" flexShrink={0}>
+                          <LuTriangleAlert />
+                        </Icon>
+                        <Text fontSize="xs" fontWeight="500" color="red.fg">
+                          This will delete all your progress. Are you sure?
+                        </Text>
+                      </HStack>
+                      <HStack gap="2">
+                        <Button
+                          size="xs"
+                          colorPalette="red"
+                          loading={resetting}
+                          onClick={handleResetProgress}
+                          borderRadius="md"
+                          flex="1"
+                        >
+                          Yes, Reset
+                        </Button>
+                        <Button
+                          size="xs"
+                          variant="ghost"
+                          onClick={() => setResetConfirming(false)}
+                          borderRadius="md"
+                          flex="1"
+                        >
+                          Cancel
+                        </Button>
+                      </HStack>
+                    </Stack>
+                  )
+                )}
               </Stack>
             </Card.Body>
           </Card.Root>

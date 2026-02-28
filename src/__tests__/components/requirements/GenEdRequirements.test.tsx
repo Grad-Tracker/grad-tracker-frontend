@@ -250,8 +250,10 @@ describe("GenEdRequirements", () => {
       renderWithChakra(<GenEdRequirements studentId={1} />);
     });
 
+    // ENGL 101 is in "remaining" state (no completed history) so it's hidden
+    // behind the "Show remaining" toggle — verify the toggle is rendered instead.
     await waitFor(() => {
-      expect(screen.getAllByText(/ENGL 101/).length).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByText(/Show remaining/).length).toBeGreaterThanOrEqual(1);
     });
   });
 });

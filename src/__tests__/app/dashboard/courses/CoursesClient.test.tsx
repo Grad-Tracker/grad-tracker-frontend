@@ -39,11 +39,12 @@ describe("CoursesClient", () => {
     expect(screen.getAllByText("Course Catalog").length).toBeGreaterThanOrEqual(1);
   });
 
-  it("renders sidebar navigation", () => {
+  it("renders course level tabs", () => {
+    // Sidebar nav is rendered by DashboardLayout, not CoursesClient.
+    // Verify the course-level tabs that ARE part of this component.
     renderWithChakra(<CoursesClient initialCourses={mockCourses} subjects={mockSubjects} />);
-    expect(screen.getAllByText("Dashboard").length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText("Courses").length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText("Requirements").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByRole("tab", { name: /undergraduate/i }).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByRole("tab", { name: /graduate/i }).length).toBeGreaterThanOrEqual(1);
   });
 
   it("renders undergraduate tab as default", () => {

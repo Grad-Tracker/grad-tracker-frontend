@@ -201,6 +201,19 @@ export async function saveOnboardingSelections(
 ): Promise<void> {
   const supabase = createClient();
 
+  // Clear any existing selections so re-saves don't accumulate duplicate rows.
+  const { error: delProgramsErr } = await supabase
+    .from(DB_TABLES.studentPrograms)
+    .delete()
+    .eq("student_id", studentId);
+  if (delProgramsErr) throw delProgramsErr;
+
+  const { error: delHistoryErr } = await supabase
+    .from(DB_TABLES.studentCourseHistory)
+    .delete()
+    .eq("student_id", studentId);
+  if (delHistoryErr) throw delHistoryErr;
+
   // Insert selected programs (major + certificates)
   const programRows = [majorId, ...certificateIds].map((programId) => ({
     student_id: studentId,
@@ -209,7 +222,7 @@ export async function saveOnboardingSelections(
 
   const { error: programsError } = await supabase
     .from(DB_TABLES.studentPrograms)
-    .insert(programRows);
+    .upsert(programRows, { onConflict: "student_id,program_id" });
 
   if (programsError) throw programsError;
 
@@ -223,7 +236,7 @@ export async function saveOnboardingSelections(
 
     const { error: coursesError } = await supabase
       .from(DB_TABLES.studentCourseHistory)
-      .insert(courseRows);
+      .upsert(courseRows, { onConflict: "student_id,course_id" });
 
     if (coursesError) throw coursesError;
   }

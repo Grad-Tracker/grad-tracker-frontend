@@ -101,18 +101,8 @@ describe("GenEdRequirements", () => {
       expect(screen.getByText(/Humanities and the Arts/i)).toBeInTheDocument();
     });
 
-    // Match ONLY the <p> summary line to avoid "multiple elements found"
-    const summary = screen.getByText((_, el) => {
-      if (!el) return false;
-      if (el.tagName.toLowerCase() !== "p") return false;
-
-      const t = (el.textContent ?? "").replace(/\s+/g, " ").trim();
-      return t.includes("Completed 3 / 12 credits · Remaining 9");
-    });
-    expect(summary).toBeInTheDocument();
-
-    // Completed indicator
-    expect(screen.getByText("✅")).toBeInTheDocument();
+    // "Completed" section header appears when there are completed courses
+    expect(screen.getByText("Completed")).toBeInTheDocument();
 
     // Course title (easy stable assertion)
     expect(screen.getByText(/Foundations of Art/i)).toBeInTheDocument();

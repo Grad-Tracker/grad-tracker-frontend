@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { Box, HStack, Icon, Text, VStack } from "@chakra-ui/react";
+import { createClient } from "@/lib/supabase/client";
 import {
   LuLayoutDashboard,
   LuBookOpen,
@@ -24,6 +25,13 @@ const navItems = [
 
 export default function DashboardSidebar() {
   const pathname = usePathname();
+  const router = useRouter();
+
+  const handleSignOut = async () => {
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    router.push("/signin");
+  };
 
   return (
     <Box
@@ -110,6 +118,7 @@ export default function DashboardSidebar() {
           fontWeight="500"
           _hover={{ bg: "red.subtle", color: "red.fg" }}
           transition="all 0.15s"
+          onClick={handleSignOut}
         >
           <Icon boxSize="5">
             <LuLogOut />
