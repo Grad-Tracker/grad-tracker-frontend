@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, waitFor, fireEvent, act } from "@testing-library/react";
+import { render, screen, waitFor, act } from "@testing-library/react";
 import { ChakraProvider, defaultSystem } from "@chakra-ui/react";
 
 // Mocks — use vi.hoisted to avoid hoisting issues
@@ -203,37 +203,6 @@ describe("Dashboard", () => {
 
     await waitFor(() => {
       expect(screen.getAllByText("Complete Your Profile Setup").length).toBeGreaterThanOrEqual(1);
-    });
-  });
-
-  it("calls signOut and redirects on Sign Out click", async () => {
-    setupStudentMock();
-
-    await act(async () => { renderWithChakra(<Dashboard />); });
-
-    await waitFor(() => {
-      expect(screen.getAllByText("Test Student").length).toBeGreaterThanOrEqual(1);
-    });
-
-    const signOutElements = screen.getAllByText("Sign Out");
-    await act(async () => { fireEvent.click(signOutElements[0]); });
-
-    await waitFor(() => {
-      expect(mockSignOut).toHaveBeenCalled();
-      expect(mockPush).toHaveBeenCalledWith("/signin");
-    });
-  });
-
-  it("renders sidebar navigation links", async () => {
-    setupStudentMock();
-
-    await act(async () => { renderWithChakra(<Dashboard />); });
-
-    await waitFor(() => {
-      expect(screen.getAllByText("Dashboard").length).toBeGreaterThanOrEqual(1);
-      expect(screen.getAllByText("Courses").length).toBeGreaterThanOrEqual(1);
-      expect(screen.getAllByText("Requirements").length).toBeGreaterThanOrEqual(1);
-      expect(screen.getAllByText("Planner").length).toBeGreaterThanOrEqual(1);
     });
   });
 

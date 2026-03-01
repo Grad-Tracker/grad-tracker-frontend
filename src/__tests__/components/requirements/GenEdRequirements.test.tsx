@@ -239,7 +239,10 @@ describe("GenEdRequirements", () => {
           resolve({ data: bucketCourses, error: null })
         );
       } else if (table === "student_course_history") {
-        chain.eq = vi.fn().mockResolvedValue({ data: [], error: null });
+        chain.eq = vi.fn().mockResolvedValue({
+          data: [{ course_id: 100, grade: "A", completed: true }],
+          error: null,
+        });
       } else if (table === "courses") {
         chain.in = vi.fn().mockResolvedValue({ data: courses, error: null });
       }

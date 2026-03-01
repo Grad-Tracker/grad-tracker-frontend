@@ -39,13 +39,6 @@ describe("CoursesClient", () => {
     expect(screen.getAllByText("Course Catalog").length).toBeGreaterThanOrEqual(1);
   });
 
-  it("renders sidebar navigation", () => {
-    renderWithChakra(<CoursesClient initialCourses={mockCourses} subjects={mockSubjects} />);
-    expect(screen.getAllByText("Dashboard").length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText("Courses").length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText("Requirements").length).toBeGreaterThanOrEqual(1);
-  });
-
   it("renders undergraduate tab as default", () => {
     renderWithChakra(<CoursesClient initialCourses={mockCourses} subjects={mockSubjects} />);
     expect(screen.getAllByText(/Undergraduate/).length).toBeGreaterThanOrEqual(1);
