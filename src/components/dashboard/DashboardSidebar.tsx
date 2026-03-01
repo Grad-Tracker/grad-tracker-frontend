@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { Box, HStack, Icon, Text, VStack } from "@chakra-ui/react";
 import {
   LuLayoutDashboard,
@@ -13,6 +13,8 @@ import {
   LuSettings,
   LuLogOut,
 } from "react-icons/lu";
+import { createClient } from "@/lib/supabase/client";
+import { toaster } from "@/components/ui/toaster";
 
 const navItems = [
   { icon: LuLayoutDashboard, label: "Dashboard", href: "/dashboard" },
@@ -24,6 +26,18 @@ const navItems = [
 
 export default function DashboardSidebar() {
   const pathname = usePathname();
+  const router = useRouter();
+
+  async function handleSignOut() {
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    toaster.create({
+      title: "Signed out",
+      description: "You've been signed out successfully.",
+      type: "success",
+    });
+    router.push("/signin");
+  }
 
   return (
     <Box
@@ -110,6 +124,7 @@ export default function DashboardSidebar() {
           fontWeight="500"
           _hover={{ bg: "red.subtle", color: "red.fg" }}
           transition="all 0.15s"
+          onClick={handleSignOut}
         >
           <Icon boxSize="5">
             <LuLogOut />

@@ -1,10 +1,26 @@
 "use client";
 
-import { Avatar, Box, Circle, Flex, Heading, HStack, IconButton, Text } from "@chakra-ui/react";
+import { useEffect, useState } from "react";
+import { Avatar, Box, Circle, Flex, HStack, IconButton } from "@chakra-ui/react";
 import { LuBell } from "react-icons/lu";
 import { ColorModeButton } from "@/components/ui/color-mode";
+import { createClient } from "@/lib/supabase/client";
 
 export default function DashboardHeader() {
+  const [userName, setUserName] = useState("");
+
+  useEffect(() => {
+    async function loadUser() {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user?.user_metadata) {
+        const { first_name, last_name } = user.user_metadata;
+        setUserName([first_name, last_name].filter(Boolean).join(" "));
+      }
+    }
+    loadUser();
+  }, []);
+
   return (
     <Box
       as="header"
@@ -16,16 +32,7 @@ export default function DashboardHeader() {
       zIndex="sticky"
       className="glass-card"
     >
-      <Flex justify="space-between" align="center" px={{ base: "4", md: "8" }} py="4">
-        <Box>
-          <Text fontSize="sm" color="fg.muted" fontWeight="500">
-            Dashboard
-          </Text>
-          <Heading size="lg" fontFamily="'DM Serif Display', serif" fontWeight="400">
-            Grad Tracker
-          </Heading>
-        </Box>
-
+      <Flex justify="flex-end" align="center" px={{ base: "4", md: "8" }} py="3">
         <HStack gap="3">
           <IconButton aria-label="Notifications" variant="ghost" size="sm" position="relative">
             <LuBell />
@@ -33,7 +40,7 @@ export default function DashboardHeader() {
           </IconButton>
           <ColorModeButton variant="ghost" size="sm" />
           <Avatar.Root size="sm">
-            <Avatar.Fallback name="Alex Johnson" />
+            <Avatar.Fallback name={userName || "User"} />
           </Avatar.Root>
         </HStack>
       </Flex>
