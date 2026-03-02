@@ -124,7 +124,7 @@ export default function PlanCard({
                   autoFocus
                   borderRadius="lg"
                   onClick={(e) => e.stopPropagation()}
-                  fontFamily="'DM Serif Display', serif"
+                  fontFamily="var(--font-outfit), sans-serif"
                 />
                 <IconButton
                   aria-label="Confirm"
@@ -153,7 +153,7 @@ export default function PlanCard({
             ) : (
               <Heading
                 size="md"
-                fontFamily="'DM Serif Display', serif"
+                fontFamily="var(--font-outfit), sans-serif"
                 fontWeight="400"
                 letterSpacing="-0.02em"
                 truncate

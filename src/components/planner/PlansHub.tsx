@@ -66,7 +66,7 @@ export default function PlansHub({
             </Box>
             <Heading
               size="2xl"
-              fontFamily="'DM Serif Display', serif"
+              fontFamily="var(--font-outfit), sans-serif"
               fontWeight="400"
               letterSpacing="-0.03em"
             >
@@ -158,7 +158,7 @@ export default function PlansHub({
           <Heading
             size="lg"
             mb="3"
-            fontFamily="'DM Serif Display', serif"
+            fontFamily="var(--font-outfit), sans-serif"
             fontWeight="400"
             letterSpacing="-0.02em"
           >

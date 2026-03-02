@@ -283,7 +283,7 @@ export default function GenEdRequirements({ studentId }: { studentId: number }) 
           </Text>
           <Heading
             size="lg"
-            fontFamily="'DM Serif Display', serif"
+            fontFamily="var(--font-outfit), sans-serif"
             fontWeight="400"
             letterSpacing="-0.02em"
           >

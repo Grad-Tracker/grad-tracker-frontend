@@ -69,7 +69,7 @@ export default function SigninPage() {
   return (
     <Box
       minH="100vh"
-      fontFamily="'Plus Jakarta Sans', sans-serif"
+      fontFamily="var(--font-plus-jakarta), sans-serif"
       position="relative"
     >
       {/* Navigation Header */}
@@ -99,7 +99,7 @@ export default function SigninPage() {
                 <Text
                   fontWeight="700"
                   fontSize="xl"
-                  fontFamily="'DM Serif Display', serif"
+                  fontFamily="var(--font-outfit), sans-serif"
                   letterSpacing="-0.02em"
                 >
                   GradTracker
@@ -196,7 +196,7 @@ export default function SigninPage() {
                     <Text
                       fontWeight="700"
                       fontSize="2xl"
-                      fontFamily="'DM Serif Display', serif"
+                      fontFamily="var(--font-outfit), sans-serif"
                       letterSpacing="-0.02em"
                     >
                       Welcome Back, Ranger
