@@ -597,7 +597,7 @@ export default function PlannerPage() {
                       </Icon>
                       <Heading
                         size="md"
-                        fontFamily="'DM Serif Display', serif"
+                        fontFamily="var(--font-outfit), sans-serif"
                         fontWeight="400"
                         letterSpacing="-0.02em"
                       >
@@ -726,7 +726,7 @@ export default function PlannerPage() {
                             <Heading
                               size="md"
                               mb="2"
-                              fontFamily="'DM Serif Display', serif"
+                              fontFamily="var(--font-outfit), sans-serif"
                               fontWeight="400"
                               letterSpacing="-0.02em"
                             >

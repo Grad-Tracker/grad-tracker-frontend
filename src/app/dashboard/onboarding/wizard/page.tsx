@@ -17,7 +17,7 @@ export default function WizardPage() {
     <Box
       minH="100vh"
       bg="bg"
-      fontFamily="'Plus Jakarta Sans', sans-serif"
+      fontFamily="var(--font-plus-jakarta), sans-serif"
       className="mesh-gradient-subtle"
     >
       {/* Header */}
@@ -56,7 +56,7 @@ export default function WizardPage() {
               <Text
                 fontWeight="700"
                 fontSize="lg"
-                fontFamily="'DM Serif Display', serif"
+                fontFamily="var(--font-outfit), sans-serif"
                 letterSpacing="-0.02em"
               >
                 GradTracker

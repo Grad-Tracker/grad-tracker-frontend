@@ -143,7 +143,7 @@ export default function SemesterColumn({
             </Box>
             <Heading
               size="sm"
-              fontFamily="'DM Serif Display', serif"
+              fontFamily="var(--font-outfit), sans-serif"
               fontWeight="400"
               letterSpacing="-0.02em"
             >

@@ -52,7 +52,7 @@ export default function OnboardingPage() {
     <Box
       minH="100vh"
       bg="bg"
-      fontFamily="'Plus Jakarta Sans', sans-serif"
+      fontFamily="var(--font-plus-jakarta), sans-serif"
       className="mesh-gradient-subtle"
     >
       {/* Header */}
@@ -88,7 +88,7 @@ export default function OnboardingPage() {
               <Text
                 fontWeight="700"
                 fontSize="lg"
-                fontFamily="'DM Serif Display', serif"
+                fontFamily="var(--font-outfit), sans-serif"
                 letterSpacing="-0.02em"
               >
                 GradTracker
@@ -117,7 +117,7 @@ export default function OnboardingPage() {
               Setup Wizard
             </Badge>
             <Heading
-              fontFamily="'DM Serif Display', serif"
+              fontFamily="var(--font-outfit), sans-serif"
               size={{ base: "3xl", md: "4xl" }}
               letterSpacing="-0.02em"
               fontWeight="400"

@@ -165,7 +165,7 @@ export default function CoursesClient({
       </Text>
       <Heading
         size="lg"
-        fontFamily="'DM Serif Display', serif"
+        fontFamily="var(--font-outfit), sans-serif"
         fontWeight="400"
         letterSpacing="-0.02em"
       >
@@ -433,7 +433,7 @@ export default function CoursesClient({
                 </Box>
                 <Heading
                   size="md"
-                  fontFamily="'DM Serif Display', serif"
+                  fontFamily="var(--font-outfit), sans-serif"
                   fontWeight="400"
                 >
                   No courses found
@@ -484,7 +484,7 @@ export default function CoursesClient({
                         </Box>
                         <VStack align="start" gap="0">
                           <Drawer.Title
-                            fontFamily="'DM Serif Display', serif"
+                            fontFamily="var(--font-outfit), sans-serif"
                             fontWeight="400"
                             fontSize="xl"
                           >

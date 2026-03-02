@@ -257,7 +257,7 @@ export default function OnboardingWizard() {
   );
 
   return (
-    <Box minH="100vh" bg="bg" fontFamily="'Plus Jakarta Sans', sans-serif">
+    <Box minH="100vh" bg="bg" fontFamily="var(--font-plus-jakarta), sans-serif">
       <Container maxW="4xl" mx="auto" px={{ base: "4", md: "8" }} py="8">
         <VStack gap="8" align="stretch">
           {/* Header */}
@@ -276,7 +276,7 @@ export default function OnboardingWizard() {
               Setup Wizard
             </Badge>
             <Heading
-              fontFamily="'DM Serif Display', serif"
+              fontFamily="var(--font-outfit), sans-serif"
               size={{ base: "2xl", md: "3xl" }}
               letterSpacing="-0.02em"
               fontWeight="400"

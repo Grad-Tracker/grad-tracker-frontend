@@ -144,7 +144,7 @@ export default function CreatePlanDialog({
           <Dialog.Content borderRadius="xl" maxH="85vh" overflow="hidden">
             <Dialog.Header>
               <Dialog.Title
-                fontFamily="'DM Serif Display', serif"
+                fontFamily="var(--font-outfit), sans-serif"
                 fontWeight="400"
                 letterSpacing="-0.02em"
               >
