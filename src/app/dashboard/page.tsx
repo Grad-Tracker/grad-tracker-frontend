@@ -773,9 +773,9 @@ export default function Dashboard() {
                     </Text>
                   </Box>
                 ) : (
-                  currentCourses.map((course) => (
+                  currentCourses.map((course, index) => (
                     <Flex
-                      key={`${course.code}-${course.name}`}
+                      key={`${course.code}-${course.name}-${index}`}
                       p="4"
                       bg="bg.subtle"
                       borderRadius="lg"

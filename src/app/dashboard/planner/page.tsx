@@ -159,6 +159,14 @@ export default function PlannerPage() {
     () => (isGraduatePlan ? getGraduateTracks(blocks) : []),
     [blocks, isGraduatePlan]
   );
+
+  // Auto-select first concentration track when a graduate plan loads
+  useEffect(() => {
+    if (isGraduatePlan && graduateTracks.length >= 2 && selectedTrackId === null) {
+      handleTrackSelect(graduateTracks[0].blockId);
+    }
+  }, [isGraduatePlan, graduateTracks, selectedTrackId, handleTrackSelect]);
+
   const allDedupedBlocks = useMemo(
     () => deduplicateBlocks(blocks, { isGraduate: isGraduatePlan }),
     [blocks, isGraduatePlan]
@@ -768,6 +776,7 @@ export default function PlannerPage() {
                     plannedCourses={plannedCourses}
                     blocks={displayBlocks}
                     completedCourseIds={completedIds}
+                    isGraduatePlan={isGraduatePlan}
                   />
                 </>
               )}

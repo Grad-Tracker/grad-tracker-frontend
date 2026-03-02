@@ -218,4 +218,43 @@ describe("CreatePlanDialog", () => {
     const createButton = createButtons[0].closest("button")!;
     expect(createButton.disabled).toBe(true);
   });
+
+  it("disables create button when no programs are selected", async () => {
+    await act(async () => {
+      renderWithChakra(<CreatePlanDialog {...defaultProps} />);
+    });
+
+    // Name is pre-filled ("Plan 1"), but no programs selected
+    const createButtons = screen.getAllByText("Create Plan");
+    const createButton = createButtons[0].closest("button")!;
+    expect(createButton.disabled).toBe(true);
+
+    // Shows helper text
+    expect(
+      screen.getAllByText("Select at least one program to create a plan.").length
+    ).toBeGreaterThanOrEqual(1);
+  });
+
+  it("enables create button when name and at least one program are provided", async () => {
+    await act(async () => {
+      renderWithChakra(<CreatePlanDialog {...defaultProps} />);
+    });
+    await waitFor(() => {
+      expect(
+        screen.getAllByText("Computer Science").length
+      ).toBeGreaterThanOrEqual(1);
+    });
+
+    // Select a program
+    const programButtons = screen.getAllByText("Computer Science");
+    const programButton = programButtons[0].closest("button")!;
+    await act(async () => {
+      fireEvent.click(programButton);
+    });
+
+    // Create Plan button should now be enabled
+    const createButtons = screen.getAllByText("Create Plan");
+    const createButton = createButtons[0].closest("button")!;
+    expect(createButton.disabled).toBe(false);
+  });
 });
