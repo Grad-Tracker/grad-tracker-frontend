@@ -14,6 +14,7 @@ export const DB_TABLES = {
   studentTermPlan: "student_term_plan",
   students: "students",
   terms: "terms",
+  notificationPreferences: "notification_preferences",
 } as const;
 
 export const STUDENT_COLUMNS = {

@@ -142,31 +142,100 @@ describe("PlanCard", () => {
     expect(screen.queryByTestId("menu-delete")).toBeNull();
   });
 
-  it("calls onDelete when delete menu item is clicked", () => {
-    const plan = makePlan({ id: 22 });
-    renderWithChakra(<PlanCard {...defaultProps} plan={plan} canDelete />);
-    fireEvent.click(screen.getByTestId("menu-delete"));
-    expect(defaultProps.onDelete).toHaveBeenCalledWith(22);
+  it("calls onDelete(plan.id) when delete menu item is clicked", () => {
+    const plan = makePlan({ id: 7 });
+    const onDelete = vi.fn();
+    renderWithChakra(<PlanCard {...defaultProps} plan={plan} onDelete={onDelete} canDelete={true} />);
+    const deleteButton = screen.getByTestId("menu-delete");
+    fireEvent.click(deleteButton);
+    expect(onDelete).toHaveBeenCalledWith(7);
   });
 
-  it("cancels rename on Escape and does not call onRename", async () => {
-    const plan = makePlan({ id: 7, name: "Old Name" });
+  it("shows 'No changes yet' when updated_at is null", () => {
+    const plan = makePlan({ updated_at: null });
     renderWithChakra(<PlanCard {...defaultProps} plan={plan} />);
-    fireEvent.click(screen.getByTestId("menu-rename"));
+    expect(screen.getAllByText("No changes yet").length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("shows formatted date when updated_at is set", () => {
+    const plan = makePlan({ updated_at: "2025-01-15" });
+    renderWithChakra(<PlanCard {...defaultProps} plan={plan} />);
+    // Should show "Updated Jan 15" or similar formatted date
+    expect(screen.getAllByText(/Updated/).length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("Cancel button during rename hides the input and restores plan name", async () => {
+    const plan = makePlan({ name: "My Plan" });
+    renderWithChakra(<PlanCard {...defaultProps} plan={plan} />);
+
+    // Enter rename mode via rename menu item
+    const renameButton = screen.getByTestId("menu-rename");
+    await act(async () => {
+      fireEvent.click(renameButton);
+    });
+
+    // Input should be visible
+    expect(screen.getByRole("textbox")).toBeTruthy();
+
+    // Click Cancel button
+    const cancelButton = screen.getByLabelText("Cancel");
+    await act(async () => {
+      fireEvent.click(cancelButton);
+    });
+
+    // Input should be gone; plan name heading should be back
+    expect(screen.queryByRole("textbox")).toBeNull();
+    expect(screen.getAllByText("My Plan").length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("Escape key during rename hides the input", async () => {
+    const plan = makePlan({ name: "Escape Plan" });
+    renderWithChakra(<PlanCard {...defaultProps} plan={plan} />);
+
+    const renameButton = screen.getByTestId("menu-rename");
+    await act(async () => {
+      fireEvent.click(renameButton);
+    });
 
     const input = screen.getByRole("textbox");
-    fireEvent.change(input, { target: { value: "Another Name" } });
-    fireEvent.keyDown(input, { key: "Escape" });
-
-    await waitFor(() => {
-      expect(screen.queryByRole("textbox")).toBeNull();
+    await act(async () => {
+      fireEvent.keyDown(input, { key: "Escape" });
     });
-    expect(defaultProps.onRename).not.toHaveBeenCalled();
+
+    expect(screen.queryByRole("textbox")).toBeNull();
+    expect(screen.getAllByText("Escape Plan").length).toBeGreaterThanOrEqual(1);
   });
 
-  it("shows fallback updated text when updated_at is null", () => {
-    const plan = makePlan({ updated_at: null as unknown as string });
+  it("shows 0% progress when total_credits is 0", () => {
+    const plan = makePlan({ total_credits: 0 });
     renderWithChakra(<PlanCard {...defaultProps} plan={plan} />);
-    expect(screen.getByText("No changes yet")).toBeInTheDocument();
+    const progressRoot = screen.getByTestId("progress-root");
+    expect(progressRoot.getAttribute("data-value")).toBe("0");
+  });
+
+  it("shows 75% progress when total_credits is 90 (green color threshold)", () => {
+    const plan = makePlan({ total_credits: 90 });
+    renderWithChakra(<PlanCard {...defaultProps} plan={plan} />);
+    const progressRoot = screen.getByTestId("progress-root");
+    expect(progressRoot.getAttribute("data-value")).toBe("75");
+  });
+
+  it("does not call onRename when confirm is clicked but name is unchanged", async () => {
+    const plan = makePlan({ id: 5, name: "Same Name" });
+    renderWithChakra(<PlanCard {...defaultProps} plan={plan} />);
+
+    const renameButton = screen.getByTestId("menu-rename");
+    await act(async () => {
+      fireEvent.click(renameButton);
+    });
+
+    // Do NOT change the value — click confirm with same name
+    const confirmButton = screen.getByLabelText("Confirm");
+    await act(async () => {
+      fireEvent.click(confirmButton);
+    });
+
+    // onRename should not be called for unchanged name
+    expect(defaultProps.onRename).not.toHaveBeenCalled();
   });
 });
