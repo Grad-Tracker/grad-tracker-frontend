@@ -2,7 +2,7 @@ export interface Program {
   id: number;
   name: string;
   catalog_year: string;
-  program_type: "MAJOR" | "CERTIFICATE" | "MINOR";
+  program_type: "MAJOR" | "CERTIFICATE" | "MINOR" | "GRADUATE";
 }
 
 export interface RequirementBlock {

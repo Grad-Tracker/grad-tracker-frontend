@@ -144,7 +144,7 @@ export default function CreatePlanDialog({
           <Dialog.Content borderRadius="xl" maxH="85vh" overflow="hidden">
             <Dialog.Header>
               <Dialog.Title
-                fontFamily="'DM Serif Display', serif"
+                fontFamily="var(--font-outfit), sans-serif"
                 fontWeight="400"
                 letterSpacing="-0.02em"
               >
@@ -298,12 +298,11 @@ export default function CreatePlanDialog({
                     </VStack>
                   )}
 
-                  {selectedProgramIds.size > 0 && (
-                    <Text fontSize="xs" color="fg.muted" mt="3">
-                      {selectedProgramIds.size} program
-                      {selectedProgramIds.size !== 1 ? "s" : ""} selected
-                    </Text>
-                  )}
+                  <Text fontSize="xs" color={selectedProgramIds.size > 0 ? "fg.muted" : "orange.fg"} mt="3">
+                    {selectedProgramIds.size > 0
+                      ? `${selectedProgramIds.size} program${selectedProgramIds.size !== 1 ? "s" : ""} selected`
+                      : "Select at least one program to create a plan."}
+                  </Text>
                 </Box>
               </VStack>
             </Dialog.Body>
@@ -318,7 +317,7 @@ export default function CreatePlanDialog({
                 colorPalette="green"
                 borderRadius="lg"
                 onClick={handleCreate}
-                disabled={!name.trim()}
+                disabled={!name.trim() || selectedProgramIds.size === 0}
                 loading={loading}
               >
                 Create Plan

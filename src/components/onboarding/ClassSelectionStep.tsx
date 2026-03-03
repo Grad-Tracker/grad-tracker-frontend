@@ -62,7 +62,7 @@ export default function ClassSelectionStep({
             Current Courses
           </Badge>
           <Heading
-            fontFamily="'DM Serif Display', serif"
+            fontFamily="var(--font-outfit), sans-serif"
             size="xl"
             fontWeight="400"
             letterSpacing="-0.01em"

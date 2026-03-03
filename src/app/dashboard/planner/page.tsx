@@ -2,10 +2,8 @@
 
 import { useState, useEffect, useCallback, useMemo } from "react";
 import {
-  Avatar,
   Box,
   Button,
-  Circle,
   Flex,
   Heading,
   HStack,
@@ -15,7 +13,6 @@ import {
   Text,
   VStack,
 } from "@chakra-ui/react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   DndContext,
@@ -28,19 +25,10 @@ import {
 } from "@dnd-kit/core";
 import { createClient } from "@/lib/supabase/client";
 import { toaster } from "@/components/ui/toaster";
-import { ColorModeButton } from "@/components/ui/color-mode";
 import {
-  LuLayoutDashboard,
-  LuBookOpen,
-  LuGraduationCap,
   LuCalendar,
-  LuSettings,
-  LuFileText,
-  LuTarget,
-  LuLogOut,
   LuPlus,
   LuSparkles,
-  LuBell,
   LuArrowLeft,
   LuChevronRight,
 } from "react-icons/lu";
@@ -83,14 +71,6 @@ import DraggableCourseCard from "@/components/planner/DraggableCourseCard";
 import CreatePlanDialog from "@/components/planner/CreatePlanDialog";
 import DeletePlanDialog from "@/components/planner/DeletePlanDialog";
 import PlansHub from "@/components/planner/PlansHub";
-
-const navItems = [
-  { icon: LuLayoutDashboard, label: "Dashboard", href: "/dashboard", active: false },
-  { icon: LuBookOpen, label: "Courses", href: "/dashboard/courses", active: false },
-  { icon: LuTarget, label: "Requirements", href: "/dashboard/requirements", active: false },
-  { icon: LuCalendar, label: "Planner", href: "/dashboard/planner", active: true },
-  { icon: LuFileText, label: "Reports", href: "/dashboard/reports", active: false },
-];
 
 export default function PlannerPage() {
   const router = useRouter();
@@ -179,6 +159,14 @@ export default function PlannerPage() {
     () => (isGraduatePlan ? getGraduateTracks(blocks) : []),
     [blocks, isGraduatePlan]
   );
+
+  // Auto-select first concentration track when a graduate plan loads
+  useEffect(() => {
+    if (isGraduatePlan && graduateTracks.length >= 2 && selectedTrackId === null) {
+      handleTrackSelect(graduateTracks[0].blockId);
+    }
+  }, [isGraduatePlan, graduateTracks, selectedTrackId, handleTrackSelect]);
+
   const allDedupedBlocks = useMemo(
     () => deduplicateBlocks(blocks, { isGraduate: isGraduatePlan }),
     [blocks, isGraduatePlan]
@@ -531,215 +519,29 @@ export default function PlannerPage() {
     }
   }
 
-  // ── Sign out ────────────────────────────────────────────
-  async function handleSignOut() {
-    const supabase = createClient();
-    await supabase.auth.signOut();
-    toaster.create({
-      title: "Signed out",
-      description: "You've been signed out successfully.",
-      type: "success",
-    });
-    router.push("/signin");
-  }
-
   // ── Loading state ───────────────────────────────────────
   if (loading) {
     return (
-      <Box
-        minH="100vh"
-        display="flex"
-        alignItems="center"
-        justifyContent="center"
-        fontFamily="'Plus Jakarta Sans', sans-serif"
-      >
+      <Flex align="center" justify="center" minH="60vh">
         <VStack gap="4">
           <Spinner size="xl" color="green.500" />
           <Text color="fg.muted">Loading your planner...</Text>
         </VStack>
-      </Box>
+      </Flex>
     );
   }
 
   // ── Render ──────────────────────────────────────────────
   return (
-    <Box minH="100vh" bg="bg" fontFamily="'Plus Jakarta Sans', sans-serif">
-      <Flex>
-        {/* ──────── Sidebar ──────── */}
-        <Box
-          as="aside"
-          w="260px"
-          minH="100vh"
-          bg="bg"
-          borderRightWidth="1px"
-          borderColor="border.subtle"
-          position="fixed"
-          left="0"
-          top="0"
-          display={{ base: "none", lg: "flex" }}
-          flexDirection="column"
-          zIndex="docked"
-        >
-          <HStack
-            gap="3"
-            px="6"
-            py="5"
-            borderBottomWidth="1px"
-            borderColor="border.subtle"
-          >
-            <Box p="2" bg="green.solid" borderRadius="lg">
-              <Icon color="white" boxSize="5">
-                <LuGraduationCap />
-              </Icon>
-            </Box>
-            <Text
-              fontWeight="700"
-              fontSize="lg"
-              fontFamily="'DM Serif Display', serif"
-              letterSpacing="-0.02em"
-            >
-              GradTracker
-            </Text>
-          </HStack>
-
-          <VStack align="stretch" flex="1" py="4" px="3" gap="1">
-            {navItems.map((item) => (
-              <Link
-                key={item.label}
-                href={item.href}
-                style={{ textDecoration: "none" }}
-              >
-                <HStack
-                  px="4"
-                  py="2.5"
-                  borderRadius="lg"
-                  cursor="pointer"
-                  bg={item.active ? "green.subtle" : "transparent"}
-                  color={item.active ? "green.fg" : "fg.muted"}
-                  fontWeight={item.active ? "600" : "500"}
-                  _hover={{
-                    bg: item.active ? "green.subtle" : "bg.subtle",
-                    color: item.active ? "green.fg" : "fg",
-                  }}
-                  transition="all 0.15s"
-                >
-                  <Icon boxSize="5">
-                    <item.icon />
-                  </Icon>
-                  <Text fontSize="sm">{item.label}</Text>
-                </HStack>
-              </Link>
-            ))}
-          </VStack>
-
-          <VStack
-            align="stretch"
-            p="4"
-            gap="2"
-            borderTopWidth="1px"
-            borderColor="border.subtle"
-          >
-            <Link href="/dashboard/settings" style={{ textDecoration: "none" }}>
-              <HStack
-                px="4"
-                py="2.5"
-                borderRadius="lg"
-                cursor="pointer"
-                color="fg.muted"
-                fontWeight="500"
-                _hover={{ bg: "bg.subtle", color: "fg" }}
-                transition="all 0.15s"
-              >
-                <Icon boxSize="5">
-                  <LuSettings />
-                </Icon>
-                <Text fontSize="sm">Settings</Text>
-              </HStack>
-            </Link>
-            <HStack
-              px="4"
-              py="2.5"
-              borderRadius="lg"
-              cursor="pointer"
-              color="fg.muted"
-              fontWeight="500"
-              _hover={{ bg: "red.subtle", color: "red.fg" }}
-              transition="all 0.15s"
-              onClick={handleSignOut}
-            >
-              <Icon boxSize="5">
-                <LuLogOut />
-              </Icon>
-              <Text fontSize="sm">Sign Out</Text>
-            </HStack>
-          </VStack>
-        </Box>
-
-        {/* ──────── Main Content ──────── */}
-        <Box
-          flex="1"
-          ml={{ base: "0", lg: "260px" }}
-          minH="100vh"
-          display="flex"
-          flexDirection="column"
-          className="mesh-gradient-subtle"
-        >
+    <Box
+      mx={{ base: "-4", md: "-8" }}
+      mt="-6"
+      display="flex"
+      flexDirection="column"
+      minH="calc(100vh - 80px)"
+    >
           {view === "hub" ? (
             <>
-              {/* Hub header */}
-              <Box
-                as="header"
-                position="sticky"
-                top="0"
-                bg="bg"
-                borderBottomWidth="1px"
-                borderColor="border.subtle"
-                zIndex="sticky"
-                className="glass-card"
-              >
-                <Flex
-                  justify="space-between"
-                  align="center"
-                  px={{ base: "4", md: "6" }}
-                  py="3"
-                >
-                  <HStack gap="2">
-                    <Icon boxSize="5" color="green.fg">
-                      <LuCalendar />
-                    </Icon>
-                    <Heading
-                      size="lg"
-                      fontFamily="'DM Serif Display', serif"
-                      fontWeight="400"
-                      letterSpacing="-0.02em"
-                    >
-                      Planner
-                    </Heading>
-                  </HStack>
-                  <HStack gap="3">
-                    <IconButton
-                      aria-label="Notifications"
-                      variant="ghost"
-                      size="sm"
-                      position="relative"
-                    >
-                      <LuBell />
-                      <Circle
-                        size="2"
-                        bg="red.500"
-                        position="absolute"
-                        top="1.5"
-                        right="1.5"
-                      />
-                    </IconButton>
-                    <ColorModeButton variant="ghost" size="sm" />
-                    <Avatar.Root size="sm">
-                      <Avatar.Fallback name="Student" />
-                    </Avatar.Root>
-                  </HStack>
-                </Flex>
-              </Box>
-
               <PlansHub
                 plans={plans}
                 onOpenPlan={handleOpenPlan}
@@ -795,7 +597,7 @@ export default function PlannerPage() {
                       </Icon>
                       <Heading
                         size="md"
-                        fontFamily="'DM Serif Display', serif"
+                        fontFamily="var(--font-outfit), sans-serif"
                         fontWeight="400"
                         letterSpacing="-0.02em"
                       >
@@ -851,7 +653,6 @@ export default function PlannerPage() {
                       <LuSparkles size={16} />
                       Auto Generate
                     </Button>
-                    <ColorModeButton variant="ghost" size="sm" />
                   </HStack>
                 </Flex>
               </Box>
@@ -925,7 +726,7 @@ export default function PlannerPage() {
                             <Heading
                               size="md"
                               mb="2"
-                              fontFamily="'DM Serif Display', serif"
+                              fontFamily="var(--font-outfit), sans-serif"
                               fontWeight="400"
                               letterSpacing="-0.02em"
                             >
@@ -975,14 +776,12 @@ export default function PlannerPage() {
                     plannedCourses={plannedCourses}
                     blocks={displayBlocks}
                     completedCourseIds={completedIds}
+                    isGraduatePlan={isGraduatePlan}
                   />
                 </>
               )}
             </>
           )}
-        </Box>
-      </Flex>
-
       {/* Dialogs */}
       <AddSemesterDialog
         open={addDialogOpen}

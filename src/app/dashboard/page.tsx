@@ -615,7 +615,7 @@ export default function Dashboard() {
         <Text fontSize="sm" color="fg.muted" fontWeight="500">
           Dashboard
         </Text>
-        <Heading size="lg" fontFamily="'DM Serif Display', serif" fontWeight="400">
+        <Heading size="lg" fontFamily="var(--font-outfit), sans-serif" fontWeight="400">
           Grad Tracker
         </Heading>
       </Box>
@@ -867,9 +867,9 @@ export default function Dashboard() {
                     </Text>
                   </Box>
                 ) : (
-                  currentCourses.map((course) => (
+                  currentCourses.map((course, index) => (
                     <Flex
-                      key={`${course.code}-${course.name}`}
+                      key={`${course.code}-${course.name}-${index}`}
                       p="4"
                       bg="bg.subtle"
                       borderRadius="lg"

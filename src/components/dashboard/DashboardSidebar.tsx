@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Box, HStack, Icon, Text, VStack } from "@chakra-ui/react";
 import { createClient } from "@/lib/supabase/client";
+import { toaster } from "@/components/ui/toaster";
 import {
   LuLayoutDashboard,
   LuBookOpen,
@@ -27,11 +28,16 @@ export default function DashboardSidebar() {
   const pathname = usePathname();
   const router = useRouter();
 
-  const handleSignOut = async () => {
+  async function handleSignOut() {
     const supabase = createClient();
     await supabase.auth.signOut();
+    toaster.create({
+      title: "Signed out",
+      description: "You've been signed out successfully.",
+      type: "success",
+    });
     router.push("/signin");
-  };
+  }
 
   return (
     <Box
@@ -54,7 +60,7 @@ export default function DashboardSidebar() {
             <LuGraduationCap />
           </Icon>
         </Box>
-        <Text fontWeight="700" fontSize="lg" fontFamily="'DM Serif Display', serif">
+        <Text fontWeight="700" fontSize="lg" fontFamily="var(--font-outfit), sans-serif">
           GradTracker
         </Text>
       </HStack>

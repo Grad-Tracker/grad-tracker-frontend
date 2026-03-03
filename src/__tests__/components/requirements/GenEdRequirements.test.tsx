@@ -239,7 +239,10 @@ describe("GenEdRequirements", () => {
           resolve({ data: bucketCourses, error: null })
         );
       } else if (table === "student_course_history") {
-        chain.eq = vi.fn().mockResolvedValue({ data: [], error: null });
+        chain.eq = vi.fn().mockResolvedValue({
+          data: [{ course_id: 100, grade: "A", completed: true }],
+          error: null,
+        });
       } else if (table === "courses") {
         chain.in = vi.fn().mockResolvedValue({ data: courses, error: null });
       }
@@ -250,10 +253,10 @@ describe("GenEdRequirements", () => {
       renderWithChakra(<GenEdRequirements studentId={1} />);
     });
 
-    // ENGL 101 is in "remaining" state (no completed history) so it's hidden
-    // behind the "Show remaining" toggle — verify the toggle is rendered instead.
+    // ENGL 101 is completed (course_history mock returns it) — verify it appears
+    // in the Completed section of the bucket.
     await waitFor(() => {
-      expect(screen.getAllByText(/Show remaining/).length).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByText("English Comp").length).toBeGreaterThanOrEqual(1);
     });
   });
 });

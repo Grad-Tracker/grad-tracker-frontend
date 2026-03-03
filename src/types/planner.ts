@@ -348,15 +348,17 @@ export function deduplicateBlocks(
           (b) => shortenBlockName(b.name) === "Electives"
         );
         if (electiveBlock) {
-          const existingIds = new Set(electiveBlock.courses.map((c) => c.id));
-          const extras = nonSelectedTrackCourses.filter((c) => !existingIds.has(c.id));
+          const seenIds = new Set(electiveBlock.courses.map((c) => c.id));
+          const extras = nonSelectedTrackCourses.filter((c) => {
+            if (seenIds.has(c.id)) return false;
+            seenIds.add(c.id);
+            return true;
+          });
           electiveBlock.courses = [...electiveBlock.courses, ...extras];
         }
       }
-    } else if (tracks.length >= 2) {
-      const trackBlockIds = new Set(tracks.map((t) => t.blockId));
-      filtered = filtered.filter((b) => !trackBlockIds.has(b.id));
     }
+    // When no track is selected, all blocks pass through unfiltered
   }
 
   const merged = new Map<string, RequirementBlockWithCourses>();
