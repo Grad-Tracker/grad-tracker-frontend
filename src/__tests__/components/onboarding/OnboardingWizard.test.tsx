@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, waitFor, act } from "@testing-library/react";
+import { render, screen, waitFor, act, fireEvent } from "@testing-library/react";
 import { ChakraProvider, defaultSystem } from "@chakra-ui/react";
 
 const {
@@ -32,7 +32,13 @@ vi.mock("@/lib/supabase/queries/onboarding", () => ({
 }));
 
 vi.mock("@/components/onboarding/ProgramSelectionStep", () => ({
-  default: () => <div data-testid="program-step">ProgramSelectionStep</div>,
+  default: ({ onMajorChange }: any) => (
+    <div data-testid="program-step">
+      <button data-testid="select-major-btn" onClick={() => onMajorChange(1)}>
+        Select Major
+      </button>
+    </div>
+  ),
 }));
 vi.mock("@/components/onboarding/ClassSelectionStep", () => ({
   default: () => <div data-testid="class-step">ClassSelectionStep</div>,
@@ -41,10 +47,17 @@ vi.mock("@/components/onboarding/ReviewStep", () => ({
   default: () => <div data-testid="review-step">ReviewStep</div>,
 }));
 vi.mock("@/components/onboarding/WizardNavigation", () => ({
-  default: () => <div data-testid="wizard-nav">WizardNavigation</div>,
+  default: ({ onComplete }: any) => (
+    <div data-testid="wizard-nav">
+      <button data-testid="complete-btn" onClick={onComplete}>
+        Complete
+      </button>
+    </div>
+  ),
 }));
 
 import OnboardingWizard from "@/components/onboarding/OnboardingWizard";
+import { createClient } from "@/lib/supabase/client";
 
 function renderWithChakra(ui: React.ReactElement) {
   return render(<ChakraProvider value={defaultSystem}>{ui}</ChakraProvider>);
@@ -150,6 +163,163 @@ describe("OnboardingWizard", () => {
       expect(
         screen.getAllByText(/Complete these steps to personalize/).length
       ).toBeGreaterThanOrEqual(1);
+    });
+  });
+
+  it("redirects to signin when handleComplete is called but user is not authenticated", async () => {
+    const mockGetUser = vi.fn().mockResolvedValue({ data: { user: null } });
+    (createClient as ReturnType<typeof vi.fn>).mockReturnValue({
+      auth: { getUser: mockGetUser },
+    });
+
+    mockFetchPrograms.mockResolvedValue([
+      { id: 1, name: "CS", catalog_year: "2025", program_type: "MAJOR" },
+    ]);
+    // Must be set up BEFORE clicking select-major-btn to avoid undefined certificates state
+    mockFetchCertificatesForMajor.mockResolvedValue([]);
+    mockFetchProgramRequirements.mockResolvedValue([]);
+
+    await act(async () => {
+      renderWithChakra(<OnboardingWizard />);
+    });
+
+    // Wait for wizard to load
+    await waitFor(() => {
+      expect(screen.getByTestId("program-step")).toBeInTheDocument();
+    });
+
+    // Select a major so handleComplete won't early return
+    await act(async () => {
+      fireEvent.click(screen.getByTestId("select-major-btn"));
+    });
+
+    // Click complete
+    await act(async () => {
+      fireEvent.click(screen.getByTestId("complete-btn"));
+    });
+
+    await waitFor(() => {
+      expect(mockPush).toHaveBeenCalledWith("/signin");
+    });
+  });
+
+  it("shows error toast when fetchCertificatesForMajor fails after major selection", async () => {
+    mockFetchPrograms.mockResolvedValue([
+      { id: 1, name: "CS", catalog_year: "2025", program_type: "MAJOR" },
+    ]);
+    mockFetchCertificatesForMajor.mockRejectedValue(new Error("Cert load error"));
+    mockFetchProgramRequirements.mockRejectedValue(new Error("Req load error"));
+
+    await act(async () => {
+      renderWithChakra(<OnboardingWizard />);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("program-step")).toBeInTheDocument();
+    });
+
+    // Select a major to trigger the effect
+    await act(async () => {
+      fireEvent.click(screen.getByTestId("select-major-btn"));
+    });
+
+    await waitFor(() => {
+      expect(mockToaster.error).toHaveBeenCalledWith(
+        expect.objectContaining({ title: "Failed to load program data" })
+      );
+    });
+  });
+
+  it("shows success toast and navigates to dashboard after successful completion", async () => {
+    const mockGetUser = vi.fn().mockResolvedValue({
+      data: {
+        user: {
+          id: "user-123",
+          email: "test@test.com",
+          user_metadata: { first_name: "John", last_name: "Doe" },
+        },
+      },
+    });
+    (createClient as ReturnType<typeof vi.fn>).mockReturnValue({
+      auth: { getUser: mockGetUser },
+    });
+
+    mockFetchPrograms.mockResolvedValue([
+      { id: 1, name: "CS", catalog_year: "2025", program_type: "MAJOR" },
+    ]);
+    mockFetchCertificatesForMajor.mockResolvedValue([]);
+    mockFetchProgramRequirements.mockResolvedValue([]);
+    mockGetOrCreateStudent.mockResolvedValue({ id: 10 });
+    mockSaveOnboardingSelections.mockResolvedValue(undefined);
+
+    await act(async () => {
+      renderWithChakra(<OnboardingWizard />);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("program-step")).toBeInTheDocument();
+    });
+
+    // Select major
+    await act(async () => {
+      fireEvent.click(screen.getByTestId("select-major-btn"));
+    });
+
+    // Click complete
+    await act(async () => {
+      fireEvent.click(screen.getByTestId("complete-btn"));
+    });
+
+    await waitFor(() => {
+      expect(mockToaster.success).toHaveBeenCalledWith(
+        expect.objectContaining({ title: "Setup complete!" })
+      );
+      expect(mockPush).toHaveBeenCalledWith("/dashboard");
+    });
+  });
+
+  it("shows error toast when saveOnboardingSelections fails", async () => {
+    const mockGetUser = vi.fn().mockResolvedValue({
+      data: {
+        user: {
+          id: "user-123",
+          email: "test@test.com",
+          user_metadata: {},
+        },
+      },
+    });
+    (createClient as ReturnType<typeof vi.fn>).mockReturnValue({
+      auth: { getUser: mockGetUser },
+    });
+
+    mockFetchPrograms.mockResolvedValue([
+      { id: 1, name: "CS", catalog_year: "2025", program_type: "MAJOR" },
+    ]);
+    mockFetchCertificatesForMajor.mockResolvedValue([]);
+    mockFetchProgramRequirements.mockResolvedValue([]);
+    mockGetOrCreateStudent.mockResolvedValue({ id: 10 });
+    mockSaveOnboardingSelections.mockRejectedValue(new Error("Save failed"));
+
+    await act(async () => {
+      renderWithChakra(<OnboardingWizard />);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("program-step")).toBeInTheDocument();
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId("select-major-btn"));
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId("complete-btn"));
+    });
+
+    await waitFor(() => {
+      expect(mockToaster.error).toHaveBeenCalledWith(
+        expect.objectContaining({ title: "Failed to save selections" })
+      );
     });
   });
 });

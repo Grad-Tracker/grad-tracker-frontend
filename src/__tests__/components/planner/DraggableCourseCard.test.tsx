@@ -16,9 +16,10 @@ vi.mock("@dnd-kit/core", () => ({
   })),
 }));
 
+// Render both children AND content so CourseTooltipContent is exercised
 vi.mock("@/components/ui/tooltip", () => ({
-  Tooltip: ({ children }: { children: React.ReactNode }) =>
-    React.createElement("div", null, children),
+  Tooltip: ({ children, content }: any) =>
+    React.createElement("div", null, children, content),
 }));
 
 function makeCourse(overrides: Partial<Course> = {}): Course {
@@ -140,5 +141,52 @@ describe("DraggableCourseCard", () => {
 
     // The "Planned" badge should NOT appear (isPlanned defaults to false)
     expect(screen.queryAllByText("Planned").length).toBe(0);
+  });
+
+  it("renders CourseTooltipContent with description and prereq_text when provided", () => {
+    const course = makeCourse({
+      description: "An intro course about computer science fundamentals.",
+      prereq_text: "None",
+    } as any);
+    renderWithChakra(<DraggableCourseCard course={course} />);
+    // The tooltip content renders the description
+    expect(screen.getAllByText("An intro course about computer science fundamentals.").length).toBeGreaterThanOrEqual(1);
+    // The prereq_text renders under "Prerequisites"
+    expect(screen.getAllByText("Prerequisites").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("None").length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("renders simple CourseTooltipContent when no description or prereq_text", () => {
+    const course = makeCourse(); // no description, no prereq_text
+    renderWithChakra(<DraggableCourseCard course={course} />);
+    // Should still show the course subject/number and credits in tooltip
+    expect(screen.getAllByText(/CS\s+101/).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("3 credits").length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("renders card directly when isDragging=true (no Tooltip wrapper)", () => {
+    (useDraggable as ReturnType<typeof vi.fn>).mockReturnValue({
+      attributes: {},
+      listeners: {},
+      setNodeRef: vi.fn(),
+      transform: { x: 10, y: 20 },
+      isDragging: true,
+    });
+    const { container } = renderWithChakra(
+      <DraggableCourseCard course={makeCourse()} />
+    );
+    // When isDragging, the component returns the card directly without Tooltip
+    expect(container.firstElementChild).toBeTruthy();
+    // CS 101 should still be visible
+    expect(screen.getAllByText(/CS\s+101/).length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("renders only description in tooltip when prereq_text is absent", () => {
+    const course = makeCourse({
+      description: "Course description only.",
+    } as any);
+    renderWithChakra(<DraggableCourseCard course={course} />);
+    expect(screen.getAllByText("Course description only.").length).toBeGreaterThanOrEqual(1);
+    expect(screen.queryAllByText("Prerequisites").length).toBe(0);
   });
 });

@@ -182,4 +182,115 @@ describe("SemesterColumn", () => {
 
     expect(onRemoveTerm).toHaveBeenCalledWith(42);
   });
+
+  it("renders collapsed summer view when isCollapsed=true", () => {
+    const term = makeTerm({ season: "Summer" as Season, year: 2025 });
+    renderWithChakra(
+      <SemesterColumn
+        term={term}
+        courses={[]}
+        onRemoveTerm={vi.fn()}
+        isCollapsed={true}
+        onToggleCollapse={vi.fn()}
+      />
+    );
+    expect(screen.getAllByText(/Summer 2025/).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("Click to expand").length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("shows course count badge in collapsed summer view when courses exist", () => {
+    const term = makeTerm({ season: "Summer" as Season, year: 2025 });
+    const c1 = makeCourse({ id: 1, credits: 3 });
+    const courses = [makePlannedCourse(c1, term.id)];
+    renderWithChakra(
+      <SemesterColumn
+        term={term}
+        courses={courses}
+        onRemoveTerm={vi.fn()}
+        isCollapsed={true}
+        onToggleCollapse={vi.fn()}
+      />
+    );
+    expect(screen.getAllByText(/1 courses · 3 cr/).length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("calls onToggleCollapse when collapsed summer box is clicked", () => {
+    const term = makeTerm({ season: "Summer" as Season, year: 2025 });
+    const onToggleCollapse = vi.fn();
+    renderWithChakra(
+      <SemesterColumn
+        term={term}
+        courses={[]}
+        onRemoveTerm={vi.fn()}
+        isCollapsed={true}
+        onToggleCollapse={onToggleCollapse}
+      />
+    );
+    fireEvent.click(screen.getByText("Click to expand"));
+    expect(onToggleCollapse).toHaveBeenCalled();
+  });
+
+  it("renders collapse button for Summer term when onToggleCollapse is provided", () => {
+    const term = makeTerm({ season: "Summer" as Season, year: 2025 });
+    const onToggleCollapse = vi.fn();
+    renderWithChakra(
+      <SemesterColumn
+        term={term}
+        courses={[]}
+        onRemoveTerm={vi.fn()}
+        isCollapsed={false}
+        onToggleCollapse={onToggleCollapse}
+      />
+    );
+    const collapseBtn = screen.getByLabelText("Collapse summer");
+    fireEvent.click(collapseBtn);
+    expect(onToggleCollapse).toHaveBeenCalled();
+  });
+
+  it("does NOT render collapse button for non-Summer term", () => {
+    const term = makeTerm({ season: "Fall" as Season, year: 2025 });
+    renderWithChakra(
+      <SemesterColumn
+        term={term}
+        courses={[]}
+        onRemoveTerm={vi.fn()}
+        onToggleCollapse={vi.fn()}
+      />
+    );
+    expect(screen.queryByLabelText("Collapse summer")).toBeNull();
+  });
+
+  it("renders course footer with plural 'courses' for multiple courses", () => {
+    const term = makeTerm({ season: "Spring" as Season, year: 2025 });
+    const c1 = makeCourse({ id: 1, credits: 3 });
+    const c2 = makeCourse({ id: 2, subject: "MATH", number: "200", credits: 3 });
+    const courses = [makePlannedCourse(c1, term.id), makePlannedCourse(c2, term.id)];
+    renderWithChakra(
+      <SemesterColumn term={term} courses={courses} onRemoveTerm={vi.fn()} />
+    );
+    expect(screen.getAllByText("2 courses").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("6 credits").length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("renders singular 'course' in footer for exactly one course", () => {
+    const term = makeTerm({ season: "Fall" as Season, year: 2025 });
+    const c1 = makeCourse({ id: 1, credits: 3 });
+    const courses = [makePlannedCourse(c1, term.id)];
+    renderWithChakra(
+      <SemesterColumn term={term} courses={courses} onRemoveTerm={vi.fn()} />
+    );
+    expect(screen.getAllByText("1 course").length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("shows 'Drop here!' text when isOver=true and no courses", () => {
+    (useDroppable as ReturnType<typeof vi.fn>).mockReturnValue({
+      isOver: true,
+      setNodeRef: vi.fn(),
+    });
+    const term = makeTerm();
+    renderWithChakra(
+      <SemesterColumn term={term} courses={[]} onRemoveTerm={vi.fn()} />
+    );
+    expect(screen.getAllByText("Drop here!").length).toBeGreaterThanOrEqual(1);
+  });
 });
