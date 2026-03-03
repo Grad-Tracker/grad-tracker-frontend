@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 import ReviewStep from "@/components/onboarding/ReviewStep";
 import { ChakraProvider, defaultSystem } from "@chakra-ui/react";
 import type { Program, CourseRow } from "@/types/onboarding";
@@ -100,5 +100,62 @@ describe("ReviewStep", () => {
     renderWithChakra(<ReviewStep {...defaultProps} />);
 
     expect(screen.getAllByText("Not specified").length).toBeGreaterThan(0);
+  });
+
+  it("calls onEditStep(0) when Major Edit button is clicked", () => {
+    const onEditStep = vi.fn();
+    renderWithChakra(<ReviewStep {...defaultProps} onEditStep={onEditStep} />);
+    const editButtons = screen.getAllByText("Edit");
+    // First Edit button is in the Major section
+    fireEvent.click(editButtons[0]);
+    expect(onEditStep).toHaveBeenCalledWith(0);
+  });
+
+  it("calls onEditStep(0) when Certificates Edit button is clicked", () => {
+    const onEditStep = vi.fn();
+    renderWithChakra(<ReviewStep {...defaultProps} onEditStep={onEditStep} />);
+    const editButtons = screen.getAllByText("Edit");
+    // Second Edit button is in the Certificates section
+    fireEvent.click(editButtons[1]);
+    expect(onEditStep).toHaveBeenCalledWith(0);
+  });
+
+  it("calls onEditStep(1) when Classes Edit button is clicked", () => {
+    const onEditStep = vi.fn();
+    renderWithChakra(<ReviewStep {...defaultProps} onEditStep={onEditStep} />);
+    const editButtons = screen.getAllByText("Edit");
+    // Third Edit button is in the Classes section
+    fireEvent.click(editButtons[2]);
+    expect(onEditStep).toHaveBeenCalledWith(1);
+  });
+
+  it("calls onEditStep(0) when Graduation Edit button is clicked", () => {
+    const onEditStep = vi.fn();
+    renderWithChakra(<ReviewStep {...defaultProps} onEditStep={onEditStep} />);
+    const editButtons = screen.getAllByText("Edit");
+    // Fourth Edit button is in the Graduation section
+    fireEvent.click(editButtons[3]);
+    expect(onEditStep).toHaveBeenCalledWith(0);
+  });
+
+  it("renders singular 'course' in badge when exactly 1 class selected", () => {
+    const oneClass: CourseRow[] = [
+      { id: 100, subject: "CS", number: "101", title: "Intro to CS", credits: 3 },
+    ];
+    renderWithChakra(<ReviewStep {...defaultProps} classes={oneClass} />);
+    // Badge should show "1 course •" (no 's')
+    expect(screen.getAllByText(/1 course •/).length).toBeGreaterThan(0);
+  });
+
+  it("renders plural 'courses' in badge when multiple classes selected", () => {
+    renderWithChakra(<ReviewStep {...defaultProps} classes={mockClasses} />);
+    // Badge should show "2 courses •"
+    expect(screen.getAllByText(/2 courses •/).length).toBeGreaterThan(0);
+  });
+
+  it("shows correct total credit count in badge", () => {
+    renderWithChakra(<ReviewStep {...defaultProps} classes={mockClasses} />);
+    // 3 + 3 = 6 credits
+    expect(screen.getAllByText(/6 credits/).length).toBeGreaterThan(0);
   });
 });

@@ -149,7 +149,7 @@ export default function CoursePanel({
           </Icon>
           <Heading
             size="sm"
-            fontFamily="'DM Serif Display', serif"
+            fontFamily="var(--font-outfit), sans-serif"
             fontWeight="400"
             letterSpacing="-0.02em"
           >
@@ -206,9 +206,7 @@ export default function CoursePanel({
             <Text fontSize="sm" color="fg.muted">
               {query
                 ? "No courses match your search."
-                : isGraduatePlan && graduateTracks.length >= 2 && !selectedTrackId
-                  ? "Select a concentration above to see courses."
-                  : "No requirement courses found."}
+                : "No requirement courses found."}
             </Text>
           </Box>
         )}

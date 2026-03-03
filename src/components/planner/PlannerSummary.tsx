@@ -22,11 +22,14 @@ import {
 } from "@/components/ui/progress-circle";
 import type { PlannedCourseWithDetails, Term, RequirementBlockWithCourses } from "@/types/planner";
 
+const GRADUATE_TOTAL_CREDITS = 30;
+
 interface PlannerSummaryProps {
   terms: Term[];
   plannedCourses: PlannedCourseWithDetails[];
   blocks: RequirementBlockWithCourses[];
   completedCourseIds: Set<number>;
+  isGraduatePlan?: boolean;
 }
 
 export default function PlannerSummary({
@@ -34,6 +37,7 @@ export default function PlannerSummary({
   plannedCourses,
   blocks,
   completedCourseIds,
+  isGraduatePlan = false,
 }: PlannerSummaryProps) {
   const [expanded, setExpanded] = useState(false);
 
@@ -43,9 +47,10 @@ export default function PlannerSummary({
   );
 
   const stats = useMemo(() => {
-    const totalRequired = blocks.reduce((s, b) => {
+    const summedCredits = blocks.reduce((s, b) => {
       return s + (b.credits_required ?? b.courses.reduce((cs, c) => cs + c.credits, 0));
     }, 0);
+    const totalRequired = isGraduatePlan ? GRADUATE_TOTAL_CREDITS : summedCredits;
 
     let completedCredits = 0;
     for (const block of blocks) {
@@ -66,7 +71,7 @@ export default function PlannerSummary({
     const semsNeeded = avgCreditsPerSem > 0 ? Math.ceil(remainingCredits / avgCreditsPerSem) : 0;
 
     return { totalRequired, completedCredits, degreePct, remainingCredits, avgCreditsPerSem, semsNeeded };
-  }, [blocks, completedCourseIds, totalPlannedCredits, terms.length]);
+  }, [blocks, completedCourseIds, totalPlannedCredits, terms.length, isGraduatePlan]);
 
   return (
     <Flex

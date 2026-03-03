@@ -1,5 +1,6 @@
 import { createClient } from "@/app/utils/supabase/server";
-import GenEdRequirements from "@/components/requirements/GenEdRequirements";
+import RequirementsDashboard from "@/components/requirements/RequirementsDashboard";
+import { DB_TABLES, STUDENT_COLUMNS } from "@/lib/supabase/queries/schema";
 
 export default async function RequirementsPage() {
   const supabase = await createClient();
@@ -17,9 +18,9 @@ export default async function RequirementsPage() {
 
   // 2) Find matching student row
   const { data: student, error: studentErr } = await supabase
-    .from("students")
+    .from(DB_TABLES.students)
     .select("id")
-    .eq("auth_user_id", user.id)
+    .eq(STUDENT_COLUMNS.authUserId, user.id)
     .single();
 
   if (studentErr || !student) {
@@ -31,5 +32,5 @@ export default async function RequirementsPage() {
   }
 
   // 3) Pass the correct studentId to the client component
-  return <GenEdRequirements studentId={student.id} />;
+return <RequirementsDashboard studentId={student.id} />;
 }

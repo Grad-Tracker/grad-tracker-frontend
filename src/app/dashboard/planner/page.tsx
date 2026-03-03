@@ -2,10 +2,8 @@
 
 import { useState, useEffect, useCallback, useMemo } from "react";
 import {
-  Avatar,
   Box,
   Button,
-  Circle,
   Flex,
   Heading,
   HStack,
@@ -15,7 +13,6 @@ import {
   Text,
   VStack,
 } from "@chakra-ui/react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   DndContext,
@@ -28,19 +25,10 @@ import {
 } from "@dnd-kit/core";
 import { createClient } from "@/lib/supabase/client";
 import { toaster } from "@/components/ui/toaster";
-import { ColorModeButton } from "@/components/ui/color-mode";
 import {
-  LuLayoutDashboard,
-  LuBookOpen,
-  LuGraduationCap,
   LuCalendar,
-  LuSettings,
-  LuFileText,
-  LuTarget,
-  LuLogOut,
   LuPlus,
   LuSparkles,
-  LuBell,
   LuArrowLeft,
   LuChevronRight,
 } from "react-icons/lu";
@@ -71,7 +59,11 @@ import type {
   BreadthPackage,
   GraduateTrack,
 } from "@/types/planner";
-import { deduplicateBlocks, getGraduateTracks, BREADTH_PACKAGES } from "@/types/planner";
+import {
+  deduplicateBlocks,
+  getGraduateTracks,
+  BREADTH_PACKAGES,
+} from "@/types/planner";
 import type { Course } from "@/types/course";
 
 import CoursePanel from "@/components/planner/CoursePanel";
@@ -83,14 +75,6 @@ import DraggableCourseCard from "@/components/planner/DraggableCourseCard";
 import CreatePlanDialog from "@/components/planner/CreatePlanDialog";
 import DeletePlanDialog from "@/components/planner/DeletePlanDialog";
 import PlansHub from "@/components/planner/PlansHub";
-
-const navItems = [
-  { icon: LuLayoutDashboard, label: "Dashboard", href: "/dashboard", active: false },
-  { icon: LuBookOpen, label: "Courses", href: "/dashboard/courses", active: false },
-  { icon: LuTarget, label: "Requirements", href: "/dashboard/requirements", active: false },
-  { icon: LuCalendar, label: "Planner", href: "/dashboard/planner", active: true },
-  { icon: LuFileText, label: "Reports", href: "/dashboard/reports", active: false },
-];
 
 export default function PlannerPage() {
   const router = useRouter();
@@ -106,12 +90,16 @@ export default function PlannerPage() {
 
   // Planner data (scoped to active plan)
   const [terms, setTerms] = useState<Term[]>([]);
-  const [plannedCourses, setPlannedCourses] = useState<PlannedCourseWithDetails[]>([]);
+  const [plannedCourses, setPlannedCourses] = useState<
+    PlannedCourseWithDetails[]
+  >([]);
   const [blocks, setBlocks] = useState<RequirementBlockWithCourses[]>([]);
   const [completedIds, setCompletedIds] = useState<Set<number>>(new Set());
 
   // Breadth package selection (persisted per plan)
-  const [selectedBreadthPackageId, setSelectedBreadthPackageId] = useState<string | null>(null);
+  const [selectedBreadthPackageId, setSelectedBreadthPackageId] = useState<
+    string | null
+  >(null);
 
   const selectedBreadthPackage: BreadthPackage | null = useMemo(
     () => BREADTH_PACKAGES.find((p) => p.id === selectedBreadthPackageId) ?? null,
@@ -179,10 +167,19 @@ export default function PlannerPage() {
     () => (isGraduatePlan ? getGraduateTracks(blocks) : []),
     [blocks, isGraduatePlan]
   );
+
+  // Auto-select first concentration track when a graduate plan loads
+  useEffect(() => {
+    if (isGraduatePlan && graduateTracks.length >= 2 && selectedTrackId === null) {
+      handleTrackSelect(graduateTracks[0].blockId);
+    }
+  }, [isGraduatePlan, graduateTracks, selectedTrackId, handleTrackSelect]);
+
   const allDedupedBlocks = useMemo(
     () => deduplicateBlocks(blocks, { isGraduate: isGraduatePlan }),
     [blocks, isGraduatePlan]
   );
+
   const displayBlocks = useMemo(
     () =>
       deduplicateBlocks(blocks, {
@@ -228,6 +225,18 @@ export default function PlannerPage() {
         setPlannedCourses(coursesData);
         setBlocks(blocksData);
         setCompletedIds(completedData);
+      } catch (err) {
+        console.error("Failed to load plan data:", err);
+        toaster.create({
+          title: "Failed to load plan",
+          description: "Please try again.",
+          type: "error",
+        });
+        // Ensure we don't keep stale data around on failure
+        setTerms([]);
+        setPlannedCourses([]);
+        setBlocks([]);
+        setCompletedIds(new Set());
       } finally {
         setPlanDataLoading(false);
       }
@@ -237,57 +246,98 @@ export default function PlannerPage() {
 
   // ── Initial load ───────────────────────────────────────
   useEffect(() => {
+    let alive = true;
+
     async function init() {
       setLoading(true);
-      const supabase = createClient();
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) {
-        router.push("/signin");
-        return;
-      }
 
-      const { data: studentRow, error: studentErr } = await supabase
-        .from(DB_TABLES.students)
-        .select("id")
-        .eq("auth_user_id", user.id)
-        .maybeSingle();
+      try {
+        const supabase = createClient();
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
 
-      if (studentErr || !studentRow) {
+        if (!alive) return;
+
+        if (!user) {
+          setLoading(false);
+          router.push("/signin");
+          return;
+        }
+
+        const { data: studentRow, error: studentErr } = await supabase
+          .from(DB_TABLES.students)
+          .select("id")
+          .eq("auth_user_id", user.id)
+          .maybeSingle();
+
+        if (!alive) return;
+
+        if (studentErr || !studentRow) {
+          toaster.create({
+            title: "Profile not found",
+            description: "Complete onboarding first.",
+            type: "error",
+          });
+          setLoading(false);
+          router.push("/dashboard");
+          return;
+        }
+
+        const sid = studentRow.id;
+        setStudentId(sid);
+
+        // Fetch plans (can fail — must be caught to avoid unhandled rejection)
+        let plansData: PlanWithMeta[] = await fetchPlans(sid);
+
+        // Auto-create default plan if none exist
+        if (plansData.length === 0) {
+          const { data: studentPrograms, error: spErr } = await supabase
+            .from(DB_TABLES.studentPrograms)
+            .select("program_id")
+            .eq("student_id", sid);
+
+          if (spErr) {
+            toaster.create({
+              title: "Failed to load programs",
+              description: "Please try again.",
+              type: "error",
+            });
+            if (alive) setPlans([]);
+            return;
+          }
+
+          const programIds = (studentPrograms ?? []).map(
+            (sp: any) => sp.program_id
+          );
+
+          // createPlan can fail too — allow outer catch to handle
+          await createPlan(sid, "My Plan", null, programIds);
+          plansData = await fetchPlans(sid);
+        }
+
+        if (!alive) return;
+
+        setPlans(plansData);
+      } catch (err) {
+        console.error("Planner init failed:", err);
         toaster.create({
-          title: "Profile not found",
-          description: "Complete onboarding first.",
+          title: "Failed to load planner",
+          description: "Please try again.",
           type: "error",
         });
-        router.push("/dashboard");
-        return;
+        if (alive) setPlans([]);
+      } finally {
+        if (alive) setLoading(false);
       }
-
-      const sid = studentRow.id;
-      setStudentId(sid);
-
-      // Fetch plans
-      let plansData = await fetchPlans(sid);
-
-      // Auto-create default plan if none exist
-      if (plansData.length === 0) {
-        const { data: studentPrograms } = await supabase
-          .from(DB_TABLES.studentPrograms)
-          .select("program_id")
-          .eq("student_id", sid);
-
-        const programIds = (studentPrograms ?? []).map((sp: any) => sp.program_id);
-        await createPlan(sid, "My Plan", null, programIds);
-        plansData = await fetchPlans(sid);
-      }
-
-      setPlans(plansData);
-      setLoading(false);
     }
 
     init();
-  }, [router, loadPlanData]);
+
+    return () => {
+      alive = false;
+    };
+  }, [router]);
 
   // ── Open plan from hub ──────────────────────────────────
   const handleOpenPlan = useCallback(
@@ -321,28 +371,43 @@ export default function PlannerPage() {
   const handleCreatePlan = useCallback(
     async (name: string, description: string | null, programIds: number[]) => {
       if (!studentId) return;
-      const newPlan = await createPlan(studentId, name, description, programIds);
-      const refreshedPlans = await fetchPlans(studentId);
-      setPlans(refreshedPlans);
-      setActivePlanId(newPlan.id);
-      setView("workspace");
-      const created = refreshedPlans.find((p) => p.id === newPlan.id);
-      await loadPlanData(studentId, newPlan.id, created?.has_graduate_program ?? false);
-      toaster.create({ title: `"${name}" created`, type: "success" });
+      try {
+        const newPlan = await createPlan(studentId, name, description, programIds);
+        const refreshedPlans = await fetchPlans(studentId);
+        setPlans(refreshedPlans);
+        setActivePlanId(newPlan.id);
+        setView("workspace");
+        const created = refreshedPlans.find((p) => p.id === newPlan.id);
+        await loadPlanData(studentId, newPlan.id, created?.has_graduate_program ?? false);
+        toaster.create({ title: `"${name}" created`, type: "success" });
+      } catch (err) {
+        console.error("Create plan failed:", err);
+        toaster.create({
+          title: "Failed to create plan",
+          description: "Please try again.",
+          type: "error",
+        });
+      }
     },
     [studentId, loadPlanData]
   );
 
   // ── Rename plan ────────────────────────────────────────
-  const handleRenamePlan = useCallback(
-    async (planId: number, newName: string) => {
+  const handleRenamePlan = useCallback(async (planId: number, newName: string) => {
+    try {
       await updatePlan(planId, { name: newName });
       setPlans((prev) =>
         prev.map((p) => (p.id === planId ? { ...p, name: newName } : p))
       );
-    },
-    []
-  );
+    } catch (err) {
+      console.error("Rename plan failed:", err);
+      toaster.create({
+        title: "Failed to rename plan",
+        description: "Please try again.",
+        type: "error",
+      });
+    }
+  }, []);
 
   // ── Delete plan ────────────────────────────────────────
   const handleDeletePlanRequest = useCallback((planId: number) => {
@@ -353,40 +418,59 @@ export default function PlannerPage() {
     const planId = deletePlanDialog.planId;
     if (!planId || !studentId) return;
 
-    await deletePlan(planId);
-    const refreshedPlans = await fetchPlans(studentId);
-    setPlans(refreshedPlans);
+    try {
+      await deletePlan(planId);
+      const refreshedPlans = await fetchPlans(studentId);
+      setPlans(refreshedPlans);
 
-    if (activePlanId === planId) {
-      if (view === "workspace" && refreshedPlans.length > 0) {
-        const nextPlan = refreshedPlans[0];
-        setActivePlanId(nextPlan.id);
-        await loadPlanData(studentId, nextPlan.id);
-      } else {
-        setActivePlanId(null);
-        setView("hub");
+      if (activePlanId === planId) {
+        if (view === "workspace" && refreshedPlans.length > 0) {
+          const nextPlan = refreshedPlans[0];
+          setActivePlanId(nextPlan.id);
+          await loadPlanData(studentId, nextPlan.id);
+        } else {
+          setActivePlanId(null);
+          setView("hub");
+        }
       }
-    }
 
-    toaster.create({ title: "Plan deleted", type: "info" });
+      toaster.create({ title: "Plan deleted", type: "info" });
+    } catch (err) {
+      console.error("Delete plan failed:", err);
+      toaster.create({
+        title: "Failed to delete plan",
+        description: "Please try again.",
+        type: "error",
+      });
+    }
   }, [deletePlanDialog.planId, studentId, activePlanId, view, loadPlanData]);
 
   // ── Add semester ────────────────────────────────────────
   const handleAddSemester = useCallback(
     async (season: Term["season"], year: number) => {
       if (!studentId || !activePlanId) return;
-      const term = await getOrCreateTerm(season, year);
-      await addTermPlan(studentId, term.id, activePlanId);
-      setTerms((prev) => [...prev, term]);
-      setPlans((prev) =>
-        prev.map((p) =>
-          p.id === activePlanId ? { ...p, term_count: p.term_count + 1 } : p
-        )
-      );
-      toaster.create({
-        title: `${season} ${year} added`,
-        type: "success",
-      });
+
+      try {
+        const term = await getOrCreateTerm(season, year);
+        await addTermPlan(studentId, term.id, activePlanId);
+        setTerms((prev) => [...prev, term]);
+        setPlans((prev) =>
+          prev.map((p) =>
+            p.id === activePlanId ? { ...p, term_count: p.term_count + 1 } : p
+          )
+        );
+        toaster.create({
+          title: `${season} ${year} added`,
+          type: "success",
+        });
+      } catch (err) {
+        console.error("Add semester failed:", err);
+        toaster.create({
+          title: "Failed to add semester",
+          description: "Please try again.",
+          type: "error",
+        });
+      }
     },
     [studentId, activePlanId]
   );
@@ -408,22 +492,32 @@ export default function PlannerPage() {
     async (termId?: number) => {
       const id = termId ?? removeDialog.termId;
       if (!studentId || !id || !activePlanId) return;
+
       const removedCourseCount = plannedCourses.filter((pc) => pc.term_id === id).length;
-      await removeTermPlan(studentId, id, activePlanId);
-      setTerms((prev) => prev.filter((t) => t.id !== id));
-      setPlannedCourses((prev) => prev.filter((pc) => pc.term_id !== id));
-      setPlans((prev) =>
-        prev.map((p) =>
-          p.id === activePlanId
-            ? {
-                ...p,
-                term_count: Math.max(0, p.term_count - 1),
-                course_count: Math.max(0, p.course_count - removedCourseCount),
-              }
-            : p
-        )
-      );
-      toaster.create({ title: "Semester removed", type: "info" });
+
+      try {
+        await removeTermPlan(studentId, id, activePlanId);
+        setTerms((prev) => prev.filter((t) => t.id !== id));
+        setPlannedCourses((prev) => prev.filter((pc) => pc.term_id !== id));
+        setPlans((prev) =>
+          prev.map((p) =>
+            p.id === activePlanId
+              ? {
+                  ...p,
+                  term_count: Math.max(0, p.term_count - 1),
+                  course_count: Math.max(0, p.course_count - removedCourseCount),
+                }
+              : p
+          )
+        );
+        toaster.create({ title: "Semester removed", type: "info" });
+      } catch (err: any) {
+        toaster.create({
+          title: "Error",
+          description: err?.message || "Failed to remove semester",
+          type: "error",
+        });
+      }
     },
     [studentId, activePlanId, removeDialog.termId, plannedCourses]
   );
@@ -457,7 +551,13 @@ export default function PlannerPage() {
 
       try {
         if (fromTermId) {
-          await movePlannedCourse(studentId, course.id, fromTermId, toTermId, activePlanId);
+          await movePlannedCourse(
+            studentId,
+            course.id,
+            fromTermId,
+            toTermId,
+            activePlanId
+          );
           setPlannedCourses((prev) =>
             prev.map((pc) =>
               pc.course_id === course.id && pc.term_id === fromTermId
@@ -506,8 +606,7 @@ export default function PlannerPage() {
         await removePlannedCourse(studentId, fromTermId, course.id, activePlanId);
         setPlannedCourses((prev) =>
           prev.filter(
-            (pc) =>
-              !(pc.course_id === course.id && pc.term_id === fromTermId)
+            (pc) => !(pc.course_id === course.id && pc.term_id === fromTermId)
           )
         );
         setPlans((prev) =>
@@ -531,457 +630,245 @@ export default function PlannerPage() {
     }
   }
 
-  // ── Sign out ────────────────────────────────────────────
-  async function handleSignOut() {
-    const supabase = createClient();
-    await supabase.auth.signOut();
-    toaster.create({
-      title: "Signed out",
-      description: "You've been signed out successfully.",
-      type: "success",
-    });
-    router.push("/signin");
-  }
-
   // ── Loading state ───────────────────────────────────────
   if (loading) {
     return (
-      <Box
-        minH="100vh"
-        display="flex"
-        alignItems="center"
-        justifyContent="center"
-        fontFamily="'Plus Jakarta Sans', sans-serif"
-      >
+      <Flex align="center" justify="center" minH="60vh">
         <VStack gap="4">
           <Spinner size="xl" color="green.500" />
           <Text color="fg.muted">Loading your planner...</Text>
         </VStack>
-      </Box>
+      </Flex>
     );
   }
 
   // ── Render ──────────────────────────────────────────────
   return (
-    <Box minH="100vh" bg="bg" fontFamily="'Plus Jakarta Sans', sans-serif">
-      <Flex>
-        {/* ──────── Sidebar ──────── */}
-        <Box
-          as="aside"
-          w="260px"
-          minH="100vh"
-          bg="bg"
-          borderRightWidth="1px"
-          borderColor="border.subtle"
-          position="fixed"
-          left="0"
-          top="0"
-          display={{ base: "none", lg: "flex" }}
-          flexDirection="column"
-          zIndex="docked"
-        >
-          <HStack
-            gap="3"
-            px="6"
-            py="5"
+    <Box
+      mx={{ base: "-4", md: "-8" }}
+      mt="-6"
+      display="flex"
+      flexDirection="column"
+      minH="calc(100vh - 80px)"
+    >
+      {view === "hub" ? (
+        <>
+          <PlansHub
+            plans={plans}
+            onOpenPlan={handleOpenPlan}
+            onCreatePlan={() => setCreatePlanDialogOpen(true)}
+            onRenamePlan={handleRenamePlan}
+            onDeletePlan={handleDeletePlanRequest}
+          />
+        </>
+      ) : (
+        <>
+          {/* Workspace header */}
+          <Box
+            as="header"
+            position="sticky"
+            top="0"
+            bg="bg"
             borderBottomWidth="1px"
             borderColor="border.subtle"
+            zIndex="sticky"
+            className="glass-card"
           >
-            <Box p="2" bg="green.solid" borderRadius="lg">
-              <Icon color="white" boxSize="5">
-                <LuGraduationCap />
-              </Icon>
-            </Box>
-            <Text
-              fontWeight="700"
-              fontSize="lg"
-              fontFamily="'DM Serif Display', serif"
-              letterSpacing="-0.02em"
-            >
-              GradTracker
-            </Text>
-          </HStack>
-
-          <VStack align="stretch" flex="1" py="4" px="3" gap="1">
-            {navItems.map((item) => (
-              <Link
-                key={item.label}
-                href={item.href}
-                style={{ textDecoration: "none" }}
-              >
-                <HStack
-                  px="4"
-                  py="2.5"
+            <Flex justify="space-between" align="center" px={{ base: "4", md: "6" }} py="3">
+              {/* Breadcrumb navigation */}
+              <HStack gap="2">
+                <IconButton
+                  aria-label="Back to plans"
+                  variant="ghost"
+                  size="sm"
                   borderRadius="lg"
-                  cursor="pointer"
-                  bg={item.active ? "green.subtle" : "transparent"}
-                  color={item.active ? "green.fg" : "fg.muted"}
-                  fontWeight={item.active ? "600" : "500"}
-                  _hover={{
-                    bg: item.active ? "green.subtle" : "bg.subtle",
-                    color: item.active ? "green.fg" : "fg",
-                  }}
-                  transition="all 0.15s"
+                  onClick={handleBackToHub}
+                  _hover={{ bg: "bg.subtle" }}
                 >
-                  <Icon boxSize="5">
-                    <item.icon />
+                  <LuArrowLeft />
+                </IconButton>
+                <HStack gap="1.5" fontSize="sm">
+                  <Text
+                    color="fg.muted"
+                    cursor="pointer"
+                    _hover={{ color: "green.fg" }}
+                    onClick={handleBackToHub}
+                    fontWeight="500"
+                    transition="color 0.15s"
+                  >
+                    Plans
+                  </Text>
+                  <Icon color="fg.subtle" boxSize="3.5">
+                    <LuChevronRight />
                   </Icon>
-                  <Text fontSize="sm">{item.label}</Text>
+                  <Heading
+                    size="md"
+                    fontFamily="var(--font-outfit), sans-serif"
+                    fontWeight="400"
+                    letterSpacing="-0.02em"
+                  >
+                    {activePlan?.name ?? "Plan"}
+                  </Heading>
                 </HStack>
-              </Link>
-            ))}
-          </VStack>
-
-          <VStack
-            align="stretch"
-            p="4"
-            gap="2"
-            borderTopWidth="1px"
-            borderColor="border.subtle"
-          >
-            <Link href="/dashboard/settings" style={{ textDecoration: "none" }}>
-              <HStack
-                px="4"
-                py="2.5"
-                borderRadius="lg"
-                cursor="pointer"
-                color="fg.muted"
-                fontWeight="500"
-                _hover={{ bg: "bg.subtle", color: "fg" }}
-                transition="all 0.15s"
-              >
-                <Icon boxSize="5">
-                  <LuSettings />
-                </Icon>
-                <Text fontSize="sm">Settings</Text>
               </HStack>
-            </Link>
-            <HStack
-              px="4"
-              py="2.5"
-              borderRadius="lg"
-              cursor="pointer"
-              color="fg.muted"
-              fontWeight="500"
-              _hover={{ bg: "red.subtle", color: "red.fg" }}
-              transition="all 0.15s"
-              onClick={handleSignOut}
-            >
-              <Icon boxSize="5">
-                <LuLogOut />
-              </Icon>
-              <Text fontSize="sm">Sign Out</Text>
-            </HStack>
-          </VStack>
-        </Box>
 
-        {/* ──────── Main Content ──────── */}
-        <Box
-          flex="1"
-          ml={{ base: "0", lg: "260px" }}
-          minH="100vh"
-          display="flex"
-          flexDirection="column"
-          className="mesh-gradient-subtle"
-        >
-          {view === "hub" ? (
-            <>
-              {/* Hub header */}
-              <Box
-                as="header"
-                position="sticky"
-                top="0"
-                bg="bg"
-                borderBottomWidth="1px"
-                borderColor="border.subtle"
-                zIndex="sticky"
-                className="glass-card"
-              >
-                <Flex
-                  justify="space-between"
-                  align="center"
-                  px={{ base: "4", md: "6" }}
-                  py="3"
+              <HStack gap="2">
+                {/* Compact plan tabs for quick switching */}
+                {plans.length > 1 && (
+                  <HStack gap="0" bg="bg.subtle" borderRadius="lg" p="0.5" mr="1">
+                    {plans.map((p) => (
+                      <Button
+                        key={p.id}
+                        size="xs"
+                        variant={p.id === activePlanId ? "solid" : "ghost"}
+                        colorPalette={p.id === activePlanId ? "green" : "gray"}
+                        borderRadius="md"
+                        fontSize="xs"
+                        fontWeight={p.id === activePlanId ? "600" : "500"}
+                        onClick={() => handleSwitchPlan(p.id)}
+                        px="3"
+                        transition="all 0.15s"
+                      >
+                        {p.name}
+                      </Button>
+                    ))}
+                  </HStack>
+                )}
+                <Button
+                  size="sm"
+                  variant="outline"
+                  borderRadius="lg"
+                  onClick={() => setAddDialogOpen(true)}
                 >
-                  <HStack gap="2">
-                    <Icon boxSize="5" color="green.fg">
-                      <LuCalendar />
-                    </Icon>
-                    <Heading
-                      size="lg"
-                      fontFamily="'DM Serif Display', serif"
-                      fontWeight="400"
-                      letterSpacing="-0.02em"
-                    >
-                      Planner
-                    </Heading>
-                  </HStack>
-                  <HStack gap="3">
-                    <IconButton
-                      aria-label="Notifications"
-                      variant="ghost"
-                      size="sm"
-                      position="relative"
-                    >
-                      <LuBell />
-                      <Circle
-                        size="2"
-                        bg="red.500"
-                        position="absolute"
-                        top="1.5"
-                        right="1.5"
-                      />
-                    </IconButton>
-                    <ColorModeButton variant="ghost" size="sm" />
-                    <Avatar.Root size="sm">
-                      <Avatar.Fallback name="Student" />
-                    </Avatar.Root>
-                  </HStack>
-                </Flex>
-              </Box>
+                  <LuPlus size={16} />
+                  Add Semester
+                </Button>
+                <Button size="sm" variant="ghost" borderRadius="lg" disabled title="Coming soon">
+                  <LuSparkles size={16} />
+                  Auto Generate
+                </Button>
+              </HStack>
+            </Flex>
+          </Box>
 
-              <PlansHub
-                plans={plans}
-                onOpenPlan={handleOpenPlan}
-                onCreatePlan={() => setCreatePlanDialogOpen(true)}
-                onRenamePlan={handleRenamePlan}
-                onDeletePlan={handleDeletePlanRequest}
-              />
-            </>
+          {/* Plan data loading overlay */}
+          {planDataLoading ? (
+            <Flex flex="1" align="center" justify="center">
+              <VStack gap="3">
+                <Spinner size="lg" color="green.500" />
+                <Text fontSize="sm" color="fg.muted">
+                  Loading plan...
+                </Text>
+              </VStack>
+            </Flex>
           ) : (
             <>
-              {/* Workspace header */}
-              <Box
-                as="header"
-                position="sticky"
-                top="0"
-                bg="bg"
-                borderBottomWidth="1px"
-                borderColor="border.subtle"
-                zIndex="sticky"
-                className="glass-card"
-              >
-                <Flex
-                  justify="space-between"
-                  align="center"
-                  px={{ base: "4", md: "6" }}
-                  py="3"
-                >
-                  {/* Breadcrumb navigation */}
-                  <HStack gap="2">
-                    <IconButton
-                      aria-label="Back to plans"
-                      variant="ghost"
-                      size="sm"
-                      borderRadius="lg"
-                      onClick={handleBackToHub}
-                      _hover={{ bg: "bg.subtle" }}
-                    >
-                      <LuArrowLeft />
-                    </IconButton>
-                    <HStack gap="1.5" fontSize="sm">
-                      <Text
-                        color="fg.muted"
-                        cursor="pointer"
-                        _hover={{ color: "green.fg" }}
-                        onClick={handleBackToHub}
-                        fontWeight="500"
-                        transition="color 0.15s"
-                      >
-                        Plans
-                      </Text>
-                      <Icon color="fg.subtle" boxSize="3.5">
-                        <LuChevronRight />
-                      </Icon>
-                      <Heading
-                        size="md"
-                        fontFamily="'DM Serif Display', serif"
-                        fontWeight="400"
-                        letterSpacing="-0.02em"
-                      >
-                        {activePlan?.name ?? "Plan"}
-                      </Heading>
-                    </HStack>
-                  </HStack>
-
-                  <HStack gap="2">
-                    {/* Compact plan tabs for quick switching */}
-                    {plans.length > 1 && (
-                      <HStack
-                        gap="0"
-                        bg="bg.subtle"
-                        borderRadius="lg"
-                        p="0.5"
-                        mr="1"
-                      >
-                        {plans.map((p) => (
-                          <Button
-                            key={p.id}
-                            size="xs"
-                            variant={p.id === activePlanId ? "solid" : "ghost"}
-                            colorPalette={p.id === activePlanId ? "green" : "gray"}
-                            borderRadius="md"
-                            fontSize="xs"
-                            fontWeight={p.id === activePlanId ? "600" : "500"}
-                            onClick={() => handleSwitchPlan(p.id)}
-                            px="3"
-                            transition="all 0.15s"
-                          >
-                            {p.name}
-                          </Button>
-                        ))}
-                      </HStack>
-                    )}
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      borderRadius="lg"
-                      onClick={() => setAddDialogOpen(true)}
-                    >
-                      <LuPlus size={16} />
-                      Add Semester
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      borderRadius="lg"
-                      disabled
-                      title="Coming soon"
-                    >
-                      <LuSparkles size={16} />
-                      Auto Generate
-                    </Button>
-                    <ColorModeButton variant="ghost" size="sm" />
-                  </HStack>
-                </Flex>
-              </Box>
-
-              {/* Plan data loading overlay */}
-              {planDataLoading ? (
-                <Flex flex="1" align="center" justify="center">
-                  <VStack gap="3">
-                    <Spinner size="lg" color="green.500" />
-                    <Text fontSize="sm" color="fg.muted">
-                      Loading plan...
-                    </Text>
-                  </VStack>
-                </Flex>
-              ) : (
-                <>
-                  <DndContext
-                    sensors={sensors}
-                    onDragStart={handleDragStart}
-                    onDragEnd={handleDragEnd}
-                  >
-                    <Flex flex="1" overflow="hidden" className="animate-fade-up">
-                      <CoursePanel
-                        blocks={displayBlocks}
-                        allDedupedBlocks={allDedupedBlocks}
-                        completedCourseIds={completedIds}
-                        plannedCourseIds={plannedCourseIds}
-                        plannedCourses={plannedCourses}
-                        isDragActive={!!activeDrag}
-                        selectedBreadthPackageId={selectedBreadthPackageId}
-                        onBreadthPackageSelect={handleBreadthPackageSelect}
-                        isGraduatePlan={isGraduatePlan}
-                        graduateTracks={graduateTracks}
-                        selectedTrackId={selectedTrackId}
-                        onTrackSelect={handleTrackSelect}
-                      />
-
-                      {terms.length === 0 ? (
-                        <Flex
-                          flex="1"
-                          align="center"
-                          justify="center"
-                          direction="column"
-                          gap="4"
-                          p="8"
-                          className="animate-fade-up-delay-1"
-                        >
-                          <Box
-                            p="8"
-                            borderWidth="2px"
-                            borderStyle="dashed"
-                            borderColor="border.subtle"
-                            borderRadius="2xl"
-                            textAlign="center"
-                            maxW="420px"
-                            bg="bg"
-                          >
-                            <Box
-                              w="16"
-                              h="16"
-                              borderRadius="2xl"
-                              bg="green.subtle"
-                              display="flex"
-                              alignItems="center"
-                              justifyContent="center"
-                              mx="auto"
-                              mb="4"
-                            >
-                              <LuCalendar size={32} color="var(--chakra-colors-green-fg)" />
-                            </Box>
-                            <Heading
-                              size="md"
-                              mb="2"
-                              fontFamily="'DM Serif Display', serif"
-                              fontWeight="400"
-                              letterSpacing="-0.02em"
-                            >
-                              No semesters yet
-                            </Heading>
-                            <Text fontSize="sm" color="fg.muted" mb="2">
-                              Add your first semester to start planning your courses.
-                            </Text>
-                            <Text fontSize="xs" color="fg.muted" mb="5">
-                              Drag courses from the pool on the left into your semesters to build your plan.
-                            </Text>
-                            <Button
-                              colorPalette="green"
-                              borderRadius="lg"
-                              size="sm"
-                              onClick={() => setAddDialogOpen(true)}
-                            >
-                              <LuPlus size={16} />
-                              Add First Semester
-                            </Button>
-                          </Box>
-                        </Flex>
-                      ) : (
-                        <SemesterGrid
-                          terms={terms}
-                          plannedCourses={plannedCourses}
-                          onRemoveTerm={handleRemoveTermRequest}
-                          isGraduatePlan={isGraduatePlan}
-                        />
-                      )}
-                    </Flex>
-
-                    <DragOverlay>
-                      {activeDrag ? (
-                        <Box w="260px" opacity={0.9}>
-                          <DraggableCourseCard
-                            course={activeDrag.course}
-                            termId={activeDrag.fromTermId}
-                          />
-                        </Box>
-                      ) : null}
-                    </DragOverlay>
-                  </DndContext>
-
-                  <PlannerSummary
-                    terms={terms}
-                    plannedCourses={plannedCourses}
+              <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+                <Flex flex="1" overflow="hidden" className="animate-fade-up">
+                  <CoursePanel
                     blocks={displayBlocks}
+                    allDedupedBlocks={allDedupedBlocks}
                     completedCourseIds={completedIds}
+                    plannedCourseIds={plannedCourseIds}
+                    plannedCourses={plannedCourses}
+                    isDragActive={!!activeDrag}
+                    selectedBreadthPackageId={selectedBreadthPackageId}
+                    onBreadthPackageSelect={handleBreadthPackageSelect}
+                    isGraduatePlan={isGraduatePlan}
+                    graduateTracks={graduateTracks}
+                    selectedTrackId={selectedTrackId}
+                    onTrackSelect={handleTrackSelect}
                   />
-                </>
-              )}
+
+                  {terms.length === 0 ? (
+                    <Flex
+                      flex="1"
+                      align="center"
+                      justify="center"
+                      direction="column"
+                      gap="4"
+                      p="8"
+                      className="animate-fade-up-delay-1"
+                    >
+                      <Box
+                        p="8"
+                        borderWidth="2px"
+                        borderStyle="dashed"
+                        borderColor="border.subtle"
+                        borderRadius="2xl"
+                        textAlign="center"
+                        maxW="420px"
+                        bg="bg"
+                      >
+                        <Box
+                          w="16"
+                          h="16"
+                          borderRadius="2xl"
+                          bg="green.subtle"
+                          display="flex"
+                          alignItems="center"
+                          justifyContent="center"
+                          mx="auto"
+                          mb="4"
+                        >
+                          <LuCalendar size={32} color="var(--chakra-colors-green-fg)" />
+                        </Box>
+                        <Heading
+                          size="md"
+                          mb="2"
+                          fontFamily="var(--font-outfit), sans-serif"
+                          fontWeight="400"
+                          letterSpacing="-0.02em"
+                        >
+                          No semesters yet
+                        </Heading>
+                        <Text fontSize="sm" color="fg.muted" mb="2">
+                          Add your first semester to start planning your courses.
+                        </Text>
+                        <Text fontSize="xs" color="fg.muted" mb="5">
+                          Drag courses from the pool on the left into your semesters to build your plan.
+                        </Text>
+                        <Button
+                          colorPalette="green"
+                          borderRadius="lg"
+                          size="sm"
+                          onClick={() => setAddDialogOpen(true)}
+                        >
+                          <LuPlus size={16} />
+                          Add First Semester
+                        </Button>
+                      </Box>
+                    </Flex>
+                  ) : (
+                    <SemesterGrid
+                      terms={terms}
+                      plannedCourses={plannedCourses}
+                      onRemoveTerm={handleRemoveTermRequest}
+                      isGraduatePlan={isGraduatePlan}
+                    />
+                  )}
+                </Flex>
+
+                <DragOverlay>
+                  {activeDrag ? (
+                    <Box w="260px" opacity={0.9}>
+                      <DraggableCourseCard course={activeDrag.course} termId={activeDrag.fromTermId} />
+                    </Box>
+                  ) : null}
+                </DragOverlay>
+              </DndContext>
+
+              <PlannerSummary
+                terms={terms}
+                plannedCourses={plannedCourses}
+                blocks={displayBlocks}
+                completedCourseIds={completedIds}
+                isGraduatePlan={isGraduatePlan}
+              />
             </>
           )}
-        </Box>
-      </Flex>
+        </>
+      )}
 
       {/* Dialogs */}
       <AddSemesterDialog
@@ -1012,9 +899,7 @@ export default function PlannerPage() {
 
       <DeletePlanDialog
         open={deletePlanDialog.open}
-        onOpenChange={(open) =>
-          setDeletePlanDialog((prev) => ({ ...prev, open }))
-        }
+        onOpenChange={(open) => setDeletePlanDialog((prev) => ({ ...prev, open }))}
         onConfirm={handleDeletePlanConfirmed}
         plan={plans.find((p) => p.id === deletePlanDialog.planId) ?? null}
       />

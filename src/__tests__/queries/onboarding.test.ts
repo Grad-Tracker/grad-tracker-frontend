@@ -11,15 +11,25 @@ const mockSingle = vi.fn();
 const mockMaybeSingle = vi.fn();
 
 function createChainMock(overrides: Record<string, unknown> = {}) {
-  const chain: Record<string, unknown> = {};
+  const chain: Record<string, any> = {};
+
   chain.select = vi.fn().mockReturnValue(chain);
   chain.insert = vi.fn().mockReturnValue(chain);
   chain.update = vi.fn().mockReturnValue(chain);
   chain.eq = vi.fn().mockReturnValue(chain);
   chain.in = vi.fn().mockReturnValue(chain);
   chain.order = vi.fn().mockReturnValue(chain);
+
+  // ✅ Added for new onboarding implementation:
+  // saveOnboardingSelections now uses delete().eq(...) and upsert(...)
+  chain.delete = vi.fn().mockReturnValue({
+    eq: vi.fn().mockResolvedValue({ data: null, error: null }),
+  });
+  chain.upsert = vi.fn().mockResolvedValue({ data: null, error: null });
+
   chain.single = vi.fn().mockResolvedValue({ data: null, error: null });
   chain.maybeSingle = vi.fn().mockResolvedValue({ data: null, error: null });
+
   // Spread overrides for the final resolution
   Object.assign(chain, overrides);
   return chain;
@@ -108,7 +118,6 @@ describe("onboarding queries", () => {
         { id: 101, subject: "CS", number: "201", title: "Data Structures", credits: 3 },
       ];
 
-      let callCount = 0;
       const mockFrom = vi.fn().mockImplementation((table: string) => {
         const chain = createChainMock();
 
@@ -260,9 +269,7 @@ describe("onboarding queries", () => {
         { id: 30, name: "Cybersecurity", catalog_year: "2025-2026", program_type: "CERTIFICATE" },
       ];
 
-      let callCount = 0;
       const mockFrom = vi.fn().mockImplementation((table: string) => {
-        callCount++;
         const chain = createChainMock();
 
         if (table === "major_certificate_mappings") {
@@ -309,16 +316,16 @@ describe("onboarding queries", () => {
 
   describe("saveOnboardingSelections", () => {
     it("inserts programs, courses, and updates onboarding flag", async () => {
-      const insertCalls: Array<{ table: string; data: unknown }> = [];
-
       const mockFrom = vi.fn().mockImplementation((table: string) => {
         const chain = createChainMock();
 
+        // delete is always called first on both tables before upsert
+        chain.delete = vi.fn().mockReturnValue({
+          eq: vi.fn().mockResolvedValue({ error: null }),
+        });
+
         if (table === "student_programs" || table === "student_course_history") {
-          chain.insert = vi.fn().mockImplementation((data) => {
-            insertCalls.push({ table, data });
-            return { error: null };
-          });
+          chain.upsert = vi.fn().mockReturnValue({ error: null });
         } else if (table === "students") {
           chain.update = vi.fn().mockReturnValue({
             eq: vi.fn().mockResolvedValue({ error: null }),
@@ -332,6 +339,42 @@ describe("onboarding queries", () => {
 
       await saveOnboardingSelections(1, 10, [20, 30], [100, 101]);
 
+      // cleanup deletes happen for BOTH tables
+      expect(deleteCalls).toEqual([
+        { table: "student_programs", column: "student_id", value: 1 },
+        { table: "student_course_history", column: "student_id", value: 1 },
+      ]);
+
+      // student_programs upsert called with major + certificates
+      const programsUpsert = upsertCalls.find((c) => c.table === "student_programs");
+      expect(programsUpsert).toBeTruthy();
+      expect(programsUpsert?.data).toEqual([
+        { student_id: 1, program_id: 10 },
+        { student_id: 1, program_id: 20 },
+        { student_id: 1, program_id: 30 },
+      ]);
+      expect(programsUpsert?.options).toEqual({
+        onConflict: "student_id,program_id",
+        ignoreDuplicates: false,
+      });
+
+      // student_course_history upsert called with completed courses
+      const coursesUpsert = upsertCalls.find((c) => c.table === "student_course_history");
+      expect(coursesUpsert).toBeTruthy();
+      expect(coursesUpsert?.data).toEqual([
+        { student_id: 1, course_id: 100, completed: true },
+        { student_id: 1, course_id: 101, completed: true },
+      ]);
+      expect(coursesUpsert?.options).toEqual({
+        onConflict: "student_id,course_id",
+        ignoreDuplicates: false,
+      });
+
+      // student update should happen
+      expect(studentUpdatePayload).toEqual({
+        has_completed_onboarding: true,
+      });
+
       // Should call from() for programs, course_history, and students
       expect(mockFrom).toHaveBeenCalledWith("student_programs");
       expect(mockFrom).toHaveBeenCalledWith("student_course_history");
@@ -339,18 +382,25 @@ describe("onboarding queries", () => {
     });
 
     it("includes graduation fields in student update", async () => {
+      // ✅ Updated: now includes deletes + upsert + update
       let updatePayload: Record<string, unknown> = {};
+      const upsertCalls: Array<{ table: string; data: unknown; options?: unknown }> = [];
 
       const mockFrom = vi.fn().mockImplementation((table: string) => {
         const chain = createChainMock();
 
-        if (table === "student_programs") {
-          chain.insert = vi.fn().mockReturnValue({ error: null });
+        // delete is always called before upsert
+        chain.delete = vi.fn().mockReturnValue({
+          eq: vi.fn().mockResolvedValue({ error: null }),
+        });
+
+        if (table === "student_programs" || table === "student_course_history") {
+          chain.upsert = vi.fn().mockReturnValue({ error: null });
         } else if (table === "students") {
           chain.update = vi.fn().mockImplementation((payload) => {
             updatePayload = payload;
             return {
-              eq: vi.fn().mockResolvedValue({ error: null }),
+              eq: vi.fn().mockResolvedValue({ data: null, error: null }),
             };
           });
         }
@@ -367,17 +417,33 @@ describe("onboarding queries", () => {
         expected_graduation_semester: "Fall",
         expected_graduation_year: 2027,
       });
+
+      // student_programs still upserts the major even if no certs
+      const programsUpsert = upsertCalls.find((c) => c.table === "student_programs");
+      expect(programsUpsert?.data).toEqual([{ student_id: 1, program_id: 10 }]);
     });
 
-    it("skips course history insert when no courses selected", async () => {
+    it("skips course history upsert when no courses selected", async () => {
+      const historyUpsertCalled = { value: false };
+
       const mockFrom = vi.fn().mockImplementation((table: string) => {
         const chain = createChainMock();
 
+        // delete is always called on both tables
+        chain.delete = vi.fn().mockReturnValue({
+          eq: vi.fn().mockResolvedValue({ error: null }),
+        });
+
         if (table === "student_programs") {
-          chain.insert = vi.fn().mockReturnValue({ error: null });
+          chain.upsert = vi.fn().mockReturnValue({ error: null });
+        } else if (table === "student_course_history") {
+          chain.upsert = vi.fn().mockImplementation(() => {
+            historyUpsertCalled.value = true;
+            return { error: null };
+          });
         } else if (table === "students") {
           chain.update = vi.fn().mockReturnValue({
-            eq: vi.fn().mockResolvedValue({ error: null }),
+            eq: vi.fn().mockResolvedValue({ data: null, error: null }),
           });
         }
 
@@ -388,9 +454,9 @@ describe("onboarding queries", () => {
 
       await saveOnboardingSelections(1, 10, [], []);
 
-      // Should NOT call student_course_history when no courses
-      const tables = mockFrom.mock.calls.map((c: unknown[]) => c[0]);
-      expect(tables).not.toContain("student_course_history");
+      // delete IS called on student_course_history (to clear old data),
+      // but upsert should NOT be called since there are no courses to insert
+      expect(historyUpsertCalled.value).toBe(false);
     });
   });
 });

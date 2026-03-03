@@ -12,6 +12,11 @@ export default defineConfig({
       provider: "v8",
       reporter: ["text", "html", "lcov"],
       reportsDirectory: "./coverage",
+      // Measure coverage for all source files in src/.
+      // Excludes: auto-generated Chakra UI wrappers, test files, config files.
+      include: [
+        "src/**/*.{ts,tsx}",
+      ],
       exclude: [
         "**/node_modules/**",
         "**/.next/**",
@@ -19,7 +24,22 @@ export default defineConfig({
         "**/coverage/**",
         "**/*.d.ts",
         "**/*.config.*",
-        "next.config.*"
+        "next.config.*",
+        // Auto-generated Chakra UI wrapper components — not project logic
+        "src/components/ui/**",
+        // Test files themselves
+        "src/__tests__/**",
+        "**/*.test.ts",
+        "**/*.test.tsx",
+        // Co-located test files
+        "src/components/**/*.test.tsx",
+        "src/proxy.ts",
+        "src/types/**",
+        "src/app/auth/**/route.ts",
+        "src/app/**/layout.tsx",          // optional but usually fine
+        "src/lib/supabase/client.ts",
+        "src/lib/supabase/server.ts",
+        "src/utils/supabase/**",
       ]
     }
   },

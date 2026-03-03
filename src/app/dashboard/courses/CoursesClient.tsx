@@ -157,475 +157,302 @@ export default function CoursesClient({
   const totalPages = Math.ceil(filteredCourses.length / PAGE_SIZE);
 
   return (
-    <Box minH="100vh" bg="bg" fontFamily="'Plus Jakarta Sans', sans-serif">
-      <Flex>
-        {/* Sidebar */}
-        <Box
-          as="aside"
-          w="260px"
-          minH="100vh"
-          bg="bg"
-          borderRightWidth="1px"
-          borderColor="border.subtle"
-          position="fixed"
-          left="0"
-          top="0"
-          display={{ base: "none", lg: "flex" }}
-          flexDirection="column"
+  <Box className="mesh-gradient-subtle">
+    {/* Page title only (layout already provides sidebar + top header) */}
+    <Box mb="6">
+      <Text fontSize="sm" color="fg.muted" fontWeight="500">
+        Course Catalog
+      </Text>
+      <Heading
+        size="lg"
+        fontFamily="var(--font-outfit), sans-serif"
+        fontWeight="400"
+        letterSpacing="-0.02em"
+      >
+        All Courses
+      </Heading>
+    </Box>
+
+    {/* Course Content */}
+    <Box>
+      <VStack gap="6" align="stretch">
+        {/* Course Level Tabs */}
+        <Tabs.Root
+          value={courseLevel}
+          onValueChange={(e) => setCourseLevel(e.value)}
+          variant="enclosed"
+          colorPalette="green"
         >
-          {/* Logo */}
-          <HStack
-            gap="3"
-            px="6"
-            py="5"
-            borderBottomWidth="1px"
-            borderColor="border.subtle"
-          >
-            <Box p="2" bg="green.solid" borderRadius="lg">
-              <Icon color="white" boxSize="5">
+          <Tabs.List bg="bg" borderRadius="lg" p="1">
+            <Tabs.Trigger value="undergraduate" px="6">
+              <Icon boxSize="4" mr="2">
+                <LuBookOpen />
+              </Icon>
+              Undergraduate
+              <Badge
+                ml="2"
+                colorPalette={courseLevel === "undergraduate" ? "green" : "gray"}
+                variant="solid"
+                size="sm"
+              >
+                {courseCounts.undergraduate}
+              </Badge>
+            </Tabs.Trigger>
+            <Tabs.Trigger value="graduate" px="6">
+              <Icon boxSize="4" mr="2">
                 <LuGraduationCap />
               </Icon>
-            </Box>
-            <Text
-              fontWeight="700"
-              fontSize="lg"
-              fontFamily="'DM Serif Display', serif"
-              letterSpacing="-0.02em"
-            >
-              GradTracker
-            </Text>
-          </HStack>
-
-          {/* Navigation */}
-          <VStack align="stretch" flex="1" py="4" px="3" gap="1">
-            {navItems.map((item) => (
-              <Link
-                key={item.label}
-                href={item.href}
-                style={{ textDecoration: "none" }}
+              Graduate
+              <Badge
+                ml="2"
+                colorPalette={courseLevel === "graduate" ? "green" : "gray"}
+                variant="solid"
+                size="sm"
               >
-                <HStack
-                  px="4"
-                  py="2.5"
-                  borderRadius="lg"
-                  cursor="pointer"
-                  bg={item.active ? "green.subtle" : "transparent"}
-                  color={item.active ? "green.fg" : "fg.muted"}
-                  fontWeight={item.active ? "600" : "500"}
-                  _hover={{
-                    bg: item.active ? "green.subtle" : "bg.subtle",
-                    color: item.active ? "green.fg" : "fg",
-                  }}
-                  transition="all 0.15s"
-                >
-                  <Icon boxSize="5">
-                    <item.icon />
-                  </Icon>
-                  <Text fontSize="sm">{item.label}</Text>
-                </HStack>
-              </Link>
-            ))}
-          </VStack>
+                {courseCounts.graduate}
+              </Badge>
+            </Tabs.Trigger>
+          </Tabs.List>
+        </Tabs.Root>
 
-          {/* Bottom section */}
-          <VStack
-            align="stretch"
-            p="4"
-            gap="2"
-            borderTopWidth="1px"
-            borderColor="border.subtle"
-          >
-            <Link href="/dashboard/settings" style={{ textDecoration: "none" }}>
-              <HStack
-                px="4"
-                py="2.5"
-                borderRadius="lg"
-                cursor="pointer"
-                color="fg.muted"
-                fontWeight="500"
-                _hover={{ bg: "bg.subtle", color: "fg" }}
-                transition="all 0.15s"
-              >
-                <Icon boxSize="5">
-                  <LuSettings />
-                </Icon>
-                <Text fontSize="sm">Settings</Text>
-              </HStack>
-            </Link>
-            <HStack
-              px="4"
-              py="2.5"
-              borderRadius="lg"
-              cursor="pointer"
-              color="fg.muted"
-              fontWeight="500"
-              _hover={{ bg: "red.subtle", color: "red.fg" }}
-              transition="all 0.15s"
-            >
-              <Icon boxSize="5">
-                <LuLogOut />
-              </Icon>
-              <Text fontSize="sm">Sign Out</Text>
-            </HStack>
-          </VStack>
-        </Box>
-
-        {/* Main Content */}
-        <Box
-          flex="1"
-          ml={{ base: "0", lg: "260px" }}
-          minH="100vh"
-          className="mesh-gradient-subtle"
+        {/* Filters */}
+        <Card.Root
+          bg="bg"
+          borderRadius="xl"
+          borderWidth="1px"
+          borderColor="border.subtle"
+          className="animate-fade-up"
         >
-          {/* Header */}
-          <Box
-            as="header"
-            position="sticky"
-            top="0"
-            bg="bg"
-            borderBottomWidth="1px"
-            borderColor="border.subtle"
-            zIndex="sticky"
-            className="glass-card"
-          >
+          <Card.Body p="5">
             <Flex
-              justify="space-between"
-              align="center"
-              px={{ base: "4", md: "8" }}
-              py="4"
+              direction={{ base: "column", md: "row" }}
+              gap="4"
+              align={{ base: "stretch", md: "center" }}
             >
-              <Box>
-                <Text fontSize="sm" color="fg.muted" fontWeight="500">
-                  Course Catalog
-                </Text>
-                <Heading
-                  size="lg"
-                  fontFamily="'DM Serif Display', serif"
-                  fontWeight="400"
-                  letterSpacing="-0.02em"
+              {/* Search Input */}
+              <Box flex="1" position="relative">
+                <Box
+                  position="absolute"
+                  left="3"
+                  top="50%"
+                  transform="translateY(-50%)"
+                  color="fg.muted"
+                  zIndex="1"
                 >
-                  All Courses
-                </Heading>
+                  <LuSearch />
+                </Box>
+                <Input
+                  pl="10"
+                  placeholder="Search courses by code or title..."
+                  value={filters.search}
+                  onChange={(e) =>
+                    setFilters({ ...filters, search: e.target.value })
+                  }
+                  rounded="lg"
+                  size="md"
+                />
               </Box>
 
-              <HStack gap="3">
-                <IconButton
-                  aria-label="Notifications"
-                  variant="ghost"
-                  size="sm"
-                  position="relative"
-                >
-                  <LuBell />
-                  <Circle
-                    size="2"
-                    bg="red.500"
-                    position="absolute"
-                    top="1.5"
-                    right="1.5"
-                  />
-                </IconButton>
-                <ColorModeButton variant="ghost" size="sm" />
-                <Avatar.Root size="sm">
-                  <Avatar.Fallback name="Alex Johnson" />
-                </Avatar.Root>
-              </HStack>
+              {/* Subject Select */}
+              <Select.Root
+                collection={subjectCollection}
+                value={filters.subject ? [filters.subject] : []}
+                onValueChange={({ value }) =>
+                  setFilters({
+                    ...filters,
+                    subject: value[0] || null,
+                  })
+                }
+                size="md"
+                width={{ base: "full", md: "180px" }}
+              >
+                <Select.HiddenSelect />
+                <Select.Control>
+                  <Select.Trigger rounded="lg">
+                    <Select.ValueText placeholder="All Subjects" />
+                  </Select.Trigger>
+                  <Select.IndicatorGroup>
+                    {filters.subject && <Select.ClearTrigger />}
+                    <Select.Indicator />
+                  </Select.IndicatorGroup>
+                </Select.Control>
+                <Portal>
+                  <Select.Positioner>
+                    <Select.Content>
+                      {subjectCollection.items.map((subj) => (
+                        <Select.Item item={subj} key={subj.value}>
+                          {subj.label}
+                          <Select.ItemIndicator />
+                        </Select.Item>
+                      ))}
+                    </Select.Content>
+                  </Select.Positioner>
+                </Portal>
+              </Select.Root>
             </Flex>
-          </Box>
+          </Card.Body>
+        </Card.Root>
 
-          {/* Course Content */}
-          <Box px={{ base: "4", md: "8" }} py="6">
-            <VStack gap="6" align="stretch">
-              {/* Course Level Tabs */}
-              <Tabs.Root
-                value={courseLevel}
-                onValueChange={(e) => setCourseLevel(e.value)}
-                variant="enclosed"
-                colorPalette="green"
-              >
-                <Tabs.List bg="bg" borderRadius="lg" p="1">
-                  <Tabs.Trigger value="undergraduate" px="6">
-                    <Icon boxSize="4" mr="2">
-                      <LuBookOpen />
-                    </Icon>
-                    Undergraduate
-                    <Badge
-                      ml="2"
-                      colorPalette={courseLevel === "undergraduate" ? "green" : "gray"}
-                      variant="solid"
-                      size="sm"
-                    >
-                      {courseCounts.undergraduate}
-                    </Badge>
-                  </Tabs.Trigger>
-                  <Tabs.Trigger value="graduate" px="6">
-                    <Icon boxSize="4" mr="2">
-                      <LuGraduationCap />
-                    </Icon>
-                    Graduate
-                    <Badge
-                      ml="2"
-                      colorPalette={courseLevel === "graduate" ? "green" : "gray"}
-                      variant="solid"
-                      size="sm"
-                    >
-                      {courseCounts.graduate}
-                    </Badge>
-                  </Tabs.Trigger>
-                </Tabs.List>
-              </Tabs.Root>
+        {/* Results count */}
+        <Text fontSize="sm" color="fg.muted">
+          Showing {Math.min((page - 1) * PAGE_SIZE + 1, filteredCourses.length)}-
+          {Math.min(page * PAGE_SIZE, filteredCourses.length)} of{" "}
+          {filteredCourses.length} courses
+        </Text>
 
-              {/* Filters */}
-              <Card.Root
-                bg="bg"
-                borderRadius="xl"
-                borderWidth="1px"
-                borderColor="border.subtle"
-                className="animate-fade-up"
-              >
-                <Card.Body p="5">
-                  <Flex
-                    direction={{ base: "column", md: "row" }}
-                    gap="4"
-                    align={{ base: "stretch", md: "center" }}
+        {/* Course Grid */}
+        {filteredCourses.length > 0 ? (
+          <>
+            <SimpleGrid columns={{ base: 1, md: 2, lg: 3, xl: 4 }} gap="4">
+              {paginatedCourses.map((course, index) => {
+                const colorPalette = getSubjectColor(course.subject);
+                const courseCode = `${course.subject} ${course.number}`;
+                return (
+                  <Card.Root
+                    key={course.id}
+                    bg="bg"
+                    borderRadius="xl"
+                    borderWidth="1px"
+                    borderColor="border.subtle"
+                    _hover={{
+                      borderColor: `${colorPalette}.muted`,
+                      transform: "translateY(-2px)",
+                      boxShadow: "lg",
+                    }}
+                    transition="all 0.2s"
+                    cursor="pointer"
+                    className="animate-fade-up"
+                    style={{ animationDelay: `${Math.min(index, 20) * 0.02}s` }}
+                    onClick={() => handleCourseClick(course)}
                   >
-                    {/* Search Input */}
-                    <Box flex="1" position="relative">
-                      <Box
-                        position="absolute"
-                        left="3"
-                        top="50%"
-                        transform="translateY(-50%)"
-                        color="fg.muted"
-                        zIndex="1"
-                      >
-                        <LuSearch />
-                      </Box>
-                      <Input
-                        pl="10"
-                        placeholder="Search courses by code or title..."
-                        value={filters.search}
-                        onChange={(e) =>
-                          setFilters({ ...filters, search: e.target.value })
-                        }
-                        rounded="lg"
-                        size="md"
-                      />
-                    </Box>
+                    <Card.Body p="5">
+                      <VStack align="stretch" gap="4">
+                        <HStack justify="space-between" align="start">
+                          <Box
+                            w="10"
+                            h="10"
+                            bg={`${colorPalette}.subtle`}
+                            borderRadius="lg"
+                            display="flex"
+                            alignItems="center"
+                            justifyContent="center"
+                          >
+                            <Icon color={`${colorPalette}.fg`} boxSize="5">
+                              <LuBookMarked />
+                            </Icon>
+                          </Box>
+                          <Badge colorPalette="gray" variant="subtle" size="sm">
+                            {course.credits} cr
+                          </Badge>
+                        </HStack>
 
-                    {/* Subject Select */}
-                    <Select.Root
-                      collection={subjectCollection}
-                      value={filters.subject ? [filters.subject] : []}
-                      onValueChange={({ value }) =>
-                        setFilters({
-                          ...filters,
-                          subject: value[0] || null,
-                        })
-                      }
-                      size="md"
-                      width={{ base: "full", md: "180px" }}
-                    >
-                      <Select.HiddenSelect />
-                      <Select.Control>
-                        <Select.Trigger rounded="lg">
-                          <Select.ValueText placeholder="All Subjects" />
-                        </Select.Trigger>
-                        <Select.IndicatorGroup>
-                          {filters.subject && <Select.ClearTrigger />}
-                          <Select.Indicator />
-                        </Select.IndicatorGroup>
-                      </Select.Control>
-                      <Portal>
-                        <Select.Positioner>
-                          <Select.Content>
-                            {subjectCollection.items.map((subj) => (
-                              <Select.Item item={subj} key={subj.value}>
-                                {subj.label}
-                                <Select.ItemIndicator />
-                              </Select.Item>
-                            ))}
-                          </Select.Content>
-                        </Select.Positioner>
-                      </Portal>
-                    </Select.Root>
-                  </Flex>
-                </Card.Body>
-              </Card.Root>
+                        <VStack align="start" gap="1">
+                          <Text fontWeight="600" fontSize="md">
+                            {courseCode}
+                          </Text>
+                          <Text color="fg.muted" fontSize="sm" lineClamp={2}>
+                            {course.title}
+                          </Text>
+                        </VStack>
 
-              {/* Results count */}
-              <Text fontSize="sm" color="fg.muted">
-                Showing {Math.min((page - 1) * PAGE_SIZE + 1, filteredCourses.length)}-
-                {Math.min(page * PAGE_SIZE, filteredCourses.length)} of{" "}
-                {filteredCourses.length} courses
-              </Text>
+                        <Badge
+                          colorPalette={colorPalette}
+                          variant="surface"
+                          size="sm"
+                          alignSelf="start"
+                        >
+                          {course.subject}
+                        </Badge>
+                      </VStack>
+                    </Card.Body>
+                  </Card.Root>
+                );
+              })}
+            </SimpleGrid>
 
-              {/* Course Grid */}
-              {filteredCourses.length > 0 ? (
-                <>
-                <SimpleGrid columns={{ base: 1, md: 2, lg: 3, xl: 4 }} gap="4">
-                  {paginatedCourses.map((course, index) => {
-                    const colorPalette = getSubjectColor(course.subject);
-                    const courseCode = `${course.subject} ${course.number}`;
-                    return (
-                      <Card.Root
-                        key={course.id}
-                        bg="bg"
-                        borderRadius="xl"
-                        borderWidth="1px"
-                        borderColor="border.subtle"
-                        _hover={{
-                          borderColor: `${colorPalette}.muted`,
-                          transform: "translateY(-2px)",
-                          boxShadow: "lg",
-                        }}
-                        transition="all 0.2s"
-                        cursor="pointer"
-                        className="animate-fade-up"
-                        style={{ animationDelay: `${Math.min(index, 20) * 0.02}s` }}
-                        onClick={() => handleCourseClick(course)}
-                      >
-                        <Card.Body p="5">
-                          <VStack align="stretch" gap="4">
-                            <HStack justify="space-between" align="start">
-                              <Box
-                                w="10"
-                                h="10"
-                                bg={`${colorPalette}.subtle`}
-                                borderRadius="lg"
-                                display="flex"
-                                alignItems="center"
-                                justifyContent="center"
-                              >
-                                <Icon
-                                  color={`${colorPalette}.fg`}
-                                  boxSize="5"
-                                >
-                                  <LuBookMarked />
-                                </Icon>
-                              </Box>
-                              <Badge
-                                colorPalette="gray"
-                                variant="subtle"
-                                size="sm"
-                              >
-                                {course.credits} cr
-                              </Badge>
-                            </HStack>
-
-                            <VStack align="start" gap="1">
-                              <Text fontWeight="600" fontSize="md">
-                                {courseCode}
-                              </Text>
-                              <Text
-                                color="fg.muted"
-                                fontSize="sm"
-                                lineClamp={2}
-                              >
-                                {course.title}
-                              </Text>
-                            </VStack>
-
-                            <Badge
-                              colorPalette={colorPalette}
-                              variant="surface"
-                              size="sm"
-                              alignSelf="start"
-                            >
-                              {course.subject}
-                            </Badge>
-                          </VStack>
-                        </Card.Body>
-                      </Card.Root>
-                    );
-                  })}
-                </SimpleGrid>
-
-                {/* Pagination */}
-                {totalPages > 1 && (
-                  <Flex justify="center" pt="4">
-                    <Pagination.Root
-                      count={filteredCourses.length}
-                      pageSize={PAGE_SIZE}
-                      page={page}
-                      onPageChange={(e) => setPage(e.page)}
-                      siblingCount={1}
-                    >
-                      <ButtonGroup variant="ghost" size="sm">
-                        <Pagination.PrevTrigger asChild>
-                          <IconButton aria-label="Previous page">
-                            <LuChevronLeft />
-                          </IconButton>
-                        </Pagination.PrevTrigger>
-
-                        <Pagination.Items
-                          render={(pageItem) => (
-                            <IconButton
-                              aria-label={`Page ${pageItem.value}`}
-                              variant={{ base: "ghost", _selected: "outline" }}
-                            >
-                              {pageItem.value}
-                            </IconButton>
-                          )}
-                        />
-
-                        <Pagination.NextTrigger asChild>
-                          <IconButton aria-label="Next page">
-                            <LuChevronRight />
-                          </IconButton>
-                        </Pagination.NextTrigger>
-                      </ButtonGroup>
-                    </Pagination.Root>
-                  </Flex>
-                )}
-                </>
-              ) : (
-                /* Empty State */
-                <Card.Root
-                  bg="bg"
-                  borderRadius="xl"
-                  borderWidth="1px"
-                  borderColor="border.subtle"
-                  className="animate-fade-up"
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <Flex justify="center" pt="4">
+                <Pagination.Root
+                  count={filteredCourses.length}
+                  pageSize={PAGE_SIZE}
+                  page={page}
+                  onPageChange={(e) => setPage(e.page)}
+                  siblingCount={1}
                 >
-                  <Card.Body p="12">
-                    <VStack gap="4" textAlign="center">
-                      <Box
-                        w="16"
-                        h="16"
-                        bg="gray.subtle"
-                        borderRadius="full"
-                        display="flex"
-                        alignItems="center"
-                        justifyContent="center"
-                      >
-                        <Icon color="fg.muted" boxSize="8">
-                          <LuBookOpen />
-                        </Icon>
-                      </Box>
-                      <Heading
-                        size="md"
-                        fontFamily="'DM Serif Display', serif"
-                        fontWeight="400"
-                      >
-                        No courses found
-                      </Heading>
-                      <Text color="fg.muted" fontSize="sm" maxW="sm">
-                        {initialCourses.length === 0
-                          ? "No courses have been added to the database yet."
-                          : "Try adjusting your search or filter criteria to find courses."}
-                      </Text>
-                    </VStack>
-                  </Card.Body>
-                </Card.Root>
-              )}
-            </VStack>
-          </Box>
-        </Box>
-      </Flex>
+                  <ButtonGroup variant="ghost" size="sm">
+                    <Pagination.PrevTrigger asChild>
+                      <IconButton aria-label="Previous page">
+                        <LuChevronLeft />
+                      </IconButton>
+                    </Pagination.PrevTrigger>
 
-      {/* Course Details Drawer */}
-      <Drawer.Root
-        open={drawerOpen}
+                    <Pagination.Items
+                      render={(pageItem) => (
+                        <IconButton
+                          aria-label={`Page ${pageItem.value}`}
+                          variant={{ base: "ghost", _selected: "outline" }}
+                        >
+                          {pageItem.value}
+                        </IconButton>
+                      )}
+                    />
+
+                    <Pagination.NextTrigger asChild>
+                      <IconButton aria-label="Next page">
+                        <LuChevronRight />
+                      </IconButton>
+                    </Pagination.NextTrigger>
+                  </ButtonGroup>
+                </Pagination.Root>
+              </Flex>
+            )}
+          </>
+        ) : (
+          <Card.Root
+            bg="bg"
+            borderRadius="xl"
+            borderWidth="1px"
+            borderColor="border.subtle"
+            className="animate-fade-up"
+          >
+            <Card.Body p="12">
+              <VStack gap="4" textAlign="center">
+                <Box
+                  w="16"
+                  h="16"
+                  bg="gray.subtle"
+                  borderRadius="full"
+                  display="flex"
+                  alignItems="center"
+                  justifyContent="center"
+                >
+                  <Icon color="fg.muted" boxSize="8">
+                    <LuBookOpen />
+                  </Icon>
+                </Box>
+                <Heading
+                  size="md"
+                  fontFamily="var(--font-outfit), sans-serif"
+                  fontWeight="400"
+                >
+                  No courses found
+                </Heading>
+                <Text color="fg.muted" fontSize="sm" maxW="sm">
+                  {initialCourses.length === 0
+                    ? "No courses have been added to the database yet."
+                    : "Try adjusting your search or filter criteria to find courses."}
+                </Text>
+              </VStack>
+            </Card.Body>
+          </Card.Root>
+        )}
+      </VStack>
+    </Box>
+
+    {/* Course Details Drawer */}
+    <Drawer.Root
+      open={drawerOpen}
         onOpenChange={(e) => setDrawerOpen(e.open)}
         size="md"
         placement="end"
@@ -657,7 +484,7 @@ export default function CoursesClient({
                         </Box>
                         <VStack align="start" gap="0">
                           <Drawer.Title
-                            fontFamily="'DM Serif Display', serif"
+                            fontFamily="var(--font-outfit), sans-serif"
                             fontWeight="400"
                             fontSize="xl"
                           >

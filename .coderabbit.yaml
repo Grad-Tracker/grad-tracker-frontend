@@ -5,6 +5,11 @@ reviews:
   poem: false
   review_status: true
   collapse_walkthrough: false
+  auto_review:
+    enabled: true
+    base_branches:
+      - main
+      - dev
   path_filters:
     - "!**/node_modules/**"
     - "!**/.next/**"

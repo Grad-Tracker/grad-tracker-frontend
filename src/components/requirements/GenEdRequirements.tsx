@@ -10,12 +10,14 @@ import {
   HStack,
   Progress,
   Separator,
+  Separator as Divider,
   Spinner,
   Text,
   VStack,
 } from "@chakra-ui/react";
 import { createClient } from "@/app/utils/supabase/client";
-console.log("GenEdRequirements loaded - v1");
+import { evaluatePrereqsForCourses, type PrereqEvaluationMap } from "@/lib/prereq";
+import { DB_TABLES } from "@/lib/supabase/queries/schema";
 type Bucket = {
   id: number;
   code: string;
@@ -42,6 +44,15 @@ type HistoryRow = {
   completed: boolean | null;
 };
 
+function sortByCode(a: Course, b: Course) {
+  const aSubject = (a.subject ?? "").toString();
+  const bSubject = (b.subject ?? "").toString();
+  if (aSubject !== bSubject) return aSubject.localeCompare(bSubject);
+  const aNumber = (a.number ?? "").toString();
+  const bNumber = (b.number ?? "").toString();
+  return aNumber.localeCompare(bNumber);
+}
+
 export default function GenEdRequirements({ studentId }: { studentId: number }) {
   const supabase = useMemo(() => createClient(), []);
 
@@ -52,6 +63,8 @@ export default function GenEdRequirements({ studentId }: { studentId: number }) 
   const [bucketCourses, setBucketCourses] = useState<BucketCourseRow[]>([]);
   const [history, setHistory] = useState<HistoryRow[]>([]);
   const [coursesById, setCoursesById] = useState<Map<number, Course>>(new Map());
+  const [prereqByCourse, setPrereqByCourse] = useState<PrereqEvaluationMap>(new Map());
+  const [showRemaining, setShowRemaining] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     let cancelled = false;
@@ -63,7 +76,7 @@ export default function GenEdRequirements({ studentId }: { studentId: number }) 
       try {
         // 1) Buckets
         const { data: bucketsData, error: bucketsErr } = await supabase
-          .from("gen_ed_buckets")
+          .from(DB_TABLES.genEdBuckets)
           .select("id, code, name, credits_required")
           .order("id", { ascending: true });
 
@@ -75,7 +88,7 @@ export default function GenEdRequirements({ studentId }: { studentId: number }) 
 
         // 2) Bucket -> course mappings
         const { data: mapData, error: mapErr } = await supabase
-          .from("gen_ed_bucket_courses")
+          .from(DB_TABLES.genEdBucketCourses)
           .select("bucket_id, course_id");
 
         if (mapErr) throw new Error(`Error loading bucket courses: ${mapErr.message}`);
@@ -90,7 +103,7 @@ export default function GenEdRequirements({ studentId }: { studentId: number }) 
 
         // 3) Student history (IMPORTANT: column is "course", not "course_id")
         const { data: historyData, error: historyErr } = await supabase
-          .from("student_course_history")
+          .from(DB_TABLES.studentCourseHistory)
           .select("course_id, grade, completed")
           .eq("student_id", studentId);
 
@@ -102,7 +115,7 @@ export default function GenEdRequirements({ studentId }: { studentId: number }) 
         // 4) Course details
         if (allCourseIds.length > 0) {
           const { data: coursesData, error: coursesErr } = await supabase
-            .from("courses")
+            .from(DB_TABLES.courses)
             .select("id, subject, number, title, credits")
             .in("id", allCourseIds);
 
@@ -124,6 +137,10 @@ export default function GenEdRequirements({ studentId }: { studentId: number }) 
         } else {
           setCoursesById(new Map());
         }
+
+        const prereqMap = await evaluatePrereqsForCourses(allCourseIds, studentId);
+        if (cancelled) return;
+        setPrereqByCourse(prereqMap);
       } catch (e: any) {
         if (!cancelled) setError(e?.message ?? "Unknown error");
       } finally {
@@ -156,6 +173,31 @@ export default function GenEdRequirements({ studentId }: { studentId: number }) 
     });
     return map;
   }, [bucketCourses]);
+
+  const computeStatus = useMemo(
+    () =>
+      (courseId: number) =>
+        completedCourseIds.has(courseId)
+          ? ("completed" as const)
+          : ("remaining" as const),
+    [completedCourseIds]
+  );
+
+  const splitCourses = useMemo(
+    () =>
+      (requiredCourses: Course[]) => {
+        const completedCourses = requiredCourses
+          .filter((c) => computeStatus(c.id) === "completed")
+          .sort(sortByCode);
+        const inProgressCourses: Course[] = [];
+        const remainingCourses = requiredCourses
+          .filter((c) => computeStatus(c.id) === "remaining")
+          .sort(sortByCode);
+
+        return { completedCourses, inProgressCourses, remainingCourses };
+      },
+    [computeStatus]
+  );
 
   const bucketsWithProgress = useMemo(() => {
     return (buckets ?? []).map((b) => {
@@ -196,6 +238,17 @@ export default function GenEdRequirements({ studentId }: { studentId: number }) 
     });
   }, [buckets, bucketToCourseIds, coursesById, completedCourseIds]);
 
+  useEffect(() => {
+    setShowRemaining((prev) => {
+      const next = { ...prev };
+      for (const b of bucketsWithProgress) {
+        const key = String(b.id);
+        if (next[key] === undefined) next[key] = false;
+      }
+      return next;
+    });
+  }, [bucketsWithProgress]);
+
   if (loading) {
     return (
       <Box px={{ base: "4", md: "8" }} py="8">
@@ -230,7 +283,7 @@ export default function GenEdRequirements({ studentId }: { studentId: number }) 
           </Text>
           <Heading
             size="lg"
-            fontFamily="'DM Serif Display', serif"
+            fontFamily="var(--font-outfit), sans-serif"
             fontWeight="400"
             letterSpacing="-0.02em"
           >
@@ -249,6 +302,91 @@ export default function GenEdRequirements({ studentId }: { studentId: number }) 
             >
               <Card.Body p="5">
                 <VStack align="stretch" gap="3">
+                  {(() => {
+                    const sectionedCourses = b.detailed.map((item) => item.course);
+                    const { completedCourses, inProgressCourses, remainingCourses } =
+                      splitCourses(sectionedCourses);
+                    const completedCount = completedCourses.length;
+                    const inProgressCount = inProgressCourses.length;
+                    const remainingCount = remainingCourses.length;
+                    const completedCredits = completedCourses.reduce(
+                      (sum, course) => sum + Number(course.credits ?? 0),
+                      0
+                    );
+                    const inProgressCredits = inProgressCourses.reduce(
+                      (sum, course) => sum + Number(course.credits ?? 0),
+                      0
+                    );
+                    const remainingCredits = remainingCourses.reduce(
+                      (sum, course) => sum + Number(course.credits ?? 0),
+                      0
+                    );
+                    const bucketKey = String(b.id);
+                    const isRemainingOpen = !!showRemaining[bucketKey];
+
+                    const renderCourseRow = (course: Course) => {
+                      const completed = computeStatus(course.id) === "completed";
+                      const prereq = prereqByCourse.get(course.id);
+                      const showPrereqWarning =
+                        !completed && prereq != null && !prereq.unlocked;
+
+                      return (
+                        <HStack
+                          key={course.id}
+                          justify="space-between"
+                          py="1"
+                          px="2"
+                          borderRadius="md"
+                          border={completed ? "1px solid" : undefined}
+                          borderWidth="1px"
+                          boxShadow={
+                            completed ? "0 0 0 1px rgba(34,197,94,0.25)" : undefined
+                          }
+                          bg={completed ? "green.700" : "bg.subtle"}
+                          borderColor={completed ? "green.500" : "border.subtle"}
+                          _hover={{ bg: completed ? "green.600" : "bg.subtle" }}
+                        >
+                          <HStack gap="3">
+                            <Box>
+                              <Text
+                                fontWeight={completed ? "bold" : "600"}
+                                fontSize="sm"
+                                color={completed ? "white" : undefined}
+                              >
+                                {(course.subject ?? "").toString()} {(course.number ?? "").toString()}
+                                {course.credits != null ? ` · ${course.credits} cr` : ""}
+                              </Text>
+                              {course.title ? (
+                                <Text
+                                  fontSize="sm"
+                                  color={completed ? "whiteAlpha.900" : "fg.subtle"}
+                                  fontWeight={completed ? "bold" : "500"}
+                                  lineClamp={1}
+                                >
+                                  {course.title}
+                                </Text>
+                              ) : null}
+                              {showPrereqWarning && prereq.summary.length > 0 ? (
+                                <Text fontSize="xs" color="orange.600" fontWeight="400">
+                                  {prereq.summary.join(" • ")}
+                                </Text>
+                              ) : null}
+                            </Box>
+                          </HStack>
+
+                          <HStack gap="2">
+                            {showPrereqWarning ? (
+                              <Badge colorPalette="orange" variant="subtle" size="sm">
+                                Prereq not met
+                              </Badge>
+                            ) : null}
+                          </HStack>
+                        </HStack>
+                      );
+                    };
+
+                    return (
+                      <>
                   <Flex justify="space-between" align="start" gap="3">
                     <Box>
                       <HStack gap="2" wrap="wrap">
@@ -257,16 +395,24 @@ export default function GenEdRequirements({ studentId }: { studentId: number }) 
                           {b.code}
                         </Badge>
                       </HStack>
-                      <Text mt="1" fontSize="sm" color="fg.muted">
-                        Completed <strong>{b.completedCredits}</strong> / {b.credits_required} credits ·
-                        Remaining <strong>{b.remaining}</strong>
-                      </Text>
                     </Box>
 
                     <Badge colorPalette={b.remaining === 0 ? "green" : "gray"} variant="surface">
                       {b.remaining === 0 ? "Done" : "In progress"}
                     </Badge>
                   </Flex>
+
+                  <HStack gap="2" wrap="wrap">
+                    <Badge colorPalette="green" variant="subtle">
+                      Completed ({completedCount}) • {completedCredits} cr
+                    </Badge>
+                    <Badge colorPalette="orange" variant="subtle">
+                      In progress ({inProgressCount}) • {inProgressCredits} cr
+                    </Badge>
+                    <Badge colorPalette="gray" variant="outline">
+                      Remaining ({remainingCount}) • {remainingCredits} cr
+                    </Badge>
+                  </HStack>
 
                   <Progress.Root value={b.pct} max={100} colorPalette="green" size="sm">
                     <Progress.Track borderRadius="md">
@@ -287,38 +433,65 @@ export default function GenEdRequirements({ studentId }: { studentId: number }) 
                       </Text>
                     ) : (
                       <VStack align="stretch" gap="1">
-                        {b.detailed.map(({ course, completed }) => (
-                          <HStack
-                            key={course.id}
-                            justify="space-between"
-                            py="1"
-                            px="2"
-                            borderRadius="md"
-                            _hover={{ bg: "bg.subtle" }}
-                          >
-                            <HStack gap="3">
-                              <Text>{completed ? "✅" : "⬜"}</Text>
-                              <Box>
-                                <Text fontWeight="600" fontSize="sm">
-                                  {(course.subject ?? "").toString()} {(course.number ?? "").toString()}
-                                  {course.credits != null ? ` · ${course.credits} cr` : ""}
-                                </Text>
-                                {course.title ? (
-                                  <Text fontSize="sm" color="fg.muted" lineClamp={1}>
-                                    {course.title}
-                                  </Text>
-                                ) : null}
-                              </Box>
+                        {completedCourses.length > 0 ? (
+                          <>
+                            <Divider opacity={0.4} mt="3" mb="2" />
+                            <HStack justify="space-between" mt="3" mb="2">
+                              <Text fontSize="sm" fontWeight="600" color="fg.muted">
+                                Completed
+                              </Text>
+                              <Badge variant="subtle" colorPalette="green">
+                                {completedCourses.length}
+                              </Badge>
                             </HStack>
+                            {completedCourses.map(renderCourseRow)}
+                          </>
+                        ) : null}
 
-                            <Text fontSize="xs" color="fg.muted">
-                              id: {course.id}
-                            </Text>
-                          </HStack>
-                        ))}
+                        {inProgressCourses.length > 0 ? (
+                          <>
+                            <Divider opacity={0.4} mt="3" mb="2" />
+                            <HStack justify="space-between" mt="3" mb="2">
+                              <Text fontSize="sm" fontWeight="600" color="fg.muted">
+                                In progress
+                              </Text>
+                              <Badge variant="subtle" colorPalette="orange">
+                                {inProgressCourses.length}
+                              </Badge>
+                            </HStack>
+                            {inProgressCourses.map(renderCourseRow)}
+                          </>
+                        ) : null}
+
+                        {remainingCourses.length > 0 ? (
+                          <>
+                            <Divider opacity={0.4} mt="3" mb="2" />
+                            <HStack justify="flex-end" align="center" mt="3" mb="2">
+                              <Text
+                                fontSize="sm"
+                                color="fg.muted"
+                                cursor="pointer"
+                                onClick={() =>
+                                  setShowRemaining((prev) => ({
+                                    ...prev,
+                                    [bucketKey]: !prev[bucketKey],
+                                  }))
+                                }
+                              >
+                                {isRemainingOpen
+                                  ? "Hide remaining"
+                                  : `Show remaining (${remainingCourses.length})`}
+                              </Text>
+                            </HStack>
+                            {isRemainingOpen ? remainingCourses.map(renderCourseRow) : null}
+                          </>
+                        ) : null}
                       </VStack>
                     )}
                   </Box>
+                      </>
+                    );
+                  })()}
                 </VStack>
               </Card.Body>
             </Card.Root>

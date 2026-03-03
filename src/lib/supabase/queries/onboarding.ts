@@ -1,5 +1,21 @@
 import { createClient } from "@/lib/supabase/client";
 import type { Program, RequirementBlock, CourseRow } from "@/types/onboarding";
+import { DB_TABLES, PROGRAM_TYPES, STUDENT_COLUMNS } from "./schema";
+
+function splitFullName(fullName: string): { firstName: string; lastName: string } {
+  const trimmed = fullName.trim();
+  if (!trimmed) return { firstName: "", lastName: "" };
+  const parts = trimmed.split(/\s+/);
+  const firstName = parts.shift() ?? "";
+  const lastName = parts.join(" ");
+  return { firstName, lastName };
+}
+
+function isMissingColumnError(error: unknown, columnName: string): boolean {
+  if (!error || typeof error !== "object") return false;
+  const message = String((error as { message?: unknown }).message ?? "");
+  return message.includes(columnName) && message.includes("column");
+}
 
 /**
  * Fetch programs by type (MAJOR, CERTIFICATE, MINOR).
@@ -9,7 +25,7 @@ export async function fetchPrograms(
 ): Promise<Program[]> {
   const supabase = createClient();
   const { data, error } = await supabase
-    .from("programs")
+    .from(DB_TABLES.programs)
     .select("id, name, catalog_year, program_type")
     .eq("program_type", type)
     .order("name");
@@ -29,7 +45,7 @@ export async function fetchProgramRequirements(
 
   // Fetch blocks for the program
   const { data: blocks, error: blocksError } = await supabase
-    .from("program_requirement_blocks")
+    .from(DB_TABLES.programRequirementBlocks)
     .select("id, program_id, name, rule, n_required, credits_required")
     .eq("program_id", programId)
     .order("name");
@@ -41,7 +57,7 @@ export async function fetchProgramRequirements(
 
   // Fetch course mappings for all blocks
   const { data: mappings, error: mappingsError } = await supabase
-    .from("program_requirement_courses")
+    .from(DB_TABLES.programRequirementCourses)
     .select("block_id, course_id")
     .in("block_id", blockIds);
 
@@ -55,7 +71,7 @@ export async function fetchProgramRequirements(
 
   // Fetch course details
   const { data: courses, error: coursesError } = await supabase
-    .from("courses")
+    .from(DB_TABLES.courses)
     .select("id, subject, number, title, credits")
     .in("id", courseIds)
     .order("subject")
@@ -76,7 +92,7 @@ export async function fetchProgramRequirements(
 
     const blockCourses = blockCourseIds
       .map((id) => courseMap.get(id))
-      .filter((c): c is CourseRow => c !== undefined);
+      .filter((c: CourseRow | undefined): c is CourseRow => c !== undefined);
 
     return { ...block, courses: blockCourses } as RequirementBlock;
   });
@@ -88,29 +104,56 @@ export async function fetchProgramRequirements(
 export async function getOrCreateStudent(
   authUserId: string,
   email: string,
-  name: string
+  fullName: string
 ): Promise<{ id: number }> {
   const supabase = createClient();
 
   // Try to find existing student
   const { data: existing, error: selectError } = await supabase
-    .from("students")
+    .from(DB_TABLES.students)
     .select("id")
-    .eq("auth_user_id", authUserId)
+    .eq(STUDENT_COLUMNS.authUserId, authUserId)
     .maybeSingle();
 
   if (selectError) throw selectError;
   if (existing) return { id: existing.id };
 
-  // Create new student
+  const { firstName, lastName } = splitFullName(fullName);
+
+  // Create new student (new schema: first_name / last_name)
   const { data: created, error: insertError } = await supabase
-    .from("students")
-    .insert({ auth_user_id: authUserId, email, name })
+    .from(DB_TABLES.students)
+    .insert({
+      [STUDENT_COLUMNS.authUserId]: authUserId,
+      [STUDENT_COLUMNS.email]: email,
+      [STUDENT_COLUMNS.firstName]: firstName,
+      [STUDENT_COLUMNS.lastName]: lastName,
+    })
     .select("id")
     .single();
 
-  if (insertError) throw insertError;
-  return { id: created.id };
+  if (!insertError) return { id: created.id };
+
+  // Fallback for legacy schema that still uses `name`.
+  if (
+    isMissingColumnError(insertError, STUDENT_COLUMNS.firstName) ||
+    isMissingColumnError(insertError, STUDENT_COLUMNS.lastName)
+  ) {
+    const { data: legacyCreated, error: legacyInsertError } = await supabase
+      .from(DB_TABLES.students)
+      .insert({
+        [STUDENT_COLUMNS.authUserId]: authUserId,
+        [STUDENT_COLUMNS.email]: email,
+        name: fullName,
+      })
+      .select("id")
+      .single();
+
+    if (legacyInsertError) throw legacyInsertError;
+    return { id: legacyCreated.id };
+  }
+
+  throw insertError;
 }
 
 /**
@@ -123,7 +166,7 @@ export async function fetchCertificatesForMajor(
   const supabase = createClient();
 
   const { data: mappings, error: mappingsError } = await supabase
-    .from("major_certificate_mappings")
+    .from(DB_TABLES.majorCertificateMappings)
     .select("certificate_id")
     .eq("major_id", majorId);
 
@@ -131,12 +174,12 @@ export async function fetchCertificatesForMajor(
 
   // Fallback: if no mappings exist, return all certificates
   if (!mappings || mappings.length === 0) {
-    return fetchPrograms("CERTIFICATE");
+    return fetchPrograms(PROGRAM_TYPES.certificate);
   }
 
   const certIds = mappings.map((m) => m.certificate_id);
   const { data, error } = await supabase
-    .from("programs")
+    .from(DB_TABLES.programs)
     .select("id, name, catalog_year, program_type")
     .in("id", certIds)
     .order("name");
@@ -147,6 +190,10 @@ export async function fetchCertificatesForMajor(
 
 /**
  * Save all onboarding selections to the database.
+ * - Clears existing selections first (so onboarding is re-runnable)
+ * - Uses upsert to be idempotent (safe on retries / double-clicks)
+ * - Updates onboarding flag LAST
+ * - Best-effort rollback cleanup on failure to avoid partial state
  */
 export async function saveOnboardingSelections(
   studentId: number,
@@ -158,34 +205,36 @@ export async function saveOnboardingSelections(
 ): Promise<void> {
   const supabase = createClient();
 
-  // Insert selected programs (major + certificates)
+  const cleanupSelections = async () => {
+    const { error: delProgramsErr } = await supabase
+      .from(DB_TABLES.studentPrograms)
+      .delete()
+      .eq("student_id", studentId);
+
+    if (delProgramsErr) throw delProgramsErr;
+
+    const { error: delCoursesErr } = await supabase
+      .from(DB_TABLES.studentCourseHistory)
+      .delete()
+      .eq("student_id", studentId);
+
+    if (delCoursesErr) throw delCoursesErr;
+  };
+
   const programRows = [majorId, ...certificateIds].map((programId) => ({
     student_id: studentId,
     program_id: programId,
   }));
 
-  const { error: programsError } = await supabase
-    .from("student_programs")
-    .insert(programRows);
+  const courseRows =
+    courseIds.length > 0
+      ? courseIds.map((courseId) => ({
+          student_id: studentId,
+          course_id: courseId,
+          completed: true,
+        }))
+      : [];
 
-  if (programsError) throw programsError;
-
-  // Insert completed courses
-  if (courseIds.length > 0) {
-    const courseRows = courseIds.map((courseId) => ({
-      student_id: studentId,
-      course_id: courseId,
-      completed: true,
-    }));
-
-    const { error: coursesError } = await supabase
-      .from("student_course_history")
-      .insert(courseRows);
-
-    if (coursesError) throw coursesError;
-  }
-
-  // Mark onboarding as completed + save graduation info
   const updatePayload: Record<string, unknown> = {
     has_completed_onboarding: true,
   };
@@ -196,12 +245,47 @@ export async function saveOnboardingSelections(
     updatePayload.expected_graduation_year = expectedGradYear;
   }
 
-  const { error: updateError } = await supabase
-    .from("students")
-    .update(updatePayload)
-    .eq("id", studentId);
+  try {
+    // 1) delete existing selections
+    await cleanupSelections();
 
-  if (updateError) throw updateError;
+    // 2) upsert new selections
+    const { error: programsError } = await supabase
+      .from(DB_TABLES.studentPrograms)
+      .upsert(programRows, {
+        onConflict: "student_id,program_id",
+        ignoreDuplicates: false,
+      });
+
+    if (programsError) throw programsError;
+
+    if (courseRows.length > 0) {
+      const { error: coursesError } = await supabase
+        .from(DB_TABLES.studentCourseHistory)
+        .upsert(courseRows, {
+          onConflict: "student_id,course_id",
+          ignoreDuplicates: false,
+        });
+
+      if (coursesError) throw coursesError;
+    }
+
+    // 3) update student flags LAST
+    const { error: updateError } = await supabase
+      .from(DB_TABLES.students)
+      .update(updatePayload)
+      .eq(STUDENT_COLUMNS.id, studentId);
+
+    if (updateError) throw updateError;
+  } catch (err) {
+    // Best-effort rollback: remove partial rows so we don’t leave inconsistent state
+    try {
+      await cleanupSelections();
+    } catch (cleanupErr) {
+      console.error("Onboarding rollback cleanup failed:", cleanupErr);
+    }
+    throw err;
+  }
 }
 
 /**
@@ -213,13 +297,12 @@ export async function checkOnboardingStatus(
   const supabase = createClient();
 
   const { data, error } = await supabase
-    .from("students")
+    .from(DB_TABLES.students)
     .select("has_completed_onboarding")
-    .eq("auth_user_id", authUserId)
+    .eq(STUDENT_COLUMNS.authUserId, authUserId)
     .maybeSingle();
 
   if (error) throw error;
-  // No student record yet means onboarding not completed
   if (!data) return false;
   return data.has_completed_onboarding ?? false;
 }
@@ -234,7 +317,7 @@ export async function fetchCoursesByIds(
 
   const supabase = createClient();
   const { data, error } = await supabase
-    .from("courses")
+    .from(DB_TABLES.courses)
     .select("id, subject, number, title, credits")
     .in("id", courseIds)
     .order("subject")
