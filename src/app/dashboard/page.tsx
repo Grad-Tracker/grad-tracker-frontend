@@ -6,6 +6,7 @@ import {
   Avatar,
   Badge,
   Box,
+  chakra,
   Button,
   Card,
   Flex,
@@ -995,10 +996,9 @@ export default function Dashboard() {
               </Card.Header>
               <Card.Body p="5" pt="0">
                 <Stack gap="3">
-                  <Box
-                    as="select"
+                  <chakra.select
                     value={selectedMajorId ?? ""}
-                    onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
+                    onChange={(e) =>
                       setSelectedMajorId(Number(e.target.value))
                     }
                     w="full"
@@ -1018,7 +1018,7 @@ export default function Dashboard() {
                         {m.name}
                       </option>
                     ))}
-                  </Box>
+                  </chakra.select>
                   <Button
                     colorPalette="green"
                     size="sm"

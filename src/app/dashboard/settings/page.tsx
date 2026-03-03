@@ -5,6 +5,7 @@ import * as React from "react";
 import {
   Box,
   Button,
+  chakra,
   Card,
   Flex,
   Heading,
@@ -322,10 +323,9 @@ export default function SettingsPage() {
           <Stack gap="4">
             <Flex gap="4" direction={{ base: "column", sm: "row" }}>
               <Field label="Semester" flex="1">
-                <Box
-                  as="select"
+                <chakra.select
                   value={gradSemester}
-                  onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setGradSemester(e.target.value)}
+                  onChange={(e) => setGradSemester(e.target.value)}
                   w="full"
                   px="3"
                   py="2"
@@ -342,7 +342,7 @@ export default function SettingsPage() {
                   <option value="Summer">Summer</option>
                   <option value="Fall">Fall</option>
                   <option value="Winter">Winter</option>
-                </Box>
+                </chakra.select>
               </Field>
               <Field label="Year" flex="1">
                 <Input
