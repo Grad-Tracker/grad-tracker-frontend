@@ -309,16 +309,16 @@ describe("onboarding queries", () => {
 
   describe("saveOnboardingSelections", () => {
     it("inserts programs, courses, and updates onboarding flag", async () => {
-      const insertCalls: Array<{ table: string; data: unknown }> = [];
-
       const mockFrom = vi.fn().mockImplementation((table: string) => {
         const chain = createChainMock();
 
+        // delete is always called first on both tables before upsert
+        chain.delete = vi.fn().mockReturnValue({
+          eq: vi.fn().mockResolvedValue({ error: null }),
+        });
+
         if (table === "student_programs" || table === "student_course_history") {
-          chain.insert = vi.fn().mockImplementation((data) => {
-            insertCalls.push({ table, data });
-            return { error: null };
-          });
+          chain.upsert = vi.fn().mockReturnValue({ error: null });
         } else if (table === "students") {
           chain.update = vi.fn().mockReturnValue({
             eq: vi.fn().mockResolvedValue({ error: null }),
@@ -344,8 +344,13 @@ describe("onboarding queries", () => {
       const mockFrom = vi.fn().mockImplementation((table: string) => {
         const chain = createChainMock();
 
-        if (table === "student_programs") {
-          chain.insert = vi.fn().mockReturnValue({ error: null });
+        // delete is always called before upsert
+        chain.delete = vi.fn().mockReturnValue({
+          eq: vi.fn().mockResolvedValue({ error: null }),
+        });
+
+        if (table === "student_programs" || table === "student_course_history") {
+          chain.upsert = vi.fn().mockReturnValue({ error: null });
         } else if (table === "students") {
           chain.update = vi.fn().mockImplementation((payload) => {
             updatePayload = payload;
@@ -369,12 +374,24 @@ describe("onboarding queries", () => {
       });
     });
 
-    it("skips course history insert when no courses selected", async () => {
+    it("skips course history upsert when no courses selected", async () => {
+      const historyUpsertCalled = { value: false };
+
       const mockFrom = vi.fn().mockImplementation((table: string) => {
         const chain = createChainMock();
 
+        // delete is always called on both tables
+        chain.delete = vi.fn().mockReturnValue({
+          eq: vi.fn().mockResolvedValue({ error: null }),
+        });
+
         if (table === "student_programs") {
-          chain.insert = vi.fn().mockReturnValue({ error: null });
+          chain.upsert = vi.fn().mockReturnValue({ error: null });
+        } else if (table === "student_course_history") {
+          chain.upsert = vi.fn().mockImplementation(() => {
+            historyUpsertCalled.value = true;
+            return { error: null };
+          });
         } else if (table === "students") {
           chain.update = vi.fn().mockReturnValue({
             eq: vi.fn().mockResolvedValue({ error: null }),
@@ -388,9 +405,9 @@ describe("onboarding queries", () => {
 
       await saveOnboardingSelections(1, 10, [], []);
 
-      // Should NOT call student_course_history when no courses
-      const tables = mockFrom.mock.calls.map((c: unknown[]) => c[0]);
-      expect(tables).not.toContain("student_course_history");
+      // delete IS called on student_course_history (to clear old data),
+      // but upsert should NOT be called since there are no courses to insert
+      expect(historyUpsertCalled.value).toBe(false);
     });
   });
 });
