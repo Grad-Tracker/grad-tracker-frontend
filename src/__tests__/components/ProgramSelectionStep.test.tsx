@@ -122,4 +122,100 @@ describe("ProgramSelectionStep", () => {
     const radioCards = container.querySelectorAll("[data-part='item']");
     expect(radioCards.length).toBe(0);
   });
+
+  // ── NEW: Coverage boosters ───────────────────────────────────────────────
+
+  it("clicking 'As soon as possible' calls onGradChange with computed semester/year", () => {
+    vi.useFakeTimers();
+    // March 3, 2026 => month=2 (<4) => Spring 2026
+    vi.setSystemTime(new Date("2026-03-03T12:00:00Z"));
+
+    const onGradChange = vi.fn();
+
+    renderWithChakra(
+      <ProgramSelectionStep
+        {...defaultProps}
+        onGradChange={onGradChange}
+      />
+    );
+
+    fireEvent.click(screen.getByText("As soon as possible"));
+
+    expect(onGradChange).toHaveBeenCalledWith("Spring", 2026);
+
+    vi.useRealTimers();
+  });
+
+  it("changing semester select calls onGradChange with new semester and existing year", () => {
+    const onGradChange = vi.fn();
+
+    const { container } = renderWithChakra(
+      <ProgramSelectionStep
+        {...defaultProps}
+        onGradChange={onGradChange}
+        expectedGradSemester={null}
+        expectedGradYear={null}
+      />
+    );
+
+    const selects = container.querySelectorAll("select");
+    expect(selects.length).toBeGreaterThanOrEqual(2);
+
+    const semesterSelect = selects[0];
+    fireEvent.change(semesterSelect, { target: { value: "Fall" } });
+
+    expect(onGradChange).toHaveBeenCalledWith("Fall", null);
+  });
+
+  it("changing year select calls onGradChange with existing semester and new year", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-03-03T12:00:00Z")); // so year options include 2026+
+
+    const onGradChange = vi.fn();
+
+    const { container } = renderWithChakra(
+      <ProgramSelectionStep
+        {...defaultProps}
+        onGradChange={onGradChange}
+        expectedGradSemester="Fall"
+        expectedGradYear={null}
+      />
+    );
+
+    const selects = container.querySelectorAll("select");
+    expect(selects.length).toBeGreaterThanOrEqual(2);
+
+    const yearSelect = selects[1];
+    fireEvent.change(yearSelect, { target: { value: "2027" } });
+
+    expect(onGradChange).toHaveBeenCalledWith("Fall", 2027);
+
+    vi.useRealTimers();
+  });
+
+  it("shows Target text when expectedGradSemester and expectedGradYear are provided", () => {
+    renderWithChakra(
+      <ProgramSelectionStep
+        {...defaultProps}
+        expectedGradSemester="Fall"
+        expectedGradYear={2027}
+      />
+    );
+
+    expect(screen.getAllByText("Target: Fall 2027").length).toBeGreaterThan(0);
+  });
+
+  it("shows 'no certificates available' message when major selected but certificates list is empty", () => {
+    renderWithChakra(
+      <ProgramSelectionStep
+        {...defaultProps}
+        selectedMajor={1}
+        certificates={[]}
+      />
+    );
+
+    expect(
+      screen.getAllByText("No certificates available for this major yet.").length
+    ).toBeGreaterThan(0);
+  });
 });

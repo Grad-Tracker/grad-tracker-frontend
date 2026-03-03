@@ -141,4 +141,32 @@ describe("PlanCard", () => {
     renderWithChakra(<PlanCard {...defaultProps} canDelete={false} />);
     expect(screen.queryByTestId("menu-delete")).toBeNull();
   });
+
+  it("calls onDelete when delete menu item is clicked", () => {
+    const plan = makePlan({ id: 22 });
+    renderWithChakra(<PlanCard {...defaultProps} plan={plan} canDelete />);
+    fireEvent.click(screen.getByTestId("menu-delete"));
+    expect(defaultProps.onDelete).toHaveBeenCalledWith(22);
+  });
+
+  it("cancels rename on Escape and does not call onRename", async () => {
+    const plan = makePlan({ id: 7, name: "Old Name" });
+    renderWithChakra(<PlanCard {...defaultProps} plan={plan} />);
+    fireEvent.click(screen.getByTestId("menu-rename"));
+
+    const input = screen.getByRole("textbox");
+    fireEvent.change(input, { target: { value: "Another Name" } });
+    fireEvent.keyDown(input, { key: "Escape" });
+
+    await waitFor(() => {
+      expect(screen.queryByRole("textbox")).toBeNull();
+    });
+    expect(defaultProps.onRename).not.toHaveBeenCalled();
+  });
+
+  it("shows fallback updated text when updated_at is null", () => {
+    const plan = makePlan({ updated_at: null as unknown as string });
+    renderWithChakra(<PlanCard {...defaultProps} plan={plan} />);
+    expect(screen.getByText("No changes yet")).toBeInTheDocument();
+  });
 });
