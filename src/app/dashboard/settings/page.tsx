@@ -77,48 +77,50 @@ export default function SettingsPage() {
 
   useEffect(() => {
     async function load() {
-      const supabase = createClient();
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) return;
+      try {
+        const supabase = createClient();
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+        if (!user) return;
 
-      setEmail(user.email ?? "");
-      setNewEmail(user.email ?? "");
+        setEmail(user.email ?? "");
+        setNewEmail(user.email ?? "");
 
-      const { data: student } = await supabase
-        .from(DB_TABLES.students)
-        .select("id, first_name, last_name, expected_graduation_semester, expected_graduation_year")
-        .eq(STUDENT_COLUMNS.authUserId, user.id)
-        .maybeSingle();
-
-      if (student) {
-        setStudentId(student.id);
-        setFirstName(student.first_name ?? "");
-        setLastName(student.last_name ?? "");
-        setGradSemester(student.expected_graduation_semester ?? "");
-        setGradYear(student.expected_graduation_year ? String(student.expected_graduation_year) : "");
-
-        // Load notification preferences
-        const { data: prefs } = await supabase
-          .from(DB_TABLES.notificationPreferences)
-          .select(
-            "notif_requirement_alerts, notif_semester_reminders, notif_graduation_reminders, notif_weekly_digest"
-          )
-          .eq("student_id", student.id)
+        const { data: student } = await supabase
+          .from(DB_TABLES.students)
+          .select("id, first_name, last_name, expected_graduation_semester, expected_graduation_year")
+          .eq(STUDENT_COLUMNS.authUserId, user.id)
           .maybeSingle();
 
-        if (prefs) {
-          setNotifPrefs({
-            notif_requirement_alerts: prefs.notif_requirement_alerts ?? DEFAULT_PREFS.notif_requirement_alerts,
-            notif_semester_reminders: prefs.notif_semester_reminders ?? DEFAULT_PREFS.notif_semester_reminders,
-            notif_graduation_reminders: prefs.notif_graduation_reminders ?? DEFAULT_PREFS.notif_graduation_reminders,
-            notif_weekly_digest: prefs.notif_weekly_digest ?? DEFAULT_PREFS.notif_weekly_digest,
-          });
-        }
-      }
+        if (student) {
+          setStudentId(student.id);
+          setFirstName(student.first_name ?? "");
+          setLastName(student.last_name ?? "");
+          setGradSemester(student.expected_graduation_semester ?? "");
+          setGradYear(student.expected_graduation_year ? String(student.expected_graduation_year) : "");
 
-      setLoading(false);
+          // Load notification preferences
+          const { data: prefs } = await supabase
+            .from(DB_TABLES.notificationPreferences)
+            .select(
+              "notif_requirement_alerts, notif_semester_reminders, notif_graduation_reminders, notif_weekly_digest"
+            )
+            .eq("student_id", student.id)
+            .maybeSingle();
+
+          if (prefs) {
+            setNotifPrefs({
+              notif_requirement_alerts: prefs.notif_requirement_alerts ?? DEFAULT_PREFS.notif_requirement_alerts,
+              notif_semester_reminders: prefs.notif_semester_reminders ?? DEFAULT_PREFS.notif_semester_reminders,
+              notif_graduation_reminders: prefs.notif_graduation_reminders ?? DEFAULT_PREFS.notif_graduation_reminders,
+              notif_weekly_digest: prefs.notif_weekly_digest ?? DEFAULT_PREFS.notif_weekly_digest,
+            });
+          }
+        }
+      } finally {
+        setLoading(false);
+      }
     }
     load();
   }, []);
@@ -153,6 +155,7 @@ export default function SettingsPage() {
       const supabase = createClient();
       const { error } = await supabase.auth.updateUser({ email: trimmed });
       if (error) throw error;
+      setEmail(trimmed);
       toaster.create({
         title: "Verification email sent",
         description: "Check your inbox to confirm the new email address.",

@@ -212,7 +212,7 @@ describe("ProgramSelectionStep", () => {
       />
     );
 
-    const asapButton = screen.getByText("As soon as possible");
+    const asapButton = screen.getAllByText("As soon as possible")[0];
     fireEvent.click(asapButton);
 
     expect(onGradChange).toHaveBeenCalledTimes(1);

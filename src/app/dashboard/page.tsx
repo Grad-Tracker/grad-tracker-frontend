@@ -541,11 +541,12 @@ export default function Dashboard() {
 
       // Remove existing major program entries for this student
       if (currentMajorProgramId) {
-        await supabase
+        const { error: deleteError } = await supabase
           .from(DB_TABLES.studentPrograms)
           .delete()
           .eq("student_id", studentIdForReset)
           .eq("program_id", currentMajorProgramId);
+        if (deleteError) throw deleteError;
       }
 
       // Insert the new major

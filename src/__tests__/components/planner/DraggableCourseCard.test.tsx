@@ -19,7 +19,7 @@ vi.mock("@dnd-kit/core", () => ({
 // Render both children AND content so CourseTooltipContent is exercised
 vi.mock("@/components/ui/tooltip", () => ({
   Tooltip: ({ children, content }: any) =>
-    React.createElement("div", null, children, content),
+    React.createElement("div", { "data-testid": "tooltip-wrapper" }, children, content),
 }));
 
 function makeCourse(overrides: Partial<Course> = {}): Course {
@@ -147,7 +147,7 @@ describe("DraggableCourseCard", () => {
     const course = makeCourse({
       description: "An intro course about computer science fundamentals.",
       prereq_text: "None",
-    } as any);
+    });
     renderWithChakra(<DraggableCourseCard course={course} />);
     // The tooltip content renders the description
     expect(screen.getAllByText("An intro course about computer science fundamentals.").length).toBeGreaterThanOrEqual(1);
@@ -172,19 +172,17 @@ describe("DraggableCourseCard", () => {
       transform: { x: 10, y: 20 },
       isDragging: true,
     });
-    const { container } = renderWithChakra(
-      <DraggableCourseCard course={makeCourse()} />
-    );
-    // When isDragging, the component returns the card directly without Tooltip
-    expect(container.firstElementChild).toBeTruthy();
-    // CS 101 should still be visible
+    renderWithChakra(<DraggableCourseCard course={makeCourse()} />);
+    // When isDragging, the Tooltip wrapper must NOT be present
+    expect(screen.queryByTestId("tooltip-wrapper")).toBeNull();
+    // CS 101 should still be visible via the raw card
     expect(screen.getAllByText(/CS\s+101/).length).toBeGreaterThanOrEqual(1);
   });
 
   it("renders only description in tooltip when prereq_text is absent", () => {
     const course = makeCourse({
       description: "Course description only.",
-    } as any);
+    });
     renderWithChakra(<DraggableCourseCard course={course} />);
     expect(screen.getAllByText("Course description only.").length).toBeGreaterThanOrEqual(1);
     expect(screen.queryAllByText("Prerequisites").length).toBe(0);

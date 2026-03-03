@@ -226,7 +226,7 @@ describe("SemesterColumn", () => {
         onToggleCollapse={onToggleCollapse}
       />
     );
-    fireEvent.click(screen.getByText("Click to expand"));
+    fireEvent.click(screen.getAllByText("Click to expand")[0]);
     expect(onToggleCollapse).toHaveBeenCalled();
   });
 
