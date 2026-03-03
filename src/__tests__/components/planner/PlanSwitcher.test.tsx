@@ -210,6 +210,27 @@ describe("PlanSwitcher", () => {
     expect(screen.queryByRole("textbox")).toBeNull();
   });
 
+  it("Confirm button during rename calls onRenamePlan with new value", async () => {
+    renderWithChakra(<PlanSwitcher {...defaultProps} />);
+
+    const renameButtons = screen.getAllByTestId("menu-rename");
+    await act(async () => {
+      fireEvent.click(renameButtons[0]);
+    });
+
+    const input = screen.getByRole("textbox");
+    fireEvent.change(input, { target: { value: "Confirmed Name" } });
+
+    const confirmButton = screen.getByLabelText("Confirm");
+    await act(async () => {
+      fireEvent.click(confirmButton);
+    });
+
+    await waitFor(() => {
+      expect(defaultProps.onRenamePlan).toHaveBeenCalledWith(1, "Confirmed Name");
+    });
+  });
+
   it("shows 'No Plan' when activePlanId does not match any plan", () => {
     renderWithChakra(<PlanSwitcher {...defaultProps} activePlanId={999} />);
     expect(screen.getAllByText("No Plan").length).toBeGreaterThanOrEqual(1);

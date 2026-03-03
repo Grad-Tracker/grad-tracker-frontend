@@ -206,6 +206,13 @@ describe("PlanCard", () => {
     expect(screen.getAllByText("Escape Plan").length).toBeGreaterThanOrEqual(1);
   });
 
+  it("shows 0% progress when total_credits is 0", () => {
+    const plan = makePlan({ total_credits: 0 });
+    renderWithChakra(<PlanCard {...defaultProps} plan={plan} />);
+    const progressRoot = screen.getByTestId("progress-root");
+    expect(progressRoot.getAttribute("data-value")).toBe("0");
+  });
+
   it("does not call onRename when confirm is clicked but name is unchanged", async () => {
     const plan = makePlan({ id: 5, name: "Same Name" });
     renderWithChakra(<PlanCard {...defaultProps} plan={plan} />);
