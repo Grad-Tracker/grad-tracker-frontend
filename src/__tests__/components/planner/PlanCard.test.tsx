@@ -213,6 +213,13 @@ describe("PlanCard", () => {
     expect(progressRoot.getAttribute("data-value")).toBe("0");
   });
 
+  it("shows 75% progress when total_credits is 90 (green color threshold)", () => {
+    const plan = makePlan({ total_credits: 90 });
+    renderWithChakra(<PlanCard {...defaultProps} plan={plan} />);
+    const progressRoot = screen.getByTestId("progress-root");
+    expect(progressRoot.getAttribute("data-value")).toBe("75");
+  });
+
   it("does not call onRename when confirm is clicked but name is unchanged", async () => {
     const plan = makePlan({ id: 5, name: "Same Name" });
     renderWithChakra(<PlanCard {...defaultProps} plan={plan} />);
