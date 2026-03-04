@@ -32,11 +32,11 @@ vi.mock("next/navigation", () => ({
 
 // Supabase client (needed for handleComplete)
 vi.mock("@/lib/supabase/client", () => ({
-  createClient: () => ({
+  createClient: vi.fn(() => ({
     auth: {
       getUser: (...args: any[]) => mockGetUser(...args),
     },
-  }),
+  })),
 }));
 
 // Toaster
@@ -110,7 +110,7 @@ vi.mock("@/components/onboarding/ProgramSelectionStep", () => ({
   default: (props: any) => (
     <div data-testid="program-step">
       ProgramSelectionStep
-      <button type="button" onClick={() => props.onMajorChange(1)}>
+      <button type="button" data-testid="select-major-btn" onClick={() => props.onMajorChange(1)}>
         SelectMajor
       </button>
       <button type="button" onClick={() => props.onMajorChange(null)}>
