@@ -37,23 +37,15 @@ describe("DeletePlanDialog", () => {
 
   it("renders dialog title and plan name when open with a plan", () => {
     renderWithChakra(<DeletePlanDialog {...defaultProps} />);
-    expect(
-      screen.getAllByText("Delete Plan").length
-    ).toBeGreaterThanOrEqual(1);
-    expect(
-      screen.getAllByText("Test Plan").length
-    ).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("Delete Plan").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("Test Plan").length).toBeGreaterThanOrEqual(1);
   });
 
   it("displays plan stats (term count, course count) in confirmation text", () => {
     const plan = makePlan({ term_count: 3, course_count: 8 });
     renderWithChakra(<DeletePlanDialog {...defaultProps} plan={plan} />);
-    expect(
-      screen.getAllByText(/3 semesters/).length
-    ).toBeGreaterThanOrEqual(1);
-    expect(
-      screen.getAllByText(/8 planned courses/).length
-    ).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText(/3 semesters/).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText(/8 planned courses/).length).toBeGreaterThanOrEqual(1);
   });
 
   it("calls onConfirm when delete button is clicked", async () => {
@@ -61,59 +53,117 @@ describe("DeletePlanDialog", () => {
     const deleteButtons = screen.getAllByText("Delete Plan");
     // The last "Delete Plan" text is the action button (the first is the dialog title)
     const deleteButton = deleteButtons[deleteButtons.length - 1];
+
     await act(async () => {
       fireEvent.click(deleteButton);
     });
+
     await waitFor(() => {
       expect(defaultProps.onConfirm).toHaveBeenCalledTimes(1);
     });
   });
 
-  it("shows loading state on delete button while confirming", async () => {
-    // Create a promise that we control to keep loading state active
-    let resolveConfirm!: () => void;
-    const slowConfirm = vi.fn(
-      () => new Promise<void>((resolve) => { resolveConfirm = resolve; })
-    );
-
-    renderWithChakra(
-      <DeletePlanDialog
-        {...defaultProps}
-        onConfirm={slowConfirm}
-      />
-    );
+  it("closes dialog (calls onOpenChange(false)) after successful delete", async () => {
+    renderWithChakra(<DeletePlanDialog {...defaultProps} />);
 
     const deleteButtons = screen.getAllByText("Delete Plan");
     const deleteButton = deleteButtons[deleteButtons.length - 1];
 
-    // Click delete to trigger loading
     await act(async () => {
       fireEvent.click(deleteButton);
     });
 
-    // The button should now be in a loading state (Chakra sets aria-busy or disabled)
+    await waitFor(() => {
+      expect(defaultProps.onConfirm).toHaveBeenCalledTimes(1);
+      // handleDelete calls onOpenChange(false) after confirm resolves
+      expect(defaultProps.onOpenChange).toHaveBeenCalledWith(false);
+    });
+  });
+
+  it("shows loading state on delete button while confirming", async () => {
+    let resolveConfirm!: () => void;
+    const slowConfirm = vi.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveConfirm = resolve;
+        })
+    );
+
+    renderWithChakra(<DeletePlanDialog {...defaultProps} onConfirm={slowConfirm} />);
+
+    const deleteButtons = screen.getAllByText("Delete Plan");
+    const deleteButton = deleteButtons[deleteButtons.length - 1];
+
+    await act(async () => {
+      fireEvent.click(deleteButton);
+    });
+
     await waitFor(() => {
       const btn = deleteButton.closest("button");
       expect(btn).toBeTruthy();
-      // Chakra loading buttons get disabled and data-loading attribute
       expect(
         btn!.hasAttribute("disabled") ||
-        btn!.hasAttribute("data-loading") ||
-        btn!.getAttribute("aria-busy") === "true"
+          btn!.hasAttribute("data-loading") ||
+          btn!.getAttribute("aria-busy") === "true"
       ).toBe(true);
     });
 
-    // Resolve the promise to clean up
     await act(async () => {
       resolveConfirm();
     });
   });
 
-  it("does not render content when open={false}", () => {
+  it("calls onOpenChange(false) when Cancel is clicked (covers Dialog.Root onOpenChange branch)", async () => {
+    renderWithChakra(<DeletePlanDialog {...defaultProps} />);
+
+    const cancelButton = screen.getByRole("button", { name: /cancel/i });
+
+    await act(async () => {
+      fireEvent.click(cancelButton);
+    });
+
+    // This should flow through Dialog.Root onOpenChange={(e)=> onOpenChange(e.open)}
+    await waitFor(() => {
+      expect(defaultProps.onOpenChange).toHaveBeenCalledWith(false);
+    });
+  });
+
+  it("calls onOpenChange(false) when CloseButton is clicked (covers Dialog.Root onOpenChange branch)", async () => {
+    renderWithChakra(<DeletePlanDialog {...defaultProps} />);
+
+    // Chakra CloseButton is usually aria-label="Close"
+    const closeBtn =
+      screen.queryByRole("button", { name: /close/i }) ??
+      // fallback: last button in dialog header area if aria-label differs
+      screen.getAllByRole("button")[screen.getAllByRole("button").length - 1];
+
+    await act(async () => {
+      fireEvent.click(closeBtn);
+    });
+
+    await waitFor(() => {
+      expect(defaultProps.onOpenChange).toHaveBeenCalledWith(false);
+    });
+  });
+
+  it("renders safely when plan is null (covers ?? 0 fallbacks)", () => {
     renderWithChakra(
-      <DeletePlanDialog {...defaultProps} open={false} />
+      <DeletePlanDialog
+        {...defaultProps}
+        plan={null}
+      />
     );
-    // With lazyMount and open=false, dialog content should not be in the DOM
+
+    // Still shows title
+    expect(screen.getAllByText("Delete Plan").length).toBeGreaterThanOrEqual(1);
+
+    // Fallback text uses 0 when plan is null
+    expect(screen.getAllByText(/0 semesters/).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText(/0 planned courses/).length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("does not render content when open={false}", () => {
+    renderWithChakra(<DeletePlanDialog {...defaultProps} open={false} />);
     expect(screen.queryAllByText("Delete Plan").length).toBe(0);
     expect(screen.queryAllByText("Test Plan").length).toBe(0);
   });
