@@ -286,6 +286,7 @@ export default function Dashboard() {
         setLoadingProgress(true);
 
         const studentId = resolvedStudentRow.id;
+        setStudentIdForReset(studentId);
 
         const programsPromise = supabase
           .from(DB_TABLES.studentPrograms)
@@ -368,6 +369,8 @@ export default function Dashboard() {
 
         const majorName = (blocksResult as any).majorName ?? "Unknown";
         const majorProgramId = (blocksResult as any).majorProgramId as number | null;
+        setCurrentMajorProgramId(majorProgramId);
+        setSelectedMajorId(majorProgramId);
 
         // Reuse completedResult for BOTH:
         //  - requirement-block matching
@@ -517,6 +520,16 @@ export default function Dashboard() {
         });
 
         setLoadingStudent(false);
+
+        // Load majors for Change Major card (only if onboarded)
+        if (resolvedStudentRow.has_completed_onboarding) {
+          try {
+            const allMajors = await fetchPrograms("MAJOR");
+            setMajors(allMajors);
+          } catch {
+            // Non-critical: Change Major card simply won't show
+          }
+        }
       } catch {
         const supabase = createClient();
         await supabase.auth.signOut();
