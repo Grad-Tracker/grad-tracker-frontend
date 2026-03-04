@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { screen, fireEvent } from "@testing-library/react";
 import React from "react";
+import { useDroppable } from "@dnd-kit/core";
 import { renderWithChakra } from "../../helpers/mocks";
 import CoursePanel from "@/components/planner/CoursePanel";
 import type { RequirementBlockWithCourses, GraduateTrack } from "@/types/planner";
@@ -68,7 +69,10 @@ function defaultProps(overrides: Partial<React.ComponentProps<typeof CoursePanel
 // ── Tests ───────────────────────────────────────────────────────────
 
 describe("CoursePanel", () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    vi.clearAllMocks();
+    (useDroppable as ReturnType<typeof vi.fn>).mockReturnValue({ isOver: false, setNodeRef: vi.fn() });
+  });
 
   it('renders "Course Pool" heading', () => {
     renderWithChakra(<CoursePanel {...defaultProps()} />);
@@ -200,5 +204,25 @@ describe("CoursePanel", () => {
     renderWithChakra(<CoursePanel {...defaultProps()} />);
 
     expect(screen.getByTestId("req-progress")).toBeDefined();
+  });
+
+  it("shows 'Drop to unplan course' banner when isOver=true", () => {
+    (useDroppable as ReturnType<typeof vi.fn>).mockReturnValue({ isOver: true, setNodeRef: vi.fn() });
+
+    renderWithChakra(<CoursePanel {...defaultProps()} />);
+
+    expect(
+      screen.getAllByText("Drop to unplan course").length
+    ).toBeGreaterThanOrEqual(1);
+  });
+
+  it("shows 'No requirement courses found.' when blocks are empty and no search query", () => {
+    renderWithChakra(
+      <CoursePanel {...defaultProps({ blocks: [], allDedupedBlocks: [] })} />
+    );
+
+    expect(
+      screen.getAllByText("No requirement courses found.").length
+    ).toBeGreaterThanOrEqual(1);
   });
 });

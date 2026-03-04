@@ -110,4 +110,43 @@ describe("AddSemesterDialog", () => {
     expect(screen.queryAllByText("Add Semester").length).toBe(0);
     expect(screen.queryAllByText(/Fall/).length).toBe(0);
   });
+
+  it("updates add button label when year input changes", () => {
+    renderWithChakra(<AddSemesterDialog {...defaultProps} />);
+
+    const yearInput = screen.getByRole("spinbutton");
+    fireEvent.change(yearInput, { target: { value: "2028" } });
+
+    expect(
+      screen.getAllByText("Add Fall 2028").length
+    ).toBeGreaterThanOrEqual(1);
+  });
+
+  it("shows loading state on add button while onAdd is pending", async () => {
+    let resolveAdd!: () => void;
+    const pendingAdd = vi.fn(
+      () => new Promise<void>((resolve) => { resolveAdd = resolve; })
+    );
+
+    renderWithChakra(<AddSemesterDialog {...defaultProps} onAdd={pendingAdd} />);
+
+    const addBtnElement = screen.getAllByText(`Add Fall ${currentYear}`)[0];
+    const addButton = addBtnElement.closest("button")!;
+
+    await act(async () => {
+      fireEvent.click(addButton);
+    });
+
+    await waitFor(() => {
+      expect(
+        addButton.hasAttribute("disabled") ||
+        addButton.hasAttribute("data-loading") ||
+        addButton.getAttribute("aria-busy") === "true"
+      ).toBe(true);
+    });
+
+    await act(async () => {
+      resolveAdd();
+    });
+  });
 });

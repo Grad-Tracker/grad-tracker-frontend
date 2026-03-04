@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Box, HStack, Icon, Text, VStack } from "@chakra-ui/react";
+import { createClient } from "@/lib/supabase/client";
+import { toaster } from "@/components/ui/toaster";
 import {
   LuLayoutDashboard,
   LuBookOpen,
@@ -13,8 +15,6 @@ import {
   LuSettings,
   LuLogOut,
 } from "react-icons/lu";
-import { createClient } from "@/lib/supabase/client";
-import { toaster } from "@/components/ui/toaster";
 
 const navItems = [
   { icon: LuLayoutDashboard, label: "Dashboard", href: "/dashboard" },

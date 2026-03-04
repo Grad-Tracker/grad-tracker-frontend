@@ -161,4 +161,78 @@ describe("PlanSwitcher", () => {
     renderWithChakra(<PlanSwitcher {...singlePlanProps} />);
     expect(screen.queryAllByTestId("menu-delete").length).toBe(0);
   });
+
+  it("calls onEditPrograms when Edit Programs menu item is clicked", () => {
+    renderWithChakra(<PlanSwitcher {...defaultProps} />);
+    // Each plan has an "edit-programs" menu item
+    const editButtons = screen.getAllByTestId("menu-edit-programs");
+    expect(editButtons.length).toBeGreaterThanOrEqual(1);
+    fireEvent.click(editButtons[0]);
+    expect(defaultProps.onEditPrograms).toHaveBeenCalledWith(1);
+  });
+
+  it("Cancel button during rename hides the input", async () => {
+    renderWithChakra(<PlanSwitcher {...defaultProps} />);
+
+    // Start rename
+    const renameButtons = screen.getAllByTestId("menu-rename");
+    await act(async () => {
+      fireEvent.click(renameButtons[0]);
+    });
+
+    // Input should be visible
+    expect(screen.getByRole("textbox")).toBeTruthy();
+
+    // Click Cancel button
+    const cancelButton = screen.getByLabelText("Cancel");
+    await act(async () => {
+      fireEvent.click(cancelButton);
+    });
+
+    // Input should be gone, plan names should be back
+    expect(screen.queryByRole("textbox")).toBeNull();
+    expect(screen.getAllByText("Plan Alpha").length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("Escape key during rename calls cancelRename and hides input", async () => {
+    renderWithChakra(<PlanSwitcher {...defaultProps} />);
+
+    const renameButtons = screen.getAllByTestId("menu-rename");
+    await act(async () => {
+      fireEvent.click(renameButtons[0]);
+    });
+
+    const input = screen.getByRole("textbox");
+    await act(async () => {
+      fireEvent.keyDown(input, { key: "Escape" });
+    });
+
+    expect(screen.queryByRole("textbox")).toBeNull();
+  });
+
+  it("Confirm button during rename calls onRenamePlan with new value", async () => {
+    renderWithChakra(<PlanSwitcher {...defaultProps} />);
+
+    const renameButtons = screen.getAllByTestId("menu-rename");
+    await act(async () => {
+      fireEvent.click(renameButtons[0]);
+    });
+
+    const input = screen.getByRole("textbox");
+    fireEvent.change(input, { target: { value: "Confirmed Name" } });
+
+    const confirmButton = screen.getByLabelText("Confirm");
+    await act(async () => {
+      fireEvent.click(confirmButton);
+    });
+
+    await waitFor(() => {
+      expect(defaultProps.onRenamePlan).toHaveBeenCalledWith(1, "Confirmed Name");
+    });
+  });
+
+  it("shows 'No Plan' when activePlanId does not match any plan", () => {
+    renderWithChakra(<PlanSwitcher {...defaultProps} activePlanId={999} />);
+    expect(screen.getAllByText("No Plan").length).toBeGreaterThanOrEqual(1);
+  });
 });

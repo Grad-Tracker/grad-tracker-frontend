@@ -6,6 +6,7 @@ import {
   Avatar,
   Badge,
   Box,
+  chakra,
   Button,
   Card,
   Flex,
@@ -23,6 +24,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import {
   checkOnboardingStatus,
+  fetchPrograms,
   getOrCreateStudent,
 } from "@/lib/supabase/queries/onboarding";
 import {
@@ -54,7 +56,11 @@ import {
   LuFileText,
   LuCalendar,
   LuTarget,
+  LuTrash2,
+  LuGraduationCap,
+  LuTriangleAlert,
 } from "react-icons/lu";
+import type { Program } from "@/types/onboarding";
 
 const mockRecentActivity = [
   {
@@ -73,6 +79,72 @@ const mockRecentActivity = [
     time: "2 days ago",
   },
 ];
+
+function getStatusBadgeProps(status: string): { color: string; label: string } {
+  if (status === "enrolled") return { color: "green", label: "Enrolled" };
+  if (status === "waitlist") return { color: "orange", label: "Waitlist" };
+  return { color: "gray", label: "Planned" };
+}
+
+/**
+ * Resolves the student's major program and fetches its requirement blocks.
+ * Extracted to module level to reduce function nesting depth.
+ */
+async function resolveMajorAndBlocks(
+  supabase: ReturnType<typeof createClient>,
+  programsPromise: PromiseLike<{ data: any; error: any }>
+) {
+  let majorName = "Unknown";
+  let majorProgramId: number | null = null;
+
+  const { data: studentPrograms, error: spErr } = await programsPromise;
+
+  if (!spErr && studentPrograms?.length) {
+    const programIds = (studentPrograms as any[])
+      .map((sp) => sp?.program_id)
+      .filter((x) => x !== null && x !== undefined);
+
+    if (programIds.length) {
+      const { data: majorProgram, error: majorProgramErr } = await supabase
+        .from(DB_TABLES.programs)
+        .select("id,name")
+        .in("id", programIds)
+        .eq("program_type", PROGRAM_TYPES.major)
+        .maybeSingle();
+
+      if (!majorProgramErr && majorProgram?.name) {
+        majorName = majorProgram.name;
+        majorProgramId = majorProgram.id;
+      }
+    }
+  }
+
+  if (!majorProgramId) {
+    return {
+      data: null as any,
+      error: null as any,
+      majorName,
+      majorProgramId: null as number | null,
+    };
+  }
+
+  const blocksRes = await supabase
+    .from(DB_TABLES.programRequirementBlocks)
+    .select(
+      `
+        id,
+        name,
+        credits_required,
+        program_requirement_courses (
+          course_id,
+          courses:course_id ( credits )
+        )
+      `
+    )
+    .eq("program_id", majorProgramId);
+
+  return { ...blocksRes, majorName, majorProgramId };
+}
 
 export default function Dashboard() {
   const router = useRouter();
@@ -166,6 +238,16 @@ export default function Dashboard() {
 
   const [currentCourses, setCurrentCourses] = React.useState<PlannedCourseCard[]>([]);
   const [loadingCourses, setLoadingCourses] = React.useState(true);
+
+  const [majors, setMajors] = React.useState<Program[]>([]);
+  const [selectedMajorId, setSelectedMajorId] = React.useState<number | null>(null);
+  const [currentMajorProgramId, setCurrentMajorProgramId] = React.useState<number | null>(null);
+  const [changingMajor, setChangingMajor] = React.useState(false);
+
+  const [resetConfirming, setResetConfirming] = React.useState(false);
+  const [resetting, setResetting] = React.useState(false);
+  const [studentIdForReset, setStudentIdForReset] = React.useState<number | null>(null);
+  const [refreshKey, setRefreshKey] = React.useState(0);
 
   React.useEffect(() => {
     const loadStudent = async () => {
@@ -263,145 +345,64 @@ export default function Dashboard() {
           });
         }
 
-        // 3) Major (student_programs -> programs)
-        let majorName = "Unknown";
-        let majorProgramId: number | null = null;
+        // 3–6) Parallelize Dashboard Queries (per Jira task)
+        // After the student row is resolved, steps 3–9 are independent and should be fetched in parallel.
+        setLoadingRequirements(true);
+        setLoadingCourses(true);
+        setLoadingProgress(true);
 
-        const { data: studentPrograms, error: spErr } = await supabase
+        const studentId = resolvedStudentRow.id;
+        setStudentIdForReset(studentId);
+
+        const programsPromise = supabase
           .from(DB_TABLES.studentPrograms)
           .select("program_id")
-          .eq("student_id", resolvedStudentRow.id);
+          .eq("student_id", studentId);
 
-        if (!spErr && studentPrograms?.length) {
-          const programIds = studentPrograms.map((sp: any) => sp.program_id);
+        const completedPromise = supabase
+          .from(DB_TABLES.studentCourseHistory)
+          .select(`course_id, courses:course_id(credits)`)
+          .eq("student_id", studentId);
 
-          const { data: majorProgram, error: majorProgramErr } = await supabase
-            .from(DB_TABLES.programs)
-            .select("id,name")
-            .in("id", programIds)
-            .eq("program_type", PROGRAM_TYPES.major)
-            .maybeSingle();
-
-          if (!majorProgramErr && majorProgram?.name) {
-            majorName = majorProgram.name;
-            majorProgramId = majorProgram.id;
-          }
-        }
-
-        // 4) Degree requirements progress (blocks + courses vs student history)
-        setLoadingRequirements(true);
-
-        if (!majorProgramId) {
-          setRequirements(DEFAULT_REQUIREMENTS);
-          setLoadingRequirements(false);
-        } else {
-          const { data: completedCourseRows } = await supabase
-            .from(DB_TABLES.studentCourseHistory)
-            .select(
-              `
-              course_id,
-              courses:course_id (
-                credits
-              )
-            `
-            )
-            .eq("student_id", resolvedStudentRow.id);
-
-          const completedCourseIds = new Set<number>(
-            (completedCourseRows ?? [])
-              .map((r: any) => Number(r?.course_id))
-              .filter((x: number) => !Number.isNaN(x))
-          );
-
-          const { data: blocks, error: blocksErr } = await supabase
-            .from(DB_TABLES.programRequirementBlocks)
-            .select(
-              `
-              id,
-              name,
-              credits_required,
-              program_requirement_courses (
-                course_id,
-                courses:course_id (
-                  credits
-                )
-              )
-            `
-            )
-            .eq("program_id", majorProgramId);
-
-          if (blocksErr) {
-            setRequirements(DEFAULT_REQUIREMENTS);
-            setLoadingRequirements(false);
-          } else {
-            const categorize = (blockName: string) => {
-              const n = blockName.toLowerCase();
-              if (n.includes("general")) return { key: "General Education", color: "green" as const };
-              if (n.includes("core")) return { key: "Major Core", color: "blue" as const };
-              if (n.includes("elective")) return { key: "Major Electives", color: "purple" as const };
-              return { key: "Free Electives", color: "orange" as const };
-            };
-
-            const agg: Record<
-              string,
-              { completed: number; total: number; color: RequirementBar["color"] }
-            > = {
-              "General Education": { completed: 0, total: 0, color: "green" },
-              "Major Core": { completed: 0, total: 0, color: "blue" },
-              "Major Electives": { completed: 0, total: 0, color: "purple" },
-              "Free Electives": { completed: 0, total: 0, color: "orange" },
-            };
-
-            for (const b of blocks ?? []) {
-              const { key, color } = categorize(String((b as any).name ?? ""));
-              const blockCourseRows = (b as any).program_requirement_courses ?? [];
-
-              const fallbackTotal = blockCourseRows.reduce((sum: number, r: any) => {
-                return sum + Number(r?.courses?.credits ?? 0);
-              }, 0);
-
-              const total = Number((b as any).credits_required ?? fallbackTotal ?? 0);
-
-              const completed = blockCourseRows.reduce((sum: number, r: any) => {
-                const cid = Number(r?.course_id);
-                if (!completedCourseIds.has(cid)) return sum;
-                return sum + Number(r?.courses?.credits ?? 0);
-              }, 0);
-
-              agg[key].total += total;
-              agg[key].completed += completed;
-              agg[key].color = color;
-            }
-
-            const bars: RequirementBar[] = Object.entries(agg).map(([name, v]) => {
-              const total = Math.max(0, Math.round(v.total));
-              const completed = Math.min(total, Math.round(v.completed));
-              const percentage = total === 0 ? 0 : Math.min(100, Math.round((completed / total) * 100));
-              return { name, completed, total, percentage, color: v.color };
-            });
-
-            setRequirements(bars);
-            setLoadingRequirements(false);
-          }
-        }
-
-        // 5) Current semester planned courses
-        setLoadingCourses(true);
-
-        const { data: plannedRows } = await supabase
+        const plannedPromise = supabase
           .from(DB_TABLES.studentPlannedCourses)
-          .select(
-            `
-          status,
-          courses:course_id (
-            subject,
-            number,
-            title,
-            credits
-          )
-        `
-          )
-          .eq("student_id", resolvedStudentRow.id);
+          .select(`status, courses:course_id(subject, number, title, credits)`)
+          .eq("student_id", studentId);
+
+        // blocksPromise depends on majorProgramId, which depends on student_programs -> programs.
+        const blocksPromise = resolveMajorAndBlocks(supabase, programsPromise);
+
+        const [completedResult, blocksResult, plannedResult] = await Promise.all([
+          completedPromise,
+          blocksPromise,
+          plannedPromise,
+        ]);
+
+        const majorName = (blocksResult as any).majorName ?? "Unknown";
+        const majorProgramId = (blocksResult as any).majorProgramId as number | null;
+        setCurrentMajorProgramId(majorProgramId);
+        setSelectedMajorId(majorProgramId);
+
+        // Reuse completedResult for BOTH:
+        //  - requirement-block matching
+        //  - credit summary (completed credits)
+        const completedCourseRows = (completedResult as any)?.data ?? [];
+        const completedCourseIds = new Set<number>(
+          (completedCourseRows ?? [])
+            .map((r: any) => Number(r?.course_id))
+            .filter((x: number) => !Number.isNaN(x))
+        );
+
+        const completedCredits =
+          (completedCourseRows ?? []).reduce((sum: number, r: any) => {
+            const credits = Number(r?.courses?.credits ?? 0);
+            return sum + credits;
+          }, 0);
+
+        // Reuse plannedResult for BOTH:
+        //  - course cards
+        //  - in-progress credits
+        const plannedRows = (plannedResult as any)?.data ?? [];
 
         const mapped: PlannedCourseCard[] =
           (plannedRows ?? [])
@@ -426,37 +427,76 @@ export default function Dashboard() {
                 status,
               };
             })
-            .filter((c): c is PlannedCourseCard => c !== null);
+            .filter((c: PlannedCourseCard | null): c is PlannedCourseCard => c !== null);
 
         setCurrentCourses(mapped);
         setLoadingCourses(false);
 
-        // 6) Progress (completed + in-progress credits)
-        setLoadingProgress(true);
-
-        const { data: completedRows } = await supabase
-          .from(DB_TABLES.studentCourseHistory)
-          .select(`courses:course_id ( credits )`)
-          .eq("student_id", resolvedStudentRow.id);
-
-        const completedCredits =
-          (completedRows ?? []).reduce((sum: number, r: any) => {
-            const credits = Number(r?.courses?.credits ?? 0);
-            return sum + credits;
-          }, 0);
-
-        const { data: plannedCreditRows } = await supabase
-          .from(DB_TABLES.studentPlannedCourses)
-          .select(`status, courses:course_id ( credits )`)
-          .eq("student_id", resolvedStudentRow.id);
-
         const inProgressCredits =
-          (plannedCreditRows ?? []).reduce((sum: number, r: any) => {
+          (plannedRows ?? []).reduce((sum: number, r: any) => {
             const s = String(r?.status ?? "").toLowerCase();
             if (s !== "enrolled" && s !== "waitlist") return sum;
             return sum + Number(r?.courses?.credits ?? 0);
           }, 0);
 
+        // Requirements (uses blocksResult + completedCourseIds)
+        if (!majorProgramId || (blocksResult as any)?.error) {
+          setRequirements(DEFAULT_REQUIREMENTS);
+          setLoadingRequirements(false);
+        } else {
+          const blocks = ((blocksResult as any)?.data ?? []) as any[];
+
+          const categorize = (blockName: string) => {
+            const n = blockName.toLowerCase();
+            if (n.includes("general")) return { key: "General Education", color: "green" as const };
+            if (n.includes("core")) return { key: "Major Core", color: "blue" as const };
+            if (n.includes("elective")) return { key: "Major Electives", color: "purple" as const };
+            return { key: "Free Electives", color: "orange" as const };
+          };
+
+          const agg: Record<
+            string,
+            { completed: number; total: number; color: RequirementBar["color"] }
+          > = {
+            "General Education": { completed: 0, total: 0, color: "green" },
+            "Major Core": { completed: 0, total: 0, color: "blue" },
+            "Major Electives": { completed: 0, total: 0, color: "purple" },
+            "Free Electives": { completed: 0, total: 0, color: "orange" },
+          };
+
+          for (const b of blocks) {
+            const { key, color } = categorize(String(b?.name ?? ""));
+            const blockCourseRows = b?.program_requirement_courses ?? [];
+
+            const fallbackTotal = blockCourseRows.reduce((sum: number, r: any) => {
+              return sum + Number(r?.courses?.credits ?? 0);
+            }, 0);
+
+            const total = Number(b?.credits_required ?? fallbackTotal ?? 0);
+
+            const completed = blockCourseRows.reduce((sum: number, r: any) => {
+              const cid = Number(r?.course_id);
+              if (!completedCourseIds.has(cid)) return sum;
+              return sum + Number(r?.courses?.credits ?? 0);
+            }, 0);
+
+            agg[key].total += total;
+            agg[key].completed += completed;
+            agg[key].color = color;
+          }
+
+          const bars: RequirementBar[] = Object.entries(agg).map(([name, v]) => {
+            const total = Math.max(0, Math.round(v.total));
+            const completed = Math.min(total, Math.round(v.completed));
+            const percentage = total === 0 ? 0 : Math.min(100, Math.round((completed / total) * 100));
+            return { name, completed, total, percentage, color: v.color };
+          });
+
+          setRequirements(bars);
+          setLoadingRequirements(false);
+        }
+
+        // Progress summary (reused completedCredits + inProgressCredits)
         const totalCredits = TOTAL_REQUIRED_CREDITS;
         const remainingCredits = Math.max(totalCredits - completedCredits, 0);
         const overall = Math.min(100, Math.round((completedCredits / totalCredits) * 100));
@@ -491,6 +531,16 @@ export default function Dashboard() {
         });
 
         setLoadingStudent(false);
+
+        // Load majors for Change Major card (only if onboarded)
+        if (resolvedStudentRow.has_completed_onboarding) {
+          try {
+            const allMajors = await fetchPrograms("MAJOR");
+            setMajors(allMajors);
+          } catch {
+            // Non-critical: Change Major card simply won't show
+          }
+        }
       } catch {
         const supabase = createClient();
         await supabase.auth.signOut();
@@ -504,7 +554,76 @@ export default function Dashboard() {
     };
 
     loadStudent();
-  }, [router]);
+  }, [router, refreshKey]);
+
+  const handleChangeMajor = async () => {
+    if (!selectedMajorId || !studentIdForReset || selectedMajorId === currentMajorProgramId) return;
+    setChangingMajor(true);
+    try {
+      const supabase = createClient();
+
+      // Remove existing major program entries for this student
+      if (currentMajorProgramId) {
+        const { error: deleteError } = await supabase
+          .from(DB_TABLES.studentPrograms)
+          .delete()
+          .eq("student_id", studentIdForReset)
+          .eq("program_id", currentMajorProgramId);
+        if (deleteError) throw deleteError;
+      }
+
+      // Insert the new major
+      const { error } = await supabase
+        .from(DB_TABLES.studentPrograms)
+        .insert({ student_id: studentIdForReset, program_id: selectedMajorId });
+
+      if (error) throw error;
+
+      setCurrentMajorProgramId(selectedMajorId);
+      const newMajor = majors.find((m) => m.id === selectedMajorId);
+      if (newMajor && student) {
+        setStudent({ ...student, major: newMajor.name });
+      }
+      toaster.create({ title: "Major updated", type: "success" });
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : "Unknown error";
+      toaster.create({ title: "Failed to change major", description: msg, type: "error" });
+    } finally {
+      setChangingMajor(false);
+    }
+  };
+
+  const handleResetProgress = async () => {
+    if (!studentIdForReset) return;
+    setResetting(true);
+    try {
+      const supabase = createClient();
+
+      const [historyResult, plannedResult, programsResult] = await Promise.all([
+        supabase.from(DB_TABLES.studentCourseHistory).delete().eq("student_id", studentIdForReset),
+        supabase.from(DB_TABLES.studentPlannedCourses).delete().eq("student_id", studentIdForReset),
+        supabase.from(DB_TABLES.studentPrograms).delete().eq("student_id", studentIdForReset),
+      ]);
+
+      if (historyResult.error) throw historyResult.error;
+      if (plannedResult.error) throw plannedResult.error;
+      if (programsResult.error) throw programsResult.error;
+
+      await supabase
+        .from(DB_TABLES.students)
+        .update({ has_completed_onboarding: false })
+        .eq(STUDENT_COLUMNS.id, studentIdForReset);
+
+      toaster.create({ title: "Progress reset", description: "Your progress has been cleared. Use the setup wizard to start fresh.", type: "success" });
+      setRefreshKey((k) => k + 1);
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : "Unknown error";
+      toaster.create({ title: "Failed to reset progress", description: msg, type: "error" });
+    } finally {
+      setResetting(false);
+      setResetConfirming(false);
+    }
+  };
 
   if (loadingStudent) {
     return <Box p="8">Loading...</Box>;
@@ -521,7 +640,7 @@ export default function Dashboard() {
         <Text fontSize="sm" color="fg.muted" fontWeight="500">
           Dashboard
         </Text>
-        <Heading size="lg" fontFamily="var(--font-outfit), sans-serif" fontWeight="400">
+        <Heading size="lg" fontFamily="'DM Serif Display', serif" fontWeight="400">
           Grad Tracker
         </Heading>
       </Box>
@@ -773,9 +892,9 @@ export default function Dashboard() {
                     </Text>
                   </Box>
                 ) : (
-                  currentCourses.map((course, index) => (
+                  currentCourses.map((course) => (
                     <Flex
-                      key={`${course.code}-${course.name}-${index}`}
+                      key={`${course.code}-${course.name}`}
                       p="4"
                       bg="bg.subtle"
                       borderRadius="lg"
@@ -814,21 +933,11 @@ export default function Dashboard() {
                           {course.credits} credits
                         </Text>
                         <Badge
-                          colorPalette={
-                            course.status === "enrolled"
-                              ? "green"
-                              : course.status === "waitlist"
-                                ? "orange"
-                                : "gray"
-                          }
+                          colorPalette={getStatusBadgeProps(course.status).color}
                           variant="subtle"
                           size="sm"
                         >
-                          {course.status === "enrolled"
-                            ? "Enrolled"
-                            : course.status === "waitlist"
-                              ? "Waitlist"
-                              : "Planned"}
+                          {getStatusBadgeProps(course.status).label}
                         </Badge>
                       </HStack>
                     </Flex>
@@ -885,6 +994,59 @@ export default function Dashboard() {
               </VStack>
             </Card.Body>
           </Card.Root>
+
+          {/* Change Major */}
+          {majors.length > 0 && (
+            <Card.Root bg="bg" borderRadius="xl" borderWidth="1px" borderColor="border.subtle">
+              <Card.Header p="5" pb="3">
+                <Flex align="center" gap="2">
+                  <Icon color="green.fg">
+                    <LuGraduationCap />
+                  </Icon>
+                  <Heading size="sm" fontWeight="600">
+                    Change Major
+                  </Heading>
+                </Flex>
+              </Card.Header>
+              <Card.Body p="5" pt="0">
+                <Stack gap="3">
+                  <chakra.select
+                    value={selectedMajorId ?? ""}
+                    onChange={(e) =>
+                      setSelectedMajorId(Number(e.target.value))
+                    }
+                    w="full"
+                    px="3"
+                    py="2"
+                    borderRadius="lg"
+                    borderWidth="1px"
+                    borderColor="border.subtle"
+                    bg="bg"
+                    fontSize="sm"
+                    color="fg"
+                    _focus={{ outline: "2px solid", outlineColor: "green.fg", outlineOffset: "2px" }}
+                    cursor="pointer"
+                  >
+                    {majors.map((m) => (
+                      <option key={m.id} value={m.id}>
+                        {m.name}
+                      </option>
+                    ))}
+                  </chakra.select>
+                  <Button
+                    colorPalette="green"
+                    size="sm"
+                    borderRadius="lg"
+                    loading={changingMajor}
+                    disabled={!selectedMajorId || selectedMajorId === currentMajorProgramId}
+                    onClick={handleChangeMajor}
+                  >
+                    Save Major
+                  </Button>
+                </Stack>
+              </Card.Body>
+            </Card.Root>
+          )}
 
           <Card.Root bg="bg" borderRadius="xl" borderWidth="1px" borderColor="border.subtle" className="animate-fade-up-delay-3">
             <Card.Header p="5" pb="0">
@@ -971,6 +1133,57 @@ export default function Dashboard() {
                   </Icon>
                   Review Requirements
                 </Button>
+
+                {/* Reset All Progress — only shown after onboarding is complete */}
+                {student.hasCompletedOnboarding && (
+                  !resetConfirming ? (
+                    <Button
+                      variant="outline"
+                      colorPalette="red"
+                      justifyContent="start"
+                      size="sm"
+                      fontWeight="500"
+                      onClick={() => setResetConfirming(true)}
+                    >
+                      <Icon mr="2">
+                        <LuTrash2 />
+                      </Icon>
+                      Reset All Progress
+                    </Button>
+                  ) : (
+                    <Stack gap="2" p="3" bg="red.subtle" borderWidth="1px" borderColor="red.muted" borderRadius="lg">
+                      <HStack gap="2">
+                        <Icon color="red.fg" flexShrink={0}>
+                          <LuTriangleAlert />
+                        </Icon>
+                        <Text fontSize="xs" fontWeight="500" color="red.fg">
+                          This will delete all your progress. Are you sure?
+                        </Text>
+                      </HStack>
+                      <HStack gap="2">
+                        <Button
+                          size="xs"
+                          colorPalette="red"
+                          loading={resetting}
+                          onClick={handleResetProgress}
+                          borderRadius="md"
+                          flex="1"
+                        >
+                          Yes, Reset
+                        </Button>
+                        <Button
+                          size="xs"
+                          variant="ghost"
+                          onClick={() => setResetConfirming(false)}
+                          borderRadius="md"
+                          flex="1"
+                        >
+                          Cancel
+                        </Button>
+                      </HStack>
+                    </Stack>
+                  )
+                )}
               </Stack>
             </Card.Body>
           </Card.Root>

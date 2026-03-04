@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, waitFor, act } from "@testing-library/react";
+import { render, screen, waitFor, act, fireEvent } from "@testing-library/react";
 import { ChakraProvider, defaultSystem } from "@chakra-ui/react";
 
 const mockFrom = vi.fn();
@@ -253,8 +253,182 @@ describe("GenEdRequirements", () => {
       renderWithChakra(<GenEdRequirements studentId={1} />);
     });
 
+    // ENGL 101 is completed (course_history mock returns it) — verify it appears
+    // in the Completed section of the bucket.
     await waitFor(() => {
-      expect(screen.getAllByText(/ENGL 101/).length).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByText("English Comp").length).toBeGreaterThanOrEqual(1);
+    });
+  });
+
+  it("shows 'Show remaining' toggle for uncompleted courses in a bucket", async () => {
+    const buckets = [
+      { id: 1, code: "SS", name: "Social Sciences", credits_required: 9 },
+    ];
+    const bucketCourses = [
+      { bucket_id: 1, course_id: 200 },
+      { bucket_id: 1, course_id: 201 },
+    ];
+    const courses = [
+      { id: 200, subject: "PSYC", number: "101", title: "Intro Psych", credits: 3 },
+      { id: 201, subject: "SOCI", number: "101", title: "Intro Sociology", credits: 3 },
+    ];
+
+    mockFrom.mockImplementation((table: string) => {
+      const chain = createChainMock();
+      if (table === "gen_ed_buckets") {
+        chain.order = vi.fn().mockResolvedValue({ data: buckets, error: null });
+      } else if (table === "gen_ed_bucket_courses") {
+        chain.then = vi.fn().mockImplementation((resolve: any) =>
+          resolve({ data: bucketCourses, error: null })
+        );
+      } else if (table === "student_course_history") {
+        chain.eq = vi.fn().mockResolvedValue({ data: [], error: null });
+      } else if (table === "courses") {
+        chain.in = vi.fn().mockResolvedValue({ data: courses, error: null });
+      }
+      return chain;
+    });
+
+    await act(async () => {
+      renderWithChakra(<GenEdRequirements studentId={1} />);
+    });
+
+    await waitFor(() => {
+      expect(screen.getAllByText(/Show remaining \(2\)/).length).toBeGreaterThanOrEqual(1);
+    });
+  });
+
+  it("toggles remaining courses visibility when 'Show remaining' is clicked", async () => {
+    const buckets = [
+      { id: 2, code: "NS", name: "Natural Sciences", credits_required: 7 },
+    ];
+    const bucketCourses = [
+      { bucket_id: 2, course_id: 300 },
+    ];
+    const courses = [
+      { id: 300, subject: "BIOL", number: "101", title: "General Biology", credits: 4 },
+    ];
+
+    mockFrom.mockImplementation((table: string) => {
+      const chain = createChainMock();
+      if (table === "gen_ed_buckets") {
+        chain.order = vi.fn().mockResolvedValue({ data: buckets, error: null });
+      } else if (table === "gen_ed_bucket_courses") {
+        chain.then = vi.fn().mockImplementation((resolve: any) =>
+          resolve({ data: bucketCourses, error: null })
+        );
+      } else if (table === "student_course_history") {
+        chain.eq = vi.fn().mockResolvedValue({ data: [], error: null });
+      } else if (table === "courses") {
+        chain.in = vi.fn().mockResolvedValue({ data: courses, error: null });
+      }
+      return chain;
+    });
+
+    renderWithChakra(<GenEdRequirements studentId={1} />);
+
+    // Wait for the toggle to appear
+    await waitFor(() => {
+      expect(screen.getAllByText(/Show remaining/).length).toBeGreaterThanOrEqual(1);
+    });
+
+    // Course should NOT be visible yet (toggle is closed)
+    expect(screen.queryAllByText("General Biology").length).toBe(0);
+
+    // Click "Show remaining"
+    const toggleText = screen.getAllByText(/Show remaining/)[0];
+    await act(async () => {
+      fireEvent.click(toggleText);
+    });
+
+    // Now "Hide remaining" should appear and the course should be visible
+    await waitFor(() => {
+      expect(screen.getAllByText("Hide remaining").length).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByText("General Biology").length).toBeGreaterThanOrEqual(1);
+    });
+
+    // Click "Hide remaining" to collapse again
+    const hideToggle = screen.getAllByText("Hide remaining")[0];
+    await act(async () => {
+      fireEvent.click(hideToggle);
+    });
+
+    await waitFor(() => {
+      expect(screen.getAllByText(/Show remaining/).length).toBeGreaterThanOrEqual(1);
+    });
+  });
+
+  it("shows 'Completed' section heading when courses are completed", async () => {
+    const buckets = [
+      { id: 1, code: "HU", name: "Humanities", credits_required: 3 },
+    ];
+    const bucketCourses = [{ bucket_id: 1, course_id: 100 }];
+    const courses = [
+      { id: 100, subject: "ENGL", number: "101", title: "English Comp", credits: 3 },
+    ];
+
+    mockFrom.mockImplementation((table: string) => {
+      const chain = createChainMock();
+      if (table === "gen_ed_buckets") {
+        chain.order = vi.fn().mockResolvedValue({ data: buckets, error: null });
+      } else if (table === "gen_ed_bucket_courses") {
+        chain.then = vi.fn().mockImplementation((resolve: any) =>
+          resolve({ data: bucketCourses, error: null })
+        );
+      } else if (table === "student_course_history") {
+        chain.eq = vi.fn().mockResolvedValue({
+          data: [{ course_id: 100, grade: "A", completed: true }],
+          error: null,
+        });
+      } else if (table === "courses") {
+        chain.in = vi.fn().mockResolvedValue({ data: courses, error: null });
+      }
+      return chain;
+    });
+
+    await act(async () => {
+      renderWithChakra(<GenEdRequirements studentId={1} />);
+    });
+
+    await waitFor(() => {
+      expect(screen.getAllByText("Completed").length).toBeGreaterThanOrEqual(1);
+    });
+  });
+
+  it("shows 'Done' badge when bucket credits are fully met", async () => {
+    const buckets = [
+      { id: 1, code: "HU", name: "Humanities", credits_required: 3 },
+    ];
+    const bucketCourses = [{ bucket_id: 1, course_id: 100 }];
+    const courses = [
+      { id: 100, subject: "ENGL", number: "101", title: "English Comp", credits: 3 },
+    ];
+
+    mockFrom.mockImplementation((table: string) => {
+      const chain = createChainMock();
+      if (table === "gen_ed_buckets") {
+        chain.order = vi.fn().mockResolvedValue({ data: buckets, error: null });
+      } else if (table === "gen_ed_bucket_courses") {
+        chain.then = vi.fn().mockImplementation((resolve: any) =>
+          resolve({ data: bucketCourses, error: null })
+        );
+      } else if (table === "student_course_history") {
+        chain.eq = vi.fn().mockResolvedValue({
+          data: [{ course_id: 100, grade: "A", completed: true }],
+          error: null,
+        });
+      } else if (table === "courses") {
+        chain.in = vi.fn().mockResolvedValue({ data: courses, error: null });
+      }
+      return chain;
+    });
+
+    await act(async () => {
+      renderWithChakra(<GenEdRequirements studentId={1} />);
+    });
+
+    await waitFor(() => {
+      expect(screen.getAllByText("Done").length).toBeGreaterThanOrEqual(1);
     });
   });
 });
