@@ -516,6 +516,16 @@ export default function Dashboard() {
           hasCompletedOnboarding: !!resolvedStudentRow.has_completed_onboarding,
         });
 
+        setStudentIdForReset(resolvedStudentRow.id);
+        setCurrentMajorProgramId(majorProgramId);
+        setSelectedMajorId(majorProgramId);
+        try {
+          const allMajors = await fetchPrograms("MAJOR");
+          setMajors(allMajors);
+        } catch {
+          // Non-critical – skip if it fails
+        }
+
         setLoadingStudent(false);
       } catch {
         const supabase = createClient();
