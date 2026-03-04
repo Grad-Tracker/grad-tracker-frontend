@@ -33,6 +33,13 @@ export default defineConfig({
         "**/*.test.tsx",
         // Co-located test files
         "src/components/**/*.test.tsx",
+        "src/proxy.ts",
+        "src/types/**",
+        "src/app/auth/**/route.ts",
+        "src/app/**/layout.tsx",          // optional but usually fine
+        "src/lib/supabase/client.ts",
+        "src/lib/supabase/server.ts",
+        "src/utils/supabase/**",
       ]
     }
   },

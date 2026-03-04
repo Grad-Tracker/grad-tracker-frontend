@@ -230,7 +230,9 @@ export default function OnboardingWizard() {
       });
 
       router.push("/dashboard");
-    } catch {
+    } catch (err) {
+      console.error("Failed to save onboarding selections:", err);
+
       toaster.error({
         title: "Failed to save selections",
         description: "Please try again.",
@@ -257,7 +259,7 @@ export default function OnboardingWizard() {
   );
 
   return (
-    <Box minH="100vh" bg="bg" fontFamily="var(--font-plus-jakarta), sans-serif">
+    <Box minH="100vh" bg="bg" fontFamily="'Plus Jakarta Sans', sans-serif">
       <Container maxW="4xl" mx="auto" px={{ base: "4", md: "8" }} py="8">
         <VStack gap="8" align="stretch">
           {/* Header */}
@@ -276,7 +278,7 @@ export default function OnboardingWizard() {
               Setup Wizard
             </Badge>
             <Heading
-              fontFamily="var(--font-outfit), sans-serif"
+              fontFamily="'DM Serif Display', serif"
               size={{ base: "2xl", md: "3xl" }}
               letterSpacing="-0.02em"
               fontWeight="400"

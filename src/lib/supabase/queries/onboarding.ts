@@ -92,7 +92,7 @@ export async function fetchProgramRequirements(
 
     const blockCourses = blockCourseIds
       .map((id) => courseMap.get(id))
-      .filter((c): c is CourseRow => c !== undefined);
+      .filter((c: CourseRow | undefined): c is CourseRow => c !== undefined);
 
     return { ...block, courses: blockCourses } as RequirementBlock;
   });
@@ -190,6 +190,10 @@ export async function fetchCertificatesForMajor(
 
 /**
  * Save all onboarding selections to the database.
+ * - Clears existing selections first (so onboarding is re-runnable)
+ * - Uses upsert to be idempotent (safe on retries / double-clicks)
+ * - Updates onboarding flag LAST
+ * - Best-effort rollback cleanup on failure to avoid partial state
  */
 export async function saveOnboardingSelections(
   studentId: number,
@@ -201,47 +205,36 @@ export async function saveOnboardingSelections(
 ): Promise<void> {
   const supabase = createClient();
 
-  // Clear any existing selections so re-saves don't accumulate duplicate rows.
-  const { error: delProgramsErr } = await supabase
-    .from(DB_TABLES.studentPrograms)
-    .delete()
-    .eq("student_id", studentId);
-  if (delProgramsErr) throw delProgramsErr;
+  const cleanupSelections = async () => {
+    const { error: delProgramsErr } = await supabase
+      .from(DB_TABLES.studentPrograms)
+      .delete()
+      .eq("student_id", studentId);
 
-  const { error: delHistoryErr } = await supabase
-    .from(DB_TABLES.studentCourseHistory)
-    .delete()
-    .eq("student_id", studentId);
-  if (delHistoryErr) throw delHistoryErr;
+    if (delProgramsErr) throw delProgramsErr;
 
-  // Insert selected programs (major + certificates)
+    const { error: delCoursesErr } = await supabase
+      .from(DB_TABLES.studentCourseHistory)
+      .delete()
+      .eq("student_id", studentId);
+
+    if (delCoursesErr) throw delCoursesErr;
+  };
+
   const programRows = [majorId, ...certificateIds].map((programId) => ({
     student_id: studentId,
     program_id: programId,
   }));
 
-  const { error: programsError } = await supabase
-    .from(DB_TABLES.studentPrograms)
-    .upsert(programRows, { onConflict: "student_id,program_id" });
+  const courseRows =
+    courseIds.length > 0
+      ? courseIds.map((courseId) => ({
+          student_id: studentId,
+          course_id: courseId,
+          completed: true,
+        }))
+      : [];
 
-  if (programsError) throw programsError;
-
-  // Insert completed courses
-  if (courseIds.length > 0) {
-    const courseRows = courseIds.map((courseId) => ({
-      student_id: studentId,
-      course_id: courseId,
-      completed: true,
-    }));
-
-    const { error: coursesError } = await supabase
-      .from(DB_TABLES.studentCourseHistory)
-      .upsert(courseRows, { onConflict: "student_id,course_id" });
-
-    if (coursesError) throw coursesError;
-  }
-
-  // Mark onboarding as completed + save graduation info
   const updatePayload: Record<string, unknown> = {
     has_completed_onboarding: true,
   };
@@ -252,12 +245,47 @@ export async function saveOnboardingSelections(
     updatePayload.expected_graduation_year = expectedGradYear;
   }
 
-  const { error: updateError } = await supabase
-    .from(DB_TABLES.students)
-    .update(updatePayload)
-    .eq(STUDENT_COLUMNS.id, studentId);
+  try {
+    // 1) delete existing selections
+    await cleanupSelections();
 
-  if (updateError) throw updateError;
+    // 2) upsert new selections
+    const { error: programsError } = await supabase
+      .from(DB_TABLES.studentPrograms)
+      .upsert(programRows, {
+        onConflict: "student_id,program_id",
+        ignoreDuplicates: false,
+      });
+
+    if (programsError) throw programsError;
+
+    if (courseRows.length > 0) {
+      const { error: coursesError } = await supabase
+        .from(DB_TABLES.studentCourseHistory)
+        .upsert(courseRows, {
+          onConflict: "student_id,course_id",
+          ignoreDuplicates: false,
+        });
+
+      if (coursesError) throw coursesError;
+    }
+
+    // 3) update student flags LAST
+    const { error: updateError } = await supabase
+      .from(DB_TABLES.students)
+      .update(updatePayload)
+      .eq(STUDENT_COLUMNS.id, studentId);
+
+    if (updateError) throw updateError;
+  } catch (err) {
+    // Best-effort rollback: remove partial rows so we don’t leave inconsistent state
+    try {
+      await cleanupSelections();
+    } catch (cleanupErr) {
+      console.error("Onboarding rollback cleanup failed:", cleanupErr);
+    }
+    throw err;
+  }
 }
 
 /**
@@ -275,7 +303,6 @@ export async function checkOnboardingStatus(
     .maybeSingle();
 
   if (error) throw error;
-  // No student record yet means onboarding not completed
   if (!data) return false;
   return data.has_completed_onboarding ?? false;
 }

@@ -1,3 +1,4 @@
+import React from "react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, waitFor, fireEvent, act } from "@testing-library/react";
 import { ChakraProvider, defaultSystem } from "@chakra-ui/react";
@@ -103,14 +104,12 @@ describe("Dashboard", () => {
   it("shows loading state initially", () => {
     // getUser never resolves
     mockGetUser.mockReturnValue(new Promise(() => {}));
-    mockCheckOnboardingStatus.mockResolvedValue(true);
     renderWithChakra(<Dashboard />);
     expect(screen.getAllByText("Loading...").length).toBeGreaterThanOrEqual(1);
   });
 
   it("redirects to /signin when no user", async () => {
     mockGetUser.mockResolvedValue({ data: { user: null }, error: null });
-    mockCheckOnboardingStatus.mockResolvedValue(false);
     mockFrom.mockImplementation(() => createChainMock());
 
     await act(async () => {
@@ -127,7 +126,6 @@ describe("Dashboard", () => {
       data: { user: { id: "auth-uuid", email: "test@uwp.edu" } },
       error: null,
     });
-    mockCheckOnboardingStatus.mockResolvedValue(true);
 
     mockFrom.mockImplementation((table: string) => {
       if (table === "students") {
@@ -185,7 +183,6 @@ describe("Dashboard", () => {
       data: { user: { id: "auth-uuid", email: "test@uwp.edu" } },
       error: null,
     });
-    mockCheckOnboardingStatus.mockResolvedValue(!!studentData.has_completed_onboarding);
 
     mockFrom.mockImplementation((table: string) => {
       if (table === "students") {
@@ -193,7 +190,6 @@ describe("Dashboard", () => {
         chain.maybeSingle = vi.fn().mockResolvedValue({ data: studentData, error: null });
         return chain;
       }
-      // All other tables return empty data
       return createChainMock();
     });
   }
@@ -208,7 +204,9 @@ describe("Dashboard", () => {
       expected_graduation_year: null,
     });
 
-    await act(async () => { renderWithChakra(<Dashboard />); });
+    await act(async () => {
+      renderWithChakra(<Dashboard />);
+    });
 
     await waitFor(() => {
       expect(screen.getAllByText("Complete Your Profile Setup").length).toBeGreaterThanOrEqual(1);
@@ -245,7 +243,9 @@ describe("Dashboard", () => {
   it("shows degree requirements section", async () => {
     setupStudentMock();
 
-    await act(async () => { renderWithChakra(<Dashboard />); });
+    await act(async () => {
+      renderWithChakra(<Dashboard />);
+    });
 
     await waitFor(() => {
       expect(screen.getAllByText("Degree Requirements").length).toBeGreaterThanOrEqual(1);
@@ -257,7 +257,9 @@ describe("Dashboard", () => {
   it("shows recent activity section", async () => {
     setupStudentMock();
 
-    await act(async () => { renderWithChakra(<Dashboard />); });
+    await act(async () => {
+      renderWithChakra(<Dashboard />);
+    });
 
     await waitFor(() => {
       expect(screen.getAllByText("Recent Activity").length).toBeGreaterThanOrEqual(1);
