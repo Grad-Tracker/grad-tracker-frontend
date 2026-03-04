@@ -24,6 +24,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import {
   checkOnboardingStatus,
+  fetchPrograms,
   getOrCreateStudent,
 } from "@/lib/supabase/queries/onboarding";
 import {
@@ -59,7 +60,6 @@ import {
   LuGraduationCap,
   LuTriangleAlert,
 } from "react-icons/lu";
-import { fetchPrograms } from "@/lib/supabase/queries/onboarding";
 import type { Program } from "@/types/onboarding";
 
 const mockRecentActivity = [
@@ -79,6 +79,72 @@ const mockRecentActivity = [
     time: "2 days ago",
   },
 ];
+
+function getStatusBadgeProps(status: string): { color: string; label: string } {
+  if (status === "enrolled") return { color: "green", label: "Enrolled" };
+  if (status === "waitlist") return { color: "orange", label: "Waitlist" };
+  return { color: "gray", label: "Planned" };
+}
+
+/**
+ * Resolves the student's major program and fetches its requirement blocks.
+ * Extracted to module level to reduce function nesting depth.
+ */
+async function resolveMajorAndBlocks(
+  supabase: ReturnType<typeof createClient>,
+  programsPromise: PromiseLike<{ data: any; error: any }>
+) {
+  let majorName = "Unknown";
+  let majorProgramId: number | null = null;
+
+  const { data: studentPrograms, error: spErr } = await programsPromise;
+
+  if (!spErr && studentPrograms?.length) {
+    const programIds = (studentPrograms as any[])
+      .map((sp) => sp?.program_id)
+      .filter((x) => x !== null && x !== undefined);
+
+    if (programIds.length) {
+      const { data: majorProgram, error: majorProgramErr } = await supabase
+        .from(DB_TABLES.programs)
+        .select("id,name")
+        .in("id", programIds)
+        .eq("program_type", PROGRAM_TYPES.major)
+        .maybeSingle();
+
+      if (!majorProgramErr && majorProgram?.name) {
+        majorName = majorProgram.name;
+        majorProgramId = majorProgram.id;
+      }
+    }
+  }
+
+  if (!majorProgramId) {
+    return {
+      data: null as any,
+      error: null as any,
+      majorName,
+      majorProgramId: null as number | null,
+    };
+  }
+
+  const blocksRes = await supabase
+    .from(DB_TABLES.programRequirementBlocks)
+    .select(
+      `
+        id,
+        name,
+        credits_required,
+        program_requirement_courses (
+          course_id,
+          courses:course_id ( credits )
+        )
+      `
+    )
+    .eq("program_id", majorProgramId);
+
+  return { ...blocksRes, majorName, majorProgramId };
+}
 
 export default function Dashboard() {
   const router = useRouter();
@@ -286,6 +352,7 @@ export default function Dashboard() {
         setLoadingProgress(true);
 
         const studentId = resolvedStudentRow.id;
+        setStudentIdForReset(studentId);
 
         const programsPromise = supabase
           .from(DB_TABLES.studentPrograms)
@@ -303,64 +370,9 @@ export default function Dashboard() {
           .eq("student_id", studentId);
 
         // blocksPromise depends on majorProgramId, which depends on student_programs -> programs.
-        const blocksPromise = (async () => {
-          // Resolve major program (student_programs -> programs)
-          let majorName = "Unknown";
-          let majorProgramId: number | null = null;
+        const blocksPromise = resolveMajorAndBlocks(supabase, programsPromise);
 
-          const { data: studentPrograms, error: spErr } = await programsPromise;
-
-          if (!spErr && studentPrograms?.length) {
-            const programIds = (studentPrograms as any[])
-              .map((sp) => sp?.program_id)
-              .filter((x) => x !== null && x !== undefined);
-
-            if (programIds.length) {
-              const { data: majorProgram, error: majorProgramErr } = await supabase
-                .from(DB_TABLES.programs)
-                .select("id,name")
-                .in("id", programIds)
-                .eq("program_type", PROGRAM_TYPES.major)
-                .maybeSingle();
-
-              if (!majorProgramErr && majorProgram?.name) {
-                majorName = majorProgram.name;
-                majorProgramId = majorProgram.id;
-              }
-            }
-          }
-
-          // If no major, return early with meta
-          if (!majorProgramId) {
-            return {
-              data: null as any,
-              error: null as any,
-              majorName,
-              majorProgramId: null as number | null,
-            };
-          }
-
-          const blocksRes = await supabase
-            .from(DB_TABLES.programRequirementBlocks)
-            .select(
-              `
-                id,
-                name,
-                credits_required,
-                program_requirement_courses (
-                  course_id,
-                  courses:course_id ( credits )
-                )
-              `
-            )
-            .eq("program_id", majorProgramId);
-
-          return { ...blocksRes, majorName, majorProgramId };
-        })();
-
-        // Keep this shape similar to Jira snippet: programsResult, completedResult, blocksResult, plannedResult
-        const [programsResult, completedResult, blocksResult, plannedResult] = await Promise.all([
-          programsPromise,
+        const [completedResult, blocksResult, plannedResult] = await Promise.all([
           completedPromise,
           blocksPromise,
           plannedPromise,
@@ -368,6 +380,8 @@ export default function Dashboard() {
 
         const majorName = (blocksResult as any).majorName ?? "Unknown";
         const majorProgramId = (blocksResult as any).majorProgramId as number | null;
+        setCurrentMajorProgramId(majorProgramId);
+        setSelectedMajorId(majorProgramId);
 
         // Reuse completedResult for BOTH:
         //  - requirement-block matching
@@ -517,6 +531,16 @@ export default function Dashboard() {
         });
 
         setLoadingStudent(false);
+
+        // Load majors for Change Major card (only if onboarded)
+        if (resolvedStudentRow.has_completed_onboarding) {
+          try {
+            const allMajors = await fetchPrograms("MAJOR");
+            setMajors(allMajors);
+          } catch {
+            // Non-critical: Change Major card simply won't show
+          }
+        }
       } catch {
         const supabase = createClient();
         await supabase.auth.signOut();
@@ -909,21 +933,11 @@ export default function Dashboard() {
                           {course.credits} credits
                         </Text>
                         <Badge
-                          colorPalette={
-                            course.status === "enrolled"
-                              ? "green"
-                              : course.status === "waitlist"
-                                ? "orange"
-                                : "gray"
-                          }
+                          colorPalette={getStatusBadgeProps(course.status).color}
                           variant="subtle"
                           size="sm"
                         >
-                          {course.status === "enrolled"
-                            ? "Enrolled"
-                            : course.status === "waitlist"
-                              ? "Waitlist"
-                              : "Planned"}
+                          {getStatusBadgeProps(course.status).label}
                         </Badge>
                       </HStack>
                     </Flex>
