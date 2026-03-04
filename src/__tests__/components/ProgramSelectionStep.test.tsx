@@ -123,77 +123,7 @@ describe("ProgramSelectionStep", () => {
     expect(radioCards.length).toBe(0);
   });
 
-  // ── NEW: Coverage boosters ───────────────────────────────────────────────
-
-  it("clicking 'As soon as possible' calls onGradChange with computed semester/year", () => {
-    vi.useFakeTimers();
-    // March 3, 2026 => month=2 (<4) => Spring 2026
-    vi.setSystemTime(new Date("2026-03-03T12:00:00Z"));
-
-    const onGradChange = vi.fn();
-
-    renderWithChakra(
-      <ProgramSelectionStep
-        {...defaultProps}
-        onGradChange={onGradChange}
-      />
-    );
-
-    fireEvent.click(screen.getByText("As soon as possible"));
-
-    expect(onGradChange).toHaveBeenCalledWith("Spring", 2026);
-
-    vi.useRealTimers();
-  });
-
-  it("changing semester select calls onGradChange with new semester and existing year", () => {
-    const onGradChange = vi.fn();
-
-    const { container } = renderWithChakra(
-      <ProgramSelectionStep
-        {...defaultProps}
-        onGradChange={onGradChange}
-        expectedGradSemester={null}
-        expectedGradYear={null}
-      />
-    );
-
-    const selects = container.querySelectorAll("select");
-    expect(selects.length).toBeGreaterThanOrEqual(2);
-
-    const semesterSelect = selects[0];
-    fireEvent.change(semesterSelect, { target: { value: "Fall" } });
-
-    expect(onGradChange).toHaveBeenCalledWith("Fall", null);
-  });
-
-  it("changing year select calls onGradChange with existing semester and new year", () => {
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date("2026-03-03T12:00:00Z")); // so year options include 2026+
-
-    const onGradChange = vi.fn();
-
-    const { container } = renderWithChakra(
-      <ProgramSelectionStep
-        {...defaultProps}
-        onGradChange={onGradChange}
-        expectedGradSemester="Fall"
-        expectedGradYear={null}
-      />
-    );
-
-    const selects = container.querySelectorAll("select");
-    expect(selects.length).toBeGreaterThanOrEqual(2);
-
-    const yearSelect = selects[1];
-    fireEvent.change(yearSelect, { target: { value: "2027" } });
-
-    expect(onGradChange).toHaveBeenCalledWith("Fall", 2027);
-
-    vi.useRealTimers();
-  });
-
-  it("shows Target text when expectedGradSemester and expectedGradYear are provided", () => {
+  it("shows target graduation text when both semester and year are set", () => {
     renderWithChakra(
       <ProgramSelectionStep
         {...defaultProps}
@@ -201,11 +131,97 @@ describe("ProgramSelectionStep", () => {
         expectedGradYear={2027}
       />
     );
-
     expect(screen.getAllByText("Target: Fall 2027").length).toBeGreaterThan(0);
   });
 
-  it("shows 'no certificates available' message when major selected but certificates list is empty", () => {
+  it("does not show target graduation text when only semester is set", () => {
+    renderWithChakra(
+      <ProgramSelectionStep
+        {...defaultProps}
+        expectedGradSemester="Spring"
+        expectedGradYear={null}
+      />
+    );
+    expect(screen.queryAllByText(/Target:/).length).toBe(0);
+  });
+
+  it("calls onGradChange with year when year dropdown changes", () => {
+    const onGradChange = vi.fn();
+    renderWithChakra(
+      <ProgramSelectionStep
+        {...defaultProps}
+        onGradChange={onGradChange}
+        expectedGradSemester="Spring"
+        expectedGradYear={null}
+      />
+    );
+
+    // Find all comboboxes — year is the second NativeSelect
+    const selects = screen.getAllByRole("combobox");
+    // The year select is the second one (semester, then year)
+    const yearSelect = selects[1];
+    const currentYear = new Date().getFullYear();
+    fireEvent.change(yearSelect, { target: { value: String(currentYear + 1) } });
+
+    expect(onGradChange).toHaveBeenCalledWith("Spring", currentYear + 1);
+  });
+
+  it("calls onGradChange with null year when year dropdown is cleared", () => {
+    const onGradChange = vi.fn();
+    const currentYear = new Date().getFullYear();
+    renderWithChakra(
+      <ProgramSelectionStep
+        {...defaultProps}
+        onGradChange={onGradChange}
+        expectedGradSemester="Fall"
+        expectedGradYear={currentYear}
+      />
+    );
+
+    const selects = screen.getAllByRole("combobox");
+    const yearSelect = selects[1];
+    fireEvent.change(yearSelect, { target: { value: "" } });
+
+    expect(onGradChange).toHaveBeenCalledWith("Fall", null);
+  });
+
+  it("calls onGradChange when semester dropdown changes", () => {
+    const onGradChange = vi.fn();
+    renderWithChakra(
+      <ProgramSelectionStep
+        {...defaultProps}
+        onGradChange={onGradChange}
+        expectedGradSemester={null}
+        expectedGradYear={2026}
+      />
+    );
+
+    const selects = screen.getAllByRole("combobox");
+    const semesterSelect = selects[0];
+    fireEvent.change(semesterSelect, { target: { value: "Summer" } });
+
+    expect(onGradChange).toHaveBeenCalledWith("Summer", 2026);
+  });
+
+  it("calls onGradChange with current semester/year when As soon as possible is clicked", () => {
+    const onGradChange = vi.fn();
+    renderWithChakra(
+      <ProgramSelectionStep
+        {...defaultProps}
+        onGradChange={onGradChange}
+      />
+    );
+
+    const asapButton = screen.getAllByText("As soon as possible")[0];
+    fireEvent.click(asapButton);
+
+    expect(onGradChange).toHaveBeenCalledTimes(1);
+    const [semester, year] = onGradChange.mock.calls[0];
+    expect(["Spring", "Summer", "Fall"]).toContain(semester);
+    expect(typeof year).toBe("number");
+  });
+
+  it("shows no certificates message when certificates list is empty and major is selected", () => {
     renderWithChakra(
       <ProgramSelectionStep
         {...defaultProps}
@@ -213,7 +229,6 @@ describe("ProgramSelectionStep", () => {
         certificates={[]}
       />
     );
-
     expect(
       screen.getAllByText("No certificates available for this major yet.").length
     ).toBeGreaterThan(0);

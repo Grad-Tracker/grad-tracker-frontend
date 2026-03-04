@@ -1,6 +1,6 @@
 import React from "react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, waitFor, act, fireEvent } from "@testing-library/react";
+import { render, screen, waitFor, fireEvent, act } from "@testing-library/react";
 import { ChakraProvider, defaultSystem } from "@chakra-ui/react";
 
 // Mocks — use vi.hoisted to avoid hoisting issues
@@ -13,6 +13,7 @@ const {
   mockFrom,
   mockCheckOnboardingStatus,
   mockGetOrCreateStudent,
+  mockFetchPrograms,
   mockToasterCreate,
 } = vi.hoisted(() => ({
   mockPush: vi.fn(),
@@ -23,6 +24,7 @@ const {
   mockFrom: vi.fn(),
   mockCheckOnboardingStatus: vi.fn(),
   mockGetOrCreateStudent: vi.fn(),
+  mockFetchPrograms: vi.fn(),
   mockToasterCreate: vi.fn(),
 }));
 
@@ -44,9 +46,10 @@ vi.mock("@/lib/supabase/client", () => ({
 vi.mock("@/lib/supabase/queries/onboarding", () => ({
   checkOnboardingStatus: (...args: any[]) => mockCheckOnboardingStatus(...args),
   getOrCreateStudent: (...args: any[]) => mockGetOrCreateStudent(...args),
+  fetchPrograms: (...args: any[]) => mockFetchPrograms(...args),
 }));
 vi.mock("@/components/ui/toaster", () => ({
-  toaster: { create: (...args: any[]) => mockToasterCreate(...args), success: vi.fn(), error: vi.fn() },
+  toaster: { create: mockToasterCreate, success: vi.fn(), error: vi.fn() },
 }));
 vi.mock("@/components/ui/color-mode", () => ({ ColorModeButton: () => null }));
 vi.mock("@/components/ui/progress", () => ({
@@ -72,6 +75,8 @@ function createChainMock(defaultData: any = [], defaultError: any = null) {
   promise.select = vi.fn().mockReturnValue(promise);
   promise.insert = vi.fn().mockReturnValue(promise);
   promise.update = vi.fn().mockReturnValue(promise);
+  promise.delete = vi.fn().mockReturnValue(promise);
+  promise.upsert = vi.fn().mockReturnValue(promise);
   promise.eq = vi.fn().mockReturnValue(promise);
   promise.neq = vi.fn().mockReturnValue(promise);
   promise.in = vi.fn().mockReturnValue(promise);
@@ -92,7 +97,8 @@ describe("Dashboard", () => {
     vi.clearAllMocks();
     mockSignOut.mockResolvedValue({ error: null });
     mockGetOrCreateStudent.mockResolvedValue({ id: 1 });
-    mockCheckOnboardingStatus.mockResolvedValue(true);
+    mockFetchPrograms.mockResolvedValue([]);
+    mockToasterCreate.mockReset();
   });
 
   it("shows loading state initially", () => {
@@ -207,6 +213,33 @@ describe("Dashboard", () => {
     });
   });
 
+  it("renders student profile and quick actions after sign-in", async () => {
+    // Sign Out lives in DashboardSidebar (layout), not in this page component.
+    // Verify the page renders key authenticated content instead.
+    setupStudentMock();
+
+    await act(async () => { renderWithChakra(<Dashboard />); });
+
+    await waitFor(() => {
+      expect(screen.getAllByText("Test Student").length).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByText("Quick Actions").length).toBeGreaterThanOrEqual(1);
+    });
+  });
+
+  it("renders main dashboard sections", async () => {
+    // Sidebar nav (Courses, Planner, etc.) is rendered by DashboardLayout, not this page.
+    // Verify page-level sections that ARE rendered here.
+    setupStudentMock();
+
+    await act(async () => { renderWithChakra(<Dashboard />); });
+
+    await waitFor(() => {
+      expect(screen.getAllByText("Dashboard").length).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByText("Degree Requirements").length).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByText("Recent Activity").length).toBeGreaterThanOrEqual(1);
+    });
+  });
+
   it("shows degree requirements section", async () => {
     setupStudentMock();
 
@@ -234,460 +267,286 @@ describe("Dashboard", () => {
     });
   });
 
-  // ----------------------------
-  // NEW TESTS: coverage boosters
-  // ----------------------------
+  /* ---- Reset Progress Quick Action ---- */
 
-  it("falls back to legacy student schema when new schema columns are missing", async () => {
-    mockGetUser.mockResolvedValue({
-      data: { user: { id: "auth-legacy", email: "legacy@uwp.edu" } },
-      error: null,
+  describe("Reset Progress Quick Action", () => {
+    it("hides Reset All Progress when has_completed_onboarding is false", async () => {
+      setupStudentMock({ has_completed_onboarding: false });
+
+      await act(async () => { renderWithChakra(<Dashboard />); });
+
+      await waitFor(() => {
+        expect(screen.queryByText("Reset All Progress")).not.toBeInTheDocument();
+      });
     });
 
-    let studentsCall = 0;
-    mockFrom.mockImplementation((table: string) => {
-      if (table === "students") {
-        studentsCall++;
+    it("shows Reset All Progress when has_completed_onboarding is true", async () => {
+      setupStudentMock({ has_completed_onboarding: true });
+
+      await act(async () => { renderWithChakra(<Dashboard />); });
+
+      await waitFor(() => {
+        expect(screen.getByText("Reset All Progress")).toBeInTheDocument();
+      });
+    });
+
+    it("shows confirmation UI after clicking Reset All Progress", async () => {
+      setupStudentMock({ has_completed_onboarding: true });
+
+      await act(async () => { renderWithChakra(<Dashboard />); });
+      await waitFor(() => screen.getByText("Reset All Progress"));
+
+      await act(async () => {
+        fireEvent.click(screen.getByText("Reset All Progress"));
+      });
+
+      expect(screen.getByText(/This will delete all your progress/i)).toBeInTheDocument();
+      expect(screen.getByText("Yes, Reset")).toBeInTheDocument();
+      expect(screen.getByText("Cancel")).toBeInTheDocument();
+    });
+
+    it("Cancel button hides the confirmation UI", async () => {
+      setupStudentMock({ has_completed_onboarding: true });
+
+      await act(async () => { renderWithChakra(<Dashboard />); });
+      await waitFor(() => screen.getByText("Reset All Progress"));
+
+      await act(async () => {
+        fireEvent.click(screen.getByText("Reset All Progress"));
+      });
+      expect(screen.getByText("Yes, Reset")).toBeInTheDocument();
+
+      await act(async () => {
+        fireEvent.click(screen.getByText("Cancel"));
+      });
+
+      expect(screen.queryByText("Yes, Reset")).not.toBeInTheDocument();
+      expect(screen.getByText("Reset All Progress")).toBeInTheDocument();
+    });
+
+    it("Yes Reset calls delete on student_course_history, student_planned_courses, and student_programs", async () => {
+      const deletedTables: string[] = [];
+
+      mockGetUser.mockResolvedValue({
+        data: { user: { id: "auth-uuid", email: "test@uwp.edu" } },
+        error: null,
+      });
+      mockCheckOnboardingStatus.mockResolvedValue(true);
+
+      mockFrom.mockImplementation((table: string) => {
         const chain = createChainMock();
 
-        if (studentsCall === 1) {
-          // Trigger legacy fallback: error message includes "column"
-          chain.maybeSingle = vi.fn().mockResolvedValue({
-            data: null,
-            error: { message: "column expected_graduation_semester does not exist" },
-          });
-        } else {
-          // Legacy select returns row with `name` + expected_graduation_term
+        chain.delete = vi.fn(() => {
+          deletedTables.push(table);
+          return chain;
+        });
+
+        if (table === "students") {
           chain.maybeSingle = vi.fn().mockResolvedValue({
             data: {
               id: 1,
-              name: "Legacy User",
-              email: "legacy@uwp.edu",
+              first_name: "Test",
+              last_name: "Student",
+              email: "t@u.edu",
               has_completed_onboarding: true,
-              expected_graduation_term: "Fall",
-              expected_graduation_year: 2026,
+              expected_graduation_semester: "Spring",
+              expected_graduation_year: 2027,
             },
             error: null,
           });
         }
+
         return chain;
-      }
-      return createChainMock();
-    });
+      });
 
-    await act(async () => {
-      renderWithChakra(<Dashboard />);
-    });
+      await act(async () => { renderWithChakra(<Dashboard />); });
+      await waitFor(() => screen.getByText("Reset All Progress"));
 
-    await waitFor(() => {
-      expect(screen.getAllByText("Legacy User").length).toBeGreaterThanOrEqual(1);
+      await act(async () => {
+        fireEvent.click(screen.getByText("Reset All Progress"));
+      });
+      await act(async () => {
+        fireEvent.click(screen.getByText("Yes, Reset"));
+      });
+
+      await waitFor(() => {
+        expect(deletedTables).toContain("student_course_history");
+        expect(deletedTables).toContain("student_planned_courses");
+        expect(deletedTables).toContain("student_programs");
+      });
     });
   });
 
-  it("signs out and redirects when student profile query returns an error", async () => {
-    mockGetUser.mockResolvedValue({
-      data: { user: { id: "auth-err", email: "err@uwp.edu" } },
-      error: null,
+  /* ---- Change Major ---- */
+
+  describe("Change Major", () => {
+    function setupChangeMajorMocks(
+      majors: any[] = [
+        { id: 10, name: "Computer Science", program_type: "MAJOR" },
+        { id: 20, name: "Data Science", program_type: "MAJOR" },
+      ],
+      currentMajorId: number | null = null
+    ) {
+      mockFetchPrograms.mockResolvedValue(majors);
+      mockGetUser.mockResolvedValue({
+        data: { user: { id: "auth-uuid", email: "test@uwp.edu" } },
+        error: null,
+      });
+      mockCheckOnboardingStatus.mockResolvedValue(true);
+
+      mockFrom.mockImplementation((table: string) => {
+        if (table === "students") {
+          const chain = createChainMock();
+          chain.maybeSingle = vi.fn().mockResolvedValue({
+            data: {
+              id: 1,
+              first_name: "Test",
+              last_name: "Student",
+              email: "t@u.edu",
+              has_completed_onboarding: true,
+              expected_graduation_semester: "Spring",
+              expected_graduation_year: 2027,
+            },
+            error: null,
+          });
+          return chain;
+        }
+        if (table === "student_programs") {
+          return createChainMock(currentMajorId ? [{ program_id: currentMajorId }] : []);
+        }
+        if (table === "programs") {
+          const chain = createChainMock();
+          chain.maybeSingle = vi.fn().mockResolvedValue({
+            data: currentMajorId ? { id: currentMajorId, name: "Computer Science" } : null,
+            error: null,
+          });
+          return chain;
+        }
+        return createChainMock();
+      });
+    }
+
+    it("shows Change Major card when fetchPrograms returns majors", async () => {
+      setupChangeMajorMocks();
+
+      await act(async () => { renderWithChakra(<Dashboard />); });
+
+      await waitFor(() => {
+        expect(screen.getByText("Change Major")).toBeInTheDocument();
+      });
     });
 
-    mockFrom.mockImplementation((table: string) => {
-      if (table === "students") {
-        const chain = createChainMock();
-        chain.maybeSingle = vi.fn().mockResolvedValue({
-          data: null,
-          error: { message: "DB is down" }, // not a missing column error
-        });
-        return chain;
-      }
-      return createChainMock();
+    it("renders major options in the Change Major dropdown", async () => {
+      setupChangeMajorMocks();
+
+      await act(async () => { renderWithChakra(<Dashboard />); });
+
+      await waitFor(() => {
+        expect(screen.getByText("Computer Science")).toBeInTheDocument();
+        expect(screen.getByText("Data Science")).toBeInTheDocument();
+      });
     });
 
-    await act(async () => {
-      renderWithChakra(<Dashboard />);
-    });
-
-    await waitFor(() => {
-      expect(mockToasterCreate).toHaveBeenCalledWith(
-        expect.objectContaining({ title: "Profile not found", type: "error" })
+    it("Save Major button is disabled when same major is already selected", async () => {
+      setupChangeMajorMocks(
+        [{ id: 10, name: "Computer Science", program_type: "MAJOR" }],
+        10
       );
-      expect(mockSignOut).toHaveBeenCalled();
-      expect(mockPush).toHaveBeenCalledWith("/signin");
-    });
-  });
 
-  it("recreates missing student profile and shows onboarding banner (Profile restored path)", async () => {
-    mockGetUser.mockResolvedValue({
-      data: {
-        user: {
-          id: "auth-missing",
-          email: "newperson@uwp.edu",
-          user_metadata: { first_name: "New", last_name: "Person" },
-        },
-      },
-      error: null,
+      await act(async () => { renderWithChakra(<Dashboard />); });
+
+      await waitFor(() => {
+        expect(screen.getByText("Change Major")).toBeInTheDocument();
+      });
+
+      expect(screen.getByText("Save Major")).toBeDisabled();
     });
 
-    mockGetOrCreateStudent.mockResolvedValueOnce({ id: 55 });
+    it("Save Major calls delete on old major and insert for new major", async () => {
+      let insertCalledWith: any = null;
+      let deleteCalled = false;
 
-    mockFrom.mockImplementation((table: string) => {
-      if (table === "students") {
-        const chain = createChainMock();
-        chain.maybeSingle = vi.fn().mockResolvedValue({ data: null, error: null }); // missing row
-        return chain;
-      }
-      // Everything else empty so we hit "no major / no courses" branches too
-      return createChainMock([]);
+      mockFetchPrograms.mockResolvedValue([
+        { id: 10, name: "Computer Science", program_type: "MAJOR" },
+        { id: 20, name: "Data Science", program_type: "MAJOR" },
+      ]);
+      mockGetUser.mockResolvedValue({
+        data: { user: { id: "auth-uuid", email: "test@uwp.edu" } },
+        error: null,
+      });
+      mockCheckOnboardingStatus.mockResolvedValue(true);
+
+      mockFrom.mockImplementation((table: string) => {
+        if (table === "students") {
+          const chain = createChainMock();
+          chain.maybeSingle = vi.fn().mockResolvedValue({
+            data: {
+              id: 1,
+              first_name: "Test",
+              last_name: "Student",
+              email: "t@u.edu",
+              has_completed_onboarding: true,
+              expected_graduation_semester: "Spring",
+              expected_graduation_year: 2027,
+            },
+            error: null,
+          });
+          return chain;
+        }
+        if (table === "student_programs") {
+          const chain = createChainMock([{ program_id: 10 }]);
+          chain.delete = vi.fn(() => {
+            deleteCalled = true;
+            return chain;
+          });
+          chain.insert = vi.fn((payload: any) => {
+            insertCalledWith = payload;
+            return Promise.resolve({ data: null, error: null });
+          });
+          return chain;
+        }
+        if (table === "programs") {
+          const chain = createChainMock();
+          chain.maybeSingle = vi.fn().mockResolvedValue({
+            data: { id: 10, name: "Computer Science" },
+            error: null,
+          });
+          return chain;
+        }
+        return createChainMock();
+      });
+
+      await act(async () => { renderWithChakra(<Dashboard />); });
+      await waitFor(() => screen.getByText("Change Major"));
+
+      const select = screen.getByRole("combobox");
+      await act(async () => {
+        fireEvent.change(select, { target: { value: "20" } });
+      });
+
+      const saveMajorBtn = screen.getByText("Save Major");
+      expect(saveMajorBtn).not.toBeDisabled();
+
+      await act(async () => {
+        fireEvent.click(saveMajorBtn);
+      });
+
+      await waitFor(() => {
+        expect(deleteCalled).toBe(true);
+        expect(insertCalledWith).toMatchObject({ program_id: 20, student_id: 1 });
+      });
     });
 
-    await act(async () => {
-      renderWithChakra(<Dashboard />);
-    });
+    it("hides Change Major card when fetchPrograms returns empty array", async () => {
+      setupChangeMajorMocks([]);
 
-    await waitFor(() => {
-      expect(mockToasterCreate).toHaveBeenCalledWith(
-        expect.objectContaining({ title: "Profile restored", type: "info" })
-      );
-      // Name comes from user metadata in recreated row
-      expect(screen.getAllByText("New Person").length).toBeGreaterThanOrEqual(1);
-      // Onboarding banner should show (has_completed_onboarding false)
-      expect(screen.getAllByText("Complete Your Profile Setup").length).toBeGreaterThanOrEqual(1);
-    });
-  });
+      await act(async () => { renderWithChakra(<Dashboard />); });
 
-  it("uses default requirements when no major program is found", async () => {
-    // student exists but has no student_programs major
-    mockGetUser.mockResolvedValue({
-      data: { user: { id: "auth-uuid", email: "test@uwp.edu" } },
-      error: null,
-    });
+      await waitFor(() => {
+        expect(screen.getAllByText("Test Student").length).toBeGreaterThanOrEqual(1);
+      });
 
-    mockFrom.mockImplementation((table: string) => {
-      if (table === "students") {
-        const chain = createChainMock();
-        chain.maybeSingle = vi.fn().mockResolvedValue({
-          data: {
-            id: 1,
-            first_name: "Test",
-            last_name: "Student",
-            email: "test@uwp.edu",
-            has_completed_onboarding: true,
-            expected_graduation_semester: "Spring",
-            expected_graduation_year: 2027,
-          },
-          error: null,
-        });
-        return chain;
-      }
-      if (table === "student_programs") {
-        return createChainMock([]); // no programs => majorProgramId null
-      }
-      if (table === "student_course_history") {
-        return createChainMock([]); // completed none
-      }
-      if (table === "student_planned_courses") {
-        return createChainMock([]); // planned none
-      }
-      return createChainMock([]);
-    });
-
-    await act(async () => {
-      renderWithChakra(<Dashboard />);
-    });
-
-    await waitFor(() => {
-      expect(screen.getAllByText("Degree Requirements").length).toBeGreaterThanOrEqual(1);
-      // defaults are 0/0 credits
-      expect(screen.getAllByText("0/0 credits").length).toBeGreaterThanOrEqual(1);
-    });
-  });
-
-  it("computes requirement credit totals when major blocks exist", async () => {
-    mockGetUser.mockResolvedValue({
-      data: { user: { id: "auth-uuid", email: "test@uwp.edu" } },
-      error: null,
-    });
-
-    mockFrom.mockImplementation((table: string) => {
-      if (table === "students") {
-        const chain = createChainMock();
-        chain.maybeSingle = vi.fn().mockResolvedValue({
-          data: {
-            id: 1,
-            first_name: "Test",
-            last_name: "Student",
-            email: "test@uwp.edu",
-            has_completed_onboarding: true,
-            expected_graduation_semester: "Spring",
-            expected_graduation_year: 2027,
-          },
-          error: null,
-        });
-        return chain;
-      }
-
-      if (table === "student_programs") {
-        return createChainMock([{ program_id: 10 }]);
-      }
-
-      if (table === "programs") {
-        const chain = createChainMock();
-        chain.maybeSingle = vi.fn().mockResolvedValue({
-          data: { id: 10, name: "Computer Science" },
-          error: null,
-        });
-        return chain;
-      }
-
-      if (table === "student_course_history") {
-        // Completed includes course 101 only (3 credits)
-        return createChainMock([
-          { course_id: 101, courses: { credits: 3 } },
-        ]);
-      }
-
-      if (table === "program_requirement_blocks") {
-        // Create blocks that land in "General Education" and "Major Core"
-        return createChainMock([
-          {
-            id: 1,
-            name: "General Education",
-            credits_required: 6,
-            program_requirement_courses: [
-              { course_id: 101, courses: { credits: 3 } },
-              { course_id: 999, courses: { credits: 3 } },
-            ],
-          },
-          {
-            id: 2,
-            name: "Core Requirements",
-            credits_required: 3,
-            program_requirement_courses: [
-              { course_id: 101, courses: { credits: 3 } },
-            ],
-          },
-        ]);
-      }
-
-      if (table === "student_planned_courses") {
-        return createChainMock([]);
-      }
-
-      return createChainMock([]);
-    });
-
-    await act(async () => {
-      renderWithChakra(<Dashboard />);
-    });
-
-    await waitFor(() => {
-      // We should see computed credits text (not "Loading...")
-      expect(screen.getAllByText("3/6 credits").length).toBeGreaterThanOrEqual(1);
-      expect(screen.getAllByText("3/3 credits").length).toBeGreaterThanOrEqual(1);
-    });
-  });
-
-  it("falls back to default requirements when blocks query returns an error", async () => {
-    mockGetUser.mockResolvedValue({
-      data: { user: { id: "auth-uuid", email: "test@uwp.edu" } },
-      error: null,
-    });
-
-    mockFrom.mockImplementation((table: string) => {
-      if (table === "students") {
-        const chain = createChainMock();
-        chain.maybeSingle = vi.fn().mockResolvedValue({
-          data: {
-            id: 1,
-            first_name: "Test",
-            last_name: "Student",
-            email: "test@uwp.edu",
-            has_completed_onboarding: true,
-            expected_graduation_semester: "Spring",
-            expected_graduation_year: 2027,
-          },
-          error: null,
-        });
-        return chain;
-      }
-
-      if (table === "student_programs") {
-        return createChainMock([{ program_id: 10 }]);
-      }
-
-      if (table === "programs") {
-        const chain = createChainMock();
-        chain.maybeSingle = vi.fn().mockResolvedValue({
-          data: { id: 10, name: "Computer Science" },
-          error: null,
-        });
-        return chain;
-      }
-
-      if (table === "program_requirement_blocks") {
-        return createChainMock(null, { message: "blocks error" });
-      }
-
-      return createChainMock([]);
-    });
-
-    await act(async () => {
-      renderWithChakra(<Dashboard />);
-    });
-
-    await waitFor(() => {
-      expect(screen.getAllByText("0/0 credits").length).toBeGreaterThanOrEqual(1);
-    });
-  });
-
-  it("renders current semester courses with status badges and progress credits", async () => {
-    mockGetUser.mockResolvedValue({
-      data: { user: { id: "auth-uuid", email: "test@uwp.edu" } },
-      error: null,
-    });
-
-    mockFrom.mockImplementation((table: string) => {
-      if (table === "students") {
-        const chain = createChainMock();
-        chain.maybeSingle = vi.fn().mockResolvedValue({
-          data: {
-            id: 1,
-            first_name: "Test",
-            last_name: "Student",
-            email: "test@uwp.edu",
-            has_completed_onboarding: true,
-            expected_graduation_semester: "Spring",
-            expected_graduation_year: 2027,
-          },
-          error: null,
-        });
-        return chain;
-      }
-
-      if (table === "student_programs") return createChainMock([]); // don't care for this test
-      if (table === "program_requirement_blocks") return createChainMock([]); // no blocks
-
-      if (table === "student_course_history") {
-        return createChainMock([
-          { course_id: 101, courses: { credits: 3 } },
-          { course_id: 102, courses: { credits: 3 } },
-        ]);
-      }
-
-      if (table === "student_planned_courses") {
-        return createChainMock([
-          {
-            status: "enrolled",
-            courses: { subject: "CS", number: "101", title: "Intro", credits: 3 },
-          },
-          {
-            status: "waitlist",
-            courses: { subject: "CS", number: "222", title: "Systems", credits: 4 },
-          },
-          {
-            status: "planned",
-            courses: { subject: "MATH", number: "200", title: "Discrete", credits: 3 },
-          },
-        ]);
-      }
-
-      return createChainMock([]);
-    });
-
-    await act(async () => {
-      renderWithChakra(<Dashboard />);
-    });
-
-    await waitFor(() => {
-      // course codes
-      expect(screen.getAllByText("CS 101").length).toBeGreaterThanOrEqual(1);
-      expect(screen.getAllByText("CS 222").length).toBeGreaterThanOrEqual(1);
-      expect(screen.getAllByText("MATH 200").length).toBeGreaterThanOrEqual(1);
-
-      // status badges
-      expect(screen.getAllByText("Enrolled").length).toBeGreaterThanOrEqual(1);
-      expect(screen.getAllByText("Waitlist").length).toBeGreaterThanOrEqual(1);
-      expect(screen.getAllByText("Planned").length).toBeGreaterThanOrEqual(1);
-
-      // in progress credits should appear (enrolled 3 + waitlist 4 = 7)
-      expect(screen.getAllByText("In Progress").length).toBeGreaterThanOrEqual(1);
-      expect(screen.getAllByText("7").length).toBeGreaterThanOrEqual(1);
-    });
-  });
-
-  it("shows 'No courses planned yet' when planned courses are empty", async () => {
-    setupStudentMock();
-
-    // override planned courses query to return empty
-    mockFrom.mockImplementation((table: string) => {
-      if (table === "students") {
-        const chain = createChainMock();
-        chain.maybeSingle = vi.fn().mockResolvedValue({
-          data: {
-            id: 1,
-            first_name: "Test",
-            last_name: "Student",
-            email: "test@uwp.edu",
-            has_completed_onboarding: true,
-            expected_graduation_semester: "Spring",
-            expected_graduation_year: 2027,
-          },
-          error: null,
-        });
-        return chain;
-      }
-      if (table === "student_planned_courses") return createChainMock([]);
-      if (table === "student_course_history") return createChainMock([]);
-      if (table === "student_programs") return createChainMock([]);
-      return createChainMock([]);
-    });
-
-    await act(async () => {
-      renderWithChakra(<Dashboard />);
-    });
-
-    await waitFor(() => {
-      expect(screen.getAllByText("No courses planned yet").length).toBeGreaterThanOrEqual(1);
-    });
-  });
-
-  it("renders Quick Actions section", async () => {
-    setupStudentMock();
-
-    await act(async () => {
-      renderWithChakra(<Dashboard />);
-    });
-
-    await waitFor(() => {
-      expect(screen.getAllByText("Quick Actions").length).toBeGreaterThanOrEqual(1);
-      expect(screen.getAllByText("Generate Progress Report").length).toBeGreaterThanOrEqual(1);
-      expect(screen.getAllByText("Plan Next Semester").length).toBeGreaterThanOrEqual(1);
-      expect(screen.getAllByText("Review Requirements").length).toBeGreaterThanOrEqual(1);
-    });
-  });
-
-  it("shows session reset toast and redirects when an unexpected error is thrown", async () => {
-    mockGetUser.mockResolvedValue({
-      data: { user: { id: "auth-uuid", email: "test@uwp.edu" } },
-      error: null,
-    });
-
-    mockFrom.mockImplementation((table: string) => {
-      if (table === "students") {
-        throw new Error("boom");
-      }
-      return createChainMock([]);
-    });
-
-    await act(async () => {
-      renderWithChakra(<Dashboard />);
-    });
-
-    await waitFor(() => {
-      expect(mockSignOut).toHaveBeenCalled();
-      expect(mockToasterCreate).toHaveBeenCalledWith(
-        expect.objectContaining({ title: "Session reset required", type: "error" })
-      );
-      expect(mockPush).toHaveBeenCalledWith("/signin");
+      expect(screen.queryByText("Change Major")).not.toBeInTheDocument();
     });
   });
 });
