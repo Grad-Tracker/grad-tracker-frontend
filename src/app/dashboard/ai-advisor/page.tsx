@@ -10,6 +10,7 @@ import {
   Heading,
   Icon,
   Input,
+  Progress,
   Separator,
   Text,
   VStack,
@@ -22,8 +23,7 @@ import {
   LuClock,
   LuTarget,
 } from "react-icons/lu";
-import { ProgressBar, ProgressRoot } from "@/components/ui/progress";
-import type { ReactNode } from "react";
+import type { ReactNode, ElementType } from "react";
 
 // ─── Static data ─────────────────────────────────────────────────────────────
 
@@ -134,7 +134,7 @@ function CourseChip({
   credits: number;
   note: string;
   iconColor: string;
-  IconComponent: React.ElementType;
+  IconComponent: ElementType;
 }) {
   return (
     <HStack
@@ -617,9 +617,9 @@ export default function AIAdvisorPage() {
               65% complete toward degree
             </Text>
 
-            <ProgressRoot value={65} colorPalette="green" mb="5" size="sm">
-              <ProgressBar borderRadius="full" />
-            </ProgressRoot>
+            <Progress.Root value={65} colorPalette="green" mb="5" size="sm">
+              <Progress.Track borderRadius="full"><Progress.Range /></Progress.Track>
+            </Progress.Root>
 
             <VStack align="stretch" gap="3">
               {creditCategories.map((cat) => (
@@ -632,13 +632,13 @@ export default function AIAdvisorPage() {
                       {cat.completed}/{cat.required} cr
                     </Text>
                   </HStack>
-                  <ProgressRoot
+                  <Progress.Root
                     value={Math.round((cat.completed / cat.required) * 100)}
                     colorPalette={cat.color}
                     size="sm"
                   >
-                    <ProgressBar borderRadius="full" />
-                  </ProgressRoot>
+                    <Progress.Track borderRadius="full"><Progress.Range /></Progress.Track>
+                  </Progress.Root>
                 </Box>
               ))}
             </VStack>
