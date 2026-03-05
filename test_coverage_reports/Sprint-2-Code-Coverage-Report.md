@@ -6,53 +6,65 @@
 |------|--------|
 | Language | TypeScript |
 | Framework | Next.js 16 (App Router), React 19 |
-| Test Framework | Vitest + @testing-library/react |
+| Test Framework | Vitest 3.2.4 + @testing-library/react 16.3.2 |
 | Coverage Tool | @vitest/coverage-v8 (V8 provider) |
 
 ## 2. Coverage Metrics
 
 | Metric | Percentage |
 |--------|-----------|
-| Line coverage | 84.88% |
-| Branch coverage | 80.05% |
-| Function / Method coverage | 81.3% |
-| Statement coverage | 84.88% |
+| Line coverage | 93.19% |
+| Branch coverage | 81.88% |
+| Function / Method coverage | 87.28% |
+| Statement coverage | 93.19% |
 
 ## 3. Scope of Coverage
 
 **Included:**
 
-- Auth flows: sign in, sign up, forgot password, reset password (`src/app/signin`, `src/app/signup`, `src/app/forgot-password`, `src/app/reset-password`)
-- Main dashboard page with onboarding banner, quick actions, reset progress, and change major flows (`src/app/dashboard/page.tsx`)
-- Course catalog with search, filter, pagination, and drawer detail view (`src/app/dashboard/courses/CoursesClient.tsx`)
-- Degree planner page, plan hub, plan cards, semester columns, course panel, and all dialogs (`src/app/dashboard/planner/`, `src/components/planner/`)
-- Requirements dashboard and Gen Ed requirements display (`src/components/requirements/`)
-- Onboarding wizard steps: program selection, class selection, review, and navigation (`src/components/onboarding/`)
-- Dashboard shell, sidebar, and header (`src/components/dashboard/`)
-- Landing page including sign-in dialog (`src/components/LandingPage.tsx`)
-- Supabase query functions for planner and onboarding (`src/lib/supabase/queries/`)
-- Prerequisite logic utility (`src/lib/prereq.ts`)
+- Auth pages — signin, signup, forgot-password, reset-password
+- Dashboard page (with reset progress & change major flows)
+- Course catalog (CoursesClient)
+- Onboarding wizard (multi-step flow, program/class selection, review)
+- Landing page
+- Planner — plan CRUD, semester management, course drag-and-drop, breadth/graduate selectors
+- Gen-ed and degree requirements display
+- Dashboard shell, header, and sidebar
+- Supabase query helpers (`src/lib/supabase/queries/` — onboarding, planner, schema)
+- Prerequisite parsing logic (`src/lib/prereq.ts`)
+- Settings page (name, email, graduation info, notification preferences)
 
 **Excluded (configured in `vitest.config.ts`):**
 
-- `node_modules/**`
-- `.next/**`
-- `dist/**`, `coverage/**`
-- `**/*.d.ts`, `**/*.config.*`, `next.config.*`
-- `src/components/ui/**` — auto-generated Chakra UI wrapper components (not project logic)
-- `src/__tests__/**`, `**/*.test.ts`, `**/*.test.tsx` — test files themselves
+- `src/components/ui/**` — auto-generated Chakra UI v3 wrappers
+- `src/__tests__/**` — test files themselves
+- `**/*.d.ts` — TypeScript type declarations
+- `**/*.config.*` — configuration files
+- `src/types/**` — type definitions
+- `src/proxy.ts` — dev proxy utility
+- `src/app/auth/**/route.ts` — server-side auth route handlers
+- `src/app/**/layout.tsx` — Next.js layout components
+- `src/lib/supabase/client.ts`, `src/lib/supabase/server.ts` — Supabase client factories
+- `src/utils/supabase/**` — Supabase utility wrappers
 
 ## 4. Coverage Trend
 
-Baseline sprint — no prior data for comparison.
+| Metric | Sprint 1 | Sprint 2 | Change |
+|--------|----------|----------|--------|
+| Line coverage | 85.32% | 93.19% | +7.87% |
+| Branch coverage | 76.88% | 81.88% | +5.00% |
+| Function / Method coverage | 70.11% | 87.28% | +17.17% |
+| Statement coverage | 85.32% | 93.19% | +7.87% |
+
+All four categories now exceed 80%, up from only two in Sprint 1. Function coverage saw the largest gain (+17.17%), driven by new planner component tests and fixes to dashboard state-setter wiring.
 
 ## 5. Weak Areas
 
 | # | File | Coverage | Reason |
 |---|------|----------|--------|
-| 1 | `src/types/planner.ts` | 62.54% stmts / 69.23% branch | Type utility functions (e.g. helper transforms) not exercised by unit tests; type-only exports counted as uncovered lines |
-| 2 | `src/app/dashboard/planner/page.tsx` | 74.96% stmts / 36.36% funcs | Several internal handlers (drag-and-drop callbacks, course move/remove logic) are not reached by the current page-level tests |
-| 3 | `src/app/dashboard/page.tsx` | 80.35% stmts / 64.89% branch | Several conditional branches around graduation status display and multi-step quick-action flows (lines 857–931) are not tested |
+| 1 | `src/app/dashboard/page.tsx` | 80.86% Stmts / 65% Branch | Complex dashboard with many conditional branches for reset, change-major, and loading states |
+| 2 | `src/lib/supabase/queries/onboarding.ts` | 86.75% Stmts / 62.29% Branch | Deep error-handling paths and edge cases in multi-step save logic not fully exercised |
+| 3 | `src/components/requirements/RequirementsDashboard.tsx` | 91.22% Stmts / 70.73% Branch | Conditional rendering for elective/requirement block display not fully branched |
 
 ## 6. Evidence
 
