@@ -9,7 +9,10 @@
     "lint": "eslint",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "skills:sync": "node scripts/skills/sync-skills.mjs",
+    "skills:validate": "node scripts/skills/validate-skills.mjs",
+    "skills:check": "npm run skills:validate && node scripts/skills/sync-skills.mjs --check"
   },
   "dependencies": {
     "@chakra-ui/react": "^3.31.0",
