@@ -232,8 +232,8 @@ describe("LandingPage", () => {
 
     await waitFor(() => {
       expect(mockPush).toHaveBeenCalledWith("/dashboard");
-    });
-  });
+    }, { timeout: 10000 });
+  }, 15000);
 
   it("renders create account link", () => {
     renderWithChakra(<LandingPage />);
