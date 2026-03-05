@@ -65,6 +65,27 @@ src/
 | `npm run build` | Build for production |
 | `npm run start` | Start production server |
 | `npm run lint` | Run ESLint |
+| `npm run skills:validate` | Validate canonical skill metadata and structure |
+| `npm run skills:sync` | Regenerate `.claude/skills` from `.agents/skills` |
+| `npm run skills:check` | Fail if generated Claude skills drift from canonical skills |
+
+## Cross-Agent Skills
+
+This repo uses a shared skills model so Claude and Codex can use the same project skills.
+
+- Canonical source: `.agents/skills`
+- Generated mirror: `.claude/skills`
+- Do not hand-edit generated files under `.claude/skills`
+
+### Skill workflow
+
+1. Edit or add skills only in `.agents/skills/<skill-name>/SKILL.md`.
+2. Keep `.agents/skills/manifest.json` updated with every skill folder name.
+3. Run `npm run skills:validate`.
+4. Run `npm run skills:sync`.
+5. Commit both `.agents/skills` and generated `.claude/skills` changes.
+
+CI runs `npm run skills:check` to enforce sync.
 
 ## Contributing
 
