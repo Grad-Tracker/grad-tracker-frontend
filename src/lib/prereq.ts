@@ -47,6 +47,10 @@ type EvalResult = {
   summary: string[];
 };
 
+type SupabasePrereqClient = {
+  from: (table: string) => any;
+};
+
 const GRADE_RANK: Record<string, number> = {
   "A+": 12,
   A: 12,
@@ -140,7 +144,8 @@ async function fetchCompletedHistoryRows(supabase: ReturnType<typeof createClien
 
 export async function evaluatePrereqsForCourses(
   targetCourseIds: number[],
-  studentId: number
+  studentId: number,
+  supabaseOverride?: SupabasePrereqClient
 ): Promise<PrereqEvaluationMap> {
   const courseIds = Array.from(
     new Set(targetCourseIds.map((id) => Number(id)).filter((id) => Number.isFinite(id)))
@@ -153,7 +158,7 @@ export async function evaluatePrereqsForCourses(
 
   if (courseIds.length === 0) return result;
 
-  const supabase = createClient();
+  const supabase = supabaseOverride ?? createClient();
 
   const { data: reqSetsData, error: reqSetsErr } = await supabase
     .from("course_req_sets")
