@@ -1,71 +1,74 @@
 import React from "react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
+import { createChainMock } from "../../../helpers/mocks";
 
-const { mockedServerClient, mockGetUser, mockSingle } = vi.hoisted(() => {
-  const mockSingle = vi.fn(async () => ({ data: { id: 6 }, error: null }));
-  const eq = vi.fn(() => ({ single: mockSingle }));
-  const select = vi.fn(() => ({ eq }));
-  const from = vi.fn(() => ({ select }));
-  const mockGetUser = vi.fn(async () => ({
-    data: { user: { id: "auth-user-123" } },
-    error: null,
-  }));
+const { mockFrom } = vi.hoisted(() => ({ mockFrom: vi.fn() }));
 
-  return {
-    mockGetUser,
-    mockSingle,
-    mockedServerClient: {
-      auth: {
-        getUser: mockGetUser,
-      },
-      from,
-    },
-  };
-});
-
-vi.mock("@/app/utils/supabase/server", () => ({
-  createClient: async () => mockedServerClient,
+vi.mock("@/lib/supabase/server", () => ({
+  createClient: async () => ({ from: mockFrom }),
 }));
 
-vi.mock("@/components/requirements/RequirementsDashboard", () => ({
-  default: (props: any) => <div>REQ DASH {props.studentId}</div>,
+vi.mock("@/lib/supabase/queries/schema", () => ({
+  DB_TABLES: { programs: "programs" },
+}));
+
+vi.mock("@/app/dashboard/requirements/ProgramsClient", () => ({
+  default: (props: any) => (
+    <div>PROGRAMS CLIENT count={props.programs.length}</div>
+  ),
 }));
 
 import RequirementsPage from "@/app/dashboard/requirements/page";
 
+const mockPrograms = [
+  { id: "1", name: "Computer Science", catalog_year: "2024", program_type: "MAJOR" },
+  { id: "2", name: "Mathematics Minor", catalog_year: null, program_type: "MINOR" },
+];
+
 describe("/dashboard/requirements page", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockGetUser.mockResolvedValue({
-      data: { user: { id: "auth-user-123" } },
-      error: null,
-    });
-    mockSingle.mockResolvedValue({ data: { id: 6 }, error: null });
   });
 
-  it("returns null when there is no authenticated user", async () => {
-    mockGetUser.mockResolvedValue({ data: { user: null }, error: null });
-
-    const el = await RequirementsPage();
-    expect(el).toBeNull();
-  });
-
-  it("renders requirements dashboard when student id is resolved", async () => {
-    const el = await RequirementsPage();
-    render(el as React.ReactElement);
-
-    expect(screen.getByText("REQ DASH 6")).toBeInTheDocument();
-  });
-
-  it("renders fallback message when no student profile is found", async () => {
-    mockSingle.mockResolvedValue({ data: null, error: null });
+  it("renders ProgramsClient with fetched programs", async () => {
+    mockFrom.mockReturnValue(
+      createChainMock({
+        then: vi.fn().mockImplementation((resolve: any) =>
+          resolve({ data: mockPrograms, error: null })
+        ),
+      })
+    );
 
     const el = await RequirementsPage();
     render(el as React.ReactElement);
+    expect(screen.getByText("PROGRAMS CLIENT count=2")).toBeInTheDocument();
+  });
 
-    expect(
-      screen.getByText("No student profile found for this account.")
-    ).toBeInTheDocument();
+  it("passes empty array when Supabase returns an error", async () => {
+    mockFrom.mockReturnValue(
+      createChainMock({
+        then: vi.fn().mockImplementation((resolve: any) =>
+          resolve({ data: null, error: { message: "DB error" } })
+        ),
+      })
+    );
+
+    const el = await RequirementsPage();
+    render(el as React.ReactElement);
+    expect(screen.getByText("PROGRAMS CLIENT count=0")).toBeInTheDocument();
+  });
+
+  it("queries the programs table with name ordering", async () => {
+    mockFrom.mockReturnValue(
+      createChainMock({
+        then: vi.fn().mockImplementation((resolve: any) =>
+          resolve({ data: [], error: null })
+        ),
+      })
+    );
+
+    await RequirementsPage();
+    expect(mockFrom).toHaveBeenCalledWith("programs");
   });
 });
