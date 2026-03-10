@@ -94,42 +94,54 @@ export default function AdminSignupPage() {
         return;
       }
 
-      // If email confirmation is ON, user may be null until they confirm.
-      // So we try to insert advisors row only if user exists now.
       const user = data.user;
-
-      if (user) {
-        // 2) Create advisors table row
-        const { error: insertErr } = await supabase
-          .from(DB_TABLES.advisors)
-          .insert({
-            auth_user_id: user.id,
-            first_name: firstName.trim(),
-            last_name: lastName.trim(),
-            email: email.trim(),
-          });
-
-        if (insertErr) {
-          toaster.create({
-            title: "Advisor record failed",
-            description: insertErr.message,
-            type: "error",
-          });
-          setLoading(false);
-          return;
-        }
-
-        // 3) Go to admin dashboard
-        router.push("/admin");
-      } else {
-        // Email confirmation flow case
+      if (!user) {
         toaster.create({
-          title: "Check your email",
-          description: "Please confirm your email to finish creating your advisor account.",
-          type: "info",
+          title: "Signup failed",
+          description: "Unable to create account. Please try again.",
+          type: "error",
         });
-        router.push("/signin");
+        setLoading(false);
+        return;
       }
+
+      // Supabase can return a user with empty identities when the email already exists.
+      if (user.identities?.length === 0) {
+        await supabase.auth.signOut();
+        toaster.create({
+          title: "Account already exists",
+          description: "An account with this email already exists. Please sign in instead.",
+          type: "error",
+        });
+        setLoading(false);
+        return;
+      }
+
+      // 2) Create staff row for advisor
+      const { error: insertErr } = await supabase
+        .from(DB_TABLES.staff)
+        .insert({
+          auth_user_id: user.id,
+          email: email.trim(),
+          first_name: firstName.trim(),
+          last_name: lastName.trim(),
+          role: "advisor",
+          is_admin: false,
+        });
+
+      if (insertErr) {
+        await supabase.auth.signOut();
+        toaster.create({
+          title: "Advisor record failed",
+          description: insertErr.message,
+          type: "error",
+        });
+        setLoading(false);
+        return;
+      }
+
+      // 3) Go to admin dashboard
+      router.push("/admin");
     } catch (e: any) {
       toaster.create({
         title: "Signup failed",
