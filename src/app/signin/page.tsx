@@ -287,6 +287,21 @@ export default function SigninPage() {
                       </Text>
                     </Link>
                   </Text>
+
+                  <Text fontSize="sm" color="fg.muted" textAlign="center">
+                    Are you an advisor?{" "}
+                    <Link href="/admin/signup">
+                      <Text
+                        as="span"
+                        color="green.solid"
+                        cursor="pointer"
+                        fontWeight="600"
+                        _hover={{ textDecoration: "underline" }}
+                      >
+                        Sign up here
+                      </Text>
+                    </Link>
+                  </Text>
                 </VStack>
               </Card.Body>
             </Card.Root>
