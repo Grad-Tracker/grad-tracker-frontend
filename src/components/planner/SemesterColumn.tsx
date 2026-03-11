@@ -93,7 +93,7 @@ export default function SemesterColumn({
         bg="bg.subtle"
         _hover={{ bg: "bg.muted", borderColor: "yellow.300" }}
         transition="all 0.15s"
-        minW="280px"
+        w="full"
       >
         <HStack justify="center" gap="2">
           <Text fontSize="xs" color="fg.muted" fontWeight="500">
@@ -115,15 +115,13 @@ export default function SemesterColumn({
   return (
     <Card.Root
       ref={setNodeRef}
-      minW="280px"
-      w="280px"
+      w="full"
       borderRadius="xl"
       borderWidth="1px"
       borderColor={isOver ? "green.400" : "border.subtle"}
       boxShadow={isOver ? "0 0 0 2px var(--chakra-colors-green-200)" : "none"}
       bg="bg"
       transition="all 0.2s"
-      flexShrink={0}
       display="flex"
       flexDirection="column"
     >

@@ -15,9 +15,11 @@ import {
 } from "@chakra-ui/react";
 import { LuSearch, LuChevronDown, LuBookOpen, LuArrowDownToLine, LuGripVertical } from "react-icons/lu";
 import type { RequirementBlockWithCourses, PlannedCourseWithDetails, GraduateTrack } from "@/types/planner";
+import type { GenEdBucketWithCourses } from "@/types/auto-generate";
 import { isBreadthBlock } from "@/types/planner";
 import DraggableCourseCard from "./DraggableCourseCard";
 import RequirementProgress from "./RequirementProgress";
+import GenEdProgress from "./GenEdProgress";
 import BreadthPackageSelector from "./BreadthPackageSelector";
 import GraduateTrackSelector from "./GraduateTrackSelector";
 
@@ -37,6 +39,7 @@ interface CoursePanelProps {
   graduateTracks?: GraduateTrack[];
   selectedTrackId?: number | null;
   onTrackSelect?: (trackId: number) => void;
+  genEdBuckets?: GenEdBucketWithCourses[];
 }
 
 export default function CoursePanel({
@@ -52,6 +55,7 @@ export default function CoursePanel({
   graduateTracks = [],
   selectedTrackId = null,
   onTrackSelect,
+  genEdBuckets = [],
 }: CoursePanelProps) {
   const { isOver, setNodeRef } = useDroppable({ id: "course-panel" });
   const [search, setSearch] = useState("");
@@ -105,9 +109,11 @@ export default function CoursePanel({
   return (
     <Box
       position={{ lg: "sticky" }}
-      top={{ lg: "73px" }}
+      top={{ lg: "0" }}
       display="flex"
       flexShrink={0}
+      alignSelf="flex-start"
+      maxH={{ lg: "100vh" }}
     >
     <Box
       ref={setNodeRef}
@@ -117,7 +123,7 @@ export default function CoursePanel({
       borderColor={isOver ? "orange.400" : "border.subtle"}
       bg={isOver ? "orange.subtle" : "bg"}
       overflowY="auto"
-      maxH={{ lg: "calc(100vh - 73px)" }}
+      h={{ lg: "100vh" }}
       transition={isResizing.current ? "none" : "background 0.2s, border-color 0.2s"}
     >
       {/* Drop-to-remove indicator */}
@@ -189,6 +195,15 @@ export default function CoursePanel({
         hasBreadthPackageSelected={!!selectedBreadthPackageId}
         isGraduatePlan={isGraduatePlan}
       />
+
+      {/* Gen Ed Progress */}
+      {!isGraduatePlan && (
+        <GenEdProgress
+          buckets={genEdBuckets}
+          plannedCourses={plannedCourses}
+          completedCourseIds={completedCourseIds}
+        />
+      )}
 
       {/* Graduate Track Selector */}
       {isGraduatePlan && graduateTracks.length >= 2 && onTrackSelect && (
