@@ -179,8 +179,10 @@ describe("SigninPage", () => {
     expect(screen.getAllByText("Forgot password?").length).toBeGreaterThanOrEqual(1);
   });
 
-  it("renders create account link", () => {
+  it("renders advisor signup link to /admin/signup", () => {
     renderWithChakra(<SigninPage />);
-    expect(screen.getAllByText("Create one").length).toBeGreaterThanOrEqual(1);
+    const advisorLink = screen.getByRole("link", { name: "Sign up here" });
+    expect(advisorLink).toBeInTheDocument();
+    expect(advisorLink).toHaveAttribute("href", "/admin/signup");
   });
 });
