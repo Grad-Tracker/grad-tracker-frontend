@@ -1,130 +1,118 @@
 "use client";
 
-import * as React from "react";
+import { useState } from "react";
 import {
+  Badge,
   Box,
   Button,
   Card,
-  Flex,
-  Heading,
+  Container,
   HStack,
   Icon,
   Input,
-  Stack,
   Text,
   VStack,
 } from "@chakra-ui/react";
+import { ColorModeButton } from "@/components/ui/color-mode";
+import { Field } from "@/components/ui/field";
+import { PasswordInput } from "@/components/ui/password-input";
+import { toaster } from "@/components/ui/toaster";
+import { LuGraduationCap, LuArrowRight, LuLoader } from "react-icons/lu";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { LuGraduationCap } from "react-icons/lu";
-
 import { createClient } from "@/lib/supabase/client";
-import { toaster } from "@/components/ui/toaster";
 import { DB_TABLES } from "@/lib/supabase/queries/schema";
-
-function isValidEmail(email: string) {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
-}
-
-// Keep the same password rule you use in /signup if you already have one.
-// If your student signup uses a different rule, copy that exact logic here.
-function isStrongPassword(pw: string) {
-  return pw.length >= 8;
-}
 
 export default function AdminSignupPage() {
   const router = useRouter();
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const [firstName, setFirstName] = React.useState("");
-  const [lastName, setLastName] = React.useState("");
-  const [email, setEmail] = React.useState("");
-  const [password, setPassword] = React.useState("");
-  const [confirmPassword, setConfirmPassword] = React.useState("");
+  async function handleSignup() {
+    if (!firstName || !lastName || !email || !password) {
+      toaster.create({
+        title: "Missing fields",
+        description: "Please fill in all fields.",
+        type: "error",
+      });
+      return;
+    }
 
-  const [loading, setLoading] = React.useState(false);
-
-  const validate = () => {
-    if (!firstName.trim() || !lastName.trim() || !email.trim() || !password || !confirmPassword) {
-      return "All fields are required.";
-    }
-    if (!isValidEmail(email)) {
-      return "Please enter a valid email address.";
-    }
-    if (!isStrongPassword(password)) {
-      return "Password must be at least 8 characters.";
-    }
     if (password !== confirmPassword) {
-      return "Passwords do not match.";
+      toaster.create({
+        title: "Passwords don't match",
+        description: "Please make sure your passwords match.",
+        type: "error",
+      });
+      return;
     }
-    return null;
-  };
 
-  const handleSignup = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    const err = validate();
-    if (err) {
-      toaster.create({ title: "Fix the form", description: err, type: "error" });
+    if (password.length < 6) {
+      toaster.create({
+        title: "Password too short",
+        description: "Password must be at least 6 characters.",
+        type: "error",
+      });
       return;
     }
 
     setLoading(true);
+
     const supabase = createClient();
 
     try {
-      // 1) Create auth user with role in metadata
       const { data, error } = await supabase.auth.signUp({
-        email: email.trim(),
+        email,
         password,
         options: {
           data: {
             role: "advisor",
-            first_name: firstName.trim(),
-            last_name: lastName.trim(),
+            first_name: firstName,
+            last_name: lastName,
           },
-          // Make sure you have this in env: NEXT_PUBLIC_SITE_URL or similar.
-          // If your student signup does not use email confirmations, this still works.
           emailRedirectTo: `${window.location.origin}/auth/callback`,
         },
       });
 
       if (error) {
-        toaster.create({ title: "Signup failed", description: error.message, type: "error" });
-        setLoading(false);
+        toaster.create({
+          title: "Sign up failed",
+          description: error.message,
+          type: "error",
+        });
         return;
       }
 
-      const user = data.user;
-      if (!user) {
+      if (!data.user) {
         toaster.create({
-          title: "Signup failed",
+          title: "Sign up failed",
           description: "Unable to create account. Please try again.",
           type: "error",
         });
-        setLoading(false);
         return;
       }
 
-      // Supabase can return a user with empty identities when the email already exists.
-      if (user.identities?.length === 0) {
+      if (data.user.identities?.length === 0) {
         await supabase.auth.signOut();
         toaster.create({
           title: "Account already exists",
           description: "An account with this email already exists. Please sign in instead.",
           type: "error",
         });
-        setLoading(false);
         return;
       }
 
-      // 2) Create staff row for advisor
       const { error: insertErr } = await supabase
         .from(DB_TABLES.staff)
         .insert({
-          auth_user_id: user.id,
-          email: email.trim(),
-          first_name: firstName.trim(),
-          last_name: lastName.trim(),
+          auth_user_id: data.user.id,
+          email,
+          first_name: firstName,
+          last_name: lastName,
           role: "advisor",
           is_admin: false,
         });
@@ -136,99 +124,272 @@ export default function AdminSignupPage() {
           description: insertErr.message,
           type: "error",
         });
-        setLoading(false);
         return;
       }
 
-      // 3) Go to admin dashboard
+      toaster.create({
+        title: "Account created!",
+        description: "Welcome to GradTracker, Advisor.",
+        type: "success",
+      });
+
       router.push("/admin");
     } catch (e: any) {
       toaster.create({
-        title: "Signup failed",
+        title: "Sign up failed",
         description: e?.message ?? "Unexpected error",
         type: "error",
       });
     } finally {
       setLoading(false);
     }
-  };
+  }
 
   return (
-    <Box minH="100vh" bg="bg" className="mesh-gradient-subtle">
-      <Flex align="center" justify="center" px="4" py="10">
-        <Card.Root w="full" maxW="lg" borderRadius="2xl" borderWidth="1px" borderColor="border.subtle">
-          <Card.Body p={{ base: "6", md: "8" }}>
-            <VStack align="stretch" gap="6">
-              <HStack gap="3">
-                <Box p="2" bg="green.solid" borderRadius="lg">
+    <Box
+      minH="100vh"
+      fontFamily="var(--font-plus-jakarta), sans-serif"
+      position="relative"
+    >
+      {/* Navigation Header */}
+      <Box
+        as="header"
+        position="sticky"
+        top="0"
+        zIndex="sticky"
+        className="glass-card"
+        borderBottomWidth="1px"
+        borderColor="border.subtle"
+      >
+        <Container maxW="7xl" mx="auto" px={{ base: "4", md: "6", lg: "8" }}>
+          <HStack justify="space-between" py="4">
+            <Link href="/">
+              <HStack gap="3" cursor="pointer">
+                <Box
+                  p="2"
+                  bg="green.solid"
+                  borderRadius="lg"
+                  className="animate-pulse-glow"
+                >
                   <Icon color="white" boxSize="5">
                     <LuGraduationCap />
                   </Icon>
                 </Box>
-                <Box>
-                  <Heading size="lg" fontFamily="'DM Serif Display', serif" fontWeight="400">
-                    Advisor Sign Up
-                  </Heading>
-                  <Text color="fg.muted" fontSize="sm">
-                    Create an advisor account to access the admin dashboard.
-                  </Text>
-                </Box>
+                <Text
+                  fontWeight="700"
+                  fontSize="xl"
+                  fontFamily="var(--font-outfit), sans-serif"
+                  letterSpacing="-0.02em"
+                >
+                  GradTracker
+                </Text>
+                <Badge
+                  colorPalette="green"
+                  variant="surface"
+                  size="sm"
+                  fontWeight="500"
+                >
+                  Parkside
+                </Badge>
               </HStack>
+            </Link>
+            <HStack gap="3">
+              <ColorModeButton variant="ghost" size="sm" />
+            </HStack>
+          </HStack>
+        </Container>
+      </Box>
 
-              <Box as="form" onSubmit={handleSignup}>
-                <Stack gap="4">
-                  <Stack direction={{ base: "column", md: "row" }} gap="4">
-                    <Box flex="1">
-                      <Text fontSize="sm" fontWeight="600" mb="1">
-                        First Name
-                      </Text>
-                      <Input value={firstName} onChange={(e) => setFirstName(e.target.value)} placeholder="First name" />
-                    </Box>
-                    <Box flex="1">
-                      <Text fontSize="sm" fontWeight="600" mb="1">
-                        Last Name
-                      </Text>
-                      <Input value={lastName} onChange={(e) => setLastName(e.target.value)} placeholder="Last name" />
-                    </Box>
-                  </Stack>
+      {/* Signup Section */}
+      <Box
+        className="mesh-gradient noise-overlay"
+        py={{ base: "16", md: "24" }}
+        minH="calc(100vh - 73px)"
+        display="flex"
+        alignItems="center"
+        position="relative"
+        overflow="hidden"
+      >
+        {/* Decorative elements */}
+        <Box
+          position="absolute"
+          top="-20%"
+          right="-10%"
+          w="500px"
+          h="500px"
+          bg="green.500"
+          opacity="0.05"
+          borderRadius="full"
+          filter="blur(100px)"
+        />
+        <Box
+          position="absolute"
+          bottom="-30%"
+          left="-10%"
+          w="400px"
+          h="400px"
+          bg="teal.500"
+          opacity="0.05"
+          borderRadius="full"
+          filter="blur(80px)"
+        />
 
-                  <Box>
-                    <Text fontSize="sm" fontWeight="600" mb="1">
-                      Email
+        <Container maxW="md" position="relative" zIndex="2">
+          <Box position="relative">
+            {/* Glow effect */}
+            <Box
+              position="absolute"
+              inset="-4"
+              bg="green.500"
+              opacity="0.15"
+              borderRadius="3xl"
+              filter="blur(40px)"
+            />
+
+            <Card.Root
+              bg="bg"
+              p={{ base: "6", md: "10" }}
+              borderRadius="3xl"
+              boxShadow="2xl"
+              borderWidth="1px"
+              borderColor="border.subtle"
+              position="relative"
+              overflow="hidden"
+            >
+              {/* Subtle gradient overlay */}
+              <Box
+                position="absolute"
+                top="0"
+                left="0"
+                right="0"
+                h="1px"
+                bgGradient="to-r"
+                gradientFrom="transparent"
+                gradientVia="green.500"
+                gradientTo="transparent"
+              />
+
+              <Card.Body p="0">
+                <VStack gap="6" align="stretch">
+                  <VStack gap="2" textAlign="center">
+                    <Text
+                      fontWeight="700"
+                      fontSize="2xl"
+                      fontFamily="var(--font-outfit), sans-serif"
+                      letterSpacing="-0.02em"
+                    >
+                      Advisor Sign Up
                     </Text>
-                    <Input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="name@school.edu" />
-                  </Box>
-
-                  <Box>
-                    <Text fontSize="sm" fontWeight="600" mb="1">
-                      Password
+                    <Text color="fg.muted" fontSize="sm">
+                      Create an advisor account to access the admin dashboard.
                     </Text>
-                    <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="At least 8 characters" />
-                  </Box>
+                  </VStack>
 
-                  <Box>
-                    <Text fontSize="sm" fontWeight="600" mb="1">
-                      Confirm Password
-                    </Text>
-                    <Input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="Re-enter password" />
-                  </Box>
+                  <VStack gap="5">
+                    <HStack gap="4" w="full">
+                      <Field label="First Name">
+                        <Input
+                          placeholder="First name"
+                          rounded="lg"
+                          size="lg"
+                          value={firstName}
+                          onChange={(e) => setFirstName(e.target.value)}
+                        />
+                      </Field>
+                      <Field label="Last Name">
+                        <Input
+                          placeholder="Last name"
+                          rounded="lg"
+                          size="lg"
+                          value={lastName}
+                          onChange={(e) => setLastName(e.target.value)}
+                        />
+                      </Field>
+                    </HStack>
 
-                  <Button type="submit" colorPalette="green" size="lg" loading={loading}>
-                    Create Advisor Account
+                    <Field label="Email">
+                      <Input
+                        placeholder="your.name@uwp.edu"
+                        type="email"
+                        rounded="lg"
+                        size="lg"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                      />
+                    </Field>
+
+                    <Field label="Password">
+                      <PasswordInput
+                        placeholder="Create a password"
+                        rounded="lg"
+                        size="lg"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                      />
+                    </Field>
+
+                    <Field label="Confirm Password">
+                      <PasswordInput
+                        placeholder="Confirm your password"
+                        rounded="lg"
+                        size="lg"
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                      />
+                    </Field>
+                  </VStack>
+
+                  <Button
+                    w="full"
+                    colorPalette="green"
+                    size="lg"
+                    rounded="lg"
+                    fontWeight="600"
+                    _hover={{
+                      transform: "translateY(-2px)",
+                      boxShadow: "lg",
+                    }}
+                    transition="all 0.2s"
+                    onClick={handleSignup}
+                    disabled={loading}
+                  >
+                    {loading ? (
+                      <>
+                        <Icon className="animate-spin" mr="2">
+                          <LuLoader />
+                        </Icon>
+                        Creating Account...
+                      </>
+                    ) : (
+                      <>
+                        Create Advisor Account
+                        <Icon ml="2">
+                          <LuArrowRight />
+                        </Icon>
+                      </>
+                    )}
                   </Button>
 
                   <Text fontSize="sm" color="fg.muted" textAlign="center">
                     Already have an account?{" "}
-                    <Link href="/signin" style={{ textDecoration: "underline" }}>
-                      Sign in
+                    <Link href="/signin">
+                      <Text
+                        as="span"
+                        color="green.solid"
+                        cursor="pointer"
+                        fontWeight="600"
+                        _hover={{ textDecoration: "underline" }}
+                      >
+                        Sign in
+                      </Text>
                     </Link>
                   </Text>
-                </Stack>
-              </Box>
-            </VStack>
-          </Card.Body>
-        </Card.Root>
-      </Flex>
+                </VStack>
+              </Card.Body>
+            </Card.Root>
+          </Box>
+        </Container>
+      </Box>
     </Box>
   );
 }
