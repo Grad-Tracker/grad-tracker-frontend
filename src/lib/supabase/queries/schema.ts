@@ -5,6 +5,7 @@ export const DB_TABLES = {
   majorCertificateMappings: "major_certificate_mappings",
   plans: "plans",
   planPrograms: "plan_programs",
+  programAdvisors: "program_advisors",
   programRequirementBlocks: "program_requirement_blocks",
   programRequirementCourses: "program_requirement_courses",
   programs: "programs",
