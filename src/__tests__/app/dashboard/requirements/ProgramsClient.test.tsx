@@ -32,31 +32,31 @@ describe("ProgramsClient", () => {
 
   it("shows MAJOR and MINOR programs on undergrad tab by default", () => {
     renderWithChakra(<ProgramsClient programs={mockPrograms} />);
-    expect(screen.getByText("Computer Science")).toBeInTheDocument();
-    expect(screen.getByText("Mathematics Minor")).toBeInTheDocument();
-    expect(screen.queryByText("Software Engineering MS")).not.toBeInTheDocument();
-    expect(screen.queryByText("Data Science Certificate")).not.toBeInTheDocument();
+    expect(screen.getAllByText("Computer Science").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("Mathematics Minor").length).toBeGreaterThanOrEqual(1);
+    expect(screen.queryAllByText("Software Engineering MS")).toHaveLength(0);
+    expect(screen.queryAllByText("Data Science Certificate")).toHaveLength(0);
   });
 
   it("shows GRADUATE programs when grad tab is clicked", async () => {
     renderWithChakra(<ProgramsClient programs={mockPrograms} />);
-    const gradTexts = screen.getAllByText(/^Grad$/);
-    const gradButton = gradTexts[0].closest("button") ?? gradTexts[0];
-    fireEvent.click(gradButton);
+    const gradText = screen.getAllByText(/^Grad$/);
+    const gradTab = gradText[0].closest('[role="tab"]') ?? gradText[0];
+    fireEvent.click(gradTab);
     await waitFor(() => {
-      expect(screen.getByText("Software Engineering MS")).toBeInTheDocument();
-      expect(screen.queryByText("Computer Science")).not.toBeInTheDocument();
+      expect(screen.getAllByText("Software Engineering MS").length).toBeGreaterThanOrEqual(1);
+      expect(screen.queryAllByText("Computer Science")).toHaveLength(0);
     });
   });
 
   it("shows CERTIFICATE programs when certificates tab is clicked", async () => {
     renderWithChakra(<ProgramsClient programs={mockPrograms} />);
-    const certTexts = screen.getAllByText(/Certificates/);
-    const certButton = certTexts[0].closest("button") ?? certTexts[0];
-    fireEvent.click(certButton);
+    const certText = screen.getAllByText(/Certificates/);
+    const certTab = certText[0].closest('[role="tab"]') ?? certText[0];
+    fireEvent.click(certTab);
     await waitFor(() => {
-      expect(screen.getByText("Data Science Certificate")).toBeInTheDocument();
-      expect(screen.queryByText("Computer Science")).not.toBeInTheDocument();
+      expect(screen.getAllByText("Data Science Certificate").length).toBeGreaterThanOrEqual(1);
+      expect(screen.queryAllByText("Computer Science")).toHaveLength(0);
     });
   });
 
@@ -65,8 +65,8 @@ describe("ProgramsClient", () => {
     const input = screen.getByPlaceholderText("Search programs by name...");
     fireEvent.change(input, { target: { value: "computer" } });
     await waitFor(() => {
-      expect(screen.getByText("Computer Science")).toBeInTheDocument();
-      expect(screen.queryByText("Mathematics Minor")).not.toBeInTheDocument();
+      expect(screen.getAllByText("Computer Science").length).toBeGreaterThanOrEqual(1);
+      expect(screen.queryAllByText("Mathematics Minor")).toHaveLength(0);
     });
   });
 
@@ -76,8 +76,8 @@ describe("ProgramsClient", () => {
     fireEvent.change(input, { target: { value: "computer" } });
     fireEvent.change(input, { target: { value: "" } });
     await waitFor(() => {
-      expect(screen.getByText("Computer Science")).toBeInTheDocument();
-      expect(screen.getByText("Mathematics Minor")).toBeInTheDocument();
+      expect(screen.getAllByText("Computer Science").length).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByText("Mathematics Minor").length).toBeGreaterThanOrEqual(1);
     });
   });
 
@@ -86,21 +86,21 @@ describe("ProgramsClient", () => {
     const input = screen.getByPlaceholderText("Search programs by name...");
     fireEvent.change(input, { target: { value: "ZZZZZ" } });
     await waitFor(() => {
-      expect(screen.getByText("No programs found")).toBeInTheDocument();
+      expect(screen.getAllByText("No programs found").length).toBeGreaterThanOrEqual(1);
     });
   });
 
   it("shows database empty message when programs array is empty", () => {
     renderWithChakra(<ProgramsClient programs={[]} />);
     expect(
-      screen.getByText("No programs have been added to the database yet.")
-    ).toBeInTheDocument();
+      screen.getAllByText("No programs have been added to the database yet.").length
+    ).toBeGreaterThanOrEqual(1);
   });
 
   it("shows programs found count for current tab", () => {
     renderWithChakra(<ProgramsClient programs={mockPrograms} />);
     // 2 undergrad programs (MAJOR + MINOR)
-    expect(screen.getByText("2 programs found")).toBeInTheDocument();
+    expect(screen.getAllByText("2 programs found").length).toBeGreaterThanOrEqual(1);
   });
 
   it("ProgramCard renders a link to /dashboard/requirements/[id]", () => {

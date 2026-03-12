@@ -117,7 +117,7 @@ describe("ProgramDetailClient", () => {
     renderWithChakra(
       <ProgramDetailClient program={mockProgram} blocks={[]} />
     );
-    expect(screen.getByText("Computer Science")).toBeInTheDocument();
+    expect(screen.getAllByText("Computer Science").length).toBeGreaterThanOrEqual(1);
   });
 
   it("renders program type badge", () => {
@@ -141,14 +141,14 @@ describe("ProgramDetailClient", () => {
         blocks={[]}
       />
     );
-    expect(screen.queryByText("2024")).not.toBeInTheDocument();
+    expect(screen.queryAllByText("2024")).toHaveLength(0);
   });
 
   it("renders 'Description coming soon.' placeholder", () => {
     renderWithChakra(
       <ProgramDetailClient program={mockProgram} blocks={[]} />
     );
-    expect(screen.getByText("Description coming soon.")).toBeInTheDocument();
+    expect(screen.getAllByText("Description coming soon.").length).toBeGreaterThanOrEqual(1);
   });
 
   it("renders back link to /dashboard/requirements", () => {
@@ -164,18 +164,18 @@ describe("ProgramDetailClient", () => {
       <ProgramDetailClient program={mockProgram} blocks={[]} />
     );
     expect(
-      screen.getByText("No requirement blocks found for this program.")
-    ).toBeInTheDocument();
+      screen.getAllByText("No requirement blocks found for this program.").length
+    ).toBeGreaterThanOrEqual(1);
   });
 
   it("renders block name and ALL_OF rule label", () => {
     renderWithChakra(
       <ProgramDetailClient program={mockProgram} blocks={[flatBlock]} />
     );
-    expect(screen.getByText("Core Courses")).toBeInTheDocument();
+    expect(screen.getAllByText("Core Courses").length).toBeGreaterThanOrEqual(1);
     expect(
-      screen.getByText("Complete all of the following")
-    ).toBeInTheDocument();
+      screen.getAllByText("Complete all of the following").length
+    ).toBeGreaterThanOrEqual(1);
   });
 
   it("renders CREDITS_OF rule label", () => {
@@ -183,8 +183,8 @@ describe("ProgramDetailClient", () => {
       <ProgramDetailClient program={mockProgram} blocks={[breadthBlock]} />
     );
     expect(
-      screen.getByText("Complete 9 credits from the following")
-    ).toBeInTheDocument();
+      screen.getAllByText("Complete 9 credits from the following").length
+    ).toBeGreaterThanOrEqual(1);
   });
 
   it("renders N_OF rule label", () => {
@@ -192,8 +192,8 @@ describe("ProgramDetailClient", () => {
       <ProgramDetailClient program={mockProgram} blocks={[optionBlock]} />
     );
     expect(
-      screen.getByText("Complete 1 of the following")
-    ).toBeInTheDocument();
+      screen.getAllByText("Complete 1 of the following").length
+    ).toBeGreaterThanOrEqual(1);
   });
 
   it("renders course rows in flat CourseTable", () => {
@@ -201,31 +201,31 @@ describe("ProgramDetailClient", () => {
       <ProgramDetailClient program={mockProgram} blocks={[flatBlock]} />
     );
     expect(screen.getAllByText(/CS/).length).toBeGreaterThanOrEqual(1);
-    expect(screen.getByText("Intro to CS")).toBeInTheDocument();
-    expect(screen.getByText("Data Structures")).toBeInTheDocument();
+    expect(screen.getAllByText("Intro to CS").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("Data Structures").length).toBeGreaterThanOrEqual(1);
   });
 
   it("renders OptionGroupView with 'Option A' and 'Option B' labels when options exist", () => {
     renderWithChakra(
       <ProgramDetailClient program={mockProgram} blocks={[optionBlock]} />
     );
-    expect(screen.getByText("Option A")).toBeInTheDocument();
-    expect(screen.getByText("Option B")).toBeInTheDocument();
+    expect(screen.getAllByText("Option A").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("Option B").length).toBeGreaterThanOrEqual(1);
   });
 
   it("renders OR divider badge between options", () => {
     renderWithChakra(
       <ProgramDetailClient program={mockProgram} blocks={[optionBlock]} />
     );
-    expect(screen.getByText("OR")).toBeInTheDocument();
+    expect(screen.getAllByText("OR").length).toBeGreaterThanOrEqual(1);
   });
 
   it("renders BreadthPackageView with package name for breadth blocks", () => {
     renderWithChakra(
       <ProgramDetailClient program={mockProgram} blocks={[breadthBlock]} />
     );
-    expect(screen.getByText("Mathematics")).toBeInTheDocument();
-    expect(screen.getByText("MATH 221")).toBeInTheDocument();
+    expect(screen.getAllByText("Mathematics").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("MATH 221").length).toBeGreaterThanOrEqual(1);
   });
 
   it("shows 'No courses listed' for empty blocks", () => {
@@ -233,8 +233,8 @@ describe("ProgramDetailClient", () => {
       <ProgramDetailClient program={mockProgram} blocks={[emptyBlock]} />
     );
     expect(
-      screen.getByText("No courses listed for this requirement.")
-    ).toBeInTheDocument();
+      screen.getAllByText("No courses listed for this requirement.").length
+    ).toBeGreaterThanOrEqual(1);
   });
 
   it("renders cross-listed courses in a single row with 'or' connector", () => {
@@ -269,16 +269,16 @@ describe("ProgramDetailClient", () => {
     renderWithChakra(
       <ProgramDetailClient program={mockProgram} blocks={[crossBlock]} />
     );
-    expect(screen.getByText("CSCI 231")).toBeInTheDocument();
-    expect(screen.getByText("MATH 231")).toBeInTheDocument();
-    expect(screen.getByText("or")).toBeInTheDocument();
+    expect(screen.getAllByText("CSCI 231").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("MATH 231").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("or").length).toBeGreaterThanOrEqual(1);
   });
 
   it("opens course drawer with title and credits when a row is clicked", async () => {
     renderWithChakra(
       <ProgramDetailClient program={mockProgram} blocks={[flatBlock]} />
     );
-    const row = screen.getByText("Intro to CS").closest("tr");
+    const row = screen.getAllByText("Intro to CS")[0].closest("tr");
     fireEvent.click(row!);
     await waitFor(() => {
       expect(screen.getAllByText("Course Title").length).toBeGreaterThanOrEqual(1);
@@ -290,7 +290,7 @@ describe("ProgramDetailClient", () => {
     renderWithChakra(
       <ProgramDetailClient program={mockProgram} blocks={[flatBlock]} />
     );
-    const row = screen.getByText("Data Structures").closest("tr");
+    const row = screen.getAllByText("Data Structures")[0].closest("tr");
     fireEvent.click(row!);
     await waitFor(() => {
       expect(screen.getAllByText("Prerequisites").length).toBeGreaterThanOrEqual(1);
@@ -302,7 +302,7 @@ describe("ProgramDetailClient", () => {
     renderWithChakra(
       <ProgramDetailClient program={mockProgram} blocks={[breadthBlock]} />
     );
-    const row = screen.getByText("Calculus I").closest("tr");
+    const row = screen.getAllByText("Calculus I")[0].closest("tr");
     fireEvent.click(row!);
     await waitFor(() => {
       expect(

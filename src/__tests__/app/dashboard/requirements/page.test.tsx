@@ -34,9 +34,7 @@ describe("/dashboard/requirements page", () => {
   it("renders ProgramsClient with fetched programs", async () => {
     mockFrom.mockReturnValue(
       createChainMock({
-        then: vi.fn().mockImplementation((resolve: any) =>
-          resolve({ data: mockPrograms, error: null })
-        ),
+        order: vi.fn().mockResolvedValue({ data: mockPrograms, error: null }),
       })
     );
 
@@ -48,9 +46,7 @@ describe("/dashboard/requirements page", () => {
   it("passes empty array when Supabase returns an error", async () => {
     mockFrom.mockReturnValue(
       createChainMock({
-        then: vi.fn().mockImplementation((resolve: any) =>
-          resolve({ data: null, error: { message: "DB error" } })
-        ),
+        order: vi.fn().mockResolvedValue({ data: null, error: { message: "DB error" } }),
       })
     );
 
@@ -62,13 +58,13 @@ describe("/dashboard/requirements page", () => {
   it("queries the programs table with name ordering", async () => {
     mockFrom.mockReturnValue(
       createChainMock({
-        then: vi.fn().mockImplementation((resolve: any) =>
-          resolve({ data: [], error: null })
-        ),
+        order: vi.fn().mockResolvedValue({ data: [], error: null }),
       })
     );
 
     await RequirementsPage();
     expect(mockFrom).toHaveBeenCalledWith("programs");
+    const chain = mockFrom.mock.results[0].value;
+    expect(chain.order).toHaveBeenCalledWith("name", { ascending: true });
   });
 });

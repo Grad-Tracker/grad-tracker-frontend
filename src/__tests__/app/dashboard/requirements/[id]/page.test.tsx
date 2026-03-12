@@ -49,9 +49,10 @@ function makeClient(programResult: any, blocksResult: any = { data: [], error: n
         single: vi.fn().mockResolvedValue(programResult),
       });
     }
-    // program_requirement_blocks + any other table (crosslistings, req_sets, atoms)
+    // program_requirement_blocks ends with .order(), others end with .in()
     return createChainMock({
-      then: vi.fn().mockImplementation((resolve: any) => resolve(blocksResult)),
+      order: vi.fn().mockResolvedValue(blocksResult),
+      in: vi.fn().mockResolvedValue(blocksResult),
     });
   });
 }
@@ -96,5 +97,7 @@ describe("/dashboard/requirements/[id] page", () => {
     await ProgramDetailPage({ params: Promise.resolve({ id: "42" }) });
 
     expect(mockFrom).toHaveBeenCalledWith("programs");
+    const programsChain = mockFrom.mock.results[0].value;
+    expect(programsChain.eq).toHaveBeenCalledWith("id", "42");
   });
 });

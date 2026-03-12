@@ -21,8 +21,8 @@ function parseOptionGroups(
   nodes: ReqNode[],
   courseMap: Map<number, Course>
 ): Course[][] | null {
-  const root = nodes.find((n) => n.parent_id === null);
-  if (!root || root.node_type !== "OR") return null;
+  const roots = nodes.filter((n) => n.parent_id === null && n.node_type === "OR");
+  if (roots.length === 0) return null;
 
   const childrenOf = (parentId: number) =>
     nodes
@@ -31,21 +31,23 @@ function parseOptionGroups(
 
   const options: Course[][] = [];
 
-  for (const child of childrenOf(root.id)) {
-    if (child.node_type === "ATOM") {
-      const courseId = child.program_req_atoms[0]?.required_course_id;
-      const course = courseId ? courseMap.get(courseId) : undefined;
-      if (course) options.push([course]);
-    } else if (child.node_type === "AND") {
-      const group: Course[] = [];
-      for (const atom of childrenOf(child.id)) {
-        if (atom.node_type === "ATOM") {
-          const courseId = atom.program_req_atoms[0]?.required_course_id;
-          const course = courseId ? courseMap.get(courseId) : undefined;
-          if (course) group.push(course);
+  for (const root of roots) {
+    for (const child of childrenOf(root.id)) {
+      if (child.node_type === "ATOM") {
+        const courseId = child.program_req_atoms[0]?.required_course_id;
+        const course = courseId ? courseMap.get(courseId) : undefined;
+        if (course) options.push([course]);
+      } else if (child.node_type === "AND") {
+        const group: Course[] = [];
+        for (const atom of childrenOf(child.id)) {
+          if (atom.node_type === "ATOM") {
+            const courseId = atom.program_req_atoms[0]?.required_course_id;
+            const course = courseId ? courseMap.get(courseId) : undefined;
+            if (course) group.push(course);
+          }
         }
+        if (group.length > 0) options.push(group);
       }
-      if (group.length > 0) options.push(group);
     }
   }
 
@@ -67,10 +69,20 @@ function computeCrossPairs(
 
   for (const course of courses) {
     if (processed.has(course.id)) continue;
-    const linked = crossListings
+    // Forward: cross-listing entries FROM this course
+    const forwardLinked = crossListings
       .filter((cl) => cl.course_id === course.id)
       .map((cl) => coursesByKey.get(`${cl.cross_subject} ${cl.cross_number}`))
       .filter((c): c is Course => c !== undefined && !processed.has(c.id));
+
+    // Reverse: cross-listing entries TO this course from other courses
+    const forwardIds = new Set(forwardLinked.map((c) => c.id));
+    const reverseLinked = crossListings
+      .filter((cl) => cl.cross_subject === course.subject && cl.cross_number === course.number && cl.course_id !== course.id)
+      .map((cl) => courses.find((c) => c.id === cl.course_id))
+      .filter((c): c is Course => c !== undefined && !processed.has(c.id) && !forwardIds.has(c.id));
+
+    const linked = [...forwardLinked, ...reverseLinked];
 
     if (linked.length > 0) {
       const group = [course.id, ...linked.map((c) => c.id)];
@@ -167,36 +179,48 @@ export default async function ProgramDetailPage({
 
   // Fetch cross-listings for all courses so we can group alternatives in the table
   const allCourseIds = allCourses.map((c) => c.id);
-  const { data: crossListingData } = allCourseIds.length
+  const { data: crossListingData, error: crossListingError } = allCourseIds.length
     ? await supabase
         .from("course_crosslistings")
         .select("course_id, cross_subject, cross_number")
         .in("course_id", allCourseIds)
-    : { data: [] };
+    : { data: [], error: null };
+
+  if (crossListingError) {
+    throw new Error(`Failed to load cross-listings: ${crossListingError.message}`);
+  }
 
   // Fetch OR/AND tree structure for all blocks.
   // Two separate queries are more reliable than a 3-level nested select.
   const blockIds = (blocks ?? []).map((b: any) => b.id);
 
   // Step 1: sets + their nodes (no atoms yet)
-  const { data: reqSets } = blockIds.length
+  const { data: reqSets, error: reqSetsError } = blockIds.length
     ? await supabase
         .from("program_req_sets")
         .select("id, block_id, program_req_nodes ( id, node_type, parent_id, sort_order )")
         .in("block_id", blockIds)
-    : { data: [] };
+    : { data: [], error: null };
+
+  if (reqSetsError) {
+    throw new Error(`Failed to load requirement sets: ${reqSetsError.message}`);
+  }
 
   // Step 2: collect node IDs, then fetch atoms for them
   const allNodeIds = (reqSets ?? []).flatMap((s: any) =>
     (s.program_req_nodes ?? []).map((n: any) => n.id as number)
   );
 
-  const { data: atomRows } = allNodeIds.length
+  const { data: atomRows, error: atomRowsError } = allNodeIds.length
     ? await supabase
         .from("program_req_atoms")
         .select("node_id, atom_type, required_course_id")
         .in("node_id", allNodeIds)
-    : { data: [] };
+    : { data: [], error: null };
+
+  if (atomRowsError) {
+    throw new Error(`Failed to load requirement atoms: ${atomRowsError.message}`);
+  }
 
   // Step 3: build nodeId → atom lookup and merge into ReqNode[]
   const atomByNodeId = new Map<number, { atom_type: string; required_course_id: number | null }>();
