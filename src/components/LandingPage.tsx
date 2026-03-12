@@ -161,9 +161,8 @@ export default function LandingPage() {
       password,
     });
 
-    setLoading(false);
-
     if (error) {
+      setLoading(false);
       toaster.create({
         title: "Sign in failed",
         description: error.message,
@@ -172,13 +171,18 @@ export default function LandingPage() {
       return;
     }
 
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
     toaster.create({
       title: "Welcome back!",
-      description: "Redirecting to your dashboard...",
+      description: "Redirecting...",
       type: "success",
     });
 
-    router.push("/dashboard");
+    setLoading(false);
+    router.push(user?.user_metadata?.role === "advisor" ? "/admin" : "/dashboard");
   }
 
   return (
