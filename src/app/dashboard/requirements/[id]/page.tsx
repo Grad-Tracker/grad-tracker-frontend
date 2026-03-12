@@ -75,7 +75,7 @@ function computeCrossPairs(
     if (linked.length > 0) {
       const group = [course.id, ...linked.map((c) => c.id)];
       pairs.push(group);
-      group.forEach((id) => processed.add(id));
+      group.forEach((id) => { processed.add(id); });
     } else {
       processed.add(course.id);
     }
@@ -131,7 +131,7 @@ export default async function ProgramDetailPage({
     notFound();
   }
 
-  const { data: blocks } = await supabase
+  const { data: blocks, error: blocksError } = await supabase
     .from(DB_TABLES.programRequirementBlocks)
     .select(`
       id, name, rule, n_required, credits_required,
@@ -141,6 +141,10 @@ export default async function ProgramDetailPage({
     `)
     .eq("program_id", id)
     .order("name");
+
+  if (blocksError) {
+    throw new Error(`Failed to load requirement blocks: ${blocksError.message}`);
+  }
 
   // Build a map of course id → Course for tree parsing
   const allCourses: Course[] = (blocks ?? []).flatMap((block: any) =>
@@ -210,7 +214,8 @@ export default async function ProgramDetailPage({
       sort_order: n.sort_order,
       program_req_atoms: atomByNodeId.has(n.id) ? [atomByNodeId.get(n.id)!] : [],
     }));
-    nodesByBlockId.set(blockId, nodes);
+    const existing = nodesByBlockId.get(blockId) ?? [];
+    nodesByBlockId.set(blockId, [...existing, ...nodes]);
   }
 
   // Step 4: parse each block's tree into option groups and course order

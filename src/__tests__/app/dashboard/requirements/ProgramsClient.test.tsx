@@ -107,7 +107,7 @@ describe("ProgramsClient", () => {
     renderWithChakra(<ProgramsClient programs={mockPrograms} />);
     const links = screen.getAllByRole("link");
     const csLink = links.find((l) => l.getAttribute("href") === "/dashboard/requirements/1");
-    expect(csLink).toBeDefined();
+    expect(csLink).toBeInTheDocument();
   });
 
   it("groups undergrad programs under Majors and Minors headings", () => {

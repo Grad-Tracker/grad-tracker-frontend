@@ -30,7 +30,7 @@ vi.mock("@/types/planner", () => ({
 const mockProgram = {
   id: "42",
   name: "Computer Science",
-  catalog_year: "2024",
+  catalog_year: 2024,
   program_type: "MAJOR",
 };
 

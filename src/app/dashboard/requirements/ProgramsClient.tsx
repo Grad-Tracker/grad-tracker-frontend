@@ -161,14 +161,15 @@ export default function ProgramsClient({ programs }: ProgramsClientProps) {
         </Heading>
       </Box>
 
+      <Tabs.Root
+        value={activeTab}
+        onValueChange={(e) => setActiveTab(e.value as TabValue)}
+        variant="enclosed"
+        colorPalette="blue"
+        lazyMount
+        unmountOnExit
+      >
       <VStack gap="6" align="stretch">
-        {/* Tabs */}
-        <Tabs.Root
-          value={activeTab}
-          onValueChange={(e) => setActiveTab(e.value as TabValue)}
-          variant="enclosed"
-          colorPalette="blue"
-        >
           <Tabs.List bg="bg" borderRadius="lg" p="1">
             <Tabs.Trigger value="undergrad" px="6">
               <Icon boxSize="4" mr="2">
@@ -213,7 +214,6 @@ export default function ProgramsClient({ programs }: ProgramsClientProps) {
               </Badge>
             </Tabs.Trigger>
           </Tabs.List>
-        </Tabs.Root>
 
         {/* Search */}
         <Card.Root
@@ -232,12 +232,14 @@ export default function ProgramsClient({ programs }: ProgramsClientProps) {
                 transform="translateY(-50%)"
                 color="fg.muted"
                 zIndex="1"
+                pointerEvents="none"
               >
                 <LuSearch />
               </Box>
               <Input
                 pl="10"
                 placeholder="Search programs by name..."
+                aria-label="Search programs"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 rounded="lg"
@@ -253,87 +255,92 @@ export default function ProgramsClient({ programs }: ProgramsClientProps) {
         </Text>
 
         {/* Program Grid */}
-        {filteredPrograms.length > 0 ? (
-          <VStack align="stretch" gap="8">
-            {activeTab === "undergrad" ? (
-              <>
-                {(["MAJOR", "MINOR"] as const).map((type) => {
-                  const group = filteredPrograms.filter((p) => p.program_type === type);
-                  if (group.length === 0) return null;
-                  return (
-                    <VStack key={type} align="stretch" gap="4">
-                      <HStack gap="2">
-                        <Heading
-                          size="sm"
-                          fontFamily="var(--font-outfit), sans-serif"
-                          fontWeight="500"
-                          color="fg.muted"
-                          letterSpacing="0.05em"
-                          textTransform="uppercase"
-                        >
-                          {getProgramTypeLabel(type)}s
-                        </Heading>
-                        <Badge colorPalette={getProgramColor(type)} variant="subtle" size="sm">
-                          {group.length}
-                        </Badge>
-                      </HStack>
-                      <SimpleGrid columns={{ base: 1, md: 2, lg: 3, xl: 4 }} gap="4">
-                        {group.map((program, index) => (
-                          <ProgramCard key={program.id} program={program} index={index} />
-                        ))}
-                      </SimpleGrid>
-                    </VStack>
-                  );
-                })}
-              </>
-            ) : (
-              <SimpleGrid columns={{ base: 1, md: 2, lg: 3, xl: 4 }} gap="4">
-                {filteredPrograms.map((program, index) => (
-                  <ProgramCard key={program.id} program={program} index={index} />
-                ))}
-              </SimpleGrid>
-            )}
-          </VStack>
-        ) : (
-          <Card.Root
-            bg="bg"
-            borderRadius="xl"
-            borderWidth="1px"
-            borderColor="border.subtle"
-            className="animate-fade-up"
-          >
-            <Card.Body p="12">
-              <VStack gap="4" textAlign="center">
-                <Box
-                  w="16"
-                  h="16"
-                  bg="gray.subtle"
-                  borderRadius="full"
-                  display="flex"
-                  alignItems="center"
-                  justifyContent="center"
-                >
-                  <Icon color="fg.muted" boxSize="8">
-                    <LuTarget />
-                  </Icon>
-                </Box>
-                <Heading
-                  size="md"
-                  fontFamily="var(--font-outfit), sans-serif"
-                  fontWeight="400"
-                >
-                  No programs found
-                </Heading>
-                <Text color="fg.muted" fontSize="sm" maxW="sm">
-                  {programs.length === 0
-                    ? "No programs have been added to the database yet."
-                    : "Try adjusting your search to find programs."}
-                </Text>
+        {(["undergrad", "grad", "certificates"] as const).map((tabValue) => (
+          <Tabs.Content key={tabValue} value={tabValue} p="0">
+            {filteredPrograms.length > 0 ? (
+              <VStack align="stretch" gap="8">
+                {tabValue === "undergrad" ? (
+                  <>
+                    {(["MAJOR", "MINOR"] as const).map((type) => {
+                      const group = filteredPrograms.filter((p) => p.program_type === type);
+                      if (group.length === 0) return null;
+                      return (
+                        <VStack key={type} align="stretch" gap="4">
+                          <HStack gap="2">
+                            <Heading
+                              size="sm"
+                              fontFamily="var(--font-outfit), sans-serif"
+                              fontWeight="500"
+                              color="fg.muted"
+                              letterSpacing="0.05em"
+                              textTransform="uppercase"
+                            >
+                              {getProgramTypeLabel(type)}s
+                            </Heading>
+                            <Badge colorPalette={getProgramColor(type)} variant="subtle" size="sm">
+                              {group.length}
+                            </Badge>
+                          </HStack>
+                          <SimpleGrid columns={{ base: 1, md: 2, lg: 3, xl: 4 }} gap="4">
+                            {group.map((program, index) => (
+                              <ProgramCard key={program.id} program={program} index={index} />
+                            ))}
+                          </SimpleGrid>
+                        </VStack>
+                      );
+                    })}
+                  </>
+                ) : (
+                  <SimpleGrid columns={{ base: 1, md: 2, lg: 3, xl: 4 }} gap="4">
+                    {filteredPrograms.map((program, index) => (
+                      <ProgramCard key={program.id} program={program} index={index} />
+                    ))}
+                  </SimpleGrid>
+                )}
               </VStack>
-            </Card.Body>
-          </Card.Root>
-        )}
+            ) : (
+              <Card.Root
+                bg="bg"
+                borderRadius="xl"
+                borderWidth="1px"
+                borderColor="border.subtle"
+                className="animate-fade-up"
+              >
+                <Card.Body p="12">
+                  <VStack gap="4" textAlign="center">
+                    <Box
+                      w="16"
+                      h="16"
+                      bg="bg.subtle"
+                      borderRadius="full"
+                      display="flex"
+                      alignItems="center"
+                      justifyContent="center"
+                    >
+                      <Icon color="fg.muted" boxSize="8">
+                        <LuTarget />
+                      </Icon>
+                    </Box>
+                    <Heading
+                      size="md"
+                      fontFamily="var(--font-outfit), sans-serif"
+                      fontWeight="400"
+                    >
+                      No programs found
+                    </Heading>
+                    <Text color="fg.muted" fontSize="sm" maxW="sm">
+                      {programs.length === 0
+                        ? "No programs have been added to the database yet."
+                        : "Try adjusting your search to find programs."}
+                    </Text>
+                  </VStack>
+                </Card.Body>
+              </Card.Root>
+            )}
+          </Tabs.Content>
+        ))}
       </VStack>
+      </Tabs.Root>
     </Box>
   );
 }

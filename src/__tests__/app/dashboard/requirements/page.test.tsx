@@ -22,7 +22,7 @@ vi.mock("@/app/dashboard/requirements/ProgramsClient", () => ({
 import RequirementsPage from "@/app/dashboard/requirements/page";
 
 const mockPrograms = [
-  { id: "1", name: "Computer Science", catalog_year: "2024", program_type: "MAJOR" },
+  { id: "1", name: "Computer Science", catalog_year: 2024, program_type: "MAJOR" },
   { id: "2", name: "Mathematics Minor", catalog_year: null, program_type: "MINOR" },
 ];
 

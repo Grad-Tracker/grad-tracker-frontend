@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import React, { useState } from "react";
 import {
   Badge,
   Box,
@@ -29,7 +29,7 @@ import { BREADTH_PACKAGES, getPackageCourseKeys, courseKey } from "@/types/plann
 interface Program {
   id: string;
   name: string;
-  catalog_year: string | null;
+  catalog_year: number | null;
   program_type: string;
 }
 
@@ -113,7 +113,7 @@ function CourseTable({
   // Ids that are non-primary in a cross-pair (skip rendering separately)
   const skipIds = new Set<number>();
   for (const group of crossPairs) {
-    group.slice(1).forEach((id) => skipIds.add(id));
+    group.slice(1).forEach((id) => { skipIds.add(id); });
   }
 
   const courseById = new Map(courses.map((c) => [c.id, c]));
@@ -149,12 +149,11 @@ function CourseTable({
                       {course.subject} {course.number}
                     </Badge>
                     {alts.map((alt) => (
-                      <>
-                        <Text key={`or-${alt.id}`} fontSize="xs" color="fg.muted" fontStyle="italic">
+                      <React.Fragment key={`alt-${alt.id}`}>
+                        <Text fontSize="xs" color="fg.muted" fontStyle="italic">
                           or
                         </Text>
                         <Badge
-                          key={alt.id}
                           colorPalette={getSubjectColor(alt.subject)}
                           variant="surface"
                           size="sm"
@@ -164,7 +163,7 @@ function CourseTable({
                         >
                           {alt.subject} {alt.number}
                         </Badge>
-                      </>
+                      </React.Fragment>
                     ))}
                   </HStack>
                 </Table.Cell>
