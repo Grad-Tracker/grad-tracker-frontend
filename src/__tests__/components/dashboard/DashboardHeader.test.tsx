@@ -7,9 +7,33 @@ const { mockGetUser } = vi.hoisted(() => ({
   mockGetUser: vi.fn(),
 }));
 
+const mockCreateSignedUrl = vi.fn();
+const mockMaybeSingle = vi.fn();
+const mockEq = vi.fn();
+const mockSelect = vi.fn();
+const mockFrom = vi.fn();
+
+mockEq.mockImplementation(() => ({
+  maybeSingle: mockMaybeSingle,
+}));
+
+mockSelect.mockImplementation(() => ({
+  eq: mockEq,
+}));
+
+mockFrom.mockImplementation(() => ({
+  select: mockSelect,
+}));
+
 vi.mock("@/lib/supabase/client", () => ({
   createClient: vi.fn(() => ({
     auth: { getUser: mockGetUser },
+    from: mockFrom,
+    storage: {
+      from: vi.fn(() => ({
+        createSignedUrl: mockCreateSignedUrl,
+      })),
+    },
   })),
 }));
 
@@ -22,6 +46,11 @@ import DashboardHeader from "@/components/dashboard/DashboardHeader";
 describe("DashboardHeader", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockSelect.mockClear();
+    mockEq.mockClear();
+    mockMaybeSingle.mockReset();
+    mockMaybeSingle.mockResolvedValue({ data: null });
+    mockCreateSignedUrl.mockReset();
   });
 
   it("renders notification bell button", async () => {
@@ -41,9 +70,17 @@ describe("DashboardHeader", () => {
   });
 
   it("renders avatar with user name when loaded", async () => {
+    mockMaybeSingle.mockResolvedValueOnce({
+      data: {
+        first_name: "John",
+        last_name: "Doe",
+        avatar_path: null,
+      },
+    });
     mockGetUser.mockResolvedValue({
       data: {
         user: {
+          id: "user-1",
           user_metadata: { first_name: "John", last_name: "Doe" },
         },
       },
@@ -66,9 +103,17 @@ describe("DashboardHeader", () => {
   });
 
   it("handles user with only first name", async () => {
+    mockMaybeSingle.mockResolvedValueOnce({
+      data: {
+        first_name: "Alice",
+        last_name: "",
+        avatar_path: null,
+      },
+    });
     mockGetUser.mockResolvedValue({
       data: {
         user: {
+          id: "user-2",
           user_metadata: { first_name: "Alice", last_name: "" },
         },
       },
@@ -78,6 +123,38 @@ describe("DashboardHeader", () => {
     });
     await waitFor(() => {
       expect(screen.getAllByText("A").length).toBeGreaterThanOrEqual(1);
+    });
+  });
+
+  it("renders profile image when avatar path exists", async () => {
+    mockMaybeSingle.mockResolvedValueOnce({
+      data: {
+        first_name: "Jamie",
+        last_name: "Smith",
+        avatar_path: "students/user-3/avatar.png",
+      },
+    });
+    mockCreateSignedUrl.mockResolvedValue({
+      data: { signedUrl: "https://example.com/avatar.png" },
+    });
+    mockGetUser.mockResolvedValue({
+      data: {
+        user: {
+          id: "user-3",
+          user_metadata: { first_name: "Jamie", last_name: "Smith" },
+        },
+      },
+    });
+
+    await act(async () => {
+      renderWithChakra(<DashboardHeader />);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByRole("img", { name: "Jamie Smith" })).toHaveAttribute(
+        "src",
+        "https://example.com/avatar.png"
+      );
     });
   });
 });

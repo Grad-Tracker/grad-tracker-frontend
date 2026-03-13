@@ -2,6 +2,7 @@
 
 import {
   Box,
+  Card,
   Flex,
   Grid,
   Heading,
@@ -11,7 +12,8 @@ import {
   VStack,
   Button,
 } from "@chakra-ui/react";
-import { LuPlus, LuSparkles, LuLayoutGrid } from "react-icons/lu";
+import Link from "next/link";
+import { LuArrowRight, LuPlus, LuSparkles, LuLayoutGrid, LuShare2 } from "react-icons/lu";
 import type { PlanWithMeta } from "@/types/planner";
 import PlanCard from "./PlanCard";
 
@@ -243,6 +245,65 @@ export default function PlansHub({
           </Box>
         </Grid>
       )}
+
+      <Card.Root
+        mt="8"
+        borderRadius="2xl"
+        borderWidth="1px"
+        borderColor="border.subtle"
+        bg="linear-gradient(135deg, var(--chakra-colors-bg) 0%, var(--chakra-colors-green-subtle) 100%)"
+        className="plan-card-enter"
+        style={{ animationDelay: "120ms" }}
+      >
+        <Card.Body p={{ base: "5", md: "6" }}>
+          <Flex
+            gap="4"
+            align={{ base: "start", md: "center" }}
+            justify="space-between"
+            direction={{ base: "column", md: "row" }}
+          >
+            <HStack gap="3" align="start">
+              <Box
+                w="11"
+                h="11"
+                borderRadius="2xl"
+                bg="bg"
+                borderWidth="1px"
+                borderColor="border.subtle"
+                display="flex"
+                alignItems="center"
+                justifyContent="center"
+                flexShrink={0}
+              >
+                <Icon color="green.fg" boxSize="5">
+                  <LuShare2 />
+                </Icon>
+              </Box>
+              <VStack align="start" gap="1">
+                <Heading
+                  size="md"
+                  fontFamily="var(--font-outfit), sans-serif"
+                  fontWeight="400"
+                  letterSpacing="-0.02em"
+                >
+                  Shared Plans
+                </Heading>
+                <Text fontSize="sm" color="fg.muted" maxW="620px">
+                  Browse public degree plans shared by students and advisors. Open a read-only
+                  version to compare semester pacing, course sequencing, and overall progress.
+                </Text>
+              </VStack>
+            </HStack>
+
+            <Button asChild colorPalette="green" variant="solid" borderRadius="xl" size="md">
+              <Link href="/shared/plans">
+                View Plans
+                <LuArrowRight size={16} />
+              </Link>
+            </Button>
+          </Flex>
+        </Card.Body>
+      </Card.Root>
     </Box>
   );
 }

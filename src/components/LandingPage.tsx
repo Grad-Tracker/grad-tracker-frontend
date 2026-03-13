@@ -62,6 +62,7 @@ import {
   LuArrowRight,
   LuSparkles,
   LuShield,
+  LuShare2,
   LuZap,
 } from "react-icons/lu";
 import Link from "next/link";
@@ -893,6 +894,178 @@ export default function LandingPage() {
                 ))}
               </VStack>
             </VStack>
+          </Grid>
+        </Container>
+      </Box>
+
+      {/* Shared Plans Section */}
+      <Box bg="bg.subtle" py={{ base: "16", md: "20" }}>
+        <Container maxW="7xl" mx="auto" px={{ base: "4", md: "6", lg: "8" }}>
+          <Grid
+            templateColumns={{ base: "1fr", lg: "1.05fr 1fr" }}
+            gap={{ base: "10", lg: "14" }}
+            alignItems="center"
+          >
+            <VStack
+              align={{ base: "center", lg: "start" }}
+              gap="6"
+              textAlign={{ base: "center", lg: "left" }}
+            >
+              <Badge
+                colorPalette="green"
+                variant="surface"
+                size="lg"
+                px="4"
+                py="2"
+                rounded="full"
+              >
+                Shared Plans
+              </Badge>
+              <Heading
+                fontFamily="var(--font-outfit), sans-serif"
+                size={{ base: "2xl", md: "3xl" }}
+                letterSpacing="-0.02em"
+                fontWeight="400"
+              >
+                Compare real planning paths
+              </Heading>
+              <Text fontSize="lg" color="fg.muted" lineHeight="1.7" maxW="xl">
+                Browse read-only degree plans that students and advisors share publicly. See how
+                other people sequence semesters, balance credit loads, and map out the road to
+                graduation.
+              </Text>
+              <VStack
+                align={{ base: "center", lg: "start" }}
+                gap="3"
+                pt="2"
+                w="full"
+              >
+                {[
+                  "View semester-by-semester course layouts",
+                  "Compare pacing before building your own plan",
+                  "Open shared links without needing to sign in",
+                ].map((item) => (
+                  <HStack key={item} gap="3">
+                    <Flex
+                      align="center"
+                      justify="center"
+                      w="6"
+                      h="6"
+                      bg="green.subtle"
+                      borderRadius="full"
+                    >
+                      <Icon color="green.fg" boxSize="3.5">
+                        <LuCheck />
+                      </Icon>
+                    </Flex>
+                    <Text fontSize="sm" fontWeight="500">
+                      {item}
+                    </Text>
+                  </HStack>
+                ))}
+              </VStack>
+              <Button asChild colorPalette="green" rounded="full" px="7">
+                <Link href="/shared/plans">
+                  Browse Shared Plans
+                  <Icon ml="2">
+                    <LuArrowRight />
+                  </Icon>
+                </Link>
+              </Button>
+            </VStack>
+
+            <Card.Root
+              bg="linear-gradient(135deg, var(--chakra-colors-bg) 0%, var(--chakra-colors-green-subtle) 100%)"
+              borderRadius="3xl"
+              borderWidth="1px"
+              borderColor="border.subtle"
+              boxShadow="lg"
+              overflow="hidden"
+            >
+              <Card.Body p={{ base: "6", md: "8" }}>
+                <VStack align="stretch" gap="5">
+                  <HStack justify="space-between" align="start">
+                    <VStack align="start" gap="1">
+                      <HStack gap="3">
+                        <Flex
+                          align="center"
+                          justify="center"
+                          w="10"
+                          h="10"
+                          bg="bg"
+                          borderRadius="xl"
+                          borderWidth="1px"
+                          borderColor="border.subtle"
+                        >
+                          <Icon color="green.fg" boxSize="5">
+                            <LuShare2 />
+                          </Icon>
+                        </Flex>
+                        <VStack align="start" gap="0">
+                          <Text fontSize="xs" color="fg.muted" fontWeight="700" letterSpacing="0.08em">
+                            PUBLIC EXAMPLE
+                          </Text>
+                          <Heading
+                            size="md"
+                            fontFamily="var(--font-outfit), sans-serif"
+                            fontWeight="400"
+                          >
+                            Computer Science Plan
+                          </Heading>
+                        </VStack>
+                      </HStack>
+                      <Text fontSize="sm" color="fg.muted" pl={{ base: "0", sm: "13" }}>
+                        Shared by Maya / B.S. Computer Science
+                      </Text>
+                    </VStack>
+
+                    <Badge colorPalette="green" variant="solid">
+                      Read-only
+                    </Badge>
+                  </HStack>
+
+                  <SimpleGrid columns={{ base: 1, sm: 2 }} gap="3">
+                    {[
+                      {
+                        term: "Fall 2026",
+                        credits: "15 cr",
+                        courses: ["CS 231", "MATH 222", "ENGL 202"],
+                      },
+                      {
+                        term: "Spring 2027",
+                        credits: "14 cr",
+                        courses: ["CS 320", "CS 331", "COMM 105"],
+                      },
+                    ].map((term) => (
+                      <Box
+                        key={term.term}
+                        p="4"
+                        borderRadius="2xl"
+                        bg="bg"
+                        borderWidth="1px"
+                        borderColor="border.subtle"
+                      >
+                        <HStack justify="space-between" mb="3">
+                          <Text fontWeight="700">{term.term}</Text>
+                          <Badge variant="surface" colorPalette="gray">
+                            {term.credits}
+                          </Badge>
+                        </HStack>
+                        <VStack align="stretch" gap="2">
+                          {term.courses.map((course) => (
+                            <Box key={course} p="2.5" borderRadius="lg" bg="bg.subtle">
+                              <Text fontSize="sm" fontWeight="500">
+                                {course}
+                              </Text>
+                            </Box>
+                          ))}
+                        </VStack>
+                      </Box>
+                    ))}
+                  </SimpleGrid>
+                </VStack>
+              </Card.Body>
+            </Card.Root>
           </Grid>
         </Container>
       </Box>

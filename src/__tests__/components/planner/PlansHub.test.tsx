@@ -52,6 +52,12 @@ describe("PlansHub", () => {
     ).toBeGreaterThanOrEqual(1);
   });
 
+  it("shows shared plans CTA", () => {
+    renderWithChakra(<PlansHub {...defaultProps} />);
+    expect(screen.getByText("Shared Plans")).toBeInTheDocument();
+    expect(screen.getByText("View Plans")).toBeInTheDocument();
+  });
+
   it("shows empty state with create button when no plans", () => {
     renderWithChakra(<PlansHub {...defaultProps} plans={[]} />);
 

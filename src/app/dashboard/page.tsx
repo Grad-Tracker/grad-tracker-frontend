@@ -62,6 +62,8 @@ import {
 } from "react-icons/lu";
 import type { Program } from "@/types/onboarding";
 
+const PROFILE_IMAGE_BUCKET = "profile-images";
+
 const mockRecentActivity = [
   {
     type: "course_added",
@@ -84,6 +86,16 @@ function getStatusBadgeProps(status: string): { color: string; label: string } {
   if (status === "enrolled") return { color: "green", label: "Enrolled" };
   if (status === "waitlist") return { color: "orange", label: "Waitlist" };
   return { color: "gray", label: "Planned" };
+}
+
+async function createAvatarSignedUrl(path: string) {
+  const supabase = createClient();
+  const { data, error } = await supabase.storage
+    .from(PROFILE_IMAGE_BUCKET)
+    .createSignedUrl(path, 60 * 60);
+
+  if (error) throw error;
+  return data.signedUrl;
 }
 
 /**
@@ -173,6 +185,7 @@ export default function Dashboard() {
     first_name: string | null;
     last_name: string | null;
     email: string | null;
+    avatar_path?: string | null;
     has_completed_onboarding: boolean | null;
     expected_graduation_semester: string | null;
     expected_graduation_term?: string | null;
@@ -190,6 +203,7 @@ export default function Dashboard() {
 
   const [student, setStudent] = React.useState<DashboardStudent | null>(null);
   const [loadingStudent, setLoadingStudent] = React.useState(true);
+  const [avatarUrl, setAvatarUrl] = React.useState("");
 
   type ProgressSummary = {
     overall: number;
@@ -226,8 +240,10 @@ export default function Dashboard() {
     { name: "Free Electives", completed: 0, total: 0, percentage: 0, color: "orange" },
   ];
 
-  const [requirements, setRequirements] = React.useState<RequirementBar[]>(DEFAULT_REQUIREMENTS);
-  const [loadingRequirements, setLoadingRequirements] = React.useState(true);
+  const [requirements, setRequirements] =
+    React.useState<RequirementBar[]>(DEFAULT_REQUIREMENTS);
+  const [loadingRequirements, setLoadingRequirements] =
+    React.useState(true);
 
   type PlannedCourseCard = {
     code: string;
@@ -266,7 +282,7 @@ export default function Dashboard() {
         const { data: studentRowNew, error: studentErrNew } = await supabase
           .from(DB_TABLES.students)
           .select(
-            "id,first_name,last_name,email,has_completed_onboarding,expected_graduation_semester,expected_graduation_year"
+            "id,first_name,last_name,email,avatar_path,has_completed_onboarding,expected_graduation_semester,expected_graduation_year"
           )
           .eq(STUDENT_COLUMNS.authUserId, userData.user.id)
           .maybeSingle<StudentRow>();
@@ -277,12 +293,15 @@ export default function Dashboard() {
         if (studentErrNew && String(studentErrNew.message ?? "").includes("column")) {
           const { data: studentRowLegacy, error: studentErrLegacy } = await supabase
             .from(DB_TABLES.students)
-            .select("id,name,email,has_completed_onboarding,expected_graduation_term,expected_graduation_year")
+            .select(
+              "id,name,email,avatar_path,has_completed_onboarding,expected_graduation_term,expected_graduation_year"
+            )
             .eq(STUDENT_COLUMNS.authUserId, userData.user.id)
             .maybeSingle<{
               id: number;
               name: string | null;
               email: string | null;
+              avatar_path: string | null;
               has_completed_onboarding: boolean | null;
               expected_graduation_term: string | null;
               expected_graduation_year: number | null;
@@ -296,6 +315,7 @@ export default function Dashboard() {
                 first_name: null,
                 last_name: null,
                 email: studentRowLegacy.email,
+                avatar_path: studentRowLegacy.avatar_path,
                 has_completed_onboarding: studentRowLegacy.has_completed_onboarding,
                 expected_graduation_semester: studentRowLegacy.expected_graduation_term,
                 expected_graduation_term: studentRowLegacy.expected_graduation_term,
@@ -333,6 +353,7 @@ export default function Dashboard() {
             first_name: userData.user.user_metadata?.first_name ?? null,
             last_name: userData.user.user_metadata?.last_name ?? null,
             email: userData.user.email ?? null,
+            avatar_path: null,
             has_completed_onboarding: false,
             expected_graduation_semester: null,
             expected_graduation_year: null,
@@ -345,8 +366,18 @@ export default function Dashboard() {
           });
         }
 
+        if (resolvedStudentRow.avatar_path) {
+          try {
+            const signed = await createAvatarSignedUrl(resolvedStudentRow.avatar_path);
+            setAvatarUrl(signed);
+          } catch {
+            setAvatarUrl("");
+          }
+        } else {
+          setAvatarUrl("");
+        }
+
         // 3–6) Parallelize Dashboard Queries (per Jira task)
-        // After the student row is resolved, steps 3–9 are independent and should be fetched in parallel.
         setLoadingRequirements(true);
         setLoadingCourses(true);
         setLoadingProgress(true);
@@ -369,7 +400,6 @@ export default function Dashboard() {
           .select(`status, courses:course_id(subject, number, title, credits)`)
           .eq("student_id", studentId);
 
-        // blocksPromise depends on majorProgramId, which depends on student_programs -> programs.
         const blocksPromise = resolveMajorAndBlocks(supabase, programsPromise);
 
         const [completedResult, blocksResult, plannedResult] = await Promise.all([
@@ -383,9 +413,6 @@ export default function Dashboard() {
         setCurrentMajorProgramId(majorProgramId);
         setSelectedMajorId(majorProgramId);
 
-        // Reuse completedResult for BOTH:
-        //  - requirement-block matching
-        //  - credit summary (completed credits)
         const completedCourseRows = (completedResult as any)?.data ?? [];
         const completedCourseIds = new Set<number>(
           (completedCourseRows ?? [])
@@ -399,9 +426,6 @@ export default function Dashboard() {
             return sum + credits;
           }, 0);
 
-        // Reuse plannedResult for BOTH:
-        //  - course cards
-        //  - in-progress credits
         const plannedRows = (plannedResult as any)?.data ?? [];
 
         const mapped: PlannedCourseCard[] =
@@ -439,19 +463,29 @@ export default function Dashboard() {
             return sum + Number(r?.courses?.credits ?? 0);
           }, 0);
 
-        // Requirements (uses blocksResult + completedCourseIds)
+        // Requirements
         if (!majorProgramId || (blocksResult as any)?.error) {
           setRequirements(DEFAULT_REQUIREMENTS);
           setLoadingRequirements(false);
         } else {
           const blocks = ((blocksResult as any)?.data ?? []) as any[];
 
-          const categorize = (blockName: string) => {
-            const n = blockName.toLowerCase();
-            if (n.includes("general")) return { key: "General Education", color: "green" as const };
-            if (n.includes("core")) return { key: "Major Core", color: "blue" as const };
-            if (n.includes("elective")) return { key: "Major Electives", color: "purple" as const };
-            return { key: "Free Electives", color: "orange" as const };
+          const BLOCK_TO_BUCKET: Record<string, RequirementBar["name"]> = {
+            "Required Mathematics Course": "General Education",
+            "Required Science Course": "General Education",
+
+            "Required Major Courses": "Major Core",
+            "Required Major Courses - Computer Science Courses": "Major Core",
+            "Required Major Courses - Required Computer Science Breadth Requirement": "Major Core",
+
+            "Required Major Courses - Elective Major Courses": "Major Electives",
+          };
+
+          const BUCKET_COLOR: Record<RequirementBar["name"], RequirementBar["color"]> = {
+            "General Education": "green",
+            "Major Core": "blue",
+            "Major Electives": "purple",
+            "Free Electives": "orange",
           };
 
           const agg: Record<
@@ -465,7 +499,11 @@ export default function Dashboard() {
           };
 
           for (const b of blocks) {
-            const { key, color } = categorize(String(b?.name ?? ""));
+            const blockName = String(b?.name ?? "");
+            const bucket: RequirementBar["name"] =
+              BLOCK_TO_BUCKET[blockName] ?? "Free Electives";
+            const color = BUCKET_COLOR[bucket];
+
             const blockCourseRows = b?.program_requirement_courses ?? [];
 
             const fallbackTotal = blockCourseRows.reduce((sum: number, r: any) => {
@@ -480,9 +518,9 @@ export default function Dashboard() {
               return sum + Number(r?.courses?.credits ?? 0);
             }, 0);
 
-            agg[key].total += total;
-            agg[key].completed += completed;
-            agg[key].color = color;
+            agg[bucket].total += total;
+            agg[bucket].completed += completed;
+            agg[bucket].color = color;
           }
 
           const bars: RequirementBar[] = Object.entries(agg).map(([name, v]) => {
@@ -496,7 +534,7 @@ export default function Dashboard() {
           setLoadingRequirements(false);
         }
 
-        // Progress summary (reused completedCredits + inProgressCredits)
+        // Progress summary
         const totalCredits = TOTAL_REQUIRED_CREDITS;
         const remainingCredits = Math.max(totalCredits - completedCredits, 0);
         const overall = Math.min(100, Math.round((completedCredits / totalCredits) * 100));
@@ -532,13 +570,12 @@ export default function Dashboard() {
 
         setLoadingStudent(false);
 
-        // Load majors for Change Major card (only if onboarded)
         if (resolvedStudentRow.has_completed_onboarding) {
           try {
             const allMajors = await fetchPrograms("MAJOR");
             setMajors(allMajors);
           } catch {
-            // Non-critical: Change Major card simply won't show
+            // Non-critical
           }
         }
       } catch {
@@ -546,7 +583,8 @@ export default function Dashboard() {
         await supabase.auth.signOut();
         toaster.create({
           title: "Session reset required",
-          description: "We had trouble loading your profile after the database reset. Please sign in again.",
+          description:
+            "We had trouble loading your profile after the database reset. Please sign in again.",
           type: "error",
         });
         router.push("/signin");
@@ -562,7 +600,6 @@ export default function Dashboard() {
     try {
       const supabase = createClient();
 
-      // Remove existing major program entries for this student
       if (currentMajorProgramId) {
         const { error: deleteError } = await supabase
           .from(DB_TABLES.studentPrograms)
@@ -572,7 +609,6 @@ export default function Dashboard() {
         if (deleteError) throw deleteError;
       }
 
-      // Insert the new major
       const { error } = await supabase
         .from(DB_TABLES.studentPrograms)
         .insert({ student_id: studentIdForReset, program_id: selectedMajorId });
@@ -614,7 +650,11 @@ export default function Dashboard() {
         .update({ has_completed_onboarding: false })
         .eq(STUDENT_COLUMNS.id, studentIdForReset);
 
-      toaster.create({ title: "Progress reset", description: "Your progress has been cleared. Use the setup wizard to start fresh.", type: "success" });
+      toaster.create({
+        title: "Progress reset",
+        description: "Your progress has been cleared. Use the setup wizard to start fresh.",
+        type: "success",
+      });
       setRefreshKey((k) => k + 1);
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : "Unknown error";
@@ -635,7 +675,6 @@ export default function Dashboard() {
 
   return (
     <Stack gap="6">
-      {/* Page title only (layout already renders header/sidebar) */}
       <Box>
         <Text fontSize="sm" color="fg.muted" fontWeight="500">
           Dashboard
@@ -645,7 +684,6 @@ export default function Dashboard() {
         </Heading>
       </Box>
 
-      {/* Onboarding Banner */}
       {!student.hasCompletedOnboarding && (
         <Card.Root
           className="animate-fade-up"
@@ -730,7 +768,6 @@ export default function Dashboard() {
         </Card.Root>
       )}
 
-      {/* Stats Grid */}
       <Grid templateColumns={{ base: "1fr", xl: "2fr 1fr" }} gap="6" className="animate-fade-up-delay-1">
         <SimpleGrid columns={{ base: 1, sm: 2 }} gap="4">
           <Card.Root bg="bg" borderRadius="xl" borderWidth="1px" borderColor="border.subtle">
@@ -815,7 +852,6 @@ export default function Dashboard() {
         </Card.Root>
       </Grid>
 
-      {/* Main Grid */}
       <Grid templateColumns={{ base: "1fr", xl: "2fr 1fr" }} gap="6">
         <Stack gap="6">
           <Card.Root bg="bg" borderRadius="xl" borderWidth="1px" borderColor="border.subtle" className="animate-fade-up-delay-2">
@@ -961,6 +997,7 @@ export default function Dashboard() {
               <VStack align="center" gap="4">
                 <Avatar.Root size="xl" colorPalette="green">
                   <Avatar.Fallback name={student.name} />
+                  {avatarUrl ? <Avatar.Image src={avatarUrl} alt="Profile picture" /> : null}
                 </Avatar.Root>
 
                 <VStack gap="1">
@@ -995,7 +1032,6 @@ export default function Dashboard() {
             </Card.Body>
           </Card.Root>
 
-          {/* Change Major */}
           {majors.length > 0 && (
             <Card.Root bg="bg" borderRadius="xl" borderWidth="1px" borderColor="border.subtle">
               <Card.Header p="5" pb="3">
@@ -1134,9 +1170,8 @@ export default function Dashboard() {
                   Review Requirements
                 </Button>
 
-                {/* Reset All Progress — only shown after onboarding is complete */}
-                {student.hasCompletedOnboarding && (
-                  !resetConfirming ? (
+                {student.hasCompletedOnboarding &&
+                  (!resetConfirming ? (
                     <Button
                       variant="outline"
                       colorPalette="red"
@@ -1182,8 +1217,7 @@ export default function Dashboard() {
                         </Button>
                       </HStack>
                     </Stack>
-                  )
-                )}
+                  ))}
               </Stack>
             </Card.Body>
           </Card.Root>
