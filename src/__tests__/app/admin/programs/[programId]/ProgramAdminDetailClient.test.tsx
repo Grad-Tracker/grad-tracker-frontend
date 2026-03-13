@@ -236,7 +236,9 @@ describe("ProgramAdminDetailClient", () => {
     await waitFor(() => {
       expect(mockProgramsUpdateEq).toHaveBeenCalledWith("id", 1);
     });
-    expect(screen.getByText("Software Engineering")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.queryByLabelText("Program Name")).not.toBeInTheDocument();
+    });
   });
 
   it("opens and closes add block dialog and resets when cancelled", async () => {
