@@ -21,18 +21,40 @@ import { LuGraduationCap, LuArrowRight, LuLoader } from "react-icons/lu";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { DB_TABLES } from "@/lib/supabase/queries/schema";
 
-export default function SigninPage() {
+export default function AdminSignupPage() {
   const router = useRouter();
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
 
-  async function handleSignin() {
-    if (!email || !password) {
+  async function handleSignup() {
+    if (!firstName || !lastName || !email || !password) {
       toaster.create({
         title: "Missing fields",
-        description: "Please enter your email and password.",
+        description: "Please fill in all fields.",
+        type: "error",
+      });
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      toaster.create({
+        title: "Passwords don't match",
+        description: "Please make sure your passwords match.",
+        type: "error",
+      });
+      return;
+    }
+
+    if (password.length < 6) {
+      toaster.create({
+        title: "Password too short",
+        description: "Password must be at least 6 characters.",
         type: "error",
       });
       return;
@@ -41,33 +63,86 @@ export default function SigninPage() {
     setLoading(true);
 
     const supabase = createClient();
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
 
-    if (error) {
-      setLoading(false);
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            role: "advisor",
+            first_name: firstName,
+            last_name: lastName,
+          },
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
+        },
+      });
+
+      if (error) {
+        toaster.create({
+          title: "Sign up failed",
+          description: error.message,
+          type: "error",
+        });
+        return;
+      }
+
+      if (!data.user) {
+        toaster.create({
+          title: "Sign up failed",
+          description: "Unable to create account. Please try again.",
+          type: "error",
+        });
+        return;
+      }
+
+      if (data.user.identities?.length === 0) {
+        await supabase.auth.signOut();
+        toaster.create({
+          title: "Account already exists",
+          description: "An account with this email already exists. Please sign in instead.",
+          type: "error",
+        });
+        return;
+      }
+
+      const { error: insertErr } = await supabase
+        .from(DB_TABLES.staff)
+        .insert({
+          auth_user_id: data.user.id,
+          email,
+          first_name: firstName,
+          last_name: lastName,
+          role: "advisor",
+          is_admin: false,
+        });
+
+      if (insertErr) {
+        await supabase.auth.signOut();
+        toaster.create({
+          title: "Advisor record failed",
+          description: insertErr.message,
+          type: "error",
+        });
+        return;
+      }
+
       toaster.create({
-        title: "Sign in failed",
-        description: error.message,
+        title: "Account created!",
+        description: "Welcome to GradTracker, Advisor.",
+        type: "success",
+      });
+
+      router.push("/admin");
+    } catch (e: any) {
+      toaster.create({
+        title: "Sign up failed",
+        description: e?.message ?? "Unexpected error",
         type: "error",
       });
-      return;
+    } finally {
+      setLoading(false);
     }
-
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    toaster.create({
-      title: "Welcome back!",
-      description: "Redirecting...",
-      type: "success",
-    });
-
-    setLoading(false);
-    router.push(user?.user_metadata?.role === "advisor" ? "/admin" : "/dashboard");
   }
 
   return (
@@ -125,7 +200,7 @@ export default function SigninPage() {
         </Container>
       </Box>
 
-      {/* Signin Section */}
+      {/* Signup Section */}
       <Box
         className="mesh-gradient noise-overlay"
         py={{ base: "16", md: "24" }}
@@ -203,14 +278,35 @@ export default function SigninPage() {
                       fontFamily="var(--font-outfit), sans-serif"
                       letterSpacing="-0.02em"
                     >
-                      Welcome Back, Ranger
+                      Advisor Sign Up
                     </Text>
                     <Text color="fg.muted" fontSize="sm">
-                      Sign in to continue tracking your path to graduation
+                      Create an advisor account to access the admin dashboard.
                     </Text>
                   </VStack>
 
                   <VStack gap="5">
+                    <HStack gap="4" w="full">
+                      <Field label="First Name">
+                        <Input
+                          placeholder="First name"
+                          rounded="lg"
+                          size="lg"
+                          value={firstName}
+                          onChange={(e) => setFirstName(e.target.value)}
+                        />
+                      </Field>
+                      <Field label="Last Name">
+                        <Input
+                          placeholder="Last name"
+                          rounded="lg"
+                          size="lg"
+                          value={lastName}
+                          onChange={(e) => setLastName(e.target.value)}
+                        />
+                      </Field>
+                    </HStack>
+
                     <Field label="Email">
                       <Input
                         placeholder="your.name@uwp.edu"
@@ -224,7 +320,7 @@ export default function SigninPage() {
 
                     <Field label="Password">
                       <PasswordInput
-                        placeholder="Enter your password"
+                        placeholder="Create a password"
                         rounded="lg"
                         size="lg"
                         value={password}
@@ -232,18 +328,15 @@ export default function SigninPage() {
                       />
                     </Field>
 
-                    <Link href="/forgot-password">
-                      <Text
-                        fontSize="sm"
-                        color="green.solid"
-                        cursor="pointer"
-                        fontWeight="600"
-                        alignSelf="flex-end"
-                        _hover={{ textDecoration: "underline" }}
-                      >
-                        Forgot password?
-                      </Text>
-                    </Link>
+                    <Field label="Confirm Password">
+                      <PasswordInput
+                        placeholder="Confirm your password"
+                        rounded="lg"
+                        size="lg"
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                      />
+                    </Field>
                   </VStack>
 
                   <Button
@@ -257,7 +350,7 @@ export default function SigninPage() {
                       boxShadow: "lg",
                     }}
                     transition="all 0.2s"
-                    onClick={handleSignin}
+                    onClick={handleSignup}
                     disabled={loading}
                   >
                     {loading ? (
@@ -265,11 +358,11 @@ export default function SigninPage() {
                         <Icon className="animate-spin" mr="2">
                           <LuLoader />
                         </Icon>
-                        Signing In...
+                        Creating Account...
                       </>
                     ) : (
                       <>
-                        Sign In
+                        Create Advisor Account
                         <Icon ml="2">
                           <LuArrowRight />
                         </Icon>
@@ -278,8 +371,8 @@ export default function SigninPage() {
                   </Button>
 
                   <Text fontSize="sm" color="fg.muted" textAlign="center">
-                    Don&apos;t have an account?{" "}
-                    <Link href="/signup">
+                    Already have an account?{" "}
+                    <Link href="/signin">
                       <Text
                         as="span"
                         color="green.solid"
@@ -287,22 +380,7 @@ export default function SigninPage() {
                         fontWeight="600"
                         _hover={{ textDecoration: "underline" }}
                       >
-                        Create one
-                      </Text>
-                    </Link>
-                  </Text>
-
-                  <Text fontSize="sm" color="fg.muted" textAlign="center">
-                    Are you an advisor?{" "}
-                    <Link href="/admin/signup">
-                      <Text
-                        as="span"
-                        color="green.solid"
-                        cursor="pointer"
-                        fontWeight="600"
-                        _hover={{ textDecoration: "underline" }}
-                      >
-                        Sign up here
+                        Sign in
                       </Text>
                     </Link>
                   </Text>
