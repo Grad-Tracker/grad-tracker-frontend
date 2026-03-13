@@ -151,7 +151,7 @@ describe("DashboardHeader", () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByRole("img", { name: "Jamie Smith" })).toHaveAttribute(
+      expect(screen.getByAltText("Jamie Smith")).toHaveAttribute(
         "src",
         "https://example.com/avatar.png"
       );

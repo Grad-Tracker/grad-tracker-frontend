@@ -152,7 +152,7 @@ describe("PlanCard", () => {
   });
 
   it("shows 'No changes yet' when updated_at is null", () => {
-    const plan = makePlan({ updated_at: null });
+    const plan = { ...makePlan(), updated_at: null } as unknown as PlanWithMeta;
     renderWithChakra(<PlanCard {...defaultProps} plan={plan} />);
     expect(screen.getAllByText("No changes yet").length).toBeGreaterThanOrEqual(1);
   });
