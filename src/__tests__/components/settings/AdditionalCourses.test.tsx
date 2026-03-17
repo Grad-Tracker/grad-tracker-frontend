@@ -4,10 +4,15 @@ import { renderWithChakra } from "../../helpers/mocks";
 import { AdditionalCourses } from "@/components/settings/AdditionalCourses";
 import type { CourseRow } from "@/types/onboarding";
 
-// Mock the CourseSearchDialog since it has its own tests
+// Mock CourseSearchDialog — expose onClose to test dialog closing
 vi.mock("@/components/settings/CourseSearchDialog", () => ({
-  CourseSearchDialog: ({ open }: { open: boolean }) =>
-    open ? <div data-testid="search-dialog">Dialog Open</div> : null,
+  CourseSearchDialog: ({ open, onClose }: { open: boolean; onClose: () => void }) =>
+    open ? (
+      <div data-testid="search-dialog">
+        Dialog Open
+        <button data-testid="close-dialog" onClick={onClose}>Close</button>
+      </div>
+    ) : null,
 }));
 
 const mockCourses: CourseRow[] = [
@@ -58,5 +63,20 @@ describe("AdditionalCourses", () => {
     fireEvent.click(addButtons[0]);
 
     expect(queryByTestId("search-dialog")).not.toBeNull();
+  });
+
+  it("closes search dialog when onClose is called", () => {
+    const { getAllByText, queryByTestId, getByTestId } = renderWithChakra(
+      <AdditionalCourses courses={[]} onDelete={vi.fn()} onCourseSelected={vi.fn()} />
+    );
+
+    // Open dialog
+    const addButtons = getAllByText("Add Course");
+    fireEvent.click(addButtons[0]);
+    expect(queryByTestId("search-dialog")).not.toBeNull();
+
+    // Close dialog via onClose callback
+    fireEvent.click(getByTestId("close-dialog"));
+    expect(queryByTestId("search-dialog")).toBeNull();
   });
 });

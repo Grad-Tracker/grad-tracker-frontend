@@ -162,6 +162,110 @@ describe("classHistory queries", () => {
       });
     });
 
+    it("throws when student_programs query fails", async () => {
+      const chain = createChainMock();
+      chain.then = vi.fn().mockImplementation((resolve: (v: unknown) => void) =>
+        resolve({ data: null, error: new Error("sp query failed") })
+      );
+      const mockFrom = vi.fn().mockReturnValue(chain);
+      vi.mocked(createClient).mockReturnValue({ from: mockFrom } as never);
+
+      await expect(fetchMajorRequirementCourses(1)).rejects.toThrow("sp query failed");
+    });
+
+    it("throws when programs query fails", async () => {
+      const mockFrom = vi.fn().mockImplementation((table: string) => {
+        if (table === "student_programs") {
+          const chain = createChainMock();
+          chain.then = vi.fn().mockImplementation((resolve: (v: unknown) => void) =>
+            resolve({ data: [{ program_id: 10 }], error: null })
+          );
+          return chain;
+        }
+        if (table === "programs") {
+          const chain = createChainMock();
+          chain.maybeSingle = vi.fn().mockResolvedValue({
+            data: null,
+            error: new Error("programs query failed"),
+          });
+          return chain;
+        }
+        return createChainMock();
+      });
+      vi.mocked(createClient).mockReturnValue({ from: mockFrom } as never);
+
+      await expect(fetchMajorRequirementCourses(1)).rejects.toThrow("programs query failed");
+    });
+
+    it("throws when requirement blocks query fails", async () => {
+      const mockFrom = vi.fn().mockImplementation((table: string) => {
+        if (table === "student_programs") {
+          const chain = createChainMock();
+          chain.then = vi.fn().mockImplementation((resolve: (v: unknown) => void) =>
+            resolve({ data: [{ program_id: 10 }], error: null })
+          );
+          return chain;
+        }
+        if (table === "programs") {
+          const chain = createChainMock();
+          chain.maybeSingle = vi.fn().mockResolvedValue({
+            data: { id: 10, name: "CS" },
+            error: null,
+          });
+          return chain;
+        }
+        if (table === "program_requirement_blocks") {
+          const chain = createChainMock();
+          chain.then = vi.fn().mockImplementation((resolve: (v: unknown) => void) =>
+            resolve({ data: null, error: new Error("blocks query failed") })
+          );
+          return chain;
+        }
+        return createChainMock();
+      });
+      vi.mocked(createClient).mockReturnValue({ from: mockFrom } as never);
+
+      await expect(fetchMajorRequirementCourses(1)).rejects.toThrow("blocks query failed");
+    });
+
+    it("throws when requirement courses query fails", async () => {
+      const mockFrom = vi.fn().mockImplementation((table: string) => {
+        if (table === "student_programs") {
+          const chain = createChainMock();
+          chain.then = vi.fn().mockImplementation((resolve: (v: unknown) => void) =>
+            resolve({ data: [{ program_id: 10 }], error: null })
+          );
+          return chain;
+        }
+        if (table === "programs") {
+          const chain = createChainMock();
+          chain.maybeSingle = vi.fn().mockResolvedValue({
+            data: { id: 10, name: "CS" },
+            error: null,
+          });
+          return chain;
+        }
+        if (table === "program_requirement_blocks") {
+          const chain = createChainMock();
+          chain.then = vi.fn().mockImplementation((resolve: (v: unknown) => void) =>
+            resolve({ data: [{ id: 100, name: "Core" }], error: null })
+          );
+          return chain;
+        }
+        if (table === "program_requirement_courses") {
+          const chain = createChainMock();
+          chain.then = vi.fn().mockImplementation((resolve: (v: unknown) => void) =>
+            resolve({ data: null, error: new Error("courses query failed") })
+          );
+          return chain;
+        }
+        return createChainMock();
+      });
+      vi.mocked(createClient).mockReturnValue({ from: mockFrom } as never);
+
+      await expect(fetchMajorRequirementCourses(1)).rejects.toThrow("courses query failed");
+    });
+
     it("returns empty blocks when major has no requirements", async () => {
       const mockFrom = vi.fn().mockImplementation((table: string) => {
         if (table === "student_programs") {
