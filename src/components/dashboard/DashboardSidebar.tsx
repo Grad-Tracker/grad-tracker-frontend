@@ -14,6 +14,7 @@ import {
   LuGraduationCap,
   LuSettings,
   LuLogOut,
+  LuSparkles,
 } from "react-icons/lu";
 
 const navItems = [
@@ -22,6 +23,7 @@ const navItems = [
   { icon: LuTarget, label: "Requirements", href: "/dashboard/requirements" },
   { icon: LuCalendar, label: "Planner", href: "/dashboard/planner" },
   { icon: LuFileText, label: "Reports", href: "/dashboard/reports" },
+  { icon: LuSparkles, label: "AI Advisor", href: "/dashboard/ai-advisor" },
 ];
 
 export default function DashboardSidebar() {

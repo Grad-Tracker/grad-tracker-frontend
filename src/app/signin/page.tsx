@@ -46,9 +46,8 @@ export default function SigninPage() {
       password,
     });
 
-    setLoading(false);
-
     if (error) {
+      setLoading(false);
       toaster.create({
         title: "Sign in failed",
         description: error.message,
@@ -57,13 +56,18 @@ export default function SigninPage() {
       return;
     }
 
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
     toaster.create({
       title: "Welcome back!",
-      description: "Redirecting to your dashboard...",
+      description: "Redirecting...",
       type: "success",
     });
 
-    router.push("/dashboard");
+    setLoading(false);
+    router.push(user?.user_metadata?.role === "advisor" ? "/admin" : "/dashboard");
   }
 
   return (
@@ -284,6 +288,21 @@ export default function SigninPage() {
                         _hover={{ textDecoration: "underline" }}
                       >
                         Create one
+                      </Text>
+                    </Link>
+                  </Text>
+
+                  <Text fontSize="sm" color="fg.muted" textAlign="center">
+                    Are you an advisor?{" "}
+                    <Link href="/admin/signup">
+                      <Text
+                        as="span"
+                        color="green.solid"
+                        cursor="pointer"
+                        fontWeight="600"
+                        _hover={{ textDecoration: "underline" }}
+                      >
+                        Sign up here
                       </Text>
                     </Link>
                   </Text>
