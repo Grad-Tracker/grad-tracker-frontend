@@ -13,6 +13,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
         <Box
           flex="1"
           ml={{ base: "0", lg: "260px" }}
+          pt={{ base: "56px", lg: "0" }}
           minH="100vh"
           position="relative"
           className="mesh-gradient-subtle"

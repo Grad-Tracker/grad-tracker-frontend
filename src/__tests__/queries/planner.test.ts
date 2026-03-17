@@ -23,6 +23,8 @@ import {
   removePlannedCourse,
   movePlannedCourse,
   fetchCompletedCourseIds,
+  fetchBreadthPackageId,
+  updateBreadthPackageId,
 } from "@/lib/supabase/queries/planner";
 
 /**
@@ -982,6 +984,47 @@ describe("planner queries", () => {
 
       expect(result.has(100)).toBe(true);
       expect(result.has(200)).toBe(true);
+    });
+  });
+
+  describe("breadth package persistence", () => {
+    it("fetchBreadthPackageId returns string value", async () => {
+      mockFrom.mockReturnValueOnce(mockChain({ breadth_package_id: "math" }));
+      await expect(fetchBreadthPackageId(1)).resolves.toBe("math");
+    });
+
+    it("fetchBreadthPackageId returns null when row value is null", async () => {
+      mockFrom.mockReturnValueOnce(mockChain({ breadth_package_id: null }));
+      await expect(fetchBreadthPackageId(1)).resolves.toBeNull();
+    });
+
+    it("fetchBreadthPackageId throws on error", async () => {
+      const err = { message: "fetch breadth error" };
+      mockFrom.mockReturnValueOnce(mockChain(null, err));
+      await expect(fetchBreadthPackageId(1)).rejects.toEqual(err);
+    });
+
+    it("updateBreadthPackageId updates students row", async () => {
+      const chain = createChainMock({
+        then: (resolve: (v: unknown) => void) => resolve({ data: null, error: null }),
+      });
+      mockFrom.mockReturnValueOnce(chain);
+
+      await updateBreadthPackageId(1, "business");
+
+      expect(mockFrom).toHaveBeenCalledWith("students");
+      expect(chain.update).toHaveBeenCalledWith({ breadth_package_id: "business" });
+      expect(chain.eq).toHaveBeenCalledWith("id", 1);
+    });
+
+    it("updateBreadthPackageId throws on error", async () => {
+      const err = { message: "update breadth error" };
+      const chain = createChainMock({
+        then: (resolve: (v: unknown) => void) => resolve({ data: null, error: err }),
+      });
+      mockFrom.mockReturnValueOnce(chain);
+
+      await expect(updateBreadthPackageId(1, "business")).rejects.toEqual(err);
     });
   });
 });

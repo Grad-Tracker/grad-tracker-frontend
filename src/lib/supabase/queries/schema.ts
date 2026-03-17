@@ -1,4 +1,5 @@
 export const DB_TABLES = {
+  advisors: "advisors",
   courses: "courses",
   genEdBuckets: "gen_ed_buckets",
   genEdBucketCourses: "gen_ed_bucket_courses",
@@ -28,6 +29,7 @@ export const STUDENT_COLUMNS = {
   hasCompletedOnboarding: "has_completed_onboarding",
   expectedGraduationSemester: "expected_graduation_semester",
   expectedGraduationYear: "expected_graduation_year",
+  breadthPackageId: "breadth_package_id",
 } as const;
 
 export const PLANNED_COURSE_STATUS = {

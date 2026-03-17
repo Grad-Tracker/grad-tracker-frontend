@@ -280,100 +280,39 @@ describe("Dashboard", () => {
       });
     });
 
-    it("shows Reset All Progress when has_completed_onboarding is true", async () => {
+    it("renders Quick Actions buttons for onboarded students", async () => {
       setupStudentMock({ has_completed_onboarding: true });
 
       await act(async () => { renderWithChakra(<Dashboard />); });
 
       await waitFor(() => {
-        expect(screen.getByText("Reset All Progress")).toBeInTheDocument();
+        expect(screen.getAllByText("Quick Actions").length).toBeGreaterThanOrEqual(1);
+        expect(screen.getByText("Generate Progress Report")).toBeInTheDocument();
+        expect(screen.getByText("Plan Next Semester")).toBeInTheDocument();
+        expect(screen.getByText("Review Requirements")).toBeInTheDocument();
       });
     });
 
-    it("shows confirmation UI after clicking Reset All Progress", async () => {
-      setupStudentMock({ has_completed_onboarding: true });
+    it("renders Quick Actions section for non-onboarded students too", async () => {
+      setupStudentMock({ has_completed_onboarding: false });
 
       await act(async () => { renderWithChakra(<Dashboard />); });
-      await waitFor(() => screen.getByText("Reset All Progress"));
-
-      await act(async () => {
-        fireEvent.click(screen.getByText("Reset All Progress"));
-      });
-
-      expect(screen.getByText(/This will delete all your progress/i)).toBeInTheDocument();
-      expect(screen.getByText("Yes, Reset")).toBeInTheDocument();
-      expect(screen.getByText("Cancel")).toBeInTheDocument();
-    });
-
-    it("Cancel button hides the confirmation UI", async () => {
-      setupStudentMock({ has_completed_onboarding: true });
-
-      await act(async () => { renderWithChakra(<Dashboard />); });
-      await waitFor(() => screen.getByText("Reset All Progress"));
-
-      await act(async () => {
-        fireEvent.click(screen.getByText("Reset All Progress"));
-      });
-      expect(screen.getByText("Yes, Reset")).toBeInTheDocument();
-
-      await act(async () => {
-        fireEvent.click(screen.getByText("Cancel"));
-      });
-
-      expect(screen.queryByText("Yes, Reset")).not.toBeInTheDocument();
-      expect(screen.getByText("Reset All Progress")).toBeInTheDocument();
-    });
-
-    it("Yes Reset calls delete on student_course_history, student_planned_courses, and student_programs", async () => {
-      const deletedTables: string[] = [];
-
-      mockGetUser.mockResolvedValue({
-        data: { user: { id: "auth-uuid", email: "test@uwp.edu" } },
-        error: null,
-      });
-      mockCheckOnboardingStatus.mockResolvedValue(true);
-
-      mockFrom.mockImplementation((table: string) => {
-        const chain = createChainMock();
-
-        chain.delete = vi.fn(() => {
-          deletedTables.push(table);
-          return chain;
-        });
-
-        if (table === "students") {
-          chain.maybeSingle = vi.fn().mockResolvedValue({
-            data: {
-              id: 1,
-              first_name: "Test",
-              last_name: "Student",
-              email: "t@u.edu",
-              has_completed_onboarding: true,
-              expected_graduation_semester: "Spring",
-              expected_graduation_year: 2027,
-            },
-            error: null,
-          });
-        }
-
-        return chain;
-      });
-
-      await act(async () => { renderWithChakra(<Dashboard />); });
-      await waitFor(() => screen.getByText("Reset All Progress"));
-
-      await act(async () => {
-        fireEvent.click(screen.getByText("Reset All Progress"));
-      });
-      await act(async () => {
-        fireEvent.click(screen.getByText("Yes, Reset"));
-      });
 
       await waitFor(() => {
-        expect(deletedTables).toContain("student_course_history");
-        expect(deletedTables).toContain("student_planned_courses");
-        expect(deletedTables).toContain("student_programs");
+        expect(screen.getAllByText("Quick Actions").length).toBeGreaterThanOrEqual(1);
       });
+    });
+
+    it("does not render Reset All Progress button (feature removed)", async () => {
+      setupStudentMock({ has_completed_onboarding: true });
+
+      await act(async () => { renderWithChakra(<Dashboard />); });
+
+      await waitFor(() => {
+        expect(screen.getAllByText("Quick Actions").length).toBeGreaterThanOrEqual(1);
+      });
+
+      expect(screen.queryByText("Reset All Progress")).not.toBeInTheDocument();
     });
   });
 
