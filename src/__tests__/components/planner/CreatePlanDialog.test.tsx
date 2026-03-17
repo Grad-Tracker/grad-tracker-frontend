@@ -197,7 +197,8 @@ describe("CreatePlanDialog", () => {
       expect(defaultProps.onCreatePlan).toHaveBeenCalledWith(
         "My Custom Plan",
         "Testing description",
-        [1]
+        [1],
+        false
       );
     });
   });
