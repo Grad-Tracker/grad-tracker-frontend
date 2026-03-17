@@ -37,7 +37,6 @@ describe("PlansHub", () => {
     plans: [] as PlanWithMeta[],
     onOpenPlan: vi.fn(),
     onCreatePlan: vi.fn(),
-    onAutoGenerate: vi.fn(),
     onRenamePlan: vi.fn().mockResolvedValue(undefined),
     onDeletePlan: vi.fn(),
   };

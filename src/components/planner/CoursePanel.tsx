@@ -108,12 +108,9 @@ export default function CoursePanel({
 
   return (
     <Box
-      position={{ lg: "sticky" }}
-      top={{ lg: "0" }}
       display="flex"
       flexShrink={0}
-      alignSelf="flex-start"
-      maxH={{ lg: "100vh" }}
+      h={{ lg: "100%" }}
     >
     <Box
       ref={setNodeRef}
@@ -123,7 +120,7 @@ export default function CoursePanel({
       borderColor={isOver ? "orange.400" : "border.subtle"}
       bg={isOver ? "orange.subtle" : "bg"}
       overflowY="auto"
-      h={{ lg: "100vh" }}
+      h={{ lg: "100%" }}
       transition={isResizing.current ? "none" : "background 0.2s, border-color 0.2s"}
     >
       {/* Drop-to-remove indicator */}

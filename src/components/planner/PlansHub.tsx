@@ -11,7 +11,7 @@ import {
   VStack,
   Button,
 } from "@chakra-ui/react";
-import { LuPlus, LuSparkles, LuLayoutGrid } from "react-icons/lu";
+import { LuPlus, LuLayoutGrid } from "react-icons/lu";
 import type { PlanWithMeta } from "@/types/planner";
 import PlanCard from "./PlanCard";
 
@@ -19,7 +19,6 @@ interface PlansHubProps {
   plans: PlanWithMeta[];
   onOpenPlan: (planId: number) => void;
   onCreatePlan: () => void;
-  onAutoGenerate: () => void;
   onRenamePlan: (planId: number, newName: string) => Promise<void>;
   onDeletePlan: (planId: number) => void;
 }
@@ -28,7 +27,6 @@ export default function PlansHub({
   plans,
   onOpenPlan,
   onCreatePlan,
-  onAutoGenerate,
   onRenamePlan,
   onDeletePlan,
 }: PlansHubProps) {
@@ -81,36 +79,21 @@ export default function PlansHub({
           </Text>
         </Box>
 
-        <HStack gap="3">
-          <Button
-            variant="outline"
-            borderRadius="xl"
-            size="lg"
-            onClick={onAutoGenerate}
-            transition="all 0.2s"
-            _hover={{
-              transform: "translateY(-1px)",
-            }}
-          >
-            <LuSparkles size={18} />
-            Auto Generate
-          </Button>
-          <Button
-            colorPalette="green"
-            borderRadius="xl"
-            size="lg"
-            onClick={onCreatePlan}
-            boxShadow="0 2px 12px rgba(34, 139, 34, 0.2)"
-            _hover={{
-              boxShadow: "0 4px 20px rgba(34, 139, 34, 0.3)",
-              transform: "translateY(-1px)",
-            }}
-            transition="all 0.2s"
-          >
-            <LuPlus size={18} />
-            New Plan
-          </Button>
-        </HStack>
+        <Button
+          colorPalette="green"
+          borderRadius="xl"
+          size="lg"
+          onClick={onCreatePlan}
+          boxShadow="0 2px 12px rgba(34, 139, 34, 0.2)"
+          _hover={{
+            boxShadow: "0 4px 20px rgba(34, 139, 34, 0.3)",
+            transform: "translateY(-1px)",
+          }}
+          transition="all 0.2s"
+        >
+          <LuPlus size={18} />
+          New Plan
+        </Button>
       </Flex>
 
       {/* Quick stats */}
@@ -170,7 +153,7 @@ export default function PlansHub({
             justifyContent="center"
             mb="6"
           >
-            <LuSparkles size={40} color="var(--chakra-colors-green-fg)" />
+            <LuLayoutGrid size={40} color="var(--chakra-colors-green-fg)" />
           </Box>
           <Heading
             size="lg"

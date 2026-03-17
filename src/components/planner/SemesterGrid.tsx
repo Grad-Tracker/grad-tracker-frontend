@@ -1,11 +1,12 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Box, Flex, HStack, Text, VStack } from "@chakra-ui/react";
-import { useState } from "react";
 import type { Term, PlannedCourseWithDetails } from "@/types/planner";
+import type { Course } from "@/types/course";
 import { compareTerms } from "@/types/planner";
 import SemesterColumn from "./SemesterColumn";
+import CourseDetailDrawer from "./CourseDetailDrawer";
 
 interface SemesterGridProps {
   terms: Term[];
@@ -37,6 +38,14 @@ export default function SemesterGrid({
   const [collapsedSummers, setCollapsedSummers] = useState<Set<number>>(
     () => new Set(terms.filter((t) => t.season === "Summer").map((t) => t.id))
   );
+
+  const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+
+  function handleCourseClick(course: Course) {
+    setSelectedCourse(course);
+    setDrawerOpen(true);
+  }
 
   const sortedTerms = [...terms].sort(compareTerms);
 
@@ -140,34 +149,37 @@ export default function SemesterGrid({
             {/* Semesters for this year */}
             <VStack gap="3" align="stretch" flex="1" pb="6" pl="2">
               {/* Fall + Spring side by side */}
-              <HStack gap="4" align="stretch" flexWrap="wrap">
+              <HStack gap="4" align="start" flexWrap="wrap">
                 {group.fall && (
-                  <Box flex="1" minW="260px">
+                  <Box flex="1" minW="0">
                     <SemesterColumn
                       term={group.fall}
                       courses={getCoursesForTerm(group.fall.id)}
                       onRemoveTerm={onRemoveTerm}
+                      onCourseClick={handleCourseClick}
                       isGraduatePlan={isGraduatePlan}
                     />
                   </Box>
                 )}
                 {group.spring && (
-                  <Box flex="1" minW="260px">
+                  <Box flex="1" minW="0">
                     <SemesterColumn
                       term={group.spring}
                       courses={getCoursesForTerm(group.spring.id)}
                       onRemoveTerm={onRemoveTerm}
+                      onCourseClick={handleCourseClick}
                       isGraduatePlan={isGraduatePlan}
                     />
                   </Box>
                 )}
                 {/* If only one semester exists, show it full width */}
                 {!group.fall && !group.spring && group.summer && (
-                  <Box flex="1" minW="260px">
+                  <Box flex="1" minW="0">
                     <SemesterColumn
                       term={group.summer}
                       courses={getCoursesForTerm(group.summer.id)}
                       onRemoveTerm={onRemoveTerm}
+                      onCourseClick={handleCourseClick}
                       isCollapsed={collapsedSummers.has(group.summer.id)}
                       onToggleCollapse={() =>
                         toggleSummerCollapse(group.summer!.id)
@@ -185,6 +197,7 @@ export default function SemesterGrid({
                     term={group.summer}
                     courses={getCoursesForTerm(group.summer.id)}
                     onRemoveTerm={onRemoveTerm}
+                    onCourseClick={handleCourseClick}
                     isCollapsed={collapsedSummers.has(group.summer.id)}
                     onToggleCollapse={() =>
                       toggleSummerCollapse(group.summer!.id)
@@ -197,6 +210,11 @@ export default function SemesterGrid({
           </Flex>
         ))}
       </VStack>
+      <CourseDetailDrawer
+        course={selectedCourse}
+        open={drawerOpen}
+        onOpenChange={setDrawerOpen}
+      />
     </Box>
   );
 }
