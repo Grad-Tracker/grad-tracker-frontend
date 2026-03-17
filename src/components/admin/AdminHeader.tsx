@@ -1,13 +1,28 @@
 "use client";
 
-import { Box, Button, Flex, HStack, Text } from "@chakra-ui/react";
+import { useEffect, useState } from "react";
+import { Avatar, Badge, Box, Button, Flex, HStack, Text } from "@chakra-ui/react";
 import { useRouter } from "next/navigation";
 import { LuLogOut, LuShield } from "react-icons/lu";
+import { ColorModeButton } from "@/components/ui/color-mode";
 import { toaster } from "@/components/ui/toaster";
 import { createClient } from "@/lib/supabase/client";
 
 export default function AdminHeader() {
   const router = useRouter();
+  const [advisorName, setAdvisorName] = useState("");
+
+  useEffect(() => {
+    async function loadUser() {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user?.user_metadata) {
+        const { first_name, last_name } = user.user_metadata;
+        setAdvisorName([first_name, last_name].filter(Boolean).join(" "));
+      }
+    }
+    loadUser();
+  }, []);
 
   async function handleSignOut() {
     const supabase = createClient();
@@ -24,7 +39,7 @@ export default function AdminHeader() {
     <Box
       as="header"
       position="sticky"
-      top="0"
+      top={{ base: "56px", lg: "0" }}
       bg="bg"
       borderBottomWidth="1px"
       borderColor="border.subtle"
@@ -60,10 +75,28 @@ export default function AdminHeader() {
           </Box>
         </HStack>
 
-        <Button variant="outline" borderRadius="lg" onClick={handleSignOut}>
-          <LuLogOut />
-          Sign Out
-        </Button>
+        <HStack gap="3">
+          {advisorName && (
+            <HStack gap="2" display={{ base: "none", md: "flex" }}>
+              <Avatar.Root size="sm">
+                <Avatar.Fallback name={advisorName} />
+              </Avatar.Root>
+              <Box>
+                <Text fontSize="sm" fontWeight="600" lineHeight="1.2">
+                  {advisorName}
+                </Text>
+                <Badge colorPalette="green" variant="surface" size="xs">
+                  Advisor
+                </Badge>
+              </Box>
+            </HStack>
+          )}
+          <ColorModeButton variant="ghost" size="sm" />
+          <Button aria-label="Sign Out" variant="outline" borderRadius="lg" onClick={handleSignOut}>
+            <LuLogOut />
+            <Text display={{ base: "none", md: "inline" }}>Sign Out</Text>
+          </Button>
+        </HStack>
       </Flex>
     </Box>
   );

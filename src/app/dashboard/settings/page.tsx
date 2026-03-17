@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import * as React from "react";
+import { useRouter } from "next/navigation";
 import {
   Box,
   Button,
@@ -17,7 +18,7 @@ import {
   Text,
 } from "@chakra-ui/react";
 import Link from "next/link";
-import { LuLock, LuCalendar, LuBell } from "react-icons/lu";
+import { LuLock, LuCalendar, LuBell, LuTrash2, LuTriangleAlert } from "react-icons/lu";
 import { Field } from "@/components/ui/field";
 import { toaster } from "@/components/ui/toaster";
 import { createClient } from "@/lib/supabase/client";
@@ -61,6 +62,7 @@ const NOTIF_OPTIONS: { key: keyof NotifPrefs; label: string; description: string
 ];
 
 export default function SettingsPage() {
+  const router = useRouter();
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
@@ -74,6 +76,8 @@ export default function SettingsPage() {
   const [savingEmail, setSavingEmail] = useState(false);
   const [savingGrad, setSavingGrad] = useState(false);
   const [savingNotif, setSavingNotif] = useState(false);
+  const [resetConfirming, setResetConfirming] = useState(false);
+  const [resetting, setResetting] = useState(false);
 
   useEffect(() => {
     async function load() {
@@ -211,6 +215,34 @@ export default function SettingsPage() {
       toaster.create({ title: "Failed to save preferences", description: msg, type: "error" });
     } finally {
       setSavingNotif(false);
+    }
+  };
+
+  const handleResetProgress = async () => {
+    if (!studentId) return;
+    setResetting(true);
+    try {
+      const supabase = createClient();
+      const [historyResult, plannedResult, programsResult] = await Promise.all([
+        supabase.from(DB_TABLES.studentCourseHistory).delete().eq("student_id", studentId),
+        supabase.from(DB_TABLES.studentPlannedCourses).delete().eq("student_id", studentId),
+        supabase.from(DB_TABLES.studentPrograms).delete().eq("student_id", studentId),
+      ]);
+      if (historyResult.error) throw historyResult.error;
+      if (plannedResult.error) throw plannedResult.error;
+      if (programsResult.error) throw programsResult.error;
+      await supabase
+        .from(DB_TABLES.students)
+        .update({ has_completed_onboarding: false })
+        .eq(STUDENT_COLUMNS.id, studentId);
+      toaster.create({ title: "Progress reset", description: "Your progress has been cleared. Use the setup wizard to start fresh.", type: "success" });
+      router.push("/dashboard");
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : "Unknown error";
+      toaster.create({ title: "Failed to reset progress", description: msg, type: "error" });
+    } finally {
+      setResetting(false);
+      setResetConfirming(false);
     }
   };
 
@@ -446,6 +478,66 @@ export default function SettingsPage() {
               Reset Password
             </Button>
           </Link>
+        </Card.Body>
+      </Card.Root>
+
+      {/* Danger Zone */}
+      <Card.Root bg="bg" borderRadius="xl" borderWidth="1px" borderColor="red.muted">
+        <Card.Header p="5" pb="3">
+          <Heading size="md" fontWeight="600" color="red.fg">
+            Danger Zone
+          </Heading>
+          <Text fontSize="sm" color="fg.muted" mt="1">
+            Permanently delete all your course history, planned courses, and program selections.
+          </Text>
+        </Card.Header>
+        <Card.Body p="5" pt="2">
+          {!resetConfirming ? (
+            <Button
+              variant="outline"
+              colorPalette="red"
+              alignSelf="flex-start"
+              borderRadius="lg"
+              onClick={() => setResetConfirming(true)}
+            >
+              <Icon mr="2">
+                <LuTrash2 />
+              </Icon>
+              Reset All Progress
+            </Button>
+          ) : (
+            <Stack gap="2" p="3" bg="red.subtle" borderWidth="1px" borderColor="red.muted" borderRadius="lg" maxW="sm">
+              <HStack gap="2">
+                <Icon color="red.fg" flexShrink={0}>
+                  <LuTriangleAlert />
+                </Icon>
+                <Text fontSize="xs" fontWeight="500" color="red.fg">
+                  This will delete all your progress. Are you sure?
+                </Text>
+              </HStack>
+              <HStack gap="2">
+                <Button
+                  size="xs"
+                  colorPalette="red"
+                  loading={resetting}
+                  onClick={handleResetProgress}
+                  borderRadius="md"
+                  flex="1"
+                >
+                  Yes, Reset
+                </Button>
+                <Button
+                  size="xs"
+                  variant="ghost"
+                  onClick={() => setResetConfirming(false)}
+                  borderRadius="md"
+                  flex="1"
+                >
+                  Cancel
+                </Button>
+              </HStack>
+            </Stack>
+          )}
         </Card.Body>
       </Card.Root>
     </Stack>

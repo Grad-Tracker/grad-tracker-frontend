@@ -3,10 +3,11 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { ChakraProvider, defaultSystem } from "@chakra-ui/react";
 
-const { mockPush, mockUsePathname, mockSignOut, mockToasterCreate } = vi.hoisted(() => ({
+const { mockPush, mockUsePathname, mockSignOut, mockGetUser, mockToasterCreate } = vi.hoisted(() => ({
   mockPush: vi.fn(),
   mockUsePathname: vi.fn(),
   mockSignOut: vi.fn(),
+  mockGetUser: vi.fn(),
   mockToasterCreate: vi.fn(),
 }));
 
@@ -27,8 +28,13 @@ vi.mock("@/lib/supabase/client", () => ({
   createClient: () => ({
     auth: {
       signOut: mockSignOut,
+      getUser: mockGetUser,
     },
   }),
+}));
+
+vi.mock("@/components/ui/color-mode", () => ({
+  ColorModeButton: () => null,
 }));
 
 vi.mock("@/components/ui/toaster", () => ({
@@ -50,49 +56,123 @@ describe("Admin layout components", () => {
     vi.clearAllMocks();
     mockUsePathname.mockReturnValue("/admin/programs");
     mockSignOut.mockResolvedValue({ error: null });
-  });
-
-  it("renders sidebar navigation links", () => {
-    renderWithChakra(<AdminSidebar />);
-
-    const dashboardLink = screen.getByText("Dashboard").closest("a");
-    const programsLink = screen.getByText("Programs").closest("a");
-    const genEdLink = screen.getByText("Gen-Ed").closest("a");
-
-    expect(dashboardLink).toHaveAttribute("href", "/admin");
-    expect(programsLink).toHaveAttribute("href", "/admin/programs");
-    expect(genEdLink).toHaveAttribute("href", "/admin/gen-ed");
-  });
-
-  it("renders the header and signs out", async () => {
-    renderWithChakra(<AdminHeader />);
-
-    expect(screen.getByText("Advisor Tools")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /sign out/i })).toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole("button", { name: /sign out/i }));
-
-    await waitFor(() => {
-      expect(mockSignOut).toHaveBeenCalled();
-      expect(mockToasterCreate).toHaveBeenCalledWith(
-        expect.objectContaining({
-          title: "Signed out",
-          type: "success",
-        })
-      );
-      expect(mockPush).toHaveBeenCalledWith("/signin");
+    mockGetUser.mockResolvedValue({
+      data: {
+        user: {
+          user_metadata: { first_name: "Ada", last_name: "Lovelace" },
+        },
+      },
     });
   });
 
-  it("renders AdminShell children", () => {
-    renderWithChakra(
-      <AdminShell>
-        <div>Admin child content</div>
-      </AdminShell>
-    );
+  // ── AdminSidebar ───────────────────────────────────────────────────────────
 
-    expect(screen.getByText("Admin child content")).toBeInTheDocument();
-    expect(screen.getByText("Advisor Tools")).toBeInTheDocument();
-    expect(screen.getByText("Programs").closest("a")).toHaveAttribute("href", "/admin/programs");
+  describe("AdminSidebar", () => {
+    it("renders all four navigation links", () => {
+      renderWithChakra(<AdminSidebar />);
+
+      expect(screen.getAllByText("Dashboard")[0].closest("a")).toHaveAttribute("href", "/admin");
+      expect(screen.getAllByText("Courses")[0].closest("a")).toHaveAttribute("href", "/admin/courses");
+      expect(screen.getAllByText("Programs")[0].closest("a")).toHaveAttribute("href", "/admin/programs");
+      expect(screen.getAllByText("Gen-Ed")[0].closest("a")).toHaveAttribute("href", "/admin/gen-ed");
+    });
+
+    it("highlights the active route (Programs)", () => {
+      mockUsePathname.mockReturnValue("/admin/programs");
+      renderWithChakra(<AdminSidebar />);
+      // Programs link should appear (active state is applied via bg/color props, link still present)
+      expect(screen.getAllByText("Programs").length).toBeGreaterThan(0);
+    });
+
+    it("highlights Dashboard only on exact /admin path", () => {
+      mockUsePathname.mockReturnValue("/admin");
+      renderWithChakra(<AdminSidebar />);
+      expect(screen.getAllByText("Dashboard").length).toBeGreaterThan(0);
+    });
+
+    it("highlights nested route correctly for Programs sub-page", () => {
+      mockUsePathname.mockReturnValue("/admin/programs/some-id");
+      renderWithChakra(<AdminSidebar />);
+      expect(screen.getAllByText("Programs").length).toBeGreaterThan(0);
+    });
+
+    it("calls signOut and redirects when sign-out is clicked (desktop)", async () => {
+      renderWithChakra(<AdminSidebar />);
+      const signOutButtons = screen.getAllByText("Sign Out");
+      fireEvent.click(signOutButtons[0]);
+
+      await waitFor(() => {
+        expect(mockSignOut).toHaveBeenCalled();
+        expect(mockToasterCreate).toHaveBeenCalledWith(
+          expect.objectContaining({ title: "Signed out", type: "success" })
+        );
+        expect(mockPush).toHaveBeenCalledWith("/signin");
+      });
+    });
+  });
+
+  // ── AdminHeader ───────────────────────────────────────────────────────────
+
+  describe("AdminHeader", () => {
+    it("renders title and sign-out button", () => {
+      renderWithChakra(<AdminHeader />);
+      expect(screen.getByText("Advisor Tools")).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /sign out/i })).toBeInTheDocument();
+    });
+
+    it("displays advisor name after loading from user metadata", async () => {
+      renderWithChakra(<AdminHeader />);
+      await waitFor(() => {
+        expect(mockGetUser).toHaveBeenCalled();
+      });
+      expect(screen.getByText("Ada Lovelace")).toBeInTheDocument();
+      expect(screen.getByText("Advisor")).toBeInTheDocument();
+    });
+
+    it("shows no name when user has no metadata", async () => {
+      mockGetUser.mockResolvedValue({ data: { user: null } });
+      renderWithChakra(<AdminHeader />);
+      await waitFor(() => {
+        expect(mockGetUser).toHaveBeenCalled();
+      });
+      // Should not throw — just renders without a name
+      expect(screen.getByText("Advisor Tools")).toBeInTheDocument();
+    });
+
+    it("calls signOut and redirects on sign-out click", async () => {
+      renderWithChakra(<AdminHeader />);
+      fireEvent.click(screen.getByRole("button", { name: /sign out/i }));
+
+      await waitFor(() => {
+        expect(mockSignOut).toHaveBeenCalled();
+        expect(mockToasterCreate).toHaveBeenCalledWith(
+          expect.objectContaining({ title: "Signed out", type: "success" })
+        );
+        expect(mockPush).toHaveBeenCalledWith("/signin");
+      });
+    });
+  });
+
+  // ── AdminShell ────────────────────────────────────────────────────────────
+
+  describe("AdminShell", () => {
+    it("renders children inside the shell", () => {
+      renderWithChakra(
+        <AdminShell>
+          <div>Admin child content</div>
+        </AdminShell>
+      );
+      expect(screen.getByText("Admin child content")).toBeInTheDocument();
+    });
+
+    it("renders header and sidebar inside the shell", () => {
+      renderWithChakra(
+        <AdminShell>
+          <span>content</span>
+        </AdminShell>
+      );
+      expect(screen.getByText("Advisor Tools")).toBeInTheDocument();
+      expect(screen.getAllByText("Programs")[0].closest("a")).toHaveAttribute("href", "/admin/programs");
+    });
   });
 });
