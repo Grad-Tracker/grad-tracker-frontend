@@ -15,7 +15,7 @@ import {
   fetchProgramWithBlocks,
   requireAdvisorAccess,
   requireAssignedProgram,
-} from "@/app/admin/programs/server-helpers";
+} from "@/app/admin/(protected)/programs/server-helpers";
 
 function makeAwaitable(result: any) {
   return {

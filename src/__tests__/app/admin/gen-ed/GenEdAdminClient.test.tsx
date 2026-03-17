@@ -47,7 +47,7 @@ vi.mock("@/components/ui/tooltip", () => ({
   ),
 }));
 
-import GenEdAdminClient from "@/app/admin/gen-ed/GenEdAdminClient";
+import GenEdAdminClient from "@/app/admin/(protected)/gen-ed/GenEdAdminClient";
 
 function renderWithChakra(ui: React.ReactElement) {
   return render(<ChakraProvider value={defaultSystem}>{ui}</ChakraProvider>);
