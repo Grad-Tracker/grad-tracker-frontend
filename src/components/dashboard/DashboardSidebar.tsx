@@ -42,19 +42,112 @@ export default function DashboardSidebar() {
   }
 
   return (
-    <Box
-      as="aside"
-      w="260px"
-      minH="100vh"
-      bg="bg"
-      borderRightWidth="1px"
-      borderColor="border.subtle"
-      position="fixed"
-      left="0"
-      top="0"
-      display={{ base: "none", lg: "flex" }}
-      flexDirection="column"
-    >
+    <>
+      {/* ── Mobile top nav (hidden on lg+) ───────────────────────────── */}
+      <Box
+        as="nav"
+        display={{ base: "flex", lg: "none" }}
+        position="fixed"
+        top="0"
+        left="0"
+        right="0"
+        zIndex="sticky"
+        bg="bg"
+        borderBottomWidth="1px"
+        borderColor="border.subtle"
+        h="56px"
+        px="3"
+        alignItems="center"
+        gap="1"
+        overflowX="auto"
+        css={{ "&::-webkit-scrollbar": { display: "none" }, scrollbarWidth: "none" }}
+      >
+        {/* Logo icon */}
+        <Box p="1.5" bg="green.solid" borderRadius="md" flexShrink={0} mr="1">
+          <Icon color="white" boxSize="4">
+            <LuGraduationCap />
+          </Icon>
+        </Box>
+
+        {/* Nav items */}
+        {navItems.map((item) => {
+          const active = pathname === item.href;
+          return (
+            <Link key={item.label} href={item.href} style={{ textDecoration: "none", flexShrink: 0 }}>
+              <VStack
+                gap="0.5"
+                px="2.5"
+                py="1"
+                borderRadius="md"
+                bg={active ? "green.subtle" : "transparent"}
+                color={active ? "green.fg" : "fg.muted"}
+                align="center"
+                transition="all 0.15s"
+                _hover={{ bg: active ? "green.subtle" : "bg.subtle", color: active ? "green.fg" : "fg" }}
+              >
+                <Icon boxSize="4">
+                  <item.icon />
+                </Icon>
+                <Text fontSize="2xs" fontWeight={active ? "600" : "500"} whiteSpace="nowrap">
+                  {item.label}
+                </Text>
+              </VStack>
+            </Link>
+          );
+        })}
+
+        <Box flex="1" flexShrink={0} minW="2" />
+
+        {/* Settings */}
+        <Link href="/dashboard/settings" aria-label="Open settings" style={{ textDecoration: "none", flexShrink: 0 }}>
+          <Box
+            px="2.5"
+            py="1.5"
+            borderRadius="md"
+            color="fg.muted"
+            _hover={{ bg: "bg.subtle", color: "fg" }}
+            transition="all 0.15s"
+          >
+            <Icon boxSize="4.5">
+              <LuSettings />
+            </Icon>
+          </Box>
+        </Link>
+
+        {/* Sign Out */}
+        <Box
+          as="button"
+          aria-label="Sign out"
+          px="2.5"
+          py="1.5"
+          borderRadius="md"
+          color="fg.muted"
+          cursor="pointer"
+          flexShrink={0}
+          _hover={{ bg: "red.subtle", color: "red.fg" }}
+          transition="all 0.15s"
+          onClick={handleSignOut}
+        >
+          <Icon boxSize="4.5">
+            <LuLogOut />
+          </Icon>
+        </Box>
+      </Box>
+
+      {/* ── Desktop sidebar (hidden below lg) ────────────────────────── */}
+      <Box
+        as="aside"
+        w="260px"
+        minH="100vh"
+        bg="bg"
+        borderRightWidth="1px"
+        borderColor="border.subtle"
+        position="fixed"
+        left="0"
+        top="0"
+        display={{ base: "none", lg: "flex" }}
+        flexDirection="column"
+      >
       {/* Logo */}
       <HStack gap="3" px="6" py="5" borderBottomWidth="1px" borderColor="border.subtle">
         <Box p="2" bg="green.solid" borderRadius="lg">
@@ -118,6 +211,8 @@ export default function DashboardSidebar() {
         </Link>
 
         <HStack
+          as="button"
+          aria-label="Sign out"
           px="4"
           py="2.5"
           borderRadius="lg"
@@ -135,5 +230,6 @@ export default function DashboardSidebar() {
         </HStack>
       </VStack>
     </Box>
+    </>
   );
 }

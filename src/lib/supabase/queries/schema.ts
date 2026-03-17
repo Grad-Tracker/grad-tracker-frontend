@@ -1,4 +1,5 @@
 export const DB_TABLES = {
+  advisors: "advisors",
   courses: "courses",
   genEdBuckets: "gen_ed_buckets",
   genEdBucketCourses: "gen_ed_bucket_courses",
