@@ -1,5 +1,6 @@
 import type { Course } from "@/types/course";
 import type { RequirementBlockWithCourses } from "@/types/planner";
+import type { BreadthPackage } from "@/types/planner";
 import { isBreadthBlock, getPackageCourseKeys, courseKey } from "@/types/planner";
 import type {
   AutoGenerateOptions,
@@ -36,21 +37,135 @@ export type ProgressCallback = (message: string) => void;
 
 const DEFAULT_CREDIT_CAP = 15;
 
+const EMPTY_VALIDATION: ValidationResult = {
+  valid: true,
+  issues: [],
+  blockStatuses: [],
+  genEdStatuses: [],
+  unscheduledCourses: [],
+};
+
+type PlanContext = { planId: number };
+
+type GenerationInputs = {
+  blocks: RequirementBlockWithCourses[];
+  completedIds: Set<number>;
+  genEdBuckets: GenEdBucketWithCourses[];
+  existingTerms: Awaited<ReturnType<typeof fetchStudentTerms>>;
+  existingCourses: Awaited<ReturnType<typeof fetchPlannedCourses>>;
+};
+
+type SchedulingArtifacts = {
+  prereqEdges: Map<number, Set<number>>;
+  availabilityMap: Map<number, Set<string>>;
+  levels: Map<number, number>;
+};
+
 export async function autoGeneratePlan(
   studentId: number,
   programIds: number[],
   options: AutoGenerateOptions,
   onProgress?: ProgressCallback
 ): Promise<AutoGenerateResult> {
-  const { mode, planId: existingPlanId, planName, includeSummers, startSeason, startYear, breadthPackage } = options;
+  const {
+    mode,
+    planId: existingPlanId,
+    planName,
+    includeSummers,
+    startSeason,
+    startYear,
+    breadthPackage,
+  } = options;
 
-  // ── Step 1: Gather data ────────────────────────────────
   onProgress?.("Gathering requirements...");
+  const { planId } = await resolvePlanContext(
+    studentId,
+    programIds,
+    mode,
+    existingPlanId,
+    planName
+  );
 
-  // Determine which plan to work with
-  let planId: number;
-  let planProgramIds = programIds;
+  const inputs = await fetchGenerationInputs(studentId, planId, mode);
 
+  onProgress?.("Analyzing prerequisites...");
+  applyBreadthPackageFilter(inputs.blocks, breadthPackage ?? null);
+
+  const allCandidateIds = collectCandidateCourseIds(inputs.blocks, inputs.genEdBuckets);
+  const [candidatePrereqEdges, crossListings] = await Promise.all([
+    extractPrereqEdges([...allCandidateIds]),
+    fetchCrossListings([...allCandidateIds]),
+  ]);
+  const prereqCounts = buildPrereqCounts(allCandidateIds, candidatePrereqEdges);
+
+  onProgress?.("Selecting courses...");
+  const selectedCourses = selectCoursesForPlan(
+    inputs.blocks,
+    inputs.completedIds,
+    inputs.genEdBuckets,
+    prereqCounts,
+    crossListings
+  );
+
+  if (selectedCourses.length === 0) {
+    return {
+      planId,
+      semesters: [],
+      totalCourses: 0,
+      totalCredits: 0,
+      validation: EMPTY_VALIDATION,
+    };
+  }
+
+  onProgress?.("Building schedule...");
+  const schedulingArtifacts = await buildSchedulingArtifacts(selectedCourses);
+
+  onProgress?.("Scheduling courses...");
+  const semesters = buildSemesters(
+    mode,
+    includeSummers,
+    startSeason,
+    startYear,
+    selectedCourses,
+    inputs,
+    schedulingArtifacts
+  );
+
+  onProgress?.("Validating plan...");
+  const validation = validatePlan(
+    semesters,
+    selectedCourses,
+    schedulingArtifacts.prereqEdges,
+    schedulingArtifacts.availabilityMap,
+    inputs.completedIds,
+    inputs.blocks,
+    inputs.genEdBuckets,
+    DEFAULT_CREDIT_CAP
+  );
+
+  onProgress?.("Saving plan...");
+  await batchSavePlanCourses(studentId, planId, semesters);
+
+  const totalCourses = semesters.reduce((sum, sem) => sum + sem.courses.length, 0);
+  const totalCredits = semesters.reduce((sum, sem) => sum + sem.totalCredits, 0);
+
+  onProgress?.("Done!");
+  return {
+    planId,
+    semesters,
+    totalCourses,
+    totalCredits,
+    validation,
+  };
+}
+
+async function resolvePlanContext(
+  studentId: number,
+  programIds: number[],
+  mode: AutoGenerateOptions["mode"],
+  existingPlanId: number | undefined,
+  planName: string | undefined
+): Promise<PlanContext> {
   if (mode === "new") {
     const plan = await createPlan(
       studentId,
@@ -58,90 +173,104 @@ export async function autoGeneratePlan(
       "Automatically generated course plan",
       programIds
     );
-    planId = plan.id;
-  } else {
-    planId = existingPlanId!;
-    // Get the existing plan's programs
-    planProgramIds = await fetchPlanPrograms(planId);
+    return { planId: plan.id };
   }
 
-  // Fetch all needed data in parallel
+  const planId = existingPlanId!;
+  await fetchPlanPrograms(planId);
+  return { planId };
+}
+
+async function fetchGenerationInputs(
+  studentId: number,
+  planId: number,
+  mode: AutoGenerateOptions["mode"]
+): Promise<GenerationInputs> {
+  const shouldLoadExisting = mode === "fill";
+
   const [blocks, completedIds, genEdBuckets, existingTerms, existingCourses] = await Promise.all([
     fetchAvailableCourses(studentId, planId),
     fetchCompletedCourseIds(studentId),
     fetchGenEdBucketsWithCourses(),
-    mode === "fill" ? fetchStudentTerms(studentId, planId) : Promise.resolve([]),
-    mode === "fill" ? fetchPlannedCourses(studentId, planId) : Promise.resolve([]),
+    shouldLoadExisting ? fetchStudentTerms(studentId, planId) : Promise.resolve([]),
+    shouldLoadExisting ? fetchPlannedCourses(studentId, planId) : Promise.resolve([]),
   ]);
 
-  // ── Step 2: Extract prereqs for ALL candidates ─────────
-  onProgress?.("Analyzing prerequisites...");
+  return {
+    blocks,
+    completedIds,
+    genEdBuckets,
+    existingTerms,
+    existingCourses,
+  };
+}
 
-  // If a breadth package was selected, narrow the breadth block to that package.
-  // Every course in the selected package is required (ALL_OF), since each package totals 9 credits.
-  if (breadthPackage) {
-    const allowedKeys = getPackageCourseKeys(breadthPackage);
-    for (const block of blocks) {
-      if (isBreadthBlock(block)) {
-        block.courses = block.courses.filter((c) => allowedKeys.has(courseKey(c)));
-        block.credits_required = breadthPackage.totalCreditsRequired;
-        block.rule = "ALL_OF";
-      }
-    }
-  }
+function applyBreadthPackageFilter(
+  blocks: RequirementBlockWithCourses[],
+  breadthPackage: BreadthPackage | null
+): void {
+  if (!breadthPackage) return;
 
-  // Collect ALL candidate course IDs from blocks + gen ed buckets
-  const allCandidateIds = new Set<number>();
+  const allowedKeys = getPackageCourseKeys(breadthPackage);
   for (const block of blocks) {
-    for (const course of block.courses) {
-      allCandidateIds.add(course.id);
-    }
+    if (!isBreadthBlock(block)) continue;
+    block.courses = block.courses.filter((c) => allowedKeys.has(courseKey(c)));
+    block.credits_required = breadthPackage.totalCreditsRequired;
+    block.rule = "ALL_OF";
+  }
+}
+
+function collectCandidateCourseIds(
+  blocks: RequirementBlockWithCourses[],
+  genEdBuckets: GenEdBucketWithCourses[]
+): Set<number> {
+  const ids = new Set<number>();
+  for (const block of blocks) {
+    for (const course of block.courses) ids.add(course.id);
   }
   for (const bucket of genEdBuckets) {
-    for (const course of bucket.courses) {
-      allCandidateIds.add(course.id);
-    }
+    for (const course of bucket.courses) ids.add(course.id);
   }
+  return ids;
+}
 
-  // Extract prereqs and cross-listings for ALL candidates in parallel
-  const [candidatePrereqEdges, crossListings] = await Promise.all([
-    extractPrereqEdges([...allCandidateIds]),
-    fetchCrossListings([...allCandidateIds]),
-  ]);
-
-  // Build prereqCounts: courseId → number of prerequisites (in-degree)
-  const prereqCounts = new Map<number, number>();
+function buildPrereqCounts(
+  allCandidateIds: Set<number>,
+  candidatePrereqEdges: Map<number, Set<number>>
+): Map<number, number> {
+  const counts = new Map<number, number>();
   for (const id of allCandidateIds) {
     const prereqs = candidatePrereqEdges.get(id);
-    prereqCounts.set(id, prereqs ? prereqs.size : 0);
+    counts.set(id, prereqs ? prereqs.size : 0);
   }
+  return counts;
+}
 
-  // ── Step 3: Select courses (with real prereqCounts) ────
-  onProgress?.("Selecting courses...");
+function selectCoursesForPlan(
+  blocks: RequirementBlockWithCourses[],
+  completedIds: Set<number>,
+  genEdBuckets: GenEdBucketWithCourses[],
+  prereqCounts: Map<number, number>,
+  crossListings: Map<number, Set<number>>
+): Course[] {
+  const selectedCourses: Course[] = [];
+  const selectedIds = new Set<number>();
+  const genEdCourseIds = collectGenEdCourseIds(genEdBuckets);
 
-  // Build set of all gen ed course IDs for overlap detection
-  const genEdCourseIds = new Set<number>();
-  for (const bucket of genEdBuckets) {
-    for (const course of bucket.courses) {
-      genEdCourseIds.add(course.id);
-    }
-  }
-
-  // Helper: when a course is selected, also mark cross-listed equivalents
-  // so they won't be picked again (e.g. CSCI 231 and MATH 231 are the same class)
   const markSelected = (courseId: number) => {
     selectedIds.add(courseId);
     const equivalents = crossListings.get(courseId);
-    if (equivalents) {
-      for (const eqId of equivalents) {
-        selectedIds.add(eqId);
-      }
+    if (!equivalents) return;
+    for (const eqId of equivalents) {
+      selectedIds.add(eqId);
     }
   };
 
-  // Select courses from each requirement block
-  const selectedCourses: Course[] = [];
-  const selectedIds = new Set<number>();
+  const addSelection = (course: Course) => {
+    if (selectedIds.has(course.id)) return;
+    selectedCourses.push(course);
+    markSelected(course.id);
+  };
 
   for (const block of blocks) {
     const picked = selectCoursesForBlock(
@@ -152,14 +281,10 @@ export async function autoGeneratePlan(
       prereqCounts
     );
     for (const course of picked) {
-      if (!selectedIds.has(course.id)) {
-        selectedCourses.push(course);
-        markSelected(course.id);
-      }
+      addSelection(course);
     }
   }
 
-  // Resolve gen ed gaps
   const genEdExtra = resolveGenEdGaps(
     selectedIds,
     genEdBuckets,
@@ -167,104 +292,68 @@ export async function autoGeneratePlan(
     prereqCounts
   );
   for (const course of genEdExtra) {
-    if (!selectedIds.has(course.id)) {
-      selectedCourses.push(course);
-      markSelected(course.id);
-    }
+    addSelection(course);
   }
 
-  const emptyValidation: ValidationResult = {
-    valid: true,
-    issues: [],
-    blockStatuses: [],
-    genEdStatuses: [],
-    unscheduledCourses: [],
-  };
+  return selectedCourses;
+}
 
-  if (selectedCourses.length === 0) {
-    return {
-      planId,
-      semesters: [],
-      totalCourses: 0,
-      totalCredits: 0,
-      validation: emptyValidation,
-    };
+function collectGenEdCourseIds(genEdBuckets: GenEdBucketWithCourses[]): Set<number> {
+  const ids = new Set<number>();
+  for (const bucket of genEdBuckets) {
+    for (const course of bucket.courses) ids.add(course.id);
   }
+  return ids;
+}
 
-  // ── Step 4: Build precise prereq graph + availability ──
-  onProgress?.("Building schedule...");
-
+async function buildSchedulingArtifacts(
+  selectedCourses: Course[]
+): Promise<SchedulingArtifacts> {
   const allCourseIds = selectedCourses.map((c) => c.id);
   const [prereqEdges, offerings] = await Promise.all([
     extractPrereqEdges(allCourseIds),
     fetchCourseOfferings(allCourseIds),
   ]);
 
-  const availabilityMap = buildAvailabilityMap(offerings);
+  return {
+    prereqEdges,
+    availabilityMap: buildAvailabilityMap(offerings),
+    levels: computeTopologicalLevels(allCourseIds, prereqEdges),
+  };
+}
 
-  // ── Step 5: Schedule courses ───────────────────────────
-  onProgress?.("Scheduling courses...");
-
-  const levels = computeTopologicalLevels(allCourseIds, prereqEdges);
-
-  let scheduleResult;
-  if (mode === "fill" && existingTerms.length > 0) {
-    scheduleResult = fillExistingPlan(
-      existingTerms,
-      existingCourses,
+function buildSemesters(
+  mode: AutoGenerateOptions["mode"],
+  includeSummers: boolean,
+  startSeason: AutoGenerateOptions["startSeason"],
+  startYear: AutoGenerateOptions["startYear"],
+  selectedCourses: Course[],
+  inputs: GenerationInputs,
+  artifacts: SchedulingArtifacts
+) {
+  if (mode === "fill" && inputs.existingTerms.length > 0) {
+    return fillExistingPlan(
+      inputs.existingTerms,
+      inputs.existingCourses,
       selectedCourses,
-      levels,
-      prereqEdges,
+      artifacts.levels,
+      artifacts.prereqEdges,
       includeSummers,
       DEFAULT_CREDIT_CAP,
-      availabilityMap,
-      completedIds
-    );
-  } else {
-    scheduleResult = scheduleCourses(
-      selectedCourses,
-      levels,
-      prereqEdges,
-      startSeason,
-      startYear,
-      includeSummers,
-      DEFAULT_CREDIT_CAP,
-      availabilityMap,
-      completedIds
-    );
+      artifacts.availabilityMap,
+      inputs.completedIds
+    ).semesters;
   }
 
-  const { semesters } = scheduleResult;
-
-  // ── Step 6: Validate plan ──────────────────────────────
-  onProgress?.("Validating plan...");
-
-  const validation = validatePlan(
-    semesters,
+  return scheduleCourses(
     selectedCourses,
-    prereqEdges,
-    availabilityMap,
-    completedIds,
-    blocks,
-    genEdBuckets,
+    artifacts.levels,
+    artifacts.prereqEdges,
+    startSeason,
+    startYear,
+    includeSummers,
     DEFAULT_CREDIT_CAP,
-  );
-
-  // ── Step 7: Save to Supabase ───────────────────────────
-  onProgress?.("Saving plan...");
-
-  await batchSavePlanCourses(studentId, planId, semesters);
-
-  const totalCourses = semesters.reduce((s, sem) => s + sem.courses.length, 0);
-  const totalCredits = semesters.reduce((s, sem) => s + sem.totalCredits, 0);
-
-  onProgress?.("Done!");
-
-  return {
-    planId,
-    semesters,
-    totalCourses,
-    totalCredits,
-    validation,
-  };
+    artifacts.availabilityMap,
+    inputs.completedIds
+  ).semesters;
 }
