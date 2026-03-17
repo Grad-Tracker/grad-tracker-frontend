@@ -99,7 +99,7 @@ export default function DashboardSidebar() {
         <Box flex="1" flexShrink={0} minW="2" />
 
         {/* Settings */}
-        <Link href="/dashboard/settings" style={{ textDecoration: "none", flexShrink: 0 }}>
+        <Link href="/dashboard/settings" aria-label="Open settings" style={{ textDecoration: "none", flexShrink: 0 }}>
           <Box
             px="2.5"
             py="1.5"
@@ -116,6 +116,9 @@ export default function DashboardSidebar() {
 
         {/* Sign Out */}
         <Box
+          as="button"
+          type="button"
+          aria-label="Sign out"
           px="2.5"
           py="1.5"
           borderRadius="md"
@@ -209,6 +212,9 @@ export default function DashboardSidebar() {
         </Link>
 
         <HStack
+          as="button"
+          type="button"
+          aria-label="Sign out"
           px="4"
           py="2.5"
           borderRadius="lg"

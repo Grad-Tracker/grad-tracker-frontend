@@ -67,6 +67,19 @@ function setup(courses = COURSES, subjects = SUBJECTS) {
   );
 }
 
+// ── large fixture for pagination tests ───────────────────────────────────────
+
+const LARGE_COURSES: CourseDetail[] = Array.from({ length: 30 }, (_, i) => ({
+  id: 100 + i,
+  subject: "CS",
+  number: String(100 + i),
+  title: `Course ${100 + i}`,
+  credits: 3,
+  description: null,
+  prereq_text: null,
+  is_active: true,
+}));
+
 // ── tests ─────────────────────────────────────────────────────────────────────
 
 describe("CoursesAdminClient", () => {
@@ -140,6 +153,44 @@ describe("CoursesAdminClient", () => {
     });
   });
 
+  // ── pagination ─────────────────────────────────────────────────────────────
+
+  describe("pagination", () => {
+    it("shows pagination controls when courses exceed page size", () => {
+      renderWithChakra(
+        <CoursesAdminClient initialCourses={LARGE_COURSES} subjects={["CS"]} />
+      );
+      expect(screen.getByRole("button", { name: /previous page/i })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /next page/i })).toBeInTheDocument();
+    });
+
+    it("does not show pagination when courses fit on one page", () => {
+      setup(); // 4 courses < 25
+      expect(screen.queryByRole("button", { name: /next page/i })).not.toBeInTheDocument();
+    });
+
+    it("clamps page when search narrows results below current page", async () => {
+      renderWithChakra(
+        <CoursesAdminClient initialCourses={LARGE_COURSES} subjects={["CS"]} />
+      );
+      // Navigate to page 2
+      const nextBtn = screen.getByRole("button", { name: /next page/i });
+      fireEvent.click(nextBtn);
+      await waitFor(() => {
+        expect(screen.getByText(/Page 2 of/)).toBeInTheDocument();
+      });
+      // Search to narrow to < PAGE_SIZE results — pagination disappears (single page)
+      const input = screen.getByPlaceholderText("Search by subject, number, or title...");
+      fireEvent.change(input, { target: { value: "Course 100" } });
+      await waitFor(() => {
+        // Controls hide when totalPages === 1
+        expect(screen.queryByRole("button", { name: /next page/i })).not.toBeInTheDocument();
+        // And the one matching course is visible
+        expect(screen.getByText("Course 100")).toBeInTheDocument();
+      });
+    });
+  });
+
   // ── search ─────────────────────────────────────────────────────────────────
 
   describe("search", () => {
@@ -199,9 +250,9 @@ describe("CoursesAdminClient", () => {
     it("opens dialog when Add Course is clicked", async () => {
       setup();
       fireEvent.click(screen.getByRole("button", { name: /add course/i }));
+      // Assert on dialog-only content — the Subject input only mounts when the dialog is open
       await waitFor(() => {
-        // Dialog title
-        expect(screen.getAllByText("Add Course").length).toBeGreaterThanOrEqual(1);
+        expect(screen.getByPlaceholderText("e.g. CSCI")).toBeInTheDocument();
       });
     });
 
@@ -353,8 +404,9 @@ describe("CoursesAdminClient", () => {
       setup();
       const viewBtns = screen.getAllByRole("button", { name: /view course/i });
       fireEvent.click(viewBtns[0]);
+      // Assert on drawer-only content — description is not shown in the table
       await waitFor(() => {
-        expect(screen.getByText("Intro to CS")).toBeInTheDocument();
+        expect(screen.getByText("An intro.")).toBeInTheDocument();
       });
     });
 

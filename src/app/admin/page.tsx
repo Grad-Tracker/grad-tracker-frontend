@@ -53,21 +53,23 @@ export default async function AdminDashboardPage() {
   const supabase = await createClient();
 
   // Auth check (defense-in-depth; proxy handles the primary redirect)
-  const { data: { user } } = await supabase.auth.getUser();
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError) { console.error("Auth error:", authError); redirect("/signin"); }
   if (!user) redirect("/signin");
 
   // Verify staff/advisor record exists
-  const { data: advisor } = await supabase
+  const { data: advisor, error: advisorError } = await supabase
     .from(DB_TABLES.staff)
     .select("id, first_name, last_name")
     .eq("auth_user_id", user.id)
     .single();
 
+  if (advisorError) console.error("Advisor lookup error:", advisorError);
   if (!advisor) redirect("/dashboard");
 
   // Fetch assigned programs with nested requirement data
-  const { data: assignments } = await supabase
-    .from("program_advisors")
+  const { data: assignments, error: assignmentsError } = await supabase
+    .from(DB_TABLES.programAdvisors)
     .select(`
       programs (
         id,
@@ -81,6 +83,8 @@ export default async function AdminDashboardPage() {
       )
     `)
     .eq("advisor_id", advisor.id);
+
+  if (assignmentsError) console.error("Assignments lookup error:", assignmentsError);
 
   // Transform into flat program cards
   const programs: ProgramCard[] = (assignments ?? [])

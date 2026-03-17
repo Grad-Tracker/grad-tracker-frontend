@@ -26,7 +26,12 @@ export default function AdminHeader() {
 
   async function handleSignOut() {
     const supabase = createClient();
-    await supabase.auth.signOut();
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      console.error("Sign-out error:", error);
+      toaster.create({ title: "Sign-out failed", description: error.message, type: "error" });
+      return;
+    }
     toaster.create({
       title: "Signed out",
       description: "You have been signed out successfully.",

@@ -64,8 +64,9 @@ describe("courses queries", () => {
       mockFrom.mockReturnValue(chain);
 
       await listCourses({ search: "intro" });
+      // Values are double-quoted in the PostgREST filter string to prevent injection
       expect(chain.or).toHaveBeenCalledWith(
-        "title.ilike.%intro%,subject.ilike.%intro%,number.ilike.%intro%"
+        'title.ilike."%intro%",subject.ilike."%intro%",number.ilike."%intro%"'
       );
     });
 

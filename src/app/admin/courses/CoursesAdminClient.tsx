@@ -129,13 +129,15 @@ export default function CoursesAdminClient({
   const [togglingId, setTogglingId] = useState<number | null>(null);
 
   // ── subject collection for Select ───────────────────────────────────────────
-  const subjectCollection = useMemo(
-    () =>
-      createListCollection({
-        items: subjects.map((s) => ({ label: s, value: s })),
-      }),
-    [subjects]
-  );
+  // Derived from mutable `courses` state so newly added subjects appear immediately.
+  const subjectCollection = useMemo(() => {
+    const seen = new Set<string>();
+    courses.forEach((c) => seen.add(c.subject));
+    const sorted = Array.from(seen).sort();
+    return createListCollection({
+      items: sorted.map((s) => ({ label: s, value: s })),
+    });
+  }, [courses]);
 
   // ── filtering + pagination ───────────────────────────────────────────────────
   const filtered = useMemo(() => {
@@ -151,15 +153,17 @@ export default function CoursesAdminClient({
     });
   }, [courses, search, subjectFilter]);
 
-  // Reset page when filters change
-  useEffect(() => { setPage(1); }, [search, subjectFilter]);
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+
+  // Clamp page whenever the filtered set changes (filters or data mutations).
+  useEffect(() => {
+    setPage((prev) => Math.min(prev, Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))));
+  }, [filtered]);
 
   const paginated = useMemo(() => {
     const start = (page - 1) * PAGE_SIZE;
     return filtered.slice(start, start + PAGE_SIZE);
   }, [filtered, page]);
-
-  const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
 
   // ── dialog helpers ───────────────────────────────────────────────────────────
   function openAdd() {

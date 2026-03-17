@@ -129,14 +129,17 @@ describe("Admin layout components", () => {
       expect(screen.getByText("Advisor")).toBeInTheDocument();
     });
 
-    it("shows no name when user has no metadata", async () => {
-      mockGetUser.mockResolvedValue({ data: { user: null } });
+    it("shows no name when user has empty metadata", async () => {
+      mockGetUser.mockResolvedValue({
+        data: { user: { id: "test", email: "x@x.com", user_metadata: {} } },
+      });
       renderWithChakra(<AdminHeader />);
       await waitFor(() => {
         expect(mockGetUser).toHaveBeenCalled();
       });
-      // Should not throw — just renders without a name
-      expect(screen.getByText("Advisor Tools")).toBeInTheDocument();
+      // Name and Advisor badge should not be rendered when metadata has no first/last name
+      expect(screen.queryByText("Advisor")).not.toBeInTheDocument();
+      expect(screen.queryByRole("img", { name: /avatar/i })).not.toBeInTheDocument();
     });
 
     it("calls signOut and redirects on sign-out click", async () => {

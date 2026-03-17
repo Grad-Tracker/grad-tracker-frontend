@@ -233,10 +233,11 @@ export default function SettingsPage() {
       if (historyResult.error) throw historyResult.error;
       if (plannedResult.error) throw plannedResult.error;
       if (programsResult.error) throw programsResult.error;
-      await supabase
+      const { error: studentError } = await supabase
         .from(DB_TABLES.students)
         .update({ has_completed_onboarding: false })
         .eq(STUDENT_COLUMNS.id, studentId);
+      if (studentError) throw studentError;
       toaster.create({ title: "Progress reset", description: "Your progress has been cleared. Use the setup wizard to start fresh.", type: "success" });
       router.push("/dashboard");
     } catch (e: unknown) {

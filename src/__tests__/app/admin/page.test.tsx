@@ -76,10 +76,14 @@ function setupMocks({
   user = { id: "user-1", user_metadata: { role: "advisor" } },
   advisor = { id: "adv-1", first_name: "Ada", last_name: "Lovelace" },
   assignments = makeAssignments([makeProgram()]),
+  advisorError = null as object | null,
+  assignmentsError = null as object | null,
 }: {
   user?: object | null;
   advisor?: object | null;
   assignments?: object[];
+  advisorError?: object | null;
+  assignmentsError?: object | null;
 } = {}) {
   mockGetUser.mockResolvedValue({ data: { user } });
 
@@ -93,7 +97,7 @@ function setupMocks({
       return {
         select: () => ({
           eq: () => ({
-            single: () => Promise.resolve({ data: advisor }),
+            single: () => Promise.resolve({ data: advisorError ? null : advisor, error: advisorError }),
           }),
         }),
       };
@@ -101,7 +105,7 @@ function setupMocks({
     // program_advisors lookup
     return {
       select: () => ({
-        eq: () => Promise.resolve({ data: assignments }),
+        eq: () => Promise.resolve({ data: assignmentsError ? null : assignments, error: assignmentsError }),
       }),
     };
   });
@@ -124,6 +128,21 @@ describe("AdminDashboardPage", () => {
     setupMocks({ advisor: null });
     await expect(AdminDashboardPage()).rejects.toThrow("NEXT_REDIRECT:/dashboard");
     expect(mockRedirect).toHaveBeenCalledWith("/dashboard");
+  });
+
+  it("redirects to /dashboard when advisor query returns an error", async () => {
+    setupMocks({ advisorError: { message: "DB error" } });
+    await expect(AdminDashboardPage()).rejects.toThrow("NEXT_REDIRECT:/dashboard");
+    expect(mockRedirect).toHaveBeenCalledWith("/dashboard");
+  });
+
+  it("renders page with empty programs when assignments query errors", async () => {
+    setupMocks({ assignmentsError: { message: "DB error" } });
+    const page = await AdminDashboardPage();
+    renderWithChakra(page as React.ReactElement);
+    // Page should still render (graceful degradation) but with 0 programs
+    expect(screen.getByText(/welcome back, ada/i)).toBeInTheDocument();
+    expect(screen.getByText(/0 programs/i)).toBeInTheDocument();
   });
 
   it("renders welcome message with advisor first name", async () => {

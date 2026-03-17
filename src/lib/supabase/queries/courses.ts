@@ -34,8 +34,12 @@ export async function listCourses({
     .range(from, to);
 
   if (search.trim()) {
+    // Escape backslashes and double quotes, then wrap in PostgREST double-quotes
+    // to prevent comma/dot injection in the .or() filter string.
+    const escaped = search.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+    const pattern = `%${escaped}%`;
     query = query.or(
-      `title.ilike.%${search}%,subject.ilike.%${search}%,number.ilike.%${search}%`
+      `title.ilike."${pattern}",subject.ilike."${pattern}",number.ilike."${pattern}"`
     );
   }
 
@@ -100,7 +104,7 @@ export async function addCourse(input: CourseInput): Promise<{ id: number }> {
     .insert({
       subject: input.subject.trim().toUpperCase(),
       number: input.number.trim(),
-      title: input.title,
+      title: input.title.trim(),
       credits: input.credits,
       description: input.description ?? null,
       prereq_text: input.prereq_text ?? null,
@@ -126,7 +130,7 @@ export async function updateCourse(
     .update({
       subject: input.subject.trim().toUpperCase(),
       number: input.number.trim(),
-      title: input.title,
+      title: input.title.trim(),
       credits: input.credits,
       description: input.description ?? null,
       prereq_text: input.prereq_text ?? null,

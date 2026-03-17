@@ -18,6 +18,7 @@ import {
   VStack,
 } from "@chakra-ui/react";
 import { ColorModeButton } from "@/components/ui/color-mode";
+import { LinkButton } from "@/components/ui/link-button";
 import {
   ProgressBar,
   ProgressLabel,
@@ -170,18 +171,17 @@ export default function LandingPage() {
             </HStack>
             <HStack gap="3">
               <ColorModeButton variant="ghost" size="sm" />
-              <Link href="/signin">
-                <Button
-                  variant="solid"
-                  colorPalette="green"
-                  size="sm"
-                  rounded="full"
-                  px="5"
-                  fontWeight="600"
-                >
-                  Sign In
-                </Button>
-              </Link>
+              <LinkButton
+                href="/signin"
+                variant="solid"
+                colorPalette="green"
+                size="sm"
+                rounded="full"
+                px="5"
+                fontWeight="600"
+              >
+                Sign In
+              </LinkButton>
             </HStack>
           </HStack>
         </Container>
