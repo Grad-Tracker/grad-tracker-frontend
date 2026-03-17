@@ -10,7 +10,7 @@ import {
   LuBookOpen,
   LuTarget,
   LuCalendar,
-  LuFileText,
+  // LuFileText,
   LuGraduationCap,
   LuSettings,
   LuLogOut,
@@ -22,7 +22,7 @@ const navItems = [
   { icon: LuBookOpen, label: "Courses", href: "/dashboard/courses" },
   { icon: LuTarget, label: "Requirements", href: "/dashboard/requirements" },
   { icon: LuCalendar, label: "Planner", href: "/dashboard/planner" },
-  { icon: LuFileText, label: "Reports", href: "/dashboard/reports" },
+  // { icon: LuFileText, label: "Reports", href: "/dashboard/reports" },
   { icon: LuSparkles, label: "AI Advisor", href: "/dashboard/ai-advisor" },
 ];
 
