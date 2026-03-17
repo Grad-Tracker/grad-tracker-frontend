@@ -1,6 +1,10 @@
 import type { Metadata } from "next";
 import { SharedPlansIndex } from "@/app/dashboard/planner/shared";
-import { fetchPublicSharedPlans } from "@/lib/supabase/queries/shared-plans";
+import { createClient } from "@/lib/supabase/server";
+import {
+  fetchPublicSharedPlans,
+  fetchStudentPlanSummariesForUser,
+} from "@/lib/supabase/queries/shared-plans";
 
 export const metadata: Metadata = {
   title: "Shared Degree Plans | Grad Tracker",
@@ -13,6 +17,20 @@ export const metadata: Metadata = {
 
 export default async function SharedPlansPage() {
   const plans = await fetchPublicSharedPlans();
+  let ownPlans = [] as Awaited<ReturnType<typeof fetchStudentPlanSummariesForUser>>;
 
-  return <SharedPlansIndex plans={plans} />;
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (user) {
+      ownPlans = await fetchStudentPlanSummariesForUser(supabase, user.id);
+    }
+  } catch {
+    ownPlans = [];
+  }
+
+  return <SharedPlansIndex plans={plans} ownPlans={ownPlans} />;
 }

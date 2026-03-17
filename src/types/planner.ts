@@ -39,6 +39,7 @@ export interface PlannedCourse {
 
 export interface PlannedCourseWithDetails extends PlannedCourse {
   course: Course;
+  requirementLabel?: string | null;
 }
 
 export interface RequirementBlockWithCourses {

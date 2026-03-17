@@ -15,6 +15,7 @@ import {
   VStack,
 } from "@chakra-ui/react";
 import {
+  LuArrowLeft,
   LuArrowRight,
   LuBookOpen,
   LuCalendar,
@@ -25,6 +26,7 @@ import {
 } from "react-icons/lu";
 import { compareTerms } from "@/types/planner";
 import ComparePlanPicker from "@/components/shared-plans/ComparePlanPicker";
+import SharedPlanComparePicker from "@/components/shared-plans/SharedPlanComparePicker";
 import type {
   ComparablePlanDetail,
   OwnPlanSummary,
@@ -111,6 +113,16 @@ function renderCourseList(
             {item.course.credits} cr
           </Badge>
         </HStack>
+        {item.requirementLabel ? (
+          <Badge
+            mt="3"
+            colorPalette={isSharedCourse ? "green" : "gray"}
+            variant={isSharedCourse ? "subtle" : "surface"}
+            alignSelf="start"
+          >
+            {item.requirementLabel}
+          </Badge>
+        ) : null}
       </Box>
     );
   });
@@ -436,7 +448,13 @@ export function SharedPlanUnavailable({
   );
 }
 
-export function SharedPlansIndex({ plans }: { plans: SharedPlanSummary[] }) {
+export function SharedPlansIndex({
+  plans,
+  ownPlans = [],
+}: {
+  plans: SharedPlanSummary[];
+  ownPlans?: OwnPlanSummary[];
+}) {
   return (
     <Box minH="100vh" bg="bg.subtle" px={{ base: "4", md: "8" }} py={{ base: "8", md: "10" }}>
       <Box maxW="7xl" mx="auto">
@@ -477,9 +495,14 @@ export function SharedPlansIndex({ plans }: { plans: SharedPlanSummary[] }) {
             </Text>
           </Stack>
 
-          <Button asChild variant="outline" borderRadius="xl">
-            <Link href="/dashboard/planner">Back to Planner</Link>
-          </Button>
+          <HStack gap="3" flexWrap="wrap" justify={{ base: "stretch", md: "end" }}>
+            {ownPlans.length > 0 ? (
+              <SharedPlanComparePicker sharedPlans={plans} ownPlans={ownPlans} />
+            ) : null}
+            <Button asChild variant="outline" borderRadius="xl">
+              <Link href="/dashboard/planner">Back to Planner</Link>
+            </Button>
+          </HStack>
         </Flex>
 
         {plans.length === 0 ? (
@@ -516,7 +539,7 @@ export function SharedPlansIndex({ plans }: { plans: SharedPlanSummary[] }) {
                 key={plan.shareToken}
                 borderRadius="2xl"
                 borderWidth="1px"
-                borderColor="border.subtle"
+                borderColor="green.800"
                 overflow="hidden"
               >
                 <Card.Body p="5">
@@ -524,7 +547,7 @@ export function SharedPlansIndex({ plans }: { plans: SharedPlanSummary[] }) {
                     <Stack gap="1.5">
                       <HStack gap="2" flexWrap="wrap">
                         <Badge colorPalette="green" variant="subtle">
-                          {plan.studentFirstName}'s plan
+                          Shared plan
                         </Badge>
                         {plan.programNames.length > 0 ? (
                           <Badge colorPalette="gray" variant="surface">
@@ -642,6 +665,12 @@ export function SharedPlanView({
                 </Stack>
 
                 <Stack gap="3" align={{ base: "stretch", lg: "end" }} w={{ base: "full", lg: "auto" }}>
+                  <Button asChild variant="outline" borderRadius="xl">
+                    <Link href="/shared/plans">
+                      <LuArrowLeft size={16} />
+                      Back to Shared Plans
+                    </Link>
+                  </Button>
                   {showPlannerCta ? (
                     ownPlans.length > 0 ? (
                       <ComparePlanPicker

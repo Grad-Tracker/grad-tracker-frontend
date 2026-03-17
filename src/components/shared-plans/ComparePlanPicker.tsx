@@ -25,16 +25,21 @@ import type { OwnPlanSummary } from "@/types/shared-plan";
 type ComparePlanPickerProps = {
   plans: OwnPlanSummary[];
   selectedPlanId?: number | null;
+  basePath?: string;
+  triggerLabel?: string;
 };
 
 export default function ComparePlanPicker({
   plans,
   selectedPlanId = null,
+  basePath,
+  triggerLabel = "Compare with My Plan",
 }: ComparePlanPickerProps) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
   const buildHref = (planId?: number | null) => {
+    const destination = basePath ?? pathname;
     const params = new URLSearchParams(searchParams.toString());
 
     if (planId) {
@@ -44,7 +49,7 @@ export default function ComparePlanPicker({
     }
 
     const query = params.toString();
-    return query ? `${pathname}?${query}` : pathname;
+    return query ? `${destination}?${query}` : destination;
   };
 
   return (
@@ -52,7 +57,7 @@ export default function ComparePlanPicker({
       <DialogRoot size="xl">
         <DialogTrigger asChild>
           <Button colorPalette="green" borderRadius="xl">
-            Compare with My Plan
+            {triggerLabel}
           </Button>
         </DialogTrigger>
 

@@ -98,6 +98,80 @@ async function createAvatarSignedUrl(path: string) {
   return data.signedUrl;
 }
 
+function filterLeafRequirementBlocks<T extends { name?: string | null }>(blocks: T[]) {
+  const names = blocks.map((block) => String(block.name ?? ""));
+
+  return blocks.filter((block) => {
+    const name = String(block.name ?? "");
+    if (!name) {
+      return false;
+    }
+
+    return !names.some((other) => other !== name && other.startsWith(`${name} - `));
+  });
+}
+
+function getChildRequirementBlocks<T extends { name?: string | null }>(blocks: T[], parentName: string) {
+  return blocks.filter((block) => {
+    const name = String(block.name ?? "");
+    return name !== parentName && name.startsWith(`${parentName} - `);
+  });
+}
+
+function categorizeRequirementBlock(blockName: string) {
+  const normalized = blockName.toLowerCase();
+
+  if (
+    normalized.includes("general education") ||
+    normalized.includes("skill") ||
+    normalized.includes("foreign language") ||
+    normalized.includes("ethnic diversity")
+  ) {
+    return "General Education" as const;
+  }
+
+  if (normalized.includes("elective")) return "Major Electives" as const;
+  if (normalized.includes("free")) return "Free Electives" as const;
+  return "Major Core" as const;
+}
+
+function computeRequirementBlockTotal(block: any) {
+  const creditsRequired = Number(block?.credits_required);
+  if (!Number.isNaN(creditsRequired) && creditsRequired > 0) {
+    return creditsRequired;
+  }
+
+  const courseCredits = (block?.program_requirement_courses ?? [])
+    .map((row: any) => Number(row?.courses?.credits ?? 0))
+    .filter((credits: number) => credits > 0);
+
+  if (courseCredits.length === 0) {
+    return 0;
+  }
+
+  const rule = String(block?.rule ?? "").toUpperCase();
+  const nRequired = Number(block?.n_required);
+
+  if (rule === "N_OF" && Number.isFinite(nRequired) && nRequired > 0) {
+    if (nRequired >= 6) {
+      return nRequired;
+    }
+
+    const standardCredits = courseCredits.filter((credits: number) => credits >= 3);
+    const representativeCredits =
+      standardCredits.length > 0
+        ? Math.round(
+            standardCredits.reduce((sum: number, credits: number) => sum + credits, 0) /
+              standardCredits.length
+          )
+        : Math.max(...courseCredits);
+
+    return nRequired * representativeCredits;
+  }
+
+  return courseCredits.reduce((sum: number, credits: number) => sum + credits, 0);
+}
+
 /**
  * Resolves the student's major program and fetches its requirement blocks.
  * Extracted to module level to reduce function nesting depth.
@@ -146,6 +220,8 @@ async function resolveMajorAndBlocks(
       `
         id,
         name,
+        rule,
+        n_required,
         credits_required,
         program_requirement_courses (
           course_id,
@@ -213,14 +289,12 @@ export default function Dashboard() {
     remainingCredits: number;
   };
 
-  const TOTAL_REQUIRED_CREDITS = 120;
-
   const [progress, setProgress] = React.useState<ProgressSummary>({
     overall: 0,
-    totalCredits: TOTAL_REQUIRED_CREDITS,
+    totalCredits: 0,
     completedCredits: 0,
     inProgressCredits: 0,
-    remainingCredits: TOTAL_REQUIRED_CREDITS,
+    remainingCredits: 0,
   });
 
   const [loadingProgress, setLoadingProgress] = React.useState(true);
@@ -397,15 +471,25 @@ export default function Dashboard() {
 
         const plannedPromise = supabase
           .from(DB_TABLES.studentPlannedCourses)
-          .select(`status, courses:course_id(subject, number, title, credits)`)
+          .select(`course_id, status, courses:course_id(subject, number, title, credits)`)
           .eq("student_id", studentId);
+
+        const genEdBucketsPromise = supabase
+          .from(DB_TABLES.genEdBuckets)
+          .select("id, credits_required");
+
+        const genEdMappingsPromise = supabase
+          .from(DB_TABLES.genEdBucketCourses)
+          .select(`bucket_id, course_id, courses:course_id(credits)`);
 
         const blocksPromise = resolveMajorAndBlocks(supabase, programsPromise);
 
-        const [completedResult, blocksResult, plannedResult] = await Promise.all([
+        const [completedResult, blocksResult, plannedResult, genEdBucketsResult, genEdMappingsResult] = await Promise.all([
           completedPromise,
           blocksPromise,
           plannedPromise,
+          genEdBucketsPromise,
+          genEdMappingsPromise,
         ]);
 
         const majorName = (blocksResult as any).majorName ?? "Unknown";
@@ -419,12 +503,6 @@ export default function Dashboard() {
             .map((r: any) => Number(r?.course_id))
             .filter((x: number) => !Number.isNaN(x))
         );
-
-        const completedCredits =
-          (completedCourseRows ?? []).reduce((sum: number, r: any) => {
-            const credits = Number(r?.courses?.credits ?? 0);
-            return sum + credits;
-          }, 0);
 
         const plannedRows = (plannedResult as any)?.data ?? [];
 
@@ -456,30 +534,29 @@ export default function Dashboard() {
         setCurrentCourses(mapped);
         setLoadingCourses(false);
 
-        const inProgressCredits =
-          (plannedRows ?? []).reduce((sum: number, r: any) => {
-            const s = String(r?.status ?? "").toLowerCase();
-            if (s !== "enrolled" && s !== "waitlist") return sum;
-            return sum + Number(r?.courses?.credits ?? 0);
-          }, 0);
+        const inProgressCourseIds = new Set<number>(
+          (plannedRows ?? [])
+            .filter((r: any) => {
+              const s = String(r?.status ?? "").toLowerCase();
+              return s === "enrolled" || s === "waitlist";
+            })
+            .map((r: any) => Number(r?.course_id))
+            .filter((x: number) => !Number.isNaN(x))
+        );
 
         // Requirements
         if (!majorProgramId || (blocksResult as any)?.error) {
           setRequirements(DEFAULT_REQUIREMENTS);
+          setProgress({
+            overall: 0,
+            totalCredits: 120,
+            completedCredits: 0,
+            inProgressCredits: 0,
+            remainingCredits: 120,
+          });
           setLoadingRequirements(false);
         } else {
           const blocks = ((blocksResult as any)?.data ?? []) as any[];
-
-          const BLOCK_TO_BUCKET: Record<string, RequirementBar["name"]> = {
-            "Required Mathematics Course": "General Education",
-            "Required Science Course": "General Education",
-
-            "Required Major Courses": "Major Core",
-            "Required Major Courses - Computer Science Courses": "Major Core",
-            "Required Major Courses - Required Computer Science Breadth Requirement": "Major Core",
-
-            "Required Major Courses - Elective Major Courses": "Major Electives",
-          };
 
           const BUCKET_COLOR: Record<RequirementBar["name"], RequirementBar["color"]> = {
             "General Education": "green",
@@ -498,19 +575,16 @@ export default function Dashboard() {
             "Free Electives": { completed: 0, total: 0, color: "orange" },
           };
 
-          for (const b of blocks) {
+          const leafBlocks = filterLeafRequirementBlocks(blocks);
+
+          for (const b of leafBlocks) {
             const blockName = String(b?.name ?? "");
-            const bucket: RequirementBar["name"] =
-              BLOCK_TO_BUCKET[blockName] ?? "Free Electives";
+            const bucket: RequirementBar["name"] = categorizeRequirementBlock(blockName);
             const color = BUCKET_COLOR[bucket];
 
             const blockCourseRows = b?.program_requirement_courses ?? [];
 
-            const fallbackTotal = blockCourseRows.reduce((sum: number, r: any) => {
-              return sum + Number(r?.courses?.credits ?? 0);
-            }, 0);
-
-            const total = Number(b?.credits_required ?? fallbackTotal ?? 0);
+            const total = computeRequirementBlockTotal(b);
 
             const completed = blockCourseRows.reduce((sum: number, r: any) => {
               const cid = Number(r?.course_id);
@@ -523,6 +597,83 @@ export default function Dashboard() {
             agg[bucket].color = color;
           }
 
+          const genEdBuckets = (genEdBucketsResult as any)?.data ?? [];
+          const genEdMappings = (genEdMappingsResult as any)?.data ?? [];
+
+          const genEdTotals = genEdBuckets.reduce(
+            (
+              sum: { total: number; completed: number; inProgress: number },
+              bucket: any
+            ) => {
+              const required = Number(bucket?.credits_required ?? 0);
+              const bucketCourses = genEdMappings.filter(
+                (mapping: any) => Number(mapping?.bucket_id) === Number(bucket?.id)
+              );
+              const completed = Math.min(
+                required,
+                bucketCourses.reduce((bucketSum: number, mapping: any) => {
+                  const courseId = Number(mapping?.course_id);
+                  if (!completedCourseIds.has(courseId)) return bucketSum;
+                  return bucketSum + Number(mapping?.courses?.credits ?? 0);
+                }, 0)
+              );
+              const inProgress = Math.min(
+                Math.max(required - completed, 0),
+                bucketCourses.reduce((bucketSum: number, mapping: any) => {
+                  const courseId = Number(mapping?.course_id);
+                  if (!inProgressCourseIds.has(courseId)) return bucketSum;
+                  return bucketSum + Number(mapping?.courses?.credits ?? 0);
+                }, 0)
+              );
+
+              return {
+                total: sum.total + required,
+                completed: sum.completed + completed,
+                inProgress: sum.inProgress + inProgress,
+              };
+            },
+            { total: 0, completed: 0, inProgress: 0 }
+          );
+
+          const GENERAL_ED_REQUIREMENT_TOTAL = 55;
+          agg["General Education"].total = Math.max(
+            GENERAL_ED_REQUIREMENT_TOTAL,
+            Math.round(agg["General Education"].total + genEdTotals.total)
+          );
+          agg["General Education"].completed = Math.round(
+            agg["General Education"].completed + genEdTotals.completed
+          );
+
+          const coreParentBlocks = blocks.filter((block: any) => {
+            const blockName = String(block?.name ?? "");
+            return (
+              categorizeRequirementBlock(blockName) === "Major Core" &&
+              getChildRequirementBlocks(blocks, blockName).length > 0 &&
+              computeRequirementBlockTotal(block) > 0
+            );
+          });
+
+          for (const parentBlock of coreParentBlocks) {
+            const parentName = String(parentBlock?.name ?? "");
+            const childBlocks = getChildRequirementBlocks(blocks, parentName);
+            const subtractiveChildTotal = childBlocks.reduce((sum: number, childBlock: any) => {
+              const childBucket = categorizeRequirementBlock(String(childBlock?.name ?? ""));
+              if (childBucket === "Major Electives" || childBucket === "Free Electives") {
+                return sum + computeRequirementBlockTotal(childBlock);
+              }
+              return sum;
+            }, 0);
+
+            const adjustedCoreTotal = Math.max(
+              computeRequirementBlockTotal(parentBlock) - subtractiveChildTotal,
+              0
+            );
+
+            if (adjustedCoreTotal > 0) {
+              agg["Major Core"].total = adjustedCoreTotal;
+            }
+          }
+
           const bars: RequirementBar[] = Object.entries(agg).map(([name, v]) => {
             const total = Math.max(0, Math.round(v.total));
             const completed = Math.min(total, Math.round(v.completed));
@@ -532,20 +683,40 @@ export default function Dashboard() {
 
           setRequirements(bars);
           setLoadingRequirements(false);
+        
+          const totalCredits = 120;
+          const completedCredits = bars.reduce((sum, bar) => sum + bar.completed, 0);
+
+          const majorInProgressCredits = leafBlocks.reduce((sum: number, block: any) => {
+            const blockCourseRows = block?.program_requirement_courses ?? [];
+            const total = computeRequirementBlockTotal(block);
+            const completed = blockCourseRows.reduce((rowSum: number, row: any) => {
+              const courseId = Number(row?.course_id);
+              if (!completedCourseIds.has(courseId)) return rowSum;
+              return rowSum + Number(row?.courses?.credits ?? 0);
+            }, 0);
+            const inProgress = blockCourseRows.reduce((rowSum: number, row: any) => {
+              const courseId = Number(row?.course_id);
+              if (!inProgressCourseIds.has(courseId)) return rowSum;
+              return rowSum + Number(row?.courses?.credits ?? 0);
+            }, 0);
+
+            return sum + Math.min(Math.max(total - completed, 0), inProgress);
+          }, 0);
+
+          const inProgressCredits = Math.round(genEdTotals.inProgress + majorInProgressCredits);
+          const remainingCredits = Math.max(totalCredits - completedCredits, 0);
+          const overall =
+            totalCredits === 0 ? 0 : Math.min(100, Math.round((completedCredits / totalCredits) * 100));
+
+          setProgress({
+            overall,
+            totalCredits,
+            completedCredits,
+            inProgressCredits,
+            remainingCredits,
+          });
         }
-
-        // Progress summary
-        const totalCredits = TOTAL_REQUIRED_CREDITS;
-        const remainingCredits = Math.max(totalCredits - completedCredits, 0);
-        const overall = Math.min(100, Math.round((completedCredits / totalCredits) * 100));
-
-        setProgress({
-          overall,
-          totalCredits,
-          completedCredits,
-          inProgressCredits,
-          remainingCredits,
-        });
 
         setLoadingProgress(false);
 
