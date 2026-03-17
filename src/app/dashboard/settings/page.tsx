@@ -491,90 +491,72 @@ export default function SettingsPage() {
                 </Link>
               </Card.Body>
             </Card.Root>
+            {/* Danger Zone */}
+            <Card.Root bg="bg" borderRadius="xl" borderWidth="1px" borderColor="red.muted">
+              <Card.Header p="5" pb="3">
+                <Heading size="md" fontWeight="600" color="red.fg">
+                  Danger Zone
+                </Heading>
+                <Text fontSize="sm" color="fg.muted" mt="1">
+                  Permanently delete all your course history, planned courses, and program selections.
+                </Text>
+              </Card.Header>
+              <Card.Body p="5" pt="2">
+                {!resetConfirming ? (
+                  <Button
+                    variant="outline"
+                    colorPalette="red"
+                    alignSelf="flex-start"
+                    borderRadius="lg"
+                    onClick={() => setResetConfirming(true)}
+                  >
+                    <Icon mr="2">
+                      <LuTrash2 />
+                    </Icon>
+                    Reset All Progress
+                  </Button>
+                ) : (
+                  <Stack gap="2" p="3" bg="red.subtle" borderWidth="1px" borderColor="red.muted" borderRadius="lg" maxW="sm">
+                    <HStack gap="2">
+                      <Icon color="red.fg" flexShrink={0}>
+                        <LuTriangleAlert />
+                      </Icon>
+                      <Text fontSize="xs" fontWeight="500" color="red.fg">
+                        This will delete all your progress. Are you sure?
+                      </Text>
+                    </HStack>
+                    <HStack gap="2">
+                      <Button
+                        size="xs"
+                        colorPalette="red"
+                        loading={resetting}
+                        onClick={handleResetProgress}
+                        borderRadius="md"
+                        flex="1"
+                      >
+                        Yes, Reset
+                      </Button>
+                      <Button
+                        size="xs"
+                        variant="ghost"
+                        onClick={() => setResetConfirming(false)}
+                        borderRadius="md"
+                        flex="1"
+                      >
+                        Cancel
+                      </Button>
+                    </HStack>
+                  </Stack>
+                )}
+              </Card.Body>
+            </Card.Root>
           </Stack>
         </Tabs.Content>
 
-      {/* Password */}
-      <Card.Root bg="bg" borderRadius="xl" borderWidth="1px" borderColor="border.subtle">
-        <Card.Header p="5" pb="3">
-          <Heading size="md" fontWeight="600">
-            Password
-          </Heading>
-          <Text fontSize="sm" color="fg.muted" mt="1">
-            You'll be guided through a secure password reset flow.
-          </Text>
-        </Card.Header>
-        <Card.Body p="5" pt="2">
-          <Link href="/reset-password">
-            <Button colorPalette="green" alignSelf="flex-start" borderRadius="lg">
-              <Icon mr="2">
-                <LuLock />
-              </Icon>
-              Reset Password
-            </Button>
-          </Link>
-        </Card.Body>
-      </Card.Root>
-
-      {/* Danger Zone */}
-      <Card.Root bg="bg" borderRadius="xl" borderWidth="1px" borderColor="red.muted">
-        <Card.Header p="5" pb="3">
-          <Heading size="md" fontWeight="600" color="red.fg">
-            Danger Zone
-          </Heading>
-          <Text fontSize="sm" color="fg.muted" mt="1">
-            Permanently delete all your course history, planned courses, and program selections.
-          </Text>
-        </Card.Header>
-        <Card.Body p="5" pt="2">
-          {!resetConfirming ? (
-            <Button
-              variant="outline"
-              colorPalette="red"
-              alignSelf="flex-start"
-              borderRadius="lg"
-              onClick={() => setResetConfirming(true)}
-            >
-              <Icon mr="2">
-                <LuTrash2 />
-              </Icon>
-              Reset All Progress
-            </Button>
-          ) : (
-            <Stack gap="2" p="3" bg="red.subtle" borderWidth="1px" borderColor="red.muted" borderRadius="lg" maxW="sm">
-              <HStack gap="2">
-                <Icon color="red.fg" flexShrink={0}>
-                  <LuTriangleAlert />
-                </Icon>
-                <Text fontSize="xs" fontWeight="500" color="red.fg">
-                  This will delete all your progress. Are you sure?
-                </Text>
-              </HStack>
-              <HStack gap="2">
-                <Button
-                  size="xs"
-                  colorPalette="red"
-                  loading={resetting}
-                  onClick={handleResetProgress}
-                  borderRadius="md"
-                  flex="1"
-                >
-                  Yes, Reset
-                </Button>
-                <Button
-                  size="xs"
-                  variant="ghost"
-                  onClick={() => setResetConfirming(false)}
-                  borderRadius="md"
-                  flex="1"
-                >
-                  Cancel
-                </Button>
-              </HStack>
-            </Stack>
-          )}
-        </Card.Body>
-      </Card.Root>
+        <Tabs.Content value="class-history">
+          <ClassHistoryTab />
+        </Tabs.Content>
+      </Tabs.Root>
     </Stack>
   );
 }
