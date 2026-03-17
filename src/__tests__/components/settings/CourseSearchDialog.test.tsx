@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import { fireEvent, waitFor } from "@testing-library/react";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { fireEvent, waitFor, cleanup, screen } from "@testing-library/react";
 import { renderWithChakra } from "../../helpers/mocks";
 import { CourseSearchDialog } from "@/components/settings/CourseSearchDialog";
 
@@ -20,6 +20,10 @@ describe("CourseSearchDialog", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+  });
+
+  afterEach(() => {
+    cleanup();
   });
 
   it("does not render content when closed", () => {
@@ -48,9 +52,8 @@ describe("CourseSearchDialog", () => {
       <CourseSearchDialog open={true} onClose={onClose} onCourseSelected={onCourseSelected} />
     );
 
-    const input = document.querySelector("input[placeholder*='Search']");
-    expect(input).not.toBeNull();
-    fireEvent.change(input!, { target: { value: "MATH" } });
+    const input = screen.getByPlaceholderText(/Search/i);
+    fireEvent.change(input, { target: { value: "MATH" } });
 
     await waitFor(
       () => {
@@ -74,8 +77,8 @@ describe("CourseSearchDialog", () => {
       <CourseSearchDialog open={true} onClose={onClose} onCourseSelected={onCourseSelected} />
     );
 
-    const input = document.querySelector("input[placeholder*='Search']");
-    fireEvent.change(input!, { target: { value: "MATH" } });
+    const input = screen.getByPlaceholderText(/Search/i);
+    fireEvent.change(input, { target: { value: "MATH" } });
 
     await waitFor(
       () => {
@@ -127,12 +130,11 @@ describe("CourseSearchDialog", () => {
     const manualLinks = getAllByText(/Add it manually/);
     fireEvent.click(manualLinks[0]);
 
-    // Fill and submit the form
-    const inputs = document.querySelectorAll(".chakra-dialog__body input");
-    fireEvent.change(inputs[0], { target: { value: "ART" } });
-    fireEvent.change(inputs[1], { target: { value: "200" } });
-    fireEvent.change(inputs[2], { target: { value: "Drawing" } });
-    fireEvent.change(inputs[3], { target: { value: "3" } });
+    // Fill form fields by placeholder text
+    fireEvent.change(screen.getByPlaceholderText("e.g. MATH"), { target: { value: "ART" } });
+    fireEvent.change(screen.getByPlaceholderText("e.g. 101"), { target: { value: "200" } });
+    fireEvent.change(screen.getByPlaceholderText("e.g. Calculus I"), { target: { value: "Drawing" } });
+    fireEvent.change(screen.getByPlaceholderText("e.g. 3"), { target: { value: "3" } });
 
     const addButtons = getAllByText("Add Course");
     fireEvent.click(addButtons[0]);
@@ -144,18 +146,23 @@ describe("CourseSearchDialog", () => {
   });
 
   it("does not search for queries shorter than 2 chars", async () => {
+    vi.useFakeTimers();
+
     renderWithChakra(
       <CourseSearchDialog open={true} onClose={onClose} onCourseSelected={onCourseSelected} />
     );
 
-    const input = document.querySelector("input[placeholder*='Search']");
-    fireEvent.change(input!, { target: { value: "a" } });
+    const input = screen.getByPlaceholderText(/Search/i);
+    fireEvent.change(input, { target: { value: "a" } });
 
-    // Wait a bit for debounce
-    await new Promise((r) => setTimeout(r, 500));
+    // Advance past the debounce timeout
+    vi.advanceTimersByTime(500);
+    await Promise.resolve();
 
     // searchCourses should NOT have been called (query too short)
     expect(searchCourses).not.toHaveBeenCalled();
+
+    vi.useRealTimers();
   });
 
   it("shows no results message for query with no matches", async () => {
@@ -165,8 +172,8 @@ describe("CourseSearchDialog", () => {
       <CourseSearchDialog open={true} onClose={onClose} onCourseSelected={onCourseSelected} />
     );
 
-    const input = document.querySelector("input[placeholder*='Search']");
-    fireEvent.change(input!, { target: { value: "ZZZZZ" } });
+    const input = screen.getByPlaceholderText(/Search/i);
+    fireEvent.change(input, { target: { value: "ZZZZZ" } });
 
     await waitFor(
       () => {

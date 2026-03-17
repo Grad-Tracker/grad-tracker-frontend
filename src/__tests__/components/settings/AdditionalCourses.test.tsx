@@ -44,12 +44,14 @@ describe("AdditionalCourses", () => {
       <AdditionalCourses courses={mockCourses} onDelete={onDelete} onCourseSelected={vi.fn()} />
     );
 
-    // Find delete buttons (ghost variant with red color)
-    const deleteButtons = container.querySelectorAll("button[data-variant='ghost']");
-    if (deleteButtons.length > 0) {
-      fireEvent.click(deleteButtons[0]);
-      expect(onDelete).toHaveBeenCalledWith(50);
-    }
+    // Find all buttons, then filter to the delete buttons (not the "Add Course" button)
+    const allButtons = container.querySelectorAll("button");
+    const deleteButtons = Array.from(allButtons).filter(
+      (btn) => !btn.textContent?.includes("Add Course")
+    );
+    expect(deleteButtons.length).toBeGreaterThan(0);
+    fireEvent.click(deleteButtons[0]);
+    expect(onDelete).toHaveBeenCalledWith(50);
   });
 
   it("opens search dialog when Add Course is clicked", () => {

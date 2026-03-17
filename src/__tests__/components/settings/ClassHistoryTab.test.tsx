@@ -152,7 +152,7 @@ describe("ClassHistoryTab", () => {
     vi.mocked(deleteCourseHistory).mockResolvedValue(undefined);
   });
 
-  it("shows loading spinner initially then loads data", async () => {
+  it("renders gen-ed checklist after loading", async () => {
     const { getByTestId } = renderWithChakra(<ClassHistoryTab />);
 
     await waitFor(() => {

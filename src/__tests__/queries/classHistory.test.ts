@@ -1,7 +1,22 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-function createChainMock(overrides: Record<string, unknown> = {}) {
-  const chain: Record<string, any> = {};
+interface QueryChainMock {
+  select: ReturnType<typeof vi.fn>;
+  insert: ReturnType<typeof vi.fn>;
+  delete: ReturnType<typeof vi.fn>;
+  eq: ReturnType<typeof vi.fn>;
+  in: ReturnType<typeof vi.fn>;
+  or: ReturnType<typeof vi.fn>;
+  order: ReturnType<typeof vi.fn>;
+  limit: ReturnType<typeof vi.fn>;
+  single: ReturnType<typeof vi.fn>;
+  maybeSingle: ReturnType<typeof vi.fn>;
+  then: ReturnType<typeof vi.fn>;
+  [key: string]: unknown;
+}
+
+function createChainMock(overrides: Record<string, unknown> = {}): QueryChainMock {
+  const chain = {} as QueryChainMock;
   chain.select = vi.fn().mockReturnValue(chain);
   chain.insert = vi.fn().mockReturnValue(chain);
   chain.delete = vi.fn().mockReturnValue(chain);
@@ -13,7 +28,7 @@ function createChainMock(overrides: Record<string, unknown> = {}) {
   chain.single = vi.fn().mockResolvedValue({ data: null, error: null });
   chain.maybeSingle = vi.fn().mockResolvedValue({ data: null, error: null });
   chain.then = vi.fn().mockImplementation((resolve: (v: unknown) => void) =>
-    resolve({ data: [], error: null })
+    Promise.resolve({ data: [], error: null }).then(resolve)
   );
   Object.assign(chain, overrides);
   return chain;
@@ -83,7 +98,6 @@ describe("classHistory queries", () => {
     });
 
     it("returns null when student has no major program", async () => {
-      let callCount = 0;
       const mockFrom = vi.fn().mockImplementation((table: string) => {
         if (table === "student_programs") {
           const chain = createChainMock();
@@ -460,6 +474,20 @@ describe("classHistory queries", () => {
       await searchCourses("100%");
       expect(chain.or).toHaveBeenCalledWith(
         expect.stringContaining("100\\%")
+      );
+    });
+
+    it("escapes underscore wildcards in query", async () => {
+      const chain = createChainMock();
+      chain.then = vi.fn().mockImplementation((resolve: (v: unknown) => void) =>
+        Promise.resolve({ data: [], error: null }).then(resolve)
+      );
+      const mockFrom = vi.fn().mockReturnValue(chain);
+      vi.mocked(createClient).mockReturnValue({ from: mockFrom } as never);
+
+      await searchCourses("100_");
+      expect(chain.or).toHaveBeenCalledWith(
+        expect.stringContaining("100\\_")
       );
     });
   });

@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import { fireEvent, waitFor } from "@testing-library/react";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { fireEvent, waitFor, cleanup } from "@testing-library/react";
 import { renderWithChakra } from "../../helpers/mocks";
 import { ManualCourseForm } from "@/components/settings/ManualCourseForm";
 
@@ -20,6 +20,10 @@ describe("ManualCourseForm", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+  });
+
+  afterEach(() => {
+    cleanup();
   });
 
   it("renders all form fields", () => {

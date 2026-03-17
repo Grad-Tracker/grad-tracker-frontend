@@ -62,25 +62,13 @@ describe("GenEdChecklist", () => {
     expect(checkedBoxes.length).toBeGreaterThanOrEqual(1);
   });
 
-  it("calls onToggle when checkbox is toggled", async () => {
-    const onToggle = vi.fn();
+  it("renders the correct number of checkboxes for all courses", () => {
     const { container } = renderWithChakra(
-      <GenEdChecklist buckets={mockBuckets} completedCourseIds={new Set()} onToggle={onToggle} />
+      <GenEdChecklist buckets={mockBuckets} completedCourseIds={new Set()} onToggle={vi.fn()} />
     );
 
-    // Chakra v3 uses Ark UI state machine — simulate by clicking the root element
-    // and dispatching a change event on the hidden input
-    const input = container.querySelector("input[type='checkbox']") as HTMLInputElement;
-    expect(input).not.toBeNull();
-    // Simulate a real checkbox toggle
-    Object.defineProperty(input, "checked", { value: true, writable: true });
-    fireEvent.click(input);
-    fireEvent.change(input, { target: { checked: true } });
-
-    // If Ark state machine doesn't fire in jsdom, the toggle won't be called.
-    // This is a known limitation of testing Chakra v3 Ark-based components.
-    // Verify the component at least renders the right number of checkboxes.
+    // 3 courses in bucket 1 + 1 course in bucket 2 = 4 checkboxes
     const allInputs = container.querySelectorAll("input[type='checkbox']");
-    expect(allInputs.length).toBe(4); // 3 courses in bucket 1 + 1 course in bucket 2
+    expect(allInputs.length).toBe(4);
   });
 });
