@@ -117,7 +117,6 @@ export default function DashboardSidebar() {
         {/* Sign Out */}
         <Box
           as="button"
-          type="button"
           aria-label="Sign out"
           px="2.5"
           py="1.5"
@@ -213,7 +212,6 @@ export default function DashboardSidebar() {
 
         <HStack
           as="button"
-          type="button"
           aria-label="Sign out"
           px="4"
           py="2.5"
