@@ -11,7 +11,7 @@ import {
   VStack,
   Button,
 } from "@chakra-ui/react";
-import { LuPlus, LuSparkles, LuLayoutGrid } from "react-icons/lu";
+import { LuPlus, LuLayoutGrid } from "react-icons/lu";
 import type { PlanWithMeta } from "@/types/planner";
 import PlanCard from "./PlanCard";
 
@@ -153,7 +153,7 @@ export default function PlansHub({
             justifyContent="center"
             mb="6"
           >
-            <LuSparkles size={40} color="var(--chakra-colors-green-fg)" />
+            <LuLayoutGrid size={40} color="var(--chakra-colors-green-fg)" />
           </Box>
           <Heading
             size="lg"

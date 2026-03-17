@@ -1,3 +1,0 @@
-display_name: GitHub Activity Report
-short_description: Generate a sprint GitHub PR and commit activity report for a student.
-default_prompt: Generate a sprint GitHub activity report using this skill.

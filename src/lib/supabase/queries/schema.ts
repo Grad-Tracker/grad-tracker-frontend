@@ -29,6 +29,7 @@ export const STUDENT_COLUMNS = {
   hasCompletedOnboarding: "has_completed_onboarding",
   expectedGraduationSemester: "expected_graduation_semester",
   expectedGraduationYear: "expected_graduation_year",
+  breadthPackageId: "breadth_package_id",
 } as const;
 
 export const PLANNED_COURSE_STATUS = {
