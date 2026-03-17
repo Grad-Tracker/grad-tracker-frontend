@@ -9,7 +9,7 @@ import type {
 } from "@/types/planner";
 import type { Course } from "@/types/course";
 import type { GenEdBucketWithCourses, ScheduledSemester } from "@/types/auto-generate";
-import { DB_TABLES, PLANNED_COURSE_STATUS } from "./schema";
+import { DB_TABLES, PLANNED_COURSE_STATUS, STUDENT_COLUMNS } from "./schema";
 
 // ── Plan CRUD ────────────────────────────────────────────
 
@@ -451,6 +451,33 @@ export async function fetchCompletedCourseIds(
 
   if (error) throw error;
   return new Set((data ?? []).map((r: any) => Number(r.course_id)));
+}
+
+export async function fetchBreadthPackageId(
+  studentId: number
+): Promise<string | null> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from(DB_TABLES.students)
+    .select(STUDENT_COLUMNS.breadthPackageId)
+    .eq(STUDENT_COLUMNS.id, studentId)
+    .maybeSingle();
+
+  if (error) throw error;
+  return data?.[STUDENT_COLUMNS.breadthPackageId] ?? null;
+}
+
+export async function updateBreadthPackageId(
+  studentId: number,
+  packageId: string | null
+): Promise<void> {
+  const supabase = createClient();
+  const { error } = await supabase
+    .from(DB_TABLES.students)
+    .update({ [STUDENT_COLUMNS.breadthPackageId]: packageId })
+    .eq(STUDENT_COLUMNS.id, studentId);
+
+  if (error) throw error;
 }
 
 // ── Auto-generate helpers ────────────────────────────────
