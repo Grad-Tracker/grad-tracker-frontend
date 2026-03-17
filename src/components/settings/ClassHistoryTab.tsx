@@ -98,6 +98,11 @@ export function ClassHistoryTab() {
     async (courseId: number, checked: boolean) => {
       if (!studentId || !defaultTermId) return;
 
+      // Capture existing row before optimistic update (for delete path)
+      const existingRow = !checked
+        ? history.find((h) => h.course_id === courseId)
+        : undefined;
+
       // Optimistic update
       if (checked) {
         setHistory((prev) => [
@@ -124,7 +129,6 @@ export function ClassHistoryTab() {
           await insertCourseHistory(studentId, courseId, defaultTermId);
         } else {
           // Use the actual term_id from the history row (may differ from defaultTermId)
-          const existingRow = history.find((h) => h.course_id === courseId);
           const termId = existingRow?.term_id ?? defaultTermId;
           await deleteCourseHistory(studentId, courseId, termId);
         }

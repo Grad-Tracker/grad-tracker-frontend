@@ -167,7 +167,8 @@ export async function deleteCourseHistory(
 export async function searchCourses(query: string): Promise<CourseRow[]> {
   if (query.length < 2) return [];
   const supabase = createClient();
-  const pattern = `%${query}%`;
+  const escaped = query.replace(/[%_]/g, "\\$&");
+  const pattern = `%${escaped}%`;
 
   const { data, error } = await supabase
     .from(DB_TABLES.courses)
