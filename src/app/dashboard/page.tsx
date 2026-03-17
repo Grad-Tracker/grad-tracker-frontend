@@ -684,7 +684,7 @@ export default function Dashboard() {
           setRequirements(bars);
           setLoadingRequirements(false);
         
-          const totalCredits = 120;
+          const totalCredits: number = 120;
           const completedCredits = bars.reduce((sum, bar) => sum + bar.completed, 0);
 
           const majorInProgressCredits = leafBlocks.reduce((sum: number, block: any) => {
