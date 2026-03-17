@@ -65,7 +65,7 @@ vi.mock("@/components/ui/native-select", () => ({
   NativeSelectField: ({ children, ...props }: any) => <select {...props}>{children}</select>,
 }));
 
-import ProgramAdminDetailClient from "@/app/admin/programs/[programId]/ProgramAdminDetailClient";
+import ProgramAdminDetailClient from "@/app/admin/(protected)/programs/[programId]/ProgramAdminDetailClient";
 
 function renderWithChakra(ui: React.ReactElement) {
   return render(<ChakraProvider value={defaultSystem}>{ui}</ChakraProvider>);

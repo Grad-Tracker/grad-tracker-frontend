@@ -22,7 +22,7 @@ vi.mock("@/lib/supabase/server", () => ({
   createClient: mockedCreateClient,
 }));
 
-import AdminProgramsPage from "@/app/admin/programs/page";
+import AdminProgramsPage from "@/app/admin/(protected)/programs/page";
 
 function makeAwaitable(result: any) {
   return {

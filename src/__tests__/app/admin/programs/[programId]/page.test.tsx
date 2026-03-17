@@ -17,7 +17,7 @@ vi.mock("@/lib/supabase/server", () => ({
   createClient: mockedCreateClient,
 }));
 
-vi.mock("@/app/admin/programs/[programId]/ProgramAdminDetailClient", () => ({
+vi.mock("@/app/admin/(protected)/programs/[programId]/ProgramAdminDetailClient", () => ({
   default: (props: any) => (
     <div>
       PROGRAM={props.initialProgram.name} BLOCKS={props.initialBlocks.length} FIRST=
@@ -26,7 +26,7 @@ vi.mock("@/app/admin/programs/[programId]/ProgramAdminDetailClient", () => ({
   ),
 }));
 
-import AdminProgramDetailPage from "@/app/admin/programs/[programId]/page";
+import AdminProgramDetailPage from "@/app/admin/(protected)/programs/[programId]/page";
 
 function makeAwaitable(result: any) {
   return {
