@@ -47,7 +47,7 @@ vi.mock("@/components/ui/tooltip", () => ({
   ),
 }));
 
-import GenEdAdminClient from "@/app/admin/gen-ed/GenEdAdminClient";
+import GenEdAdminClient from "@/app/admin/(protected)/gen-ed/GenEdAdminClient";
 
 function renderWithChakra(ui: React.ReactElement) {
   return render(<ChakraProvider value={defaultSystem}>{ui}</ChakraProvider>);
@@ -280,6 +280,27 @@ describe("GenEdAdminClient", () => {
     expect(await screen.findByText("Social Sciences")).toBeInTheDocument();
   });
 
+  it("shows validation error when saving a bucket with an empty name", async () => {
+    renderWithChakra(<GenEdAdminClient initialBuckets={initialBuckets} />);
+
+    fireEvent.click(screen.getByRole("button", { name: /add bucket/i }));
+    fireEvent.change(screen.getByLabelText("Bucket Name"), {
+      target: { value: "   " },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /save bucket/i }));
+
+    await waitFor(() => {
+      expect(mockToaster.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: "Missing bucket name",
+          type: "error",
+        })
+      );
+    });
+    expect(bucketInsertSpy).not.toHaveBeenCalled();
+    expect(screen.getByLabelText("Bucket Name")).toBeInTheDocument();
+  });
+
   it("renames a bucket by calling update", async () => {
     renderWithChakra(<GenEdAdminClient initialBuckets={initialBuckets} />);
 
@@ -292,6 +313,24 @@ describe("GenEdAdminClient", () => {
     await waitFor(() => {
       expect(screen.getByText("Arts and Humanities")).toBeInTheDocument();
     });
+  });
+
+  it("resets the bucket dialog state when cancel is clicked", async () => {
+    renderWithChakra(<GenEdAdminClient initialBuckets={initialBuckets} />);
+
+    fireEvent.click(screen.getAllByRole("button", { name: /^edit$/i })[0]);
+    expect(screen.getByDisplayValue("Humanities")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: /^cancel$/i }));
+    await waitFor(() => {
+      expect(screen.queryByLabelText("Bucket Name")).not.toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /add bucket/i }));
+    expect(screen.getByRole("button", { name: /save bucket/i })).toBeInTheDocument();
+    expect(screen.getByLabelText("Bucket Name")).toHaveValue("");
+    expect(screen.getByLabelText("Code")).toHaveValue("");
+    expect(screen.getByLabelText("Credits Required")).toHaveValue("12");
   });
 
   it("disables delete for core bucket codes", () => {
@@ -353,5 +392,85 @@ describe("GenEdAdminClient", () => {
       );
     });
     expect(mappingInsertSpy).not.toHaveBeenCalled();
+  });
+
+  it("removes a selected course when it is clicked a second time", async () => {
+    renderWithChakra(<GenEdAdminClient initialBuckets={initialBuckets} />);
+
+    fireEvent.click(screen.getAllByRole("button", { name: /add courses/i })[0]);
+    await screen.findByLabelText("Search Courses");
+
+    const existingCourseButton = screen.getByRole("button", { name: /engl 101 - composition/i });
+    fireEvent.click(existingCourseButton);
+    fireEvent.click(existingCourseButton);
+    fireEvent.click(screen.getByRole("button", { name: /add selected/i }));
+
+    await waitFor(() => {
+      expect(mockToaster.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: "No courses selected",
+          type: "error",
+        })
+      );
+    });
+    expect(mappingInsertSpy).not.toHaveBeenCalled();
+  });
+
+  it("closes the Add Courses dialog without inserting when only duplicates are selected", async () => {
+    renderWithChakra(<GenEdAdminClient initialBuckets={initialBuckets} />);
+
+    fireEvent.click(screen.getAllByRole("button", { name: /add courses/i })[0]);
+    await screen.findByLabelText("Search Courses");
+
+    fireEvent.click(screen.getByRole("button", { name: /engl 101 - composition/i }));
+    fireEvent.click(screen.getByRole("button", { name: /add selected/i }));
+
+    await waitFor(() => {
+      expect(mappingInsertSpy).not.toHaveBeenCalled();
+    });
+    expect(screen.queryByLabelText("Search Courses")).not.toBeInTheDocument();
+  });
+
+  it("shows an error toast when adding courses fails", async () => {
+    mappingInsertSpy.mockResolvedValueOnce({ error: { message: "fail" } });
+
+    renderWithChakra(<GenEdAdminClient initialBuckets={initialBuckets} />);
+
+    fireEvent.click(screen.getAllByRole("button", { name: /add courses/i })[1]);
+    await screen.findByLabelText("Search Courses");
+
+    fireEvent.click(screen.getByRole("button", { name: /engl 101 - composition/i }));
+    fireEvent.click(screen.getByRole("button", { name: /add selected/i }));
+
+    await waitFor(() => {
+      expect(mockToaster.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: "Failed to add courses",
+          description: "fail",
+          type: "error",
+        })
+      );
+    });
+    expect(screen.getByLabelText("Search Courses")).toBeInTheDocument();
+  });
+
+  it("closes the add courses and delete dialogs when cancel is clicked", async () => {
+    renderWithChakra(<GenEdAdminClient initialBuckets={initialBuckets} />);
+
+    fireEvent.click(screen.getAllByRole("button", { name: /add courses/i })[0]);
+    await screen.findByLabelText("Search Courses");
+    fireEvent.click(screen.getByRole("button", { name: /^cancel$/i }));
+    await waitFor(() => {
+      expect(screen.queryByLabelText("Search Courses")).not.toBeInTheDocument();
+    });
+    expect(mappingInsertSpy).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getAllByRole("button", { name: /^delete$/i })[1]);
+    expect(screen.getByText(/Delete Natural Sciences\?/i)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /^cancel$/i }));
+    await waitFor(() => {
+      expect(screen.queryByText(/Delete Natural Sciences\?/i)).not.toBeInTheDocument();
+    });
+    expect(bucketDeleteSpy).not.toHaveBeenCalled();
   });
 });

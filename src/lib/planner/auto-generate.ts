@@ -529,59 +529,62 @@ export function fillExistingPlan(
 ): ScheduleResult {
   if (newCourses.length === 0) return { semesters: [], unscheduledCourseIds: [] };
 
-  // Build a map of existing term credits
-  const termCredits = new Map<number, number>();
-  const existingCourseIds = new Set<number>();
-
-  for (const pc of existingCourses) {
-    existingCourseIds.add(pc.course_id);
-    const current = termCredits.get(pc.term_id) ?? 0;
-    termCredits.set(pc.term_id, current + (pc.course?.credits ?? 0));
-  }
-
-  // Sort existing terms chronologically
-  const sortedTerms = [...existingTerms].sort((a, b) => {
-    if (a.year !== b.year) return a.year - b.year;
-    return SEASON_ORDER[a.season] - SEASON_ORDER[b.season];
-  });
-
-  // Build semester index for existing terms: termId → chronological index
-  const termToIndex = new Map<number, number>();
-  for (let i = 0; i < sortedTerms.length; i++) {
-    termToIndex.set(sortedTerms[i].id, i);
-  }
-
-  // Map existing courses to their term's semester index
-  const existingCourseToSemIdx = new Map<number, number>();
-  for (const pc of existingCourses) {
-    const idx = termToIndex.get(pc.term_id);
-    if (idx !== undefined) {
-      existingCourseToSemIdx.set(pc.course_id, idx);
-    }
-  }
-
-  // Determine which semester comes after the last existing term
-  const lastTerm = sortedTerms[sortedTerms.length - 1];
-  let nextStartSeason: Season;
-  let nextStartYear: number;
-
-  if (lastTerm) {
-    nextStartSeason = nextSeason(lastTerm.season, includeSummers);
-    nextStartYear = nextYear(lastTerm.season, lastTerm.year);
-  } else {
-    // No existing terms - use current date as fallback
-    const now = new Date();
-    const month = now.getMonth();
-    nextStartSeason = month < 5 ? "Fall" : month < 8 ? "Fall" : "Spring";
-    nextStartYear = month < 8 ? now.getFullYear() : now.getFullYear() + 1;
-  }
-
-  // Filter new courses that aren't already placed
-  const toSchedule = newCourses.filter((c) => !existingCourseIds.has(c.id));
+  const context = createExistingPlanContext(existingTerms, existingCourses, includeSummers);
+  const toSchedule = newCourses.filter((c) => !context.existingCourseIds.has(c.id));
   if (toSchedule.length === 0) return { semesters: [], unscheduledCourseIds: [] };
 
-  // Sort by level, then subject + number for diversity (not credits descending)
-  const sorted = [...toSchedule].sort((a, b) => {
+  const sorted = sortCoursesByLevelAndCode(toSchedule, levels);
+  const placement = placeIntoExistingSemesters(
+    sorted,
+    context,
+    prereqEdges,
+    completedIds,
+    creditCap,
+    availabilityMap
+  );
+
+  const remainingCourses = sorted.filter((c) => !placement.scheduled.has(c.id));
+  if (remainingCourses.length === 0) {
+    return { semesters: placement.semesters, unscheduledCourseIds: [] };
+  }
+
+  const secondPass = scheduleCourses(
+    remainingCourses,
+    levels,
+    prereqEdges,
+    context.nextStartSeason,
+    context.nextStartYear,
+    includeSummers,
+    creditCap,
+    availabilityMap,
+    completedIds
+  );
+
+  return {
+    semesters: [...placement.semesters, ...secondPass.semesters],
+    unscheduledCourseIds: secondPass.unscheduledCourseIds,
+  };
+}
+
+type ExistingPlanContext = {
+  existingCourseIds: Set<number>;
+  termCredits: Map<number, number>;
+  sortedTerms: Term[];
+  existingCourseToSemIdx: Map<number, number>;
+  nextStartSeason: Season;
+  nextStartYear: number;
+};
+
+type ExistingPlacementResult = {
+  semesters: ScheduledSemester[];
+  scheduled: Set<number>;
+};
+
+function sortCoursesByLevelAndCode(
+  courses: Course[],
+  levels: Map<number, number>
+): Course[] {
+  return [...courses].sort((a, b) => {
     const levelA = levels.get(a.id) ?? 0;
     const levelB = levels.get(b.id) ?? 0;
     if (levelA !== levelB) return levelA - levelB;
@@ -590,39 +593,127 @@ export function fillExistingPlan(
     const bNum = parseInt(b.number) || 999;
     return aNum - bNum;
   });
+}
 
+function createExistingPlanContext(
+  existingTerms: Term[],
+  existingCourses: PlannedCourseWithDetails[],
+  includeSummers: boolean
+): ExistingPlanContext {
+  const existingCourseIds = new Set<number>();
+  const termCredits = new Map<number, number>();
+
+  for (const pc of existingCourses) {
+    existingCourseIds.add(pc.course_id);
+    const current = termCredits.get(pc.term_id) ?? 0;
+    termCredits.set(pc.term_id, current + (pc.course?.credits ?? 0));
+  }
+
+  const sortedTerms = [...existingTerms].sort((a, b) => {
+    if (a.year !== b.year) return a.year - b.year;
+    return SEASON_ORDER[a.season] - SEASON_ORDER[b.season];
+  });
+
+  const termToIndex = new Map<number, number>();
+  for (let i = 0; i < sortedTerms.length; i++) {
+    termToIndex.set(sortedTerms[i].id, i);
+  }
+
+  const existingCourseToSemIdx = new Map<number, number>();
+  for (const pc of existingCourses) {
+    const idx = termToIndex.get(pc.term_id);
+    if (idx !== undefined) existingCourseToSemIdx.set(pc.course_id, idx);
+  }
+
+  const nextStart = getNextStartTerm(sortedTerms, includeSummers);
+  return {
+    existingCourseIds,
+    termCredits,
+    sortedTerms,
+    existingCourseToSemIdx,
+    nextStartSeason: nextStart.season,
+    nextStartYear: nextStart.year,
+  };
+}
+
+function getNextStartTerm(
+  sortedTerms: Term[],
+  includeSummers: boolean
+): { season: Season; year: number } {
+  const lastTerm = sortedTerms[sortedTerms.length - 1];
+  if (lastTerm) {
+    return {
+      season: nextSeason(lastTerm.season, includeSummers),
+      year: nextYear(lastTerm.season, lastTerm.year),
+    };
+  }
+
+  const now = new Date();
+  const month = now.getMonth();
+  const season: Season = month < 8 ? "Fall" : "Spring";
+  const year = month < 8 ? now.getFullYear() : now.getFullYear() + 1;
+  return { season, year };
+}
+
+function arePrereqsSatisfiedForExistingTerm(
+  course: Course,
+  termIdx: number,
+  prereqEdges: Map<number, Set<number>>,
+  completedIds: Set<number>,
+  existingCourseToSemIdx: Map<number, number>,
+  newCourseToSemIdx: Map<number, number>
+): boolean {
+  const prereqs = prereqEdges.get(course.id);
+  if (!prereqs) return true;
+
+  for (const prereqId of prereqs) {
+    if (completedIds.has(prereqId)) continue;
+    const existingIdx = existingCourseToSemIdx.get(prereqId);
+    if (existingIdx !== undefined && existingIdx < termIdx) continue;
+    const newIdx = newCourseToSemIdx.get(prereqId);
+    if (newIdx !== undefined && newIdx < termIdx) continue;
+    return false;
+  }
+
+  return true;
+}
+
+function placeIntoExistingSemesters(
+  sortedCourses: Course[],
+  context: ExistingPlanContext,
+  prereqEdges: Map<number, Set<number>>,
+  completedIds: Set<number>,
+  creditCap: number,
+  availabilityMap: Map<number, Set<string>>
+): ExistingPlacementResult {
   const scheduled = new Set<number>();
-  // Track which semester index newly scheduled courses land in
   const newCourseToSemIdx = new Map<number, number>();
   const semesters: ScheduledSemester[] = [];
-  const courseById = new Map(toSchedule.map((c) => [c.id, c]));
-  const coreqs = buildCoreqMap(toSchedule);
+  const coreqs = buildCoreqMap(sortedCourses);
+  const courseById = new Map(sortedCourses.map((c) => [c.id, c]));
 
-  // First pass: try to fill existing terms that have capacity
-  for (let termIdx = 0; termIdx < sortedTerms.length; termIdx++) {
-    const term = sortedTerms[termIdx];
-    const currentCredits = termCredits.get(term.id) ?? 0;
+  for (let termIdx = 0; termIdx < context.sortedTerms.length; termIdx++) {
+    const term = context.sortedTerms[termIdx];
+    const currentCredits = context.termCredits.get(term.id) ?? 0;
     let remaining = creditCap - currentCredits;
     if (remaining <= 0) continue;
 
     const semCourses: Course[] = [];
-
-    // Helper: try to place a single course in this term
     const tryPlace = (course: Course): boolean => {
       if (scheduled.has(course.id)) return false;
       if (course.credits > remaining) return false;
       if (!isAvailable(course.id, term.season, term.year, availabilityMap)) return false;
-
-      const prereqs = prereqEdges.get(course.id);
-      if (prereqs) {
-        for (const prereqId of prereqs) {
-          if (completedIds.has(prereqId)) continue;
-          const existingIdx = existingCourseToSemIdx.get(prereqId);
-          if (existingIdx !== undefined && existingIdx < termIdx) continue;
-          const newIdx = newCourseToSemIdx.get(prereqId);
-          if (newIdx !== undefined && newIdx < termIdx) continue;
-          return false;
-        }
+      if (
+        !arePrereqsSatisfiedForExistingTerm(
+          course,
+          termIdx,
+          prereqEdges,
+          completedIds,
+          context.existingCourseToSemIdx,
+          newCourseToSemIdx
+        )
+      ) {
+        return false;
       }
 
       semCourses.push(course);
@@ -632,19 +723,15 @@ export function fillExistingPlan(
       return true;
     };
 
-    for (const course of sorted) {
-      if (scheduled.has(course.id)) continue;
-      if (course.credits > remaining) continue;
-
+    for (const course of sortedCourses) {
+      if (scheduled.has(course.id) || course.credits > remaining) continue;
       if (!tryPlace(course)) continue;
 
-      // Eagerly co-schedule lab/lecture partners
       const partners = coreqs.get(course.id);
-      if (partners) {
-        for (const partnerId of partners) {
-          const partner = courseById.get(partnerId);
-          if (partner) tryPlace(partner);
-        }
+      if (!partners) continue;
+      for (const partnerId of partners) {
+        const partner = courseById.get(partnerId);
+        if (partner) tryPlace(partner);
       }
     }
 
@@ -658,26 +745,6 @@ export function fillExistingPlan(
     }
   }
 
-  // Second pass: schedule remaining courses into new semesters
-  const remainingCourses = sorted.filter((c) => !scheduled.has(c.id));
-  if (remainingCourses.length > 0) {
-    const result = scheduleCourses(
-      remainingCourses,
-      levels,
-      prereqEdges,
-      nextStartSeason,
-      nextStartYear,
-      includeSummers,
-      creditCap,
-      availabilityMap,
-      completedIds
-    );
-    semesters.push(...result.semesters);
-
-    // Merge unscheduled from second pass
-    const allUnscheduled = result.unscheduledCourseIds;
-    return { semesters, unscheduledCourseIds: allUnscheduled };
-  }
-
-  return { semesters, unscheduledCourseIds: [] };
+  return { semesters, scheduled };
 }
+

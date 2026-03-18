@@ -21,6 +21,12 @@ type ReqAtomRow = {
   required_course_id: number | null;
 };
 
+type ReqTreeData = {
+  reqSets: ReqSetRow[];
+  nodesBySet: Map<number, ReqNodeRow[]>;
+  atomsByNode: Map<number, ReqAtomRow[]>;
+};
+
 function normalizeNodeType(raw: string): "AND" | "OR" | "ATOM" {
   const upper = (raw ?? "").toUpperCase().trim();
   if (upper === "AND") return "AND";
@@ -141,62 +147,20 @@ export async function extractPrereqEdges(
   if (courseIds.length === 0) return result;
 
   const courseIdSet = new Set(courseIds);
-  const supabase = createClient();
-
-  // Fetch all PREREQ req_sets for our courses
-  const { data: reqSetsData, error: reqSetsErr } = await supabase
-    .from("course_req_sets")
-    .select("id, course_id, set_type")
-    .eq("set_type", "PREREQ")
-    .in("course_id", courseIds);
-
-  if (reqSetsErr) throw reqSetsErr;
-  const reqSets = (reqSetsData ?? []) as ReqSetRow[];
-  if (reqSets.length === 0) return result;
-
-  const setIds = reqSets.map((s) => s.id);
-
-  // Fetch nodes first, then atoms filtered by node IDs
-  const nodesRes = await supabase
-    .from("course_req_nodes")
-    .select("id, req_set_id, parent_id, node_type")
-    .in("req_set_id", setIds);
-
-  if (nodesRes.error) throw nodesRes.error;
-  const allNodes = (nodesRes.data ?? []) as ReqNodeRow[];
-
-  const nodeIds = allNodes.map((n) => n.id);
-  if (nodeIds.length === 0) return result;
-
-  const atomsRes = await supabase
-    .from("course_req_atoms")
-    .select("node_id, atom_type, required_course_id")
-    .in("node_id", nodeIds);
-
-  if (atomsRes.error) throw atomsRes.error;
-  const relevantAtoms = (atomsRes.data ?? []) as ReqAtomRow[];
-
-  // Group nodes by req_set_id
-  const nodesBySet = new Map<number, ReqNodeRow[]>();
-  for (const node of allNodes) {
-    if (!nodesBySet.has(node.req_set_id)) nodesBySet.set(node.req_set_id, []);
-    nodesBySet.get(node.req_set_id)!.push(node);
-  }
-
-  // Group atoms by node_id
-  const atomsByNode = new Map<number, ReqAtomRow[]>();
-  for (const atom of relevantAtoms) {
-    if (!atomsByNode.has(atom.node_id)) atomsByNode.set(atom.node_id, []);
-    atomsByNode.get(atom.node_id)!.push(atom);
-  }
+  const treeData = await fetchReqTreeData(courseIds);
+  if (treeData.reqSets.length === 0) return result;
 
   // For each course's req_sets, extract edges
-  for (const reqSet of reqSets) {
+  for (const reqSet of treeData.reqSets) {
     const courseId = reqSet.course_id;
-    const setNodes = nodesBySet.get(reqSet.id) ?? [];
+    const setNodes = treeData.nodesBySet.get(reqSet.id) ?? [];
     if (setNodes.length === 0) continue;
 
-    const prereqs = extractEdgesFromTree(setNodes, atomsByNode, courseIdSet);
+    const prereqs = extractEdgesFromTree(
+      setNodes,
+      treeData.atomsByNode,
+      courseIdSet
+    );
 
     // Only keep prereqs that are in our set of courses to schedule
     const filtered = new Set([...prereqs].filter((id) => courseIdSet.has(id)));
@@ -214,20 +178,80 @@ export async function extractPrereqEdges(
     }
   }
 
-  // Break cycles: if A requires B and B requires A, remove the edge to the higher-numbered course
+  breakTwoWayCycles(result);
+
+  return result;
+}
+
+async function fetchReqTreeData(courseIds: number[]): Promise<ReqTreeData> {
+  const supabase = createClient();
+
+  const { data: reqSetsData, error: reqSetsErr } = await supabase
+    .from("course_req_sets")
+    .select("id, course_id, set_type")
+    .eq("set_type", "PREREQ")
+    .in("course_id", courseIds);
+  if (reqSetsErr) throw reqSetsErr;
+
+  const reqSets = (reqSetsData ?? []) as ReqSetRow[];
+  if (reqSets.length === 0) {
+    return { reqSets: [], nodesBySet: new Map(), atomsByNode: new Map() };
+  }
+
+  const setIds = reqSets.map((s) => s.id);
+  const nodesRes = await supabase
+    .from("course_req_nodes")
+    .select("id, req_set_id, parent_id, node_type")
+    .in("req_set_id", setIds);
+  if (nodesRes.error) throw nodesRes.error;
+
+  const allNodes = (nodesRes.data ?? []) as ReqNodeRow[];
+  const nodesBySet = groupNodesBySet(allNodes);
+  const atomsByNode = await fetchAtomsByNode(supabase, allNodes);
+
+  return { reqSets, nodesBySet, atomsByNode };
+}
+
+function groupNodesBySet(allNodes: ReqNodeRow[]): Map<number, ReqNodeRow[]> {
+  const nodesBySet = new Map<number, ReqNodeRow[]>();
+  for (const node of allNodes) {
+    if (!nodesBySet.has(node.req_set_id)) nodesBySet.set(node.req_set_id, []);
+    nodesBySet.get(node.req_set_id)!.push(node);
+  }
+  return nodesBySet;
+}
+
+async function fetchAtomsByNode(
+  supabase: ReturnType<typeof createClient>,
+  allNodes: ReqNodeRow[]
+): Promise<Map<number, ReqAtomRow[]>> {
+  const nodeIds = allNodes.map((n) => n.id);
+  if (nodeIds.length === 0) return new Map();
+
+  const atomsRes = await supabase
+    .from("course_req_atoms")
+    .select("node_id, atom_type, required_course_id")
+    .in("node_id", nodeIds);
+  if (atomsRes.error) throw atomsRes.error;
+
+  const atomsByNode = new Map<number, ReqAtomRow[]>();
+  for (const atom of (atomsRes.data ?? []) as ReqAtomRow[]) {
+    if (!atomsByNode.has(atom.node_id)) atomsByNode.set(atom.node_id, []);
+    atomsByNode.get(atom.node_id)!.push(atom);
+  }
+  return atomsByNode;
+}
+
+function breakTwoWayCycles(result: Map<number, Set<number>>): void {
   for (const [courseId, prereqs] of result) {
     for (const prereqId of prereqs) {
       const reversePrereqs = result.get(prereqId);
-      if (reversePrereqs?.has(courseId)) {
-        // Break cycle by removing edge to higher-numbered course
-        if (courseId > prereqId) {
-          prereqs.delete(prereqId);
-        } else {
-          reversePrereqs.delete(courseId);
-        }
+      if (!reversePrereqs?.has(courseId)) continue;
+      if (courseId > prereqId) {
+        prereqs.delete(prereqId);
+      } else {
+        reversePrereqs.delete(courseId);
       }
     }
   }
-
-  return result;
 }

@@ -1,4 +1,4 @@
-import GenEdAdminClient, { type GenEdBucket } from "@/app/admin/gen-ed/GenEdAdminClient";
+import GenEdAdminClient, { type GenEdBucket } from "@/app/admin/(protected)/gen-ed/GenEdAdminClient";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { DB_TABLES } from "@/lib/supabase/queries/schema";

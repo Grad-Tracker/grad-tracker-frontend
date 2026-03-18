@@ -1,10 +1,12 @@
 export const DB_TABLES = {
+  advisors: "advisors",
   courses: "courses",
   genEdBuckets: "gen_ed_buckets",
   genEdBucketCourses: "gen_ed_bucket_courses",
   majorCertificateMappings: "major_certificate_mappings",
   plans: "plans",
   planPrograms: "plan_programs",
+  programAdvisors: "program_advisors",
   programRequirementBlocks: "program_requirement_blocks",
   programRequirementCourses: "program_requirement_courses",
   programs: "programs",
@@ -27,6 +29,7 @@ export const STUDENT_COLUMNS = {
   hasCompletedOnboarding: "has_completed_onboarding",
   expectedGraduationSemester: "expected_graduation_semester",
   expectedGraduationYear: "expected_graduation_year",
+  breadthPackageId: "breadth_package_id",
 } as const;
 
 export const PLANNED_COURSE_STATUS = {

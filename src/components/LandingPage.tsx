@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import {
   Badge,
   Box,
@@ -13,24 +12,13 @@ import {
   Heading,
   HStack,
   Icon,
-  Input,
   SimpleGrid,
   Stack,
   Text,
   VStack,
 } from "@chakra-ui/react";
 import { ColorModeButton } from "@/components/ui/color-mode";
-import {
-  DialogBody,
-  DialogCloseTrigger,
-  DialogContent,
-  DialogHeader,
-  DialogRoot,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import { Field } from "@/components/ui/field";
-import { PasswordInput } from "@/components/ui/password-input";
+import { LinkButton } from "@/components/ui/link-button";
 import {
   ProgressBar,
   ProgressLabel,
@@ -65,9 +53,6 @@ import {
   LuZap,
 } from "react-icons/lu";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
-import { toaster } from "@/components/ui/toaster";
 
 const features = [
   {
@@ -138,53 +123,6 @@ const steps = [
 ];
 
 export default function LandingPage() {
-  const router = useRouter();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
-
-  async function handleSignin() {
-    if (!email || !password) {
-      toaster.create({
-        title: "Missing fields",
-        description: "Please enter your email and password.",
-        type: "error",
-      });
-      return;
-    }
-
-    setLoading(true);
-
-    const supabase = createClient();
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-
-    if (error) {
-      setLoading(false);
-      toaster.create({
-        title: "Sign in failed",
-        description: error.message,
-        type: "error",
-      });
-      return;
-    }
-
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    toaster.create({
-      title: "Welcome back!",
-      description: "Redirecting...",
-      type: "success",
-    });
-
-    setLoading(false);
-    router.push(user?.user_metadata?.role === "advisor" ? "/admin" : "/dashboard");
-  }
-
   return (
     <Box
       minH="100vh"
@@ -233,76 +171,17 @@ export default function LandingPage() {
             </HStack>
             <HStack gap="3">
               <ColorModeButton variant="ghost" size="sm" />
-              <DialogRoot>
-                <DialogTrigger asChild>
-                  <Button
-                    variant="solid"
-                    colorPalette="green"
-                    size="sm"
-                    rounded="full"
-                    px="5"
-                    fontWeight="600"
-                  >
-                    Sign In
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="glass-card">
-                  <DialogHeader>
-                    <DialogTitle fontFamily="var(--font-outfit), sans-serif">
-                      Welcome Back, Ranger
-                    </DialogTitle>
-                  </DialogHeader>
-                  <DialogCloseTrigger />
-                  <DialogBody pb="6">
-                    <VStack gap="5">
-                      <Field label="Email">
-                        <Input
-                          placeholder="your.name@uwp.edu"
-                          type="email"
-                          rounded="lg"
-                          size="lg"
-                          value={email}
-                          onChange={(e) => setEmail(e.target.value)}
-                        />
-                      </Field>
-                      <Field label="Password">
-                        <PasswordInput
-                          placeholder="Enter your password"
-                          rounded="lg"
-                          size="lg"
-                          value={password}
-                          onChange={(e) => setPassword(e.target.value)}
-                        />
-                      </Field>
-                      <Button
-                        w="full"
-                        colorPalette="green"
-                        size="lg"
-                        rounded="lg"
-                        fontWeight="600"
-                        onClick={handleSignin}
-                        disabled={loading}
-                      >
-                        {loading ? "Signing In..." : "Sign In"}
-                      </Button>
-                      <Text fontSize="sm" color="fg.muted">
-                        Don&apos;t have an account?{" "}
-                        <Link href="/signup">
-                          <Text
-                            as="span"
-                            color="green.solid"
-                            cursor="pointer"
-                            fontWeight="600"
-                            _hover={{ textDecoration: "underline" }}
-                          >
-                            Create one
-                          </Text>
-                        </Link>
-                      </Text>
-                    </VStack>
-                  </DialogBody>
-                </DialogContent>
-              </DialogRoot>
+              <LinkButton
+                href="/signin"
+                variant="solid"
+                colorPalette="green"
+                size="sm"
+                rounded="full"
+                px="5"
+                fontWeight="600"
+              >
+                Sign In
+              </LinkButton>
             </HStack>
           </HStack>
         </Container>

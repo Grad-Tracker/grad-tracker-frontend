@@ -99,7 +99,7 @@ vi.mock("@/components/ui/tooltip", () => ({
   ),
 }));
 
-import AdminGenEdPage from "@/app/admin/gen-ed/page";
+import AdminGenEdPage from "@/app/admin/(protected)/gen-ed/page";
 
 function renderWithChakra(ui: React.ReactElement) {
   return render(<ChakraProvider value={defaultSystem}>{ui}</ChakraProvider>);

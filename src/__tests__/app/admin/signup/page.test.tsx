@@ -48,7 +48,7 @@ vi.mock("@/components/ui/password-input", () => ({
   ),
 }));
 
-import AdminSignupPage from "@/app/admin/signup/page";
+import AdminSignupPage from "@/app/admin/(public)/signup/page";
 
 function renderWithChakra(ui: React.ReactElement) {
   return render(<ChakraProvider value={defaultSystem}>{ui}</ChakraProvider>);

@@ -56,9 +56,7 @@ import {
   LuFileText,
   LuCalendar,
   LuTarget,
-  LuTrash2,
   LuGraduationCap,
-  LuTriangleAlert,
 } from "react-icons/lu";
 import type { Program } from "@/types/onboarding";
 
@@ -244,10 +242,7 @@ export default function Dashboard() {
   const [currentMajorProgramId, setCurrentMajorProgramId] = React.useState<number | null>(null);
   const [changingMajor, setChangingMajor] = React.useState(false);
 
-  const [resetConfirming, setResetConfirming] = React.useState(false);
-  const [resetting, setResetting] = React.useState(false);
   const [studentIdForReset, setStudentIdForReset] = React.useState<number | null>(null);
-  const [refreshKey, setRefreshKey] = React.useState(0);
 
   React.useEffect(() => {
     const loadStudent = async () => {
@@ -554,7 +549,7 @@ export default function Dashboard() {
     };
 
     loadStudent();
-  }, [router, refreshKey]);
+  }, [router]);
 
   const handleChangeMajor = async () => {
     if (!selectedMajorId || !studentIdForReset || selectedMajorId === currentMajorProgramId) return;
@@ -593,37 +588,6 @@ export default function Dashboard() {
     }
   };
 
-  const handleResetProgress = async () => {
-    if (!studentIdForReset) return;
-    setResetting(true);
-    try {
-      const supabase = createClient();
-
-      const [historyResult, plannedResult, programsResult] = await Promise.all([
-        supabase.from(DB_TABLES.studentCourseHistory).delete().eq("student_id", studentIdForReset),
-        supabase.from(DB_TABLES.studentPlannedCourses).delete().eq("student_id", studentIdForReset),
-        supabase.from(DB_TABLES.studentPrograms).delete().eq("student_id", studentIdForReset),
-      ]);
-
-      if (historyResult.error) throw historyResult.error;
-      if (plannedResult.error) throw plannedResult.error;
-      if (programsResult.error) throw programsResult.error;
-
-      await supabase
-        .from(DB_TABLES.students)
-        .update({ has_completed_onboarding: false })
-        .eq(STUDENT_COLUMNS.id, studentIdForReset);
-
-      toaster.create({ title: "Progress reset", description: "Your progress has been cleared. Use the setup wizard to start fresh.", type: "success" });
-      setRefreshKey((k) => k + 1);
-    } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : "Unknown error";
-      toaster.create({ title: "Failed to reset progress", description: msg, type: "error" });
-    } finally {
-      setResetting(false);
-      setResetConfirming(false);
-    }
-  };
 
   if (loadingStudent) {
     return <Box p="8">Loading...</Box>;
@@ -1134,56 +1098,6 @@ export default function Dashboard() {
                   Review Requirements
                 </Button>
 
-                {/* Reset All Progress — only shown after onboarding is complete */}
-                {student.hasCompletedOnboarding && (
-                  !resetConfirming ? (
-                    <Button
-                      variant="outline"
-                      colorPalette="red"
-                      justifyContent="start"
-                      size="sm"
-                      fontWeight="500"
-                      onClick={() => setResetConfirming(true)}
-                    >
-                      <Icon mr="2">
-                        <LuTrash2 />
-                      </Icon>
-                      Reset All Progress
-                    </Button>
-                  ) : (
-                    <Stack gap="2" p="3" bg="red.subtle" borderWidth="1px" borderColor="red.muted" borderRadius="lg">
-                      <HStack gap="2">
-                        <Icon color="red.fg" flexShrink={0}>
-                          <LuTriangleAlert />
-                        </Icon>
-                        <Text fontSize="xs" fontWeight="500" color="red.fg">
-                          This will delete all your progress. Are you sure?
-                        </Text>
-                      </HStack>
-                      <HStack gap="2">
-                        <Button
-                          size="xs"
-                          colorPalette="red"
-                          loading={resetting}
-                          onClick={handleResetProgress}
-                          borderRadius="md"
-                          flex="1"
-                        >
-                          Yes, Reset
-                        </Button>
-                        <Button
-                          size="xs"
-                          variant="ghost"
-                          onClick={() => setResetConfirming(false)}
-                          borderRadius="md"
-                          flex="1"
-                        >
-                          Cancel
-                        </Button>
-                      </HStack>
-                    </Stack>
-                  )
-                )}
               </Stack>
             </Card.Body>
           </Card.Root>
