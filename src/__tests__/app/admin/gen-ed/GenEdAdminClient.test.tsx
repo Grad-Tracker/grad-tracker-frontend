@@ -398,11 +398,12 @@ describe("GenEdAdminClient", () => {
     renderWithChakra(<GenEdAdminClient initialBuckets={initialBuckets} />);
 
     fireEvent.click(screen.getAllByRole("button", { name: /add courses/i })[0]);
-    await screen.findByLabelText("Search Courses");
+    const search = await screen.findByLabelText("Search Courses");
+    fireEvent.change(search, { target: { value: "engl" } });
 
-    const existingCourseButton = screen.getByRole("button", { name: /engl 101 - composition/i });
-    fireEvent.click(existingCourseButton);
-    fireEvent.click(existingCourseButton);
+    const option = await screen.findByTestId("course-option-101");
+    fireEvent.click(option);
+    fireEvent.click(option);
     fireEvent.click(screen.getByRole("button", { name: /add selected/i }));
 
     await waitFor(() => {
