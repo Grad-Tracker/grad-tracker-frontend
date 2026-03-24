@@ -38,18 +38,23 @@ export async function proxy(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   const { pathname } = request.nextUrl;
+  const isAdminSignin = pathname === "/admin/signin";
 
   const isAdvisor = user?.user_metadata?.role === "advisor";
 
   // Unauthenticated users trying to access protected routes → redirect to signin
-  if (!user && (pathname.startsWith("/dashboard") || pathname.startsWith("/admin"))) {
+  if (
+    !user &&
+    (pathname.startsWith("/dashboard") ||
+      (pathname.startsWith("/admin") && !isAdminSignin))
+  ) {
     const url = request.nextUrl.clone();
     url.pathname = "/signin";
     return NextResponse.redirect(url);
   }
 
   // Authenticated non-advisors trying to access /admin → redirect to dashboard
-  if (user && !isAdvisor && pathname.startsWith("/admin")) {
+  if (user && !isAdvisor && pathname.startsWith("/admin") && !isAdminSignin) {
     const url = request.nextUrl.clone();
     url.pathname = "/dashboard";
     return NextResponse.redirect(url);
@@ -60,6 +65,7 @@ export async function proxy(request: NextRequest) {
   if (
     user &&
     (pathname === "/signin" ||
+      pathname === "/admin/signin" ||
       pathname === "/signup" ||
       pathname === "/forgot-password")
   ) {

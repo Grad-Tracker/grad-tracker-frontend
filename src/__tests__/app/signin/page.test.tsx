@@ -42,9 +42,14 @@ describe("SigninPage", () => {
     });
   });
 
-  it("renders sign in page heading", () => {
+  it("renders role selector with Student selected by default", () => {
     renderWithChakra(<SigninPage />);
-    expect(screen.getAllByText("Welcome Back, Ranger").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("Student Sign In").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByRole("button", { name: "Student" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: "Advisor" })).toHaveAttribute("aria-pressed", "false");
+    expect(
+      screen.getAllByText("View your dashboard, requirements, and planner.").length
+    ).toBeGreaterThanOrEqual(1);
   });
 
   it("renders email and password fields", () => {
@@ -54,9 +59,17 @@ describe("SigninPage", () => {
     expect(screen.getByPlaceholderText("your.name@uwp.edu")).toBeInTheDocument();
   });
 
-  it("renders Sign In button", () => {
+  it("switching to Advisor updates the heading and helper text", async () => {
     renderWithChakra(<SigninPage />);
-    expect(screen.getAllByText("Sign In").length).toBeGreaterThanOrEqual(1);
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Advisor" }));
+    });
+
+    expect(screen.getAllByText("Advisor Sign In").length).toBeGreaterThanOrEqual(1);
+    expect(
+      screen.getAllByText("Manage programs, Gen-Ed buckets, and course catalog.").length
+    ).toBeGreaterThanOrEqual(1);
+    expect(screen.getByRole("button", { name: "Advisor" })).toHaveAttribute("aria-pressed", "true");
   });
 
   it("shows error toast for empty fields", async () => {
@@ -179,10 +192,10 @@ describe("SigninPage", () => {
     expect(screen.getAllByText("Forgot password?").length).toBeGreaterThanOrEqual(1);
   });
 
-  it("renders advisor signup link to /admin/signup", () => {
+  it("keeps forgot password as the only inline action above the CTA", () => {
     renderWithChakra(<SigninPage />);
-    const advisorLink = screen.getByRole("link", { name: "Sign up here" });
-    expect(advisorLink).toBeInTheDocument();
-    expect(advisorLink).toHaveAttribute("href", "/admin/signup");
+
+    expect(screen.getAllByText("Forgot password?").length).toBeGreaterThanOrEqual(1);
+    expect(screen.queryByRole("button", { name: /Switch to/i })).not.toBeInTheDocument();
   });
 });
