@@ -384,9 +384,14 @@ export default function SignupPage() {
 
                   <Text fontSize="sm" color="fg.muted" textAlign="center">
                     Are you an advisor?{" "}
-                    <Text
-                      as="button"
-                      type="button"
+                    <Button
+                      variant="plain"
+                      size="sm"
+                      minH="unset"
+                      h="auto"
+                      px="0"
+                      py="0"
+                      verticalAlign="baseline"
                       color="green.solid"
                       cursor="pointer"
                       fontWeight="600"
@@ -394,7 +399,7 @@ export default function SignupPage() {
                       onClick={() => setAdvisorDialogOpen(true)}
                     >
                       Access code required &rarr;
-                    </Text>
+                    </Button>
                   </Text>
                 </VStack>
               </Card.Body>
