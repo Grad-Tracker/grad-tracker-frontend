@@ -2,10 +2,11 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor, act } from "@testing-library/react";
 import { ChakraProvider, defaultSystem } from "@chakra-ui/react";
 
-const { mockPush, mockSignInWithPassword, mockGetUser, mockToaster } = vi.hoisted(() => ({
+const { mockPush, mockSignInWithPassword, mockGetUser, mockSignOut, mockToaster } = vi.hoisted(() => ({
   mockPush: vi.fn(),
   mockSignInWithPassword: vi.fn(),
   mockGetUser: vi.fn(),
+  mockSignOut: vi.fn(),
   mockToaster: { create: vi.fn(), success: vi.fn(), error: vi.fn() },
 }));
 
@@ -14,7 +15,11 @@ vi.mock("next/navigation", () => ({
 }));
 vi.mock("@/lib/supabase/client", () => ({
   createClient: () => ({
-    auth: { signInWithPassword: mockSignInWithPassword, getUser: mockGetUser },
+    auth: {
+      signInWithPassword: mockSignInWithPassword,
+      getUser: mockGetUser,
+      signOut: mockSignOut,
+    },
   }),
 }));
 vi.mock("@/components/ui/toaster", () => ({ toaster: mockToaster }));

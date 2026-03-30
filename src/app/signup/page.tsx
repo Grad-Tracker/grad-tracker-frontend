@@ -14,6 +14,14 @@ import {
   VStack,
 } from "@chakra-ui/react";
 import { ColorModeButton } from "@/components/ui/color-mode";
+import {
+  DialogBody,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogRoot,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Field } from "@/components/ui/field";
 import { PasswordInput } from "@/components/ui/password-input";
 import { toaster } from "@/components/ui/toaster";
@@ -26,10 +34,36 @@ export default function SignupPage() {
   const router = useRouter();
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
+  const [advisorAccessCode, setAdvisorAccessCode] = useState("");
+  const [advisorDialogOpen, setAdvisorDialogOpen] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
+
+  function handleAdvisorAccessContinue() {
+    const expectedCode = process.env.NEXT_PUBLIC_ADVISOR_SIGNUP_CODE;
+
+    if (!expectedCode) {
+      toaster.create({
+        title: "Advisor signup is not enabled",
+        type: "error",
+      });
+      return;
+    }
+
+    if (advisorAccessCode !== expectedCode) {
+      toaster.create({
+        title: "Invalid access code",
+        type: "error",
+      });
+      return;
+    }
+
+    setAdvisorDialogOpen(false);
+    setAdvisorAccessCode("");
+    router.push("/admin/signup");
+  }
 
   async function handleSignup() {
     if (!firstName || !lastName || !email || !password) {
@@ -240,11 +274,11 @@ export default function SignupPage() {
                       fontFamily="var(--font-outfit), sans-serif"
                       letterSpacing="-0.02em"
                     >
-                      Create Your Account
+                      Create Student Account
                     </Text>
                     <Text color="fg.muted" fontSize="sm">
                       Join fellow Rangers and start tracking your path to
-                      graduation
+                      graduation with your student tools.
                     </Text>
                   </VStack>
 
@@ -272,7 +306,7 @@ export default function SignupPage() {
 
                     <Field label="Email">
                       <Input
-                        placeholder="your.name@uwp.edu"
+                        placeholder="your.name@rangers.uwp.edu"
                         type="email"
                         rounded="lg"
                         size="lg"
@@ -350,17 +384,17 @@ export default function SignupPage() {
 
                   <Text fontSize="sm" color="fg.muted" textAlign="center">
                     Are you an advisor?{" "}
-                    <Link href="/admin/signup">
-                      <Text
-                        as="span"
-                        color="green.solid"
-                        cursor="pointer"
-                        fontWeight="600"
-                        _hover={{ textDecoration: "underline" }}
-                      >
-                        Sign up here
-                      </Text>
-                    </Link>
+                    <Text
+                      as="button"
+                      type="button"
+                      color="green.solid"
+                      cursor="pointer"
+                      fontWeight="600"
+                      _hover={{ textDecoration: "underline" }}
+                      onClick={() => setAdvisorDialogOpen(true)}
+                    >
+                      Access code required &rarr;
+                    </Text>
                   </Text>
                 </VStack>
               </Card.Body>
@@ -368,6 +402,52 @@ export default function SignupPage() {
           </Box>
         </Container>
       </Box>
+
+      <DialogRoot
+        open={advisorDialogOpen}
+        onOpenChange={(event) => {
+          setAdvisorDialogOpen(event.open);
+          if (!event.open) {
+            setAdvisorAccessCode("");
+          }
+        }}
+      >
+        <DialogContent maxW="sm">
+          <DialogHeader>
+            <DialogTitle>Advisor Access</DialogTitle>
+          </DialogHeader>
+          <DialogBody pb="6">
+            <VStack gap="4" align="stretch">
+              <Text fontSize="sm" color="fg.muted">
+                Enter the access code provided by the department.
+              </Text>
+              <Field label="Advisor Access Code">
+                <Input
+                  type="password"
+                  placeholder="Advisor Access Code"
+                  rounded="lg"
+                  value={advisorAccessCode}
+                  onChange={(e) => setAdvisorAccessCode(e.target.value)}
+                />
+              </Field>
+            </VStack>
+          </DialogBody>
+          <DialogFooter>
+            <Button
+              variant="ghost"
+              onClick={() => {
+                setAdvisorDialogOpen(false);
+                setAdvisorAccessCode("");
+              }}
+            >
+              Cancel
+            </Button>
+            <Button colorPalette="green" onClick={handleAdvisorAccessContinue}>
+              Continue
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </DialogRoot>
     </Box>
   );
 }

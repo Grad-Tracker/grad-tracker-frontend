@@ -60,13 +60,24 @@ export default function AdminSignupPage() {
       return;
     }
 
+    const normalizedEmail = email.trim().toLowerCase();
+
+    if (normalizedEmail.endsWith("@rangers.uwp.edu")) {
+      toaster.create({
+        title: "Invalid email domain",
+        description: "Advisor sign up requires a @uwp.edu email address.",
+        type: "error",
+      });
+      return;
+    }
+
     setLoading(true);
 
     const supabase = createClient();
 
     try {
       const { data, error } = await supabase.auth.signUp({
-        email,
+        email: normalizedEmail,
         password,
         options: {
           data: {
@@ -110,7 +121,7 @@ export default function AdminSignupPage() {
         .from(DB_TABLES.staff)
         .insert({
           auth_user_id: data.user.id,
-          email,
+          email: normalizedEmail,
           first_name: firstName,
           last_name: lastName,
           role: "advisor",
@@ -278,10 +289,10 @@ export default function AdminSignupPage() {
                       fontFamily="var(--font-outfit), sans-serif"
                       letterSpacing="-0.02em"
                     >
-                      Advisor Sign Up
+                      Create Advisor Account
                     </Text>
                     <Text color="fg.muted" fontSize="sm">
-                      Create an advisor account to access the admin dashboard.
+                      Create an advisor account for advisor tools access.
                     </Text>
                   </VStack>
 

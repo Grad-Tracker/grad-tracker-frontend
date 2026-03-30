@@ -34,6 +34,8 @@ const roleContent: Record<
   {
     title: string;
     helper: string;
+    emailPlaceholder: string;
+    emailHelper: string;
     postSignInHint: string;
     signupHref: string;
     signupLabel: string;
@@ -42,6 +44,8 @@ const roleContent: Record<
   student: {
     title: "Student Sign In",
     helper: "View your dashboard, requirements, and planner.",
+    emailPlaceholder: "your.name@rangers.uwp.edu",
+    emailHelper: "Use your Parkside student email ending in @rangers.uwp.edu.",
     postSignInHint: "You’ll be taken to your student dashboard.",
     signupHref: "/signup",
     signupLabel: "Create student account",
@@ -49,6 +53,8 @@ const roleContent: Record<
   advisor: {
     title: "Advisor Sign In",
     helper: "Manage programs, Gen-Ed buckets, and course catalog.",
+    emailPlaceholder: "your.name@uwp.edu",
+    emailHelper: "Use your advisor email ending in @uwp.edu.",
     postSignInHint: "You’ll be taken to the advisor console.",
     signupHref: "/admin/signup",
     signupLabel: "Create advisor account",
@@ -77,11 +83,30 @@ export default function RoleSignInForm({
       return;
     }
 
+    const normalizedEmail = email.trim().toLowerCase();
+    const hasValidDomain =
+      selectedRole === "student"
+        ? normalizedEmail.endsWith("@rangers.uwp.edu")
+        : normalizedEmail.endsWith("@uwp.edu") &&
+          !normalizedEmail.endsWith("@rangers.uwp.edu");
+
+    if (!hasValidDomain) {
+      toaster.create({
+        title: "Invalid email domain",
+        description:
+          selectedRole === "student"
+            ? "Student sign in requires a @rangers.uwp.edu email address."
+            : "Advisor sign in requires a @uwp.edu email address.",
+        type: "error",
+      });
+      return;
+    }
+
     setLoading(true);
 
     const supabase = createClient();
     const { error } = await supabase.auth.signInWithPassword({
-      email,
+      email: normalizedEmail,
       password,
     });
 
@@ -98,6 +123,29 @@ export default function RoleSignInForm({
     const {
       data: { user },
     } = await supabase.auth.getUser();
+    const actualRole = user?.user_metadata?.role ?? "student";
+
+    if (selectedRole === "student" && actualRole === "advisor") {
+      toaster.create({
+        title: "Wrong sign in type",
+        description: "This is an advisor account. Use Advisor sign in.",
+        type: "error",
+      });
+      await supabase.auth.signOut();
+      setLoading(false);
+      return;
+    }
+
+    if (selectedRole === "advisor" && actualRole !== "advisor") {
+      toaster.create({
+        title: "Wrong sign in type",
+        description: "This is a student account. Use Student sign in.",
+        type: "error",
+      });
+      await supabase.auth.signOut();
+      setLoading(false);
+      return;
+    }
 
     toaster.create({
       title: "Welcome back!",
@@ -106,7 +154,7 @@ export default function RoleSignInForm({
     });
 
     setLoading(false);
-    router.push(user?.user_metadata?.role === "advisor" ? "/admin" : "/dashboard");
+    router.push(actualRole === "advisor" ? "/admin" : "/dashboard");
   }
 
   return (
@@ -335,14 +383,19 @@ export default function RoleSignInForm({
 
                   <VStack gap="6">
                     <Field label="Email">
-                      <Input
-                        placeholder="your.name@uwp.edu"
-                        type="email"
-                        rounded="lg"
-                        size="lg"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                      />
+                      <VStack gap="2" align="stretch">
+                        <Input
+                          placeholder={currentRole.emailPlaceholder}
+                          type="email"
+                          rounded="lg"
+                          size="lg"
+                          value={email}
+                          onChange={(e) => setEmail(e.target.value)}
+                        />
+                        <Text fontSize="sm" color="fg.muted">
+                          {currentRole.emailHelper}
+                        </Text>
+                      </VStack>
                     </Field>
 
                     <Field label="Password">

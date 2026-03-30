@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, fireEvent, waitFor, act } from "@testing-library/react";
 import { ChakraProvider, defaultSystem } from "@chakra-ui/react";
 
@@ -19,6 +19,14 @@ vi.mock("@/lib/supabase/client", () => ({
 }));
 vi.mock("@/components/ui/toaster", () => ({ toaster: mockToaster }));
 vi.mock("@/components/ui/color-mode", () => ({ ColorModeButton: () => null }));
+vi.mock("@/components/ui/dialog", () => ({
+  DialogBody: (p: any) => <div>{p.children}</div>,
+  DialogContent: (p: any) => <div role="dialog">{p.children}</div>,
+  DialogFooter: (p: any) => <div>{p.children}</div>,
+  DialogHeader: (p: any) => <div>{p.children}</div>,
+  DialogRoot: (p: any) => (p.open ? <div>{p.children}</div> : null),
+  DialogTitle: (p: any) => <div>{p.children}</div>,
+}));
 vi.mock("@/components/ui/field", () => ({
   Field: (p: any) => <div><label>{p.label}</label>{p.children}</div>,
 }));
@@ -48,7 +56,7 @@ function fillForm(opts: { first?: string; last?: string; email?: string; pw?: st
     fireEvent.change(screen.getByPlaceholderText("Last name"), { target: { value: opts.last } });
   }
   if (opts.email) {
-    fireEvent.change(screen.getByPlaceholderText("your.name@uwp.edu"), { target: { value: opts.email } });
+    fireEvent.change(screen.getByPlaceholderText("your.name@rangers.uwp.edu"), { target: { value: opts.email } });
   }
   if (opts.pw) {
     fireEvent.change(screen.getByTestId("pw-create-a-password"), { target: { value: opts.pw } });
@@ -65,14 +73,26 @@ function clickCreateAccount() {
 }
 
 describe("SignupPage", () => {
+  const originalAdvisorSignupCode = process.env.NEXT_PUBLIC_ADVISOR_SIGNUP_CODE;
+
   beforeEach(() => {
     vi.clearAllMocks();
     mockSignOut.mockResolvedValue({ error: null });
+    process.env.NEXT_PUBLIC_ADVISOR_SIGNUP_CODE = "advisor-secret";
+  });
+
+  afterEach(() => {
+    if (originalAdvisorSignupCode === undefined) {
+      delete process.env.NEXT_PUBLIC_ADVISOR_SIGNUP_CODE;
+      return;
+    }
+
+    process.env.NEXT_PUBLIC_ADVISOR_SIGNUP_CODE = originalAdvisorSignupCode;
   });
 
   it("renders create account heading", () => {
     renderWithChakra(<SignupPage />);
-    expect(screen.getAllByText("Create Your Account").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("Create Student Account").length).toBeGreaterThanOrEqual(1);
   });
 
   it("renders all form fields", () => {
@@ -82,6 +102,104 @@ describe("SignupPage", () => {
     expect(screen.getAllByText("Email").length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText("Password").length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText("Confirm Password").length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("does not render an advisor signup card or section", () => {
+    renderWithChakra(<SignupPage />);
+    expect(screen.queryByText("Manage programs and Gen-Ed buckets.")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Go to Advisor Sign Up" })).not.toBeInTheDocument();
+  });
+
+  it("renders the advisor access link", () => {
+    renderWithChakra(<SignupPage />);
+    expect(screen.getAllByText("Are you an advisor?").length).toBeGreaterThanOrEqual(1);
+    expect(
+      screen.getByRole("button", { name: "Access code required →" })
+    ).toBeInTheDocument();
+  });
+
+  it("uses the student email placeholder", () => {
+    renderWithChakra(<SignupPage />);
+    expect(screen.getByPlaceholderText("your.name@rangers.uwp.edu")).toBeInTheDocument();
+  });
+
+  it("clicking the advisor link opens the modal with code input and actions", async () => {
+    renderWithChakra(<SignupPage />);
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Access code required →" }));
+    });
+
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(screen.getAllByText("Advisor Access").length).toBeGreaterThanOrEqual(1);
+    expect(
+      screen.getByText("Enter the access code provided by the department.")
+    ).toBeInTheDocument();
+    expect(screen.getByPlaceholderText("Advisor Access Code")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Cancel" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Continue" })).toBeInTheDocument();
+  });
+
+  it("wrong code shows an error toast and does not navigate to advisor signup", async () => {
+    renderWithChakra(<SignupPage />);
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Access code required →" }));
+    });
+
+    fireEvent.change(screen.getByPlaceholderText("Advisor Access Code"), {
+      target: { value: "wrong-code" },
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+    });
+
+    expect(mockToaster.create).toHaveBeenCalledWith(
+      expect.objectContaining({ title: "Invalid access code" })
+    );
+    expect(mockPush).not.toHaveBeenCalledWith("/admin/signup");
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+  });
+
+  it("correct code navigates to advisor signup", async () => {
+    renderWithChakra(<SignupPage />);
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Access code required →" }));
+    });
+
+    fireEvent.change(screen.getByPlaceholderText("Advisor Access Code"), {
+      target: { value: "advisor-secret" },
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+    });
+
+    expect(mockPush).toHaveBeenCalledWith("/admin/signup");
+  });
+
+  it("missing env var shows advisor signup disabled and does not navigate", async () => {
+    delete process.env.NEXT_PUBLIC_ADVISOR_SIGNUP_CODE;
+    renderWithChakra(<SignupPage />);
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Access code required →" }));
+    });
+
+    fireEvent.change(screen.getByPlaceholderText("Advisor Access Code"), {
+      target: { value: "advisor-secret" },
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+    });
+
+    expect(mockToaster.create).toHaveBeenCalledWith(
+      expect.objectContaining({ title: "Advisor signup is not enabled" })
+    );
+    expect(mockPush).not.toHaveBeenCalledWith("/admin/signup");
   });
 
   it("shows error for empty fields", async () => {
