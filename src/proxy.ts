@@ -39,14 +39,23 @@ export async function proxy(request: NextRequest) {
 
   const { pathname } = request.nextUrl;
 
+  const isAdvisor = user?.user_metadata?.role === "advisor";
+
   // Unauthenticated users trying to access protected routes → redirect to signin
-  if (!user && pathname.startsWith("/dashboard")) {
+  if (!user && (pathname.startsWith("/dashboard") || pathname.startsWith("/admin"))) {
     const url = request.nextUrl.clone();
     url.pathname = "/signin";
     return NextResponse.redirect(url);
   }
 
-  // Authenticated users visiting auth pages → redirect to dashboard
+  // Authenticated non-advisors trying to access /admin → redirect to dashboard
+  if (user && !isAdvisor && pathname.startsWith("/admin")) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/dashboard";
+    return NextResponse.redirect(url);
+  }
+
+  // Authenticated users visiting auth pages → redirect to their home area
   // (but allow /reset-password so users can finish changing their password)
   if (
     user &&
@@ -55,7 +64,7 @@ export async function proxy(request: NextRequest) {
       pathname === "/forgot-password")
   ) {
     const url = request.nextUrl.clone();
-    url.pathname = "/dashboard";
+    url.pathname = isAdvisor ? "/admin" : "/dashboard";
     return NextResponse.redirect(url);
   }
 
@@ -72,6 +81,7 @@ export async function proxy(request: NextRequest) {
 export const config = {
   matcher: [
     "/dashboard/:path*",
+    "/admin/:path*",
     "/signin",
     "/signup",
     "/forgot-password",

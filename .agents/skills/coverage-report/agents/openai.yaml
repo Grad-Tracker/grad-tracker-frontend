@@ -1,3 +1,0 @@
-display_name: Coverage Report
-short_description: Generate a sprint code coverage markdown report from Vitest output.
-default_prompt: Generate a sprint code coverage report using this skill.

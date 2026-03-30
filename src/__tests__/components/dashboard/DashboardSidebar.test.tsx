@@ -48,7 +48,7 @@ describe("DashboardSidebar", () => {
     expect(screen.getAllByText("Courses").length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText("Requirements").length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText("Planner").length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText("Reports").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("AI Advisor").length).toBeGreaterThanOrEqual(1);
   });
 
   it("renders the Settings link", () => {

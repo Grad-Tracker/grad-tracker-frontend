@@ -193,7 +193,7 @@ export function getPackageCourseKeys(pkg: BreadthPackage): Set<string> {
 
 /** Check whether a requirement block is a breadth block */
 export function isBreadthBlock(block: RequirementBlockWithCourses): boolean {
-  return block.name === "Breadth Requirements";
+  return block.name.toLowerCase().includes("breadth requirement");
 }
 
 /** Build a course key (subject + number) for matching against package definitions */

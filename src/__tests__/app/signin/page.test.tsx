@@ -2,9 +2,10 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor, act } from "@testing-library/react";
 import { ChakraProvider, defaultSystem } from "@chakra-ui/react";
 
-const { mockPush, mockSignInWithPassword, mockToaster } = vi.hoisted(() => ({
+const { mockPush, mockSignInWithPassword, mockGetUser, mockToaster } = vi.hoisted(() => ({
   mockPush: vi.fn(),
   mockSignInWithPassword: vi.fn(),
+  mockGetUser: vi.fn(),
   mockToaster: { create: vi.fn(), success: vi.fn(), error: vi.fn() },
 }));
 
@@ -13,7 +14,7 @@ vi.mock("next/navigation", () => ({
 }));
 vi.mock("@/lib/supabase/client", () => ({
   createClient: () => ({
-    auth: { signInWithPassword: mockSignInWithPassword },
+    auth: { signInWithPassword: mockSignInWithPassword, getUser: mockGetUser },
   }),
 }));
 vi.mock("@/components/ui/toaster", () => ({ toaster: mockToaster }));
@@ -36,6 +37,9 @@ function renderWithChakra(ui: React.ReactElement) {
 describe("SigninPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockGetUser.mockResolvedValue({
+      data: { user: { user_metadata: {} } },
+    });
   });
 
   it("renders sign in page heading", () => {
@@ -119,7 +123,7 @@ describe("SigninPage", () => {
     });
   });
 
-  it("redirects to dashboard on success", async () => {
+  it("redirects to dashboard on student success", async () => {
     mockSignInWithPassword.mockResolvedValue({ data: {}, error: null });
     renderWithChakra(<SigninPage />);
 
@@ -138,6 +142,35 @@ describe("SigninPage", () => {
 
     await waitFor(() => {
       expect(mockPush).toHaveBeenCalledWith("/dashboard");
+      expect(mockToaster.create).toHaveBeenCalledWith(
+        expect.objectContaining({ description: "Redirecting..." })
+      );
+    });
+  });
+
+  it("redirects to admin for advisor accounts", async () => {
+    mockSignInWithPassword.mockResolvedValue({ data: {}, error: null });
+    mockGetUser.mockResolvedValue({
+      data: { user: { user_metadata: { role: "advisor" } } },
+    });
+    renderWithChakra(<SigninPage />);
+
+    fireEvent.change(screen.getByPlaceholderText("your.name@uwp.edu"), {
+      target: { value: "advisor@uwp.edu" },
+    });
+    fireEvent.change(screen.getByTestId("password-input"), {
+      target: { value: "password123" },
+    });
+
+    const buttons = screen.getAllByText("Sign In");
+    const btn = buttons.find((el) => el.closest("button") !== null);
+    await act(async () => {
+      fireEvent.click(btn!);
+    });
+
+    await waitFor(() => {
+      expect(mockGetUser).toHaveBeenCalled();
+      expect(mockPush).toHaveBeenCalledWith("/admin");
     });
   });
 
@@ -146,8 +179,10 @@ describe("SigninPage", () => {
     expect(screen.getAllByText("Forgot password?").length).toBeGreaterThanOrEqual(1);
   });
 
-  it("renders create account link", () => {
+  it("renders advisor signup link to /admin/signup", () => {
     renderWithChakra(<SigninPage />);
-    expect(screen.getAllByText("Create one").length).toBeGreaterThanOrEqual(1);
+    const advisorLink = screen.getByRole("link", { name: "Sign up here" });
+    expect(advisorLink).toBeInTheDocument();
+    expect(advisorLink).toHaveAttribute("href", "/admin/signup");
   });
 });

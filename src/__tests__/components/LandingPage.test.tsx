@@ -1,10 +1,13 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { cleanup } from "@testing-library/react";
 import { render, screen, fireEvent, waitFor, act } from "@testing-library/react";
+import React from "react";
 import { ChakraProvider, defaultSystem } from "@chakra-ui/react";
 
-const { mockPush, mockSignInWithPassword, mockToaster } = vi.hoisted(() => ({
+const { mockPush, mockSignInWithPassword, mockGetUser, mockToaster } = vi.hoisted(() => ({
   mockPush: vi.fn(),
   mockSignInWithPassword: vi.fn(),
+  mockGetUser: vi.fn(),
   mockToaster: { create: vi.fn(), success: vi.fn(), error: vi.fn() },
 }));
 
@@ -14,7 +17,7 @@ vi.mock("next/navigation", () => ({
 
 vi.mock("@/lib/supabase/client", () => ({
   createClient: () => ({
-    auth: { signInWithPassword: mockSignInWithPassword },
+    auth: { signInWithPassword: mockSignInWithPassword, getUser: mockGetUser },
   }),
 }));
 
@@ -30,7 +33,12 @@ vi.mock("@/components/ui/dialog", () => ({
   DialogTrigger: (p: any) => <div>{p.children}</div>,
 }));
 vi.mock("@/components/ui/field", () => ({
-  Field: (p: any) => <div><label>{p.label}</label>{p.children}</div>,
+  Field: (p: any) => (
+    <div>
+      <label>{p.label}</label>
+      {p.children}
+    </div>
+  ),
 }));
 vi.mock("@/components/ui/password-input", () => ({
   PasswordInput: (p: any) => (
@@ -73,9 +81,14 @@ function renderWithChakra(ui: React.ReactElement) {
   return render(<ChakraProvider value={defaultSystem}>{ui}</ChakraProvider>);
 }
 
-describe("LandingPage", () => {
+describe("LandingPage", { timeout: 15000 }, () => {
+  afterEach(cleanup);
+
   beforeEach(() => {
     vi.clearAllMocks();
+    mockGetUser.mockResolvedValue({
+      data: { user: { user_metadata: {} } },
+    });
   });
 
   it("renders GradTracker logo", () => {
@@ -146,98 +159,15 @@ describe("LandingPage", () => {
     expect(screen.getAllByText(/Built with care/).length).toBeGreaterThanOrEqual(1);
   });
 
-  it("renders sign in dialog form fields", () => {
+  it("renders Sign In button as a link to /signin", () => {
     renderWithChakra(<LandingPage />);
-    expect(screen.getAllByText("Welcome Back, Ranger").length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText("Email").length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText("Password").length).toBeGreaterThanOrEqual(1);
-  });
-
-  it("shows error toast when signing in with empty fields", async () => {
-    renderWithChakra(<LandingPage />);
-    // Find the Sign In submit button (last button, not the trigger)
-    const signInButtons = screen.getAllByText("Sign In")
-      .filter((el) => el.closest("button") !== null);
-    const submitButton = signInButtons[signInButtons.length - 1];
-    await act(async () => {
-      fireEvent.click(submitButton!);
-    });
-    expect(mockToaster.create).toHaveBeenCalledWith(
-      expect.objectContaining({ title: "Missing fields" })
-    );
-  });
-
-  it("calls signInWithPassword on valid submit", async () => {
-    mockSignInWithPassword.mockResolvedValue({ data: {}, error: null });
-    renderWithChakra(<LandingPage />);
-
-    const emailInput = screen.getByPlaceholderText("your.name@uwp.edu");
-    const passwordInput = screen.getByTestId("password-input");
-    fireEvent.change(emailInput, { target: { value: "test@uwp.edu" } });
-    fireEvent.change(passwordInput, { target: { value: "password123" } });
-
-    const signInButtons = screen.getAllByText("Sign In")
-      .filter((el) => el.closest("button") !== null);
-    await act(async () => {
-      fireEvent.click(signInButtons[signInButtons.length - 1]!);
-    });
-
-    await waitFor(() => {
-      expect(mockSignInWithPassword).toHaveBeenCalledWith({
-        email: "test@uwp.edu",
-        password: "password123",
-      });
-    });
-  });
-
-  it("shows error toast on sign in failure", async () => {
-    mockSignInWithPassword.mockResolvedValue({
-      data: {},
-      error: { message: "Invalid credentials" },
-    });
-    renderWithChakra(<LandingPage />);
-
-    const emailInput = screen.getByPlaceholderText("your.name@uwp.edu");
-    const passwordInput = screen.getByTestId("password-input");
-    fireEvent.change(emailInput, { target: { value: "test@uwp.edu" } });
-    fireEvent.change(passwordInput, { target: { value: "wrong" } });
-
-    const signInButtons = screen.getAllByText("Sign In")
-      .filter((el) => el.closest("button") !== null);
-    await act(async () => {
-      fireEvent.click(signInButtons[signInButtons.length - 1]!);
-    });
-
-    await waitFor(() => {
-      expect(mockToaster.create).toHaveBeenCalledWith(
-        expect.objectContaining({ title: "Sign in failed" })
-      );
-    });
-  });
-
-  it("redirects to dashboard on successful sign in", async () => {
-    mockSignInWithPassword.mockResolvedValue({ data: {}, error: null });
-    renderWithChakra(<LandingPage />);
-
-    const emailInput = screen.getByPlaceholderText("your.name@uwp.edu");
-    const passwordInput = screen.getByTestId("password-input");
-    fireEvent.change(emailInput, { target: { value: "test@uwp.edu" } });
-    fireEvent.change(passwordInput, { target: { value: "password123" } });
-
-    const signInButtons = screen.getAllByText("Sign In")
-      .filter((el) => el.closest("button") !== null);
-    await act(async () => {
-      fireEvent.click(signInButtons[signInButtons.length - 1]!);
-    });
-
-    await waitFor(() => {
-      expect(mockPush).toHaveBeenCalledWith("/dashboard");
-    }, { timeout: 10000 });
-  }, 15000);
-
-  it("renders create account link", () => {
-    renderWithChakra(<LandingPage />);
-    expect(screen.getAllByText("Create one").length).toBeGreaterThanOrEqual(1);
+    // The Sign In nav button should be an anchor pointing to /signin (no modal)
+    const signInLinks = screen
+      .getAllByText("Sign In")
+      .map((el) => el.closest("a"))
+      .filter(Boolean);
+    expect(signInLinks.length).toBeGreaterThanOrEqual(1);
+    expect(signInLinks[0]).toHaveAttribute("href", "/signin");
   });
 
   it("renders security and free badges", () => {
