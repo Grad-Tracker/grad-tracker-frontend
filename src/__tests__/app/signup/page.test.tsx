@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor, act } from "@testing-library/react";
 import { ChakraProvider, defaultSystem } from "@chakra-ui/react";
 
@@ -8,6 +8,8 @@ const { mockPush, mockSignUp, mockSignOut, mockToaster } = vi.hoisted(() => ({
   mockSignOut: vi.fn(),
   mockToaster: { create: vi.fn(), success: vi.fn(), error: vi.fn() },
 }));
+
+const mockFetch = vi.fn();
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: mockPush, replace: vi.fn(), refresh: vi.fn() }),
@@ -73,21 +75,10 @@ function clickCreateAccount() {
 }
 
 describe("SignupPage", () => {
-  const originalAdvisorSignupCode = process.env.NEXT_PUBLIC_ADVISOR_SIGNUP_CODE;
-
   beforeEach(() => {
     vi.clearAllMocks();
     mockSignOut.mockResolvedValue({ error: null });
-    process.env.NEXT_PUBLIC_ADVISOR_SIGNUP_CODE = "advisor-secret";
-  });
-
-  afterEach(() => {
-    if (originalAdvisorSignupCode === undefined) {
-      delete process.env.NEXT_PUBLIC_ADVISOR_SIGNUP_CODE;
-      return;
-    }
-
-    process.env.NEXT_PUBLIC_ADVISOR_SIGNUP_CODE = originalAdvisorSignupCode;
+    vi.stubGlobal("fetch", mockFetch);
   });
 
   it("renders create account heading", () => {
@@ -141,6 +132,11 @@ describe("SignupPage", () => {
   });
 
   it("wrong code shows an error toast and does not navigate to advisor signup", async () => {
+    mockFetch.mockResolvedValue({
+      status: 401,
+      json: vi.fn().mockResolvedValue({ ok: false, message: "Invalid access code" }),
+    });
+
     renderWithChakra(<SignupPage />);
 
     await act(async () => {
@@ -155,6 +151,11 @@ describe("SignupPage", () => {
       fireEvent.click(screen.getByRole("button", { name: "Continue" }));
     });
 
+    expect(mockFetch).toHaveBeenCalledWith("/api/advisor/verify-signup-code", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ code: "wrong-code" }),
+    });
     expect(mockToaster.create).toHaveBeenCalledWith(
       expect.objectContaining({ title: "Invalid access code" })
     );
@@ -163,6 +164,11 @@ describe("SignupPage", () => {
   });
 
   it("correct code navigates to advisor signup", async () => {
+    mockFetch.mockResolvedValue({
+      status: 200,
+      json: vi.fn().mockResolvedValue({ ok: true }),
+    });
+
     renderWithChakra(<SignupPage />);
 
     await act(async () => {
@@ -180,8 +186,12 @@ describe("SignupPage", () => {
     expect(mockPush).toHaveBeenCalledWith("/admin/signup");
   });
 
-  it("missing env var shows advisor signup disabled and does not navigate", async () => {
-    delete process.env.NEXT_PUBLIC_ADVISOR_SIGNUP_CODE;
+  it("server verification failure shows a generic error and does not navigate", async () => {
+    mockFetch.mockResolvedValue({
+      status: 500,
+      json: vi.fn().mockResolvedValue({ ok: false, message: "Server misconfigured" }),
+    });
+
     renderWithChakra(<SignupPage />);
 
     await act(async () => {
@@ -197,7 +207,29 @@ describe("SignupPage", () => {
     });
 
     expect(mockToaster.create).toHaveBeenCalledWith(
-      expect.objectContaining({ title: "Advisor signup is not enabled" })
+      expect.objectContaining({ title: "Unable to verify code" })
+    );
+    expect(mockPush).not.toHaveBeenCalledWith("/admin/signup");
+  });
+
+  it("network failures show a generic error and do not navigate", async () => {
+    mockFetch.mockRejectedValue(new Error("network failed"));
+    renderWithChakra(<SignupPage />);
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Access code required →" }));
+    });
+
+    fireEvent.change(screen.getByPlaceholderText("Advisor Access Code"), {
+      target: { value: "advisor-secret" },
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+    });
+
+    expect(mockToaster.create).toHaveBeenCalledWith(
+      expect.objectContaining({ title: "Unable to verify code" })
     );
     expect(mockPush).not.toHaveBeenCalledWith("/admin/signup");
   });

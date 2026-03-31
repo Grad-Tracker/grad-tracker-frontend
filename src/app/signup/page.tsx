@@ -41,28 +41,50 @@ export default function SignupPage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
 
-  function handleAdvisorAccessContinue() {
-    const expectedCode = process.env.NEXT_PUBLIC_ADVISOR_SIGNUP_CODE;
-
-    if (!expectedCode) {
-      toaster.create({
-        title: "Advisor signup is not enabled",
-        type: "error",
+  async function handleAdvisorAccessContinue() {
+    try {
+      const response = await fetch("/api/advisor/verify-signup-code", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ code: advisorAccessCode }),
       });
-      return;
+
+      let payload: { ok?: boolean; message?: string } | null = null;
+
+      try {
+        payload = await response.json();
+      } catch {
+        payload = null;
+      }
+
+      if (payload?.ok) {
+        setAdvisorDialogOpen(false);
+        setAdvisorAccessCode("");
+        router.push("/admin/signup");
+        return;
+      }
+
+      if (response.status >= 500) {
+        throw new Error("verification failed");
+      }
+
+      if (payload?.message) {
+        toaster.create({
+          title: payload.message,
+          type: "error",
+        });
+        return;
+      }
+    } catch {
+      // Fall through to generic verification failure handling below.
     }
 
-    if (advisorAccessCode !== expectedCode) {
-      toaster.create({
-        title: "Invalid access code",
-        type: "error",
-      });
-      return;
-    }
-
-    setAdvisorDialogOpen(false);
-    setAdvisorAccessCode("");
-    router.push("/admin/signup");
+    toaster.create({
+      title: "Unable to verify code",
+      type: "error",
+    });
   }
 
   async function handleSignup() {
