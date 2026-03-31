@@ -11,6 +11,8 @@ const {
   mockFrom,
   mockInsert,
   mockToaster,
+  mockCookies,
+  mockRedirect,
 } = vi.hoisted(() => ({
   mockPush: vi.fn(),
   mockSignUp: vi.fn(),
@@ -18,10 +20,19 @@ const {
   mockFrom: vi.fn(),
   mockInsert: vi.fn(),
   mockToaster: { create: vi.fn(), success: vi.fn(), error: vi.fn() },
+  mockCookies: vi.fn(),
+  mockRedirect: vi.fn(),
 }));
 
+const mockFetch = vi.fn();
+
 vi.mock("next/navigation", () => ({
+  redirect: mockRedirect,
   useRouter: () => ({ push: mockPush, replace: vi.fn(), refresh: vi.fn() }),
+}));
+
+vi.mock("next/headers", () => ({
+  cookies: mockCookies,
 }));
 
 vi.mock("@/lib/supabase/client", () => ({
@@ -49,6 +60,7 @@ vi.mock("@/components/ui/password-input", () => ({
 }));
 
 import AdminSignupPage from "@/app/admin/(public)/signup/page";
+import AdvisorSignupClient from "@/app/admin/(public)/signup/AdvisorSignupClient";
 
 function renderWithChakra(ui: React.ReactElement) {
   return render(<ChakraProvider value={defaultSystem}>{ui}</ChakraProvider>);
@@ -100,10 +112,28 @@ describe("AdminSignupPage", () => {
     mockSignOut.mockResolvedValue({ error: null });
     mockInsert.mockResolvedValue({ error: null });
     mockFrom.mockReturnValue({ insert: mockInsert });
+    mockCookies.mockResolvedValue({
+      get: vi.fn((name: string) =>
+        name === "advisor_signup_ok" ? { name, value: "1" } : undefined
+      ),
+    });
+    mockFetch.mockResolvedValue({ ok: true, json: vi.fn().mockResolvedValue({ ok: true }) });
+    vi.stubGlobal("fetch", mockFetch);
   });
 
-  it("renders all fields and the advisor button label", () => {
-    renderWithChakra(<AdminSignupPage />);
+  it("redirects to /signup when the advisor signup gate cookie is missing", async () => {
+    mockCookies.mockResolvedValue({
+      get: vi.fn(() => undefined),
+    });
+
+    await AdminSignupPage();
+
+    expect(mockRedirect).toHaveBeenCalledWith("/signup");
+  });
+
+  it("renders the advisor signup form when the gate cookie is present", async () => {
+    const page = await AdminSignupPage();
+    renderWithChakra(page);
 
     expect(screen.getAllByText("Create Advisor Account").length).toBeGreaterThanOrEqual(1);
     expect(
@@ -119,7 +149,7 @@ describe("AdminSignupPage", () => {
   });
 
   it("shows error toast when passwords do not match", async () => {
-    renderWithChakra(<AdminSignupPage />);
+    renderWithChakra(<AdvisorSignupClient />);
     fillForm({
       first: "Ada",
       last: "Lovelace",
@@ -138,7 +168,7 @@ describe("AdminSignupPage", () => {
   });
 
   it("blocks rangers email addresses before signup", async () => {
-    renderWithChakra(<AdminSignupPage />);
+    renderWithChakra(<AdvisorSignupClient />);
     fillForm({
       first: "Ada",
       last: "Lovelace",
@@ -167,7 +197,7 @@ describe("AdminSignupPage", () => {
       error: null,
     });
 
-    renderWithChakra(<AdminSignupPage />);
+    renderWithChakra(<AdvisorSignupClient />);
     fillForm({
       first: "Ada",
       last: "Lovelace",
@@ -194,7 +224,7 @@ describe("AdminSignupPage", () => {
       error: null,
     });
 
-    renderWithChakra(<AdminSignupPage />);
+    renderWithChakra(<AdvisorSignupClient />);
     fillForm({
       first: "Ada",
       last: "Lovelace",
@@ -228,6 +258,9 @@ describe("AdminSignupPage", () => {
         last_name: "Lovelace",
         role: "advisor",
         is_admin: false,
+      });
+      expect(mockFetch).toHaveBeenCalledWith("/api/advisor/clear-signup-gate", {
+        method: "POST",
       });
       expect(mockPush).toHaveBeenCalledWith("/admin");
     });
