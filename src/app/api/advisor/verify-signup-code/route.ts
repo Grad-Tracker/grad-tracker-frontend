@@ -1,4 +1,9 @@
 import { NextResponse } from "next/server";
+import {
+  createAdvisorSignupGateToken,
+  getAdvisorSignupGateCookieName,
+  getAdvisorSignupGateMaxAgeSeconds,
+} from "@/lib/advisor-signup-gate";
 
 export async function POST(request: Request) {
   const expectedCode = process.env.ADVISOR_SIGNUP_CODE;
@@ -29,10 +34,19 @@ export async function POST(request: Request) {
   }
 
   if (body.code === expectedCode) {
+    const token = createAdvisorSignupGateToken();
+
+    if (!token) {
+      return NextResponse.json(
+        { ok: false, message: "Server misconfigured" },
+        { status: 500 }
+      );
+    }
+
     const response = NextResponse.json({ ok: true });
-    response.cookies.set("advisor_signup_ok", "1", {
+    response.cookies.set(getAdvisorSignupGateCookieName(), token, {
       path: "/",
-      maxAge: 600,
+      maxAge: getAdvisorSignupGateMaxAgeSeconds(),
       sameSite: "lax",
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",

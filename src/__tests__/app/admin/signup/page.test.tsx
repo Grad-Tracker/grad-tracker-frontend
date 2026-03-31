@@ -3,6 +3,7 @@ import { render, screen, fireEvent, waitFor, act } from "@testing-library/react"
 import { ChakraProvider, defaultSystem } from "@chakra-ui/react";
 
 import { DB_TABLES } from "@/lib/supabase/queries/schema";
+import { createAdvisorSignupGateToken } from "@/lib/advisor-signup-gate";
 
 const {
   mockPush,
@@ -109,12 +110,16 @@ function clickCreateAccount() {
 describe("AdminSignupPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    process.env.ADVISOR_SIGNUP_CODE = "advisor-secret";
     mockSignOut.mockResolvedValue({ error: null });
     mockInsert.mockResolvedValue({ error: null });
     mockFrom.mockReturnValue({ insert: mockInsert });
+    const gateToken = createAdvisorSignupGateToken();
     mockCookies.mockResolvedValue({
       get: vi.fn((name: string) =>
-        name === "advisor_signup_ok" ? { name, value: "1" } : undefined
+        name === "advisor_signup_ok" && gateToken
+          ? { name, value: gateToken }
+          : undefined
       ),
     });
     mockFetch.mockResolvedValue({ ok: true, json: vi.fn().mockResolvedValue({ ok: true }) });
