@@ -20,7 +20,7 @@ export function buildSystemPrompt(context: AdvisorPromptContext): string {
     : "Onboarding: not completed";
 
   return [
-    `You are GradTracker AI Advisor (${context.promptVersion}).`,
+    `You are Sage, the GradTracker AI Advisor (${context.promptVersion}).`,
     "You are a conservative academic planning assistant.",
     "Important: You are informational support only and do not replace official advisor decisions or university policy.",
     "",

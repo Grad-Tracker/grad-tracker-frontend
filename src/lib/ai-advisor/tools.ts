@@ -1,5 +1,6 @@
 import "server-only";
 
+import Anthropic from "@anthropic-ai/sdk";
 import { evaluatePrereqsForCourses, type PrereqEvaluationMap } from "@/lib/prereq";
 import { buildSystemPrompt, PROMPT_VERSION } from "@/lib/ai-advisor/prompt";
 import {
@@ -422,119 +423,77 @@ export function createAdvisorTools(deps: AdvisorToolDependencies): AdvisorToolse
   };
 }
 
-type OpenAIToolDefinition = {
-  type: "function";
-  function: {
-    name: AdvisorToolName;
-    description: string;
-    parameters: Record<string, unknown>;
-  };
-};
+type ClaudeToolDefinition = Anthropic.Messages.Tool;
 
-const OPENAI_TOOL_DEFINITIONS: OpenAIToolDefinition[] = [
+const CLAUDE_TOOL_DEFINITIONS: ClaudeToolDefinition[] = [
   {
-    type: "function",
-    function: {
-      name: TOOL_NAMES.getStudentProfile,
-      description: "Get the student profile context, programs, and expected graduation information.",
-      parameters: {
-        type: "object",
-        additionalProperties: false,
-        properties: {},
+    name: TOOL_NAMES.getStudentProfile,
+    description: "Get the student profile context, programs, and expected graduation information.",
+    input_schema: { type: "object" as const, properties: {} },
+  },
+  {
+    name: TOOL_NAMES.getPlanSnapshot,
+    description: "Get active plan terms, planned courses, and total planned credits.",
+    input_schema: {
+      type: "object" as const,
+      properties: { planId: { type: "integer" as const, description: "Plan ID" } },
+    },
+  },
+  {
+    name: TOOL_NAMES.getDegreeProgress,
+    description: "Get degree progress by requirement block and overall completion metrics.",
+    input_schema: {
+      type: "object" as const,
+      properties: { planId: { type: "integer" as const, description: "Plan ID" } },
+    },
+  },
+  {
+    name: TOOL_NAMES.getRemainingRequirements,
+    description: "Get remaining requirement courses grouped by block.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        planId: { type: "integer" as const, description: "Plan ID" },
+        limit: { type: "integer" as const, description: "Max courses to return" },
       },
     },
   },
   {
-    type: "function",
-    function: {
-      name: TOOL_NAMES.getPlanSnapshot,
-      description: "Get active plan terms, planned courses, and total planned credits.",
-      parameters: {
-        type: "object",
-        additionalProperties: false,
-        properties: {
-          planId: { type: "integer" },
-        },
+    name: TOOL_NAMES.checkCoursePrereqs,
+    description: "Check whether a student can take specified courses and list unmet prerequisites.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        courseIds: { type: "array" as const, items: { type: "integer" as const }, description: "Course IDs" },
+        courseCodes: { type: "array" as const, items: { type: "string" as const }, description: "Course codes" },
       },
     },
   },
   {
-    type: "function",
-    function: {
-      name: TOOL_NAMES.getDegreeProgress,
-      description: "Get degree progress by requirement block and overall completion metrics.",
-      parameters: {
-        type: "object",
-        additionalProperties: false,
-        properties: {
-          planId: { type: "integer" },
-        },
-      },
-    },
-  },
-  {
-    type: "function",
-    function: {
-      name: TOOL_NAMES.getRemainingRequirements,
-      description: "Get remaining requirement courses grouped by block.",
-      parameters: {
-        type: "object",
-        additionalProperties: false,
-        properties: {
-          planId: { type: "integer" },
-          limit: { type: "integer" },
-        },
-      },
-    },
-  },
-  {
-    type: "function",
-    function: {
-      name: TOOL_NAMES.checkCoursePrereqs,
-      description: "Check whether a student can take specified courses and list unmet prerequisites.",
-      parameters: {
-        type: "object",
-        additionalProperties: false,
-        properties: {
-          courseIds: {
-            type: "array",
-            items: { type: "integer" },
-          },
-          courseCodes: {
-            type: "array",
-            items: { type: "string" },
-          },
-        },
-      },
-    },
-  },
-  {
-    type: "function",
-    function: {
-      name: TOOL_NAMES.recommendNextSemester,
-      description: "Recommend next-semester courses using requirement priority and prerequisite status.",
-      parameters: {
-        type: "object",
-        additionalProperties: false,
-        properties: {
-          targetCredits: { type: "number" },
-          planId: { type: "integer" },
-        },
+    name: TOOL_NAMES.recommendNextSemester,
+    description: "Recommend next-semester courses using requirement priority and prerequisite status.",
+    input_schema: {
+      type: "object" as const,
+      properties: {
+        targetCredits: { type: "number" as const, description: "Target credits" },
+        planId: { type: "integer" as const, description: "Plan ID" },
       },
     },
   },
 ];
 
-async function runOpenAiToolCalling(args: {
+async function runClaudeToolCalling(args: {
   message: string;
   history: AdvisorChatHistoryItem[];
   profile: AdvisorStudentProfile;
   executeTool: (name: AdvisorToolName, toolArgs: Record<string, unknown>) => Promise<ToolExecutionResult>;
 }): Promise<AdvisorChatResponse | null> {
-  const apiKey = process.env.OPENAI_API_KEY;
+  const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) return null;
 
-  const model = process.env.OPENAI_MODEL || "gpt-4.1-mini";
+  const client = new Anthropic({ apiKey });
+  const model = process.env.ANTHROPIC_MODEL || "claude-haiku-4-5-20251001";
+
   const systemPrompt = buildSystemPrompt({
     promptVersion: PROMPT_VERSION,
     studentName: args.profile.fullName,
@@ -544,93 +503,58 @@ async function runOpenAiToolCalling(args: {
     hasCompletedOnboarding: args.profile.hasCompletedOnboarding,
   });
 
-  const messages: Array<Record<string, unknown>> = [
-    {
-      role: "system",
-      content: `${systemPrompt}\n\nReturn strict JSON with keys: answer, recommendations, risks, missingData, citations.`,
-    },
+  const messages: Anthropic.Messages.MessageParam[] = [
     ...args.history.slice(-8).map((item) => ({
-      role: item.role,
+      role: item.role as "user" | "assistant",
       content: item.text,
     })),
-    {
-      role: "user",
-      content: args.message,
-    },
+    { role: "user" as const, content: args.message },
   ];
 
   const maxTurns = 4;
   for (let turn = 0; turn < maxTurns; turn += 1) {
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model,
-        temperature: 0.2,
-        messages,
-        tools: OPENAI_TOOL_DEFINITIONS,
-        tool_choice: "auto",
-      }),
+    const response = await client.messages.create({
+      model,
+      max_tokens: 1024,
+      system: `${systemPrompt}\n\nReturn strict JSON with keys: answer, recommendations, risks, missingData, citations.`,
+      tools: CLAUDE_TOOL_DEFINITIONS,
+      messages,
     });
 
-    if (!response.ok) {
-      throw new Error(`OpenAI request failed with status ${response.status}`);
-    }
+    const toolUseBlocks = response.content.filter(
+      (block): block is Anthropic.Messages.ToolUseBlock => block.type === "tool_use"
+    );
 
-    const payload = (await response.json()) as any;
-    const assistantMessage = payload?.choices?.[0]?.message;
-    if (!assistantMessage) {
-      throw new Error("OpenAI response missing assistant message");
-    }
-
-    const toolCalls = Array.isArray(assistantMessage.tool_calls)
-      ? assistantMessage.tool_calls
-      : [];
-
-    if (toolCalls.length === 0) {
-      const content =
-        typeof assistantMessage.content === "string"
-          ? assistantMessage.content
-          : "";
+    if (toolUseBlocks.length === 0) {
+      const textBlock = response.content.find(
+        (block): block is Anthropic.Messages.TextBlock => block.type === "text"
+      );
+      const content = textBlock?.text ?? "";
       const parsed = normalizeAdvisorResponse(tryParseJson(content));
       if (parsed) return parsed;
       return makeFallbackResponse(
-        "I could not safely parse a structured response. Please ask your question again with more detail."
+        content || "I could not safely parse a structured response. Please ask your question again."
       );
     }
 
-    messages.push({
-      role: "assistant",
-      content: assistantMessage.content ?? "",
-      tool_calls: toolCalls,
-    });
+    messages.push({ role: "assistant", content: response.content });
 
-    for (const call of toolCalls) {
-      const toolName = String(call?.function?.name ?? "") as AdvisorToolName;
-      let parsedArgs: Record<string, unknown> = {};
-      try {
-        parsedArgs = call?.function?.arguments
-          ? (JSON.parse(String(call.function.arguments)) as Record<string, unknown>)
-          : {};
-      } catch {
-        parsedArgs = {};
-      }
-
-      const toolResult = await args.executeTool(toolName, parsedArgs);
-      messages.push({
-        role: "tool",
-        tool_call_id: String(call.id),
+    const toolResults: Anthropic.Messages.ToolResultBlockParam[] = [];
+    for (const toolUse of toolUseBlocks) {
+      const toolResult = await args.executeTool(
+        toolUse.name as AdvisorToolName,
+        (toolUse.input as Record<string, unknown>) ?? {}
+      );
+      toolResults.push({
+        type: "tool_result",
+        tool_use_id: toolUse.id,
         content: JSON.stringify(toolResult),
       });
     }
+    messages.push({ role: "user", content: toolResults });
   }
 
-  return makeFallbackResponse(
-    "I could not complete tool execution safely in time. Please try again."
-  );
+  return makeFallbackResponse("I could not complete tool execution safely in time. Please try again.");
 }
 
 async function runDeterministicAdvisor(args: {
@@ -849,15 +773,15 @@ export async function generateAdvisorResponse(
 
   let response: AdvisorChatResponse | null = null;
   try {
-    response = await runOpenAiToolCalling({
+    response = await runClaudeToolCalling({
       message: input.message,
       history: input.history,
       profile: input.profile,
       executeTool,
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : "OpenAI call failed";
-    missingData.add(`openai: ${message}`);
+    const message = error instanceof Error ? error.message : "Claude API call failed";
+    missingData.add(`claude: ${message}`);
   }
 
   if (!response) {
@@ -877,4 +801,11 @@ export async function generateAdvisorResponse(
   };
 }
 
-export { TOOL_NAMES as ADVISOR_TOOL_NAMES };
+export {
+  CLAUDE_TOOL_DEFINITIONS,
+  executeToolByName,
+  normalizeAdvisorResponse,
+  tryParseJson,
+  makeFallbackResponse,
+  TOOL_NAMES as ADVISOR_TOOL_NAMES,
+};

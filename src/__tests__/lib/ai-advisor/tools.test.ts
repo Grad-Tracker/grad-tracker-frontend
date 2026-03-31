@@ -86,7 +86,7 @@ function makeDependencies(): AdvisorToolDependencies {
 
 describe("AI advisor tools orchestration", () => {
   beforeEach(() => {
-    delete process.env.OPENAI_API_KEY;
+    delete process.env.ANTHROPIC_API_KEY;
   });
 
   it("returns next-semester recommendations for planning questions", async () => {
