@@ -222,36 +222,39 @@ export default function PlannerPage() {
   const plannerPoolBlocks = useMemo(() => {
     if (isGraduatePlan) return blocks;
 
-    const hasBreadthBlock = blocks.some((block) =>
-      block.name.toLowerCase().includes("breadth requirement")
-    );
-    if (hasBreadthBlock) return blocks;
-    if (!genEdBuckets.length) return blocks;
+    const genEdCourses = (() => {
+      const seenCourseIds = new Set<number>();
+      return genEdBuckets
+        .flatMap((bucket) => bucket.courses ?? [])
+        .filter((course) => {
+          if (seenCourseIds.has(course.id)) return false;
+          seenCourseIds.add(course.id);
+          return true;
+        });
+    })();
 
-    const seenCourseIds = new Set<number>();
-    const breadthCourses = genEdBuckets
-      .flatMap((bucket) => bucket.courses ?? [])
-      .filter((course) => {
-        if (seenCourseIds.has(course.id)) return false;
-        seenCourseIds.add(course.id);
-        return true;
-      });
+    if (!genEdCourses.length) return blocks;
 
-    if (!breadthCourses.length) return blocks;
+    const hasGeneralEdBlock = blocks.some((block) => {
+      const name = block.name.toLowerCase();
+      return name.includes("general education") || name.includes("gen ed");
+    });
+
+    if (hasGeneralEdBlock) return blocks;
 
     return [
       ...blocks,
       {
-        id: -1,
+        id: -2,
         program_id: 0,
-        name: "Breadth Requirements",
+        name: "General Education",
         rule: "CREDITS_OF",
         n_required: null,
         credits_required: genEdBuckets.reduce(
           (sum, bucket) => sum + Number(bucket.credits_required ?? 0),
           0
         ),
-        courses: breadthCourses,
+        courses: genEdCourses,
       },
     ];
   }, [blocks, genEdBuckets, isGraduatePlan]);
