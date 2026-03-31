@@ -1,7 +1,7 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 
-const GATE_COOKIE_NAME = "advisor_signup_ok";
-const GATE_MAX_AGE_SECONDS = 600;
+const GATE_COOKIE_NAME = "advisor_signup_gate";
+const GATE_MAX_AGE_SECONDS = 300;
 
 function getSecret() {
   return process.env.ADVISOR_SIGNUP_CODE;

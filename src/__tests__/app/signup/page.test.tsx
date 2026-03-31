@@ -10,8 +10,10 @@ const { mockPush, mockSignUp, mockSignOut, mockToaster } = vi.hoisted(() => ({
 }));
 
 const mockFetch = vi.fn();
+const mockSearchParamsGet = vi.fn();
 
 vi.mock("next/navigation", () => ({
+  useSearchParams: () => ({ get: mockSearchParamsGet }),
   useRouter: () => ({ push: mockPush, replace: vi.fn(), refresh: vi.fn() }),
 }));
 vi.mock("@/lib/supabase/client", () => ({
@@ -79,6 +81,7 @@ describe("SignupPage", () => {
     vi.clearAllMocks();
     mockSignOut.mockResolvedValue({ error: null });
     vi.stubGlobal("fetch", mockFetch);
+    mockSearchParamsGet.mockReturnValue(null);
   });
 
   it("renders create account heading", () => {
@@ -129,6 +132,18 @@ describe("SignupPage", () => {
     expect(screen.getByPlaceholderText("Advisor Access Code")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Cancel" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Continue" })).toBeInTheDocument();
+  });
+
+  it("auto-opens the advisor access modal when advisor=1 is present", async () => {
+    mockSearchParamsGet.mockImplementation((key: string) =>
+      key === "advisor" ? "1" : null
+    );
+
+    renderWithChakra(<SignupPage />);
+
+    expect(await screen.findByRole("dialog")).toBeInTheDocument();
+    expect(screen.getAllByText("Advisor Access").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByPlaceholderText("Advisor Access Code")).toBeInTheDocument();
   });
 
   it("wrong code shows an error toast and does not navigate to advisor signup", async () => {

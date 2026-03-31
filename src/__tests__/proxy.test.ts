@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { createAdvisorSignupGateToken, getAdvisorSignupGateCookieName } from "@/lib/advisor-signup-gate";
 
 const { mockGetUser, mockCreateServerClient } = vi.hoisted(() => ({
   mockGetUser: vi.fn(),
@@ -46,6 +47,7 @@ function makeRequest(path: string, cookie?: string) {
 describe("proxy advisor signup gate", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    process.env.ADVISOR_SIGNUP_CODE = "advisor-secret";
     mockGetUser.mockResolvedValue({ data: { user: null } });
     mockCreateServerClient.mockReturnValue({
       auth: { getUser: mockGetUser },
@@ -64,7 +66,12 @@ describe("proxy advisor signup gate", () => {
   });
 
   it("allows /admin/signup when advisor gate cookie is present", async () => {
-    const request = makeRequest("/admin/signup", "advisor_signup_ok=1");
+    const gateToken = createAdvisorSignupGateToken();
+    expect(gateToken).toBeTruthy();
+    const request = makeRequest(
+      "/admin/signup",
+      `${getAdvisorSignupGateCookieName()}=${gateToken}`
+    );
 
     const response = await proxy(request);
 

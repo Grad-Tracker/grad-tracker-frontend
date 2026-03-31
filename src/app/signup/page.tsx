@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import {
   Badge,
   Box,
@@ -27,8 +27,20 @@ import { PasswordInput } from "@/components/ui/password-input";
 import { toaster } from "@/components/ui/toaster";
 import { LuGraduationCap, LuArrowRight, LuLoader } from "react-icons/lu";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+
+function AdvisorAccessQuerySync({ onOpen }: { onOpen: () => void }) {
+  const searchParams = useSearchParams();
+
+  useEffect(() => {
+    if (searchParams.get("advisor") === "1") {
+      onOpen();
+    }
+  }, [onOpen, searchParams]);
+
+  return null;
+}
 
 export default function SignupPage() {
   const router = useRouter();
@@ -175,6 +187,10 @@ export default function SignupPage() {
       fontFamily="var(--font-plus-jakarta), sans-serif"
       position="relative"
     >
+      <Suspense fallback={null}>
+        <AdvisorAccessQuerySync onOpen={() => setAdvisorDialogOpen(true)} />
+      </Suspense>
+
       {/* Navigation Header */}
       <Box
         as="header"

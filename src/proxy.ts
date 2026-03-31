@@ -1,5 +1,9 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import {
+  getAdvisorSignupGateCookieName,
+  verifyAdvisorSignupGateToken,
+} from "@/lib/advisor-signup-gate";
 
 export async function proxy(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
@@ -41,8 +45,9 @@ export async function proxy(request: NextRequest) {
   const isAdminSignin = pathname === "/admin/signin";
   const isAdminSignup = pathname === "/admin/signup";
   const isAdminPublicAuth = isAdminSignin || isAdminSignup;
-  const hasAdvisorSignupCookie =
-    request.cookies.get("advisor_signup_ok")?.value === "1";
+  const hasAdvisorSignupCookie = verifyAdvisorSignupGateToken(
+    request.cookies.get(getAdvisorSignupGateCookieName())?.value
+  );
 
   const isAdvisor = user?.user_metadata?.role === "advisor";
 

@@ -3,7 +3,10 @@ import { render, screen, fireEvent, waitFor, act } from "@testing-library/react"
 import { ChakraProvider, defaultSystem } from "@chakra-ui/react";
 
 import { DB_TABLES } from "@/lib/supabase/queries/schema";
-import { createAdvisorSignupGateToken } from "@/lib/advisor-signup-gate";
+import {
+  createAdvisorSignupGateToken,
+  getAdvisorSignupGateCookieName,
+} from "@/lib/advisor-signup-gate";
 
 const {
   mockPush,
@@ -117,7 +120,7 @@ describe("AdminSignupPage", () => {
     const gateToken = createAdvisorSignupGateToken();
     mockCookies.mockResolvedValue({
       get: vi.fn((name: string) =>
-        name === "advisor_signup_ok" && gateToken
+        name === getAdvisorSignupGateCookieName() && gateToken
           ? { name, value: gateToken }
           : undefined
       ),
@@ -264,7 +267,7 @@ describe("AdminSignupPage", () => {
         role: "advisor",
         is_admin: false,
       });
-      expect(mockFetch).toHaveBeenCalledWith("/api/advisor/clear-signup-gate", {
+      expect(mockFetch).toHaveBeenCalledWith("/api/advisor/consume-signup-gate", {
         method: "POST",
       });
       expect(mockPush).toHaveBeenCalledWith("/admin");

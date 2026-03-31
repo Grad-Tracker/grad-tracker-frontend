@@ -138,7 +138,7 @@ export default function AdvisorSignupClient() {
         return;
       }
 
-      await fetch("/api/advisor/clear-signup-gate", { method: "POST" });
+      await fetch("/api/advisor/consume-signup-gate", { method: "POST" });
 
       toaster.create({
         title: "Account created!",
