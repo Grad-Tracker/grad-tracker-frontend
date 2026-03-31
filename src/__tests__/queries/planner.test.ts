@@ -666,6 +666,42 @@ describe("planner queries", () => {
 
       await expect(fetchAvailableCourses(1, 1)).rejects.toEqual(err);
     });
+
+    it("falls back to student_programs when plan row has empty program_ids", async () => {
+      const planMetaRows = [{ program_ids: [] }];
+      const studentPrograms = [{ program_id: 1 }];
+      const blocks = [
+        {
+          block_id: 10,
+          program_id: 1,
+          block_name: "Core",
+          rule: "ALL_OF",
+          n_required: null,
+          credits_required: null,
+          courses: [
+            {
+              course_id: 100,
+              subject: "CS",
+              number: "101",
+              title: "Intro CS",
+              credits: 3,
+            },
+          ],
+        },
+      ];
+
+      mockFrom
+        .mockReturnValueOnce(mockChain(planMetaRows))   // v_plan_meta
+        .mockReturnValueOnce(mockChain(studentPrograms))// student_programs fallback
+        .mockReturnValueOnce(mockChain(blocks));        // v_program_block_courses
+
+      const result = await fetchAvailableCourses(1, 1);
+
+      expect(result).toHaveLength(1);
+      expect(result[0].name).toBe("Core");
+      expect(result[0].courses).toHaveLength(1);
+      expect(result[0].courses[0].subject).toBe("CS");
+    });
   });
 
   // ─────────────────────────────────────────────────────────────────────────

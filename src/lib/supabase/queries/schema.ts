@@ -20,6 +20,17 @@ export const DB_TABLES = {
   staff: "staff",
 } as const;
 
+export const DB_VIEWS = {
+  studentProfile: "v_student_profile",
+  studentMajorProgram: "v_student_major_program",
+  studentCourseProgress: "v_student_course_progress",
+  programBlockCourses: "v_program_block_courses",
+  genEdBucketCourses: "v_gened_bucket_courses",
+  planMeta: "v_plan_meta",
+  planTerms: "v_plan_terms",
+  planCourses: "v_plan_courses",
+} as const;
+
 export const STUDENT_COLUMNS = {
   id: "id",
   authUserId: "auth_user_id",

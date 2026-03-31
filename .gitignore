@@ -45,3 +45,8 @@ next-env.d.ts
 
 # SonarLint local IDE config
 .sonarlint/
+docs/db-changes-plan.md
+docs/frontend-changes-plan.md
+
+# Supabase local config
+supabase/
