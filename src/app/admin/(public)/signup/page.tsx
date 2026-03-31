@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Badge,
   Box,
@@ -31,6 +31,21 @@ export default function AdminSignupPage() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
+
+  // Verify token on mount - middleware handles server-side, this improves client UX
+  useEffect(() => {
+    const checkToken = async () => {
+      try {
+        const response = await fetch("/api/advisor/verify-signup-token");
+        if (!response.ok) {
+          router.push("/signup");
+        }
+      } catch {
+        router.push("/signup");
+      }
+    };
+    checkToken();
+  }, [router]);
 
   async function handleSignup() {
     if (!firstName || !lastName || !email || !password) {
@@ -137,6 +152,11 @@ export default function AdminSignupPage() {
         });
         return;
       }
+
+      // Clear the signup token cookie now that account is created
+      await fetch("/api/advisor/clear-signup-token", {
+        method: "POST",
+      });
 
       toaster.create({
         title: "Account created!",
