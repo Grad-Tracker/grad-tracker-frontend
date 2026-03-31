@@ -207,7 +207,7 @@ describe("SignupPage", () => {
     });
 
     expect(mockToaster.create).toHaveBeenCalledWith(
-      expect.objectContaining({ title: "Unable to verify code" })
+      expect.objectContaining({ title: "Verification failed" })
     );
     expect(mockPush).not.toHaveBeenCalledWith("/admin/signup");
   });
@@ -229,7 +229,7 @@ describe("SignupPage", () => {
     });
 
     expect(mockToaster.create).toHaveBeenCalledWith(
-      expect.objectContaining({ title: "Unable to verify code" })
+      expect.objectContaining({ title: "Verification failed" })
     );
     expect(mockPush).not.toHaveBeenCalledWith("/admin/signup");
   });

@@ -82,7 +82,7 @@ export default function SignupPage() {
     }
 
     toaster.create({
-      title: "Unable to verify code",
+      title: "Verification failed",
       type: "error",
     });
   }
@@ -407,6 +407,7 @@ export default function SignupPage() {
                   <Text fontSize="sm" color="fg.muted" textAlign="center">
                     Are you an advisor?{" "}
                     <Button
+                      type="button"
                       variant="plain"
                       size="sm"
                       minH="unset"

@@ -38,10 +38,20 @@ export async function proxy(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   const { pathname } = request.nextUrl;
-  const isAdminPublicAuth =
-    pathname === "/admin/signin" || pathname === "/admin/signup";
+  const isAdminSignin = pathname === "/admin/signin";
+  const isAdminSignup = pathname === "/admin/signup";
+  const isAdminPublicAuth = isAdminSignin || isAdminSignup;
+  const hasAdvisorSignupCookie =
+    request.cookies.get("advisor_signup_ok")?.value === "1";
 
   const isAdvisor = user?.user_metadata?.role === "advisor";
+
+  if (!user && isAdminSignup && !hasAdvisorSignupCookie) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/signup";
+    url.searchParams.set("advisor", "1");
+    return NextResponse.redirect(url);
+  }
 
   // Unauthenticated users trying to access protected routes → redirect to signin
   if (
@@ -66,8 +76,8 @@ export async function proxy(request: NextRequest) {
   if (
     user &&
     (pathname === "/signin" ||
-      pathname === "/admin/signin" ||
-      pathname === "/admin/signup" ||
+      isAdminSignin ||
+      isAdminSignup ||
       pathname === "/signup" ||
       pathname === "/forgot-password")
   ) {

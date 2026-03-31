@@ -29,7 +29,15 @@ export async function POST(request: Request) {
   }
 
   if (body.code === expectedCode) {
-    return NextResponse.json({ ok: true });
+    const response = NextResponse.json({ ok: true });
+    response.cookies.set("advisor_signup_ok", "1", {
+      path: "/",
+      maxAge: 600,
+      sameSite: "lax",
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+    });
+    return response;
   }
 
   return NextResponse.json(
