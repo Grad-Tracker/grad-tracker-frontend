@@ -57,68 +57,7 @@ export async function fetchPlans(studentId: number): Promise<PlanWithMeta[]> {
   if (error) throw error;
   if (!data?.length) return [];
 
-  const rows = data as any[];
-  const looksLikeLegacyShape = rows[0]?.plan_id === undefined && rows[0]?.id !== undefined;
-
-  if (looksLikeLegacyShape) {
-    const plans = rows;
-    const planIds = plans.map((p: any) => p.id);
-
-    const [programsRes, termsRes, coursesRes] = await Promise.all([
-      supabase
-        .from(DB_TABLES.planPrograms)
-        .select("plan_id, program_id, programs:program_id (program_type)")
-        .in("plan_id", planIds),
-      supabase
-        .from(DB_TABLES.studentTermPlan)
-        .select("plan_id")
-        .eq("student_id", studentId)
-        .in("plan_id", planIds),
-      supabase
-        .from(DB_TABLES.studentPlannedCourses)
-        .select("plan_id, courses:course_id (credits)")
-        .eq("student_id", studentId)
-        .in("plan_id", planIds),
-    ]);
-
-    if (programsRes.error) throw programsRes.error;
-    if (termsRes.error) throw termsRes.error;
-    if (coursesRes.error) throw coursesRes.error;
-
-    return plans.map((plan: any) => {
-      const planPrograms = (programsRes.data ?? []).filter(
-        (pp: any) => pp.plan_id === plan.id
-      );
-      const programIds = planPrograms.map((pp: any) => pp.program_id);
-      const hasGraduateProgram = planPrograms.some(
-        (pp: any) => pp.programs?.program_type === "GRADUATE"
-      );
-
-      const termCount = (termsRes.data ?? []).filter(
-        (t: any) => t.plan_id === plan.id
-      ).length;
-
-      const planCourses = (coursesRes.data ?? []).filter(
-        (c: any) => c.plan_id === plan.id
-      );
-      const courseCount = planCourses.length;
-      const totalCredits = planCourses.reduce(
-        (sum: number, c: any) => sum + (Number(c.courses?.credits) || 0),
-        0
-      );
-
-      return {
-        ...plan,
-        program_ids: programIds,
-        term_count: termCount,
-        course_count: courseCount,
-        total_credits: totalCredits,
-        has_graduate_program: hasGraduateProgram,
-      } as PlanWithMeta;
-    });
-  }
-
-  return (rows as ViewPlanMetaRow[]).map((row) => ({
+  return (data as ViewPlanMetaRow[]).map((row) => ({
     id: Number((row as any).plan_id ?? (row as any).id),
     student_id: Number(row.student_id),
     name: row.name,
@@ -312,91 +251,12 @@ export async function fetchAvailableCourses(
     .from(DB_VIEWS.planMeta)
     .select("program_ids")
     .eq("student_id", studentId)
-    .eq("plan_id", planId);
+    .eq("plan_id", planId)
+    .single();
 
   if (ppError) throw ppError;
-  const hasPlanMetaRows = Array.isArray(planMeta) && planMeta.length > 0;
-  const legacyPlanProgramShape =
-    Array.isArray(planMeta) &&
-    (planMeta as any[]).length > 0 &&
-    (planMeta as any[])[0]?.program_id !== undefined;
-
-  let programIds = (planMeta?.[0]?.program_ids ?? []).map(Number);
-  if (!programIds.length && Array.isArray(planMeta) && (planMeta as any[]).length) {
-    programIds = (planMeta as any[])
-      .map((r) => Number(r?.program_id))
-      .filter((id) => !Number.isNaN(id));
-  }
-  // Fallback for plans that exist but have no plan_program links yet.
-  // This keeps course availability usable for legacy/partial data.
-  if (!programIds.length && hasPlanMetaRows) {
-    const { data: studentPrograms, error: studentProgramsError } = await supabase
-      .from(DB_TABLES.studentPrograms)
-      .select("program_id")
-      .eq("student_id", studentId);
-
-    if (studentProgramsError) throw studentProgramsError;
-    programIds = (studentPrograms ?? [])
-      .map((row: any) => Number(row?.program_id))
-      .filter((id: number) => !Number.isNaN(id));
-  }
+  const programIds = (planMeta?.program_ids ?? []).map(Number);
   if (!programIds.length) return [];
-
-  if (legacyPlanProgramShape) {
-    const { data: blocks, error: blocksError } = await supabase
-      .from(DB_TABLES.programRequirementBlocks)
-      .select("id, program_id, name, rule, n_required, credits_required")
-      .in("program_id", programIds)
-      .order("name");
-
-    if (blocksError) throw blocksError;
-    if (!blocks?.length) return [];
-
-    const blockIds = blocks.map((b: any) => b.id);
-    const { data: mappings, error: mappingsError } = await supabase
-      .from(DB_TABLES.programRequirementCourses)
-      .select("block_id, course_id")
-      .in("block_id", blockIds);
-
-    if (mappingsError) throw mappingsError;
-    const courseIds = [...new Set((mappings ?? []).map((m: any) => m.course_id))];
-    if (courseIds.length === 0) {
-      return blocks.map((b: any) => ({ ...b, courses: [] }));
-    }
-
-    const { data: courses, error: coursesError } = await supabase
-      .from(DB_TABLES.courses)
-      .select("id, subject, number, title, credits")
-      .in("id", courseIds)
-      .order("subject")
-      .order("number");
-
-    if (coursesError) throw coursesError;
-
-    const courseMap = new Map<number, Course>();
-    for (const c of courses ?? []) {
-      courseMap.set(c.id, c as Course);
-    }
-
-    return blocks.map((block: any) => {
-      const blockCourseIds = (mappings ?? [])
-        .filter((m: any) => m.block_id === block.id)
-        .map((m: any) => m.course_id);
-      const blockCourses = blockCourseIds
-        .map((id: number) => courseMap.get(id))
-        .filter((c: Course | undefined): c is Course => c !== undefined);
-
-      return {
-        id: block.id,
-        program_id: block.program_id,
-        name: block.name,
-        rule: block.rule,
-        n_required: block.n_required,
-        credits_required: block.credits_required,
-        courses: blockCourses,
-      } as RequirementBlockWithCourses;
-    });
-  }
 
   const { data: blocks, error: blocksError } = await supabase
     .from(DB_VIEWS.programBlockCourses)
@@ -408,58 +268,6 @@ export async function fetchAvailableCourses(
 
   if (blocksError) throw blocksError;
   if (!blocks?.length) return [];
-
-  const blockRows = blocks as any[];
-  const looksLikeLegacyBlocks = blockRows[0]?.block_id === undefined && blockRows[0]?.id !== undefined;
-
-  if (looksLikeLegacyBlocks) {
-    const blockIds = blockRows.map((b: any) => b.id);
-
-    const { data: mappings, error: mappingsError } = await supabase
-      .from(DB_TABLES.programRequirementCourses)
-      .select("block_id, course_id")
-      .in("block_id", blockIds);
-
-    if (mappingsError) throw mappingsError;
-
-    const courseIds = [...new Set((mappings ?? []).map((m: any) => m.course_id))];
-    if (courseIds.length === 0) {
-      return blockRows.map((b: any) => ({ ...b, courses: [] }));
-    }
-
-    const { data: courses, error: coursesError } = await supabase
-      .from(DB_TABLES.courses)
-      .select("id, subject, number, title, credits")
-      .in("id", courseIds)
-      .order("subject")
-      .order("number");
-
-    if (coursesError) throw coursesError;
-
-    const courseMap = new Map<number, Course>();
-    for (const c of courses ?? []) {
-      courseMap.set(c.id, c as Course);
-    }
-
-    return blockRows.map((block: any) => {
-      const blockCourseIds = (mappings ?? [])
-        .filter((m: any) => m.block_id === block.id)
-        .map((m: any) => m.course_id);
-      const blockCourses = blockCourseIds
-        .map((id: number) => courseMap.get(id))
-        .filter((c: Course | undefined): c is Course => c !== undefined);
-
-      return {
-        id: block.id,
-        program_id: block.program_id,
-        name: block.name,
-        rule: block.rule,
-        n_required: block.n_required,
-        credits_required: block.credits_required,
-        courses: blockCourses,
-      } as RequirementBlockWithCourses;
-    });
-  }
 
   return (blocks as ViewProgramBlockCoursesRow[]).map((block) => {
     const blockCourses = (block.courses ?? []).map(toCourseFromBlockItem);

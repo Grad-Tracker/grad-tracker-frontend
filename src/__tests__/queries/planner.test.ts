@@ -51,56 +51,50 @@ describe("planner queries", () => {
   // fetchPlans
   // ─────────────────────────────────────────────────────────────────────────
   describe("fetchPlans", () => {
-    it("returns [] when plans query returns empty array", async () => {
+    it("returns [] when plan meta query returns empty array", async () => {
       mockFrom.mockReturnValueOnce(mockChain([]));
 
       const result = await fetchPlans(1);
       expect(result).toEqual([]);
     });
 
-    it("returns [] when plans query returns null", async () => {
+    it("returns [] when plan meta query returns null", async () => {
       mockFrom.mockReturnValueOnce(mockChain(null));
 
       const result = await fetchPlans(1);
       expect(result).toEqual([]);
     });
 
-    it("throws when plans query errors", async () => {
+    it("throws when plan meta query errors", async () => {
       const err = { message: "DB error" };
       mockFrom.mockReturnValueOnce(mockChain(null, err));
 
       await expect(fetchPlans(1)).rejects.toEqual(err);
     });
 
-    it("returns mapped PlanWithMeta objects with computed fields", async () => {
+    it("returns mapped PlanWithMeta rows from v_plan_meta", async () => {
       const plans = [
         {
-          id: 1,
+          plan_id: 1,
           student_id: 1,
           name: "Plan A",
           description: null,
           created_at: "2024-01-01",
           updated_at: "2024-01-01",
+          program_ids: [10],
+          term_count: 2,
+          course_count: 2,
+          total_credits: 7,
+          has_graduate_program: false,
         },
       ];
-      const planPrograms = [
-        { plan_id: 1, program_id: 10, programs: { program_type: "MAJOR" } },
-      ];
-      const termPlans = [{ plan_id: 1 }, { plan_id: 1 }];
-      const plannedCourses = [
-        { plan_id: 1, courses: { credits: 3 } },
-        { plan_id: 1, courses: { credits: 4 } },
-      ];
 
-      mockFrom
-        .mockReturnValueOnce(mockChain(plans))
-        .mockReturnValueOnce(mockChain(planPrograms))
-        .mockReturnValueOnce(mockChain(termPlans))
-        .mockReturnValueOnce(mockChain(plannedCourses));
+      mockFrom.mockReturnValueOnce(mockChain(plans));
 
       const result = await fetchPlans(1);
 
       expect(result).toHaveLength(1);
+      expect(result[0].id).toBe(1);
       expect(result[0].program_ids).toEqual([10]);
       expect(result[0].term_count).toBe(2);
       expect(result[0].course_count).toBe(2);
@@ -108,118 +102,33 @@ describe("planner queries", () => {
       expect(result[0].has_graduate_program).toBe(false);
     });
 
-    it("sets has_graduate_program: true when a program_type is GRADUATE", async () => {
+    it("normalizes numeric fields from string-like values", async () => {
       const plans = [
         {
-          id: 1,
-          student_id: 1,
-          name: "Grad Plan",
-          description: null,
-          created_at: "2024-01-01",
-          updated_at: "2024-01-01",
-        },
-      ];
-      const planPrograms = [
-        { plan_id: 1, program_id: 20, programs: { program_type: "GRADUATE" } },
-      ];
-
-      mockFrom
-        .mockReturnValueOnce(mockChain(plans))
-        .mockReturnValueOnce(mockChain(planPrograms))
-        .mockReturnValueOnce(mockChain([]))
-        .mockReturnValueOnce(mockChain([]));
-
-      const result = await fetchPlans(1);
-
-      expect(result[0].has_graduate_program).toBe(true);
-    });
-
-    it("filters plan_programs, terms, and courses by plan_id", async () => {
-      const plans = [
-        {
-          id: 1,
-          student_id: 1,
-          name: "Plan A",
-          description: null,
-          created_at: "2024-01-01",
-          updated_at: "2024-01-01",
-        },
-        {
-          id: 2,
-          student_id: 1,
+          plan_id: "2",
+          student_id: "1",
           name: "Plan B",
           description: null,
-          created_at: "2024-01-02",
-          updated_at: "2024-01-02",
-        },
-      ];
-      const planPrograms = [
-        { plan_id: 1, program_id: 10, programs: { program_type: "MAJOR" } },
-        { plan_id: 2, program_id: 11, programs: { program_type: "MINOR" } },
-      ];
-      const termPlans = [{ plan_id: 1 }, { plan_id: 2 }, { plan_id: 2 }];
-      const plannedCourses = [
-        { plan_id: 1, courses: { credits: 3 } },
-        { plan_id: 2, courses: { credits: 4 } },
-        { plan_id: 2, courses: { credits: 2 } },
-      ];
-
-      mockFrom
-        .mockReturnValueOnce(mockChain(plans))
-        .mockReturnValueOnce(mockChain(planPrograms))
-        .mockReturnValueOnce(mockChain(termPlans))
-        .mockReturnValueOnce(mockChain(plannedCourses));
-
-      const result = await fetchPlans(1);
-
-      expect(result).toHaveLength(2);
-      // Plan A
-      expect(result[0].term_count).toBe(1);
-      expect(result[0].course_count).toBe(1);
-      expect(result[0].total_credits).toBe(3);
-      // Plan B
-      expect(result[1].term_count).toBe(2);
-      expect(result[1].course_count).toBe(2);
-      expect(result[1].total_credits).toBe(6);
-    });
-
-    it("throws when programsRes errors", async () => {
-      const plans = [{ id: 1, student_id: 1, name: "P", description: null, created_at: "", updated_at: "" }];
-      const err = { message: "programs error" };
-
-      mockFrom
-        .mockReturnValueOnce(mockChain(plans))
-        .mockReturnValueOnce(mockChain(null, err))
-        .mockReturnValueOnce(mockChain([]))
-        .mockReturnValueOnce(mockChain([]));
-
-      await expect(fetchPlans(1)).rejects.toEqual(err);
-    });
-
-    it("handles courses with missing credits gracefully", async () => {
-      const plans = [
-        {
-          id: 1,
-          student_id: 1,
-          name: "Plan A",
-          description: null,
           created_at: "2024-01-01",
           updated_at: "2024-01-01",
+          program_ids: ["11", "12"],
+          term_count: "3",
+          course_count: "5",
+          total_credits: "15",
+          has_graduate_program: true,
         },
       ];
-      const plannedCourses = [
-        { plan_id: 1, courses: null },
-        { plan_id: 1, courses: { credits: undefined } },
-      ];
 
-      mockFrom
-        .mockReturnValueOnce(mockChain(plans))
-        .mockReturnValueOnce(mockChain([]))
-        .mockReturnValueOnce(mockChain([]))
-        .mockReturnValueOnce(mockChain(plannedCourses));
-
+      mockFrom.mockReturnValueOnce(mockChain(plans));
       const result = await fetchPlans(1);
-      expect(result[0].total_credits).toBe(0);
+
+      expect(result[0].id).toBe(2);
+      expect(result[0].student_id).toBe(1);
+      expect(result[0].program_ids).toEqual([11, 12]);
+      expect(result[0].term_count).toBe(3);
+      expect(result[0].course_count).toBe(5);
+      expect(result[0].total_credits).toBe(15);
+      expect(result[0].has_graduate_program).toBe(true);
     });
   });
 
@@ -592,84 +501,15 @@ describe("planner queries", () => {
   // fetchAvailableCourses
   // ─────────────────────────────────────────────────────────────────────────
   describe("fetchAvailableCourses", () => {
-    it("returns [] when no plan programs", async () => {
-      mockFrom.mockReturnValueOnce(mockChain([]));
-
-      const result = await fetchAvailableCourses(1, 1);
-      expect(result).toEqual([]);
-    });
-
-    it("returns [] when plan programs data is null", async () => {
-      mockFrom.mockReturnValueOnce(mockChain(null));
+    it("returns [] when plan meta has no program_ids", async () => {
+      mockFrom.mockReturnValueOnce(mockChain({ program_ids: [] }));
 
       const result = await fetchAvailableCourses(1, 1);
       expect(result).toEqual([]);
     });
 
     it("returns blocks with mapped courses", async () => {
-      const planProgs = [{ program_id: 1 }];
-      const blocks = [
-        { id: 10, program_id: 1, name: "Core", rule: "ALL_OF", n_required: null, credits_required: null },
-      ];
-      const mappings = [
-        { block_id: 10, course_id: 100 },
-        { block_id: 10, course_id: 101 },
-      ];
-      const courses = [
-        { id: 100, subject: "CS", number: "101", title: "Intro CS", credits: 3 },
-        { id: 101, subject: "CS", number: "201", title: "Data Structures", credits: 3 },
-      ];
-
-      mockFrom
-        .mockReturnValueOnce(mockChain(planProgs))        // plan_programs
-        .mockReturnValueOnce(mockChain(blocks))           // program_requirement_blocks
-        .mockReturnValueOnce(mockChain(mappings))         // program_requirement_courses
-        .mockReturnValueOnce(mockChain(courses));         // courses
-
-      const result = await fetchAvailableCourses(1, 1);
-
-      expect(result).toHaveLength(1);
-      expect(result[0].name).toBe("Core");
-      expect(result[0].courses).toHaveLength(2);
-      expect(result[0].courses[0].subject).toBe("CS");
-    });
-
-    it("returns blocks with empty courses when no mappings", async () => {
-      const planProgs = [{ program_id: 1 }];
-      const blocks = [
-        { id: 10, program_id: 1, name: "Core", rule: "ALL_OF", n_required: null, credits_required: null },
-      ];
-
-      mockFrom
-        .mockReturnValueOnce(mockChain(planProgs))
-        .mockReturnValueOnce(mockChain(blocks))
-        .mockReturnValueOnce(mockChain([]));  // no mappings → returns early with empty courses
-
-      const result = await fetchAvailableCourses(1, 1);
-
-      expect(result).toHaveLength(1);
-      expect(result[0].courses).toEqual([]);
-    });
-
-    it("throws on plan_programs error", async () => {
-      const err = { message: "plan programs error" };
-      mockFrom.mockReturnValueOnce(mockChain(null, err));
-
-      await expect(fetchAvailableCourses(1, 1)).rejects.toEqual(err);
-    });
-
-    it("throws on blocks error", async () => {
-      const err = { message: "blocks error" };
-      mockFrom
-        .mockReturnValueOnce(mockChain([{ program_id: 1 }]))
-        .mockReturnValueOnce(mockChain(null, err));
-
-      await expect(fetchAvailableCourses(1, 1)).rejects.toEqual(err);
-    });
-
-    it("falls back to student_programs when plan row has empty program_ids", async () => {
-      const planMetaRows = [{ program_ids: [] }];
-      const studentPrograms = [{ program_id: 1 }];
+      const planMeta = { program_ids: [1] };
       const blocks = [
         {
           block_id: 10,
@@ -679,34 +519,40 @@ describe("planner queries", () => {
           n_required: null,
           credits_required: null,
           courses: [
-            {
-              course_id: 100,
-              subject: "CS",
-              number: "101",
-              title: "Intro CS",
-              credits: 3,
-            },
+            { course_id: 100, subject: "CS", number: "101", title: "Intro CS", credits: 3 },
+            { course_id: 101, subject: "CS", number: "201", title: "Data Structures", credits: 3 },
           ],
         },
       ];
 
       mockFrom
-        .mockReturnValueOnce(mockChain(planMetaRows))   // v_plan_meta
-        .mockReturnValueOnce(mockChain(studentPrograms))// student_programs fallback
-        .mockReturnValueOnce(mockChain(blocks));        // v_program_block_courses
+        .mockReturnValueOnce(mockChain(planMeta))
+        .mockReturnValueOnce(mockChain(blocks));
 
       const result = await fetchAvailableCourses(1, 1);
 
       expect(result).toHaveLength(1);
       expect(result[0].name).toBe("Core");
-      expect(result[0].courses).toHaveLength(1);
+      expect(result[0].courses).toHaveLength(2);
       expect(result[0].courses[0].subject).toBe("CS");
     });
-  });
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // getOrCreateTerm
-  // ─────────────────────────────────────────────────────────────────────────
+    it("throws on v_plan_meta error", async () => {
+      const err = { message: "plan meta error" };
+      mockFrom.mockReturnValueOnce(mockChain(null, err));
+
+      await expect(fetchAvailableCourses(1, 1)).rejects.toEqual(err);
+    });
+
+    it("throws on v_program_block_courses error", async () => {
+      const err = { message: "blocks error" };
+      mockFrom
+        .mockReturnValueOnce(mockChain({ program_ids: [1] }))
+        .mockReturnValueOnce(mockChain(null, err));
+
+      await expect(fetchAvailableCourses(1, 1)).rejects.toEqual(err);
+    });
+  });
   describe("getOrCreateTerm", () => {
     it("returns existing term when maybeSingle returns data", async () => {
       const termData = { id: 5, season: "Fall", year: 2024 };
@@ -1064,3 +910,4 @@ describe("planner queries", () => {
     });
   });
 });
+

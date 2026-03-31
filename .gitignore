@@ -49,4 +49,9 @@ docs/db-changes-plan.md
 docs/frontend-changes-plan.md
 
 # Supabase local config
-supabase/
+supabase/*
+!supabase/migrations/
+!supabase/migrations/*.sql
+!supabase/sql/
+!supabase/sql/*.sql
+supabase/.temp/

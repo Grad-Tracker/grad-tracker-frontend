@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import { Box, Spinner, Stack, Heading } from "@chakra-ui/react";
 import { toaster } from "@/components/ui/toaster";
 import { createClient } from "@/lib/supabase/client";
-import { DB_TABLES, STUDENT_COLUMNS } from "@/lib/supabase/queries/schema";
+import { DB_VIEWS } from "@/lib/supabase/queries/schema";
 import {
   fetchDefaultTermId,
   fetchMajorRequirementCourses,
@@ -39,14 +39,14 @@ export function ClassHistoryTab() {
         if (!user) return;
 
         const { data: student } = await supabase
-          .from(DB_TABLES.students)
-          .select("id")
-          .eq(STUDENT_COLUMNS.authUserId, user.id)
+          .from(DB_VIEWS.studentProfile)
+          .select("student_id")
+          .eq("auth_user_id", user.id)
           .maybeSingle();
 
         if (!student) return;
 
-        const sid = student.id as number;
+        const sid = Number((student as { student_id: number }).student_id);
         setStudentId(sid);
 
         const [termId, genEdData, majorData, historyData] = await Promise.all([
