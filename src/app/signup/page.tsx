@@ -77,6 +77,12 @@ export default function SignupPage() {
         });
         return;
       }
+
+      toaster.create({
+        title: "Invalid access code",
+        type: "error",
+      });
+      return;
     } catch {
       // Fall through to generic verification failure handling below.
     }
