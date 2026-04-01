@@ -62,7 +62,11 @@ export default function AdvisorSignupClient() {
 
     const normalizedEmail = email.trim().toLowerCase();
 
-    if (normalizedEmail.endsWith("@rangers.uwp.edu")) {
+    const hasValidAdvisorDomain =
+      normalizedEmail.endsWith("@uwp.edu") &&
+      !normalizedEmail.endsWith("@rangers.uwp.edu");
+
+    if (!hasValidAdvisorDomain) {
       toaster.create({
         title: "Invalid email domain",
         description: "Advisor sign up requires a @uwp.edu email address.",
@@ -138,7 +142,11 @@ export default function AdvisorSignupClient() {
         return;
       }
 
-      await fetch("/api/advisor/consume-signup-gate", { method: "POST" });
+      try {
+        await fetch("/api/advisor/consume-signup-gate", { method: "POST" });
+      } catch (consumeError) {
+        console.warn("Failed to consume advisor signup gate", consumeError);
+      }
 
       toaster.create({
         title: "Account created!",

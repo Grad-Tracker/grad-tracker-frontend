@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import {
   Badge,
   Box,
@@ -30,14 +30,23 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
-function AdvisorAccessQuerySync({ onOpen }: { onOpen: () => void }) {
+function AdvisorAccessQuerySync({
+  onOpen,
+  onConsumeAdvisorParam,
+}: {
+  onOpen: () => void;
+  onConsumeAdvisorParam: () => void;
+}) {
   const searchParams = useSearchParams();
+  const openedRef = useRef(false);
 
   useEffect(() => {
-    if (searchParams.get("advisor") === "1") {
+    if (searchParams.get("advisor") === "1" && !openedRef.current) {
+      openedRef.current = true;
       onOpen();
+      onConsumeAdvisorParam();
     }
-  }, [onOpen, searchParams]);
+  }, [onConsumeAdvisorParam, onOpen, searchParams]);
 
   return null;
 }
@@ -188,7 +197,10 @@ export default function SignupPage() {
       position="relative"
     >
       <Suspense fallback={null}>
-        <AdvisorAccessQuerySync onOpen={() => setAdvisorDialogOpen(true)} />
+        <AdvisorAccessQuerySync
+          onOpen={() => setAdvisorDialogOpen(true)}
+          onConsumeAdvisorParam={() => router.replace("/signup")}
+        />
       </Suspense>
 
       {/* Navigation Header */}

@@ -11,10 +11,11 @@ const { mockPush, mockSignUp, mockSignOut, mockToaster } = vi.hoisted(() => ({
 
 const mockFetch = vi.fn();
 const mockSearchParamsGet = vi.fn();
+const mockReplace = vi.fn();
 
 vi.mock("next/navigation", () => ({
   useSearchParams: () => ({ get: mockSearchParamsGet }),
-  useRouter: () => ({ push: mockPush, replace: vi.fn(), refresh: vi.fn() }),
+  useRouter: () => ({ push: mockPush, replace: mockReplace, refresh: vi.fn() }),
 }));
 vi.mock("@/lib/supabase/client", () => ({
   createClient: () => ({
@@ -144,6 +145,14 @@ describe("SignupPage", () => {
     expect(await screen.findByRole("dialog")).toBeInTheDocument();
     expect(screen.getAllByText("Advisor Access").length).toBeGreaterThanOrEqual(1);
     expect(screen.getByPlaceholderText("Advisor Access Code")).toBeInTheDocument();
+    expect(mockReplace).toHaveBeenCalledWith("/signup");
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    });
+
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(mockReplace).toHaveBeenCalledTimes(1);
   });
 
   it("wrong code shows an error toast and does not navigate to advisor signup", async () => {

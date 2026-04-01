@@ -105,56 +105,74 @@ export default function RoleSignInForm({
     setLoading(true);
 
     const supabase = createClient();
-    const { error } = await supabase.auth.signInWithPassword({
-      email: normalizedEmail,
-      password,
-    });
+    try {
+      const { error } = await supabase.auth.signInWithPassword({
+        email: normalizedEmail,
+        password,
+      });
 
-    if (error) {
-      setLoading(false);
+      if (error) {
+        toaster.create({
+          title: "Sign in failed",
+          description: error.message,
+          type: "error",
+        });
+        return;
+      }
+
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser();
+
+      if (userError || !user) {
+        toaster.create({
+          title: "Sign in failed",
+          description: "Unable to retrieve user session. Please try again.",
+          type: "error",
+        });
+        await supabase.auth.signOut();
+        return;
+      }
+
+      const actualRole = user.user_metadata?.role ?? "student";
+
+      if (selectedRole === "student" && actualRole === "advisor") {
+        toaster.create({
+          title: "Wrong sign in type",
+          description: "This is an advisor account. Use Advisor sign in.",
+          type: "error",
+        });
+        await supabase.auth.signOut();
+        return;
+      }
+
+      if (selectedRole === "advisor" && actualRole !== "advisor") {
+        toaster.create({
+          title: "Wrong sign in type",
+          description: "This is a student account. Use Student sign in.",
+          type: "error",
+        });
+        await supabase.auth.signOut();
+        return;
+      }
+
+      toaster.create({
+        title: "Welcome back!",
+        description: "Redirecting...",
+        type: "success",
+      });
+
+      router.push(actualRole === "advisor" ? "/admin" : "/dashboard");
+    } catch (error: any) {
       toaster.create({
         title: "Sign in failed",
-        description: error.message,
+        description: error?.message ?? "Unexpected error",
         type: "error",
       });
-      return;
-    }
-
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    const actualRole = user?.user_metadata?.role ?? "student";
-
-    if (selectedRole === "student" && actualRole === "advisor") {
-      toaster.create({
-        title: "Wrong sign in type",
-        description: "This is an advisor account. Use Advisor sign in.",
-        type: "error",
-      });
-      await supabase.auth.signOut();
+    } finally {
       setLoading(false);
-      return;
     }
-
-    if (selectedRole === "advisor" && actualRole !== "advisor") {
-      toaster.create({
-        title: "Wrong sign in type",
-        description: "This is a student account. Use Student sign in.",
-        type: "error",
-      });
-      await supabase.auth.signOut();
-      setLoading(false);
-      return;
-    }
-
-    toaster.create({
-      title: "Welcome back!",
-      description: "Redirecting...",
-      type: "success",
-    });
-
-    setLoading(false);
-    router.push(actualRole === "advisor" ? "/admin" : "/dashboard");
   }
 
   return (

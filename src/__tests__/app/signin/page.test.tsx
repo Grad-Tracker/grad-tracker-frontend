@@ -44,6 +44,7 @@ describe("SigninPage", () => {
     vi.clearAllMocks();
     mockGetUser.mockResolvedValue({
       data: { user: { user_metadata: {} } },
+      error: null,
     });
   });
 
@@ -191,6 +192,39 @@ describe("SigninPage", () => {
     await waitFor(() => {
       expect(mockToaster.create).toHaveBeenCalledWith(
         expect.objectContaining({ title: "Sign in failed" })
+      );
+    });
+  });
+
+  it("shows error and signs out when getUser cannot retrieve the session", async () => {
+    mockSignInWithPassword.mockResolvedValue({ data: {}, error: null });
+    mockGetUser.mockResolvedValue({
+      data: { user: null },
+      error: { message: "fail" },
+    });
+    renderWithChakra(<SigninPage />);
+
+    fireEvent.change(screen.getByPlaceholderText("your.name@rangers.uwp.edu"), {
+      target: { value: "test@rangers.uwp.edu" },
+    });
+    fireEvent.change(screen.getByTestId("password-input"), {
+      target: { value: "password123" },
+    });
+
+    const buttons = screen.getAllByText("Sign In");
+    const btn = buttons.find((el) => el.closest("button") !== null);
+    await act(async () => {
+      fireEvent.click(btn!);
+    });
+
+    await waitFor(() => {
+      expect(mockSignOut).toHaveBeenCalled();
+      expect(mockPush).not.toHaveBeenCalled();
+      expect(mockToaster.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: "Sign in failed",
+          description: "Unable to retrieve user session. Please try again.",
+        })
       );
     });
   });
