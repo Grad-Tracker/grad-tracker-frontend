@@ -18,6 +18,8 @@ export const DB_TABLES = {
   terms: "terms",
   notificationPreferences: "notification_preferences",
   staff: "staff",
+  aiConversations: "ai_conversations",
+  aiMessages: "ai_messages",
 } as const;
 
 export const STUDENT_COLUMNS = {

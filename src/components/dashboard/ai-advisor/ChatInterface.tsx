@@ -166,6 +166,7 @@ export function ChatInterface() {
   ]);
   const [draft, setDraft] = useState("");
   const [loading, setLoading] = useState(false);
+  const [conversationId, setConversationId] = useState<number | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -188,6 +189,39 @@ export function ChatInterface() {
     abortRef.current?.abort();
     abortRef.current = null;
     setLoading(false);
+  }
+
+  async function persistMessages(
+    userText: string,
+    assistantText: string,
+    metadata: Record<string, unknown>
+  ) {
+    try {
+      let convId = conversationId;
+      if (!convId) {
+        const res = await fetch("/api/ai-advisor/conversations", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ title: userText.slice(0, 100) }),
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        convId = data.id;
+        setConversationId(convId);
+      }
+      await fetch("/api/ai-advisor/conversations/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ conversationId: convId, role: "user", content: userText }),
+      });
+      await fetch("/api/ai-advisor/conversations/messages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ conversationId: convId, role: "assistant", content: assistantText, metadata }),
+      });
+    } catch {
+      // Silent fail — persistence is best-effort
+    }
   }
 
   async function sendMessage(rawMessage: string) {
@@ -295,6 +329,12 @@ export function ChatInterface() {
                   : m
               )
             );
+            void persistMessages(message, resp.answer, {
+              recommendations: resp.recommendations,
+              risks: resp.risks,
+              missingData: resp.missingData,
+              citations: resp.citations,
+            });
           } else if (event.type === "error") {
             setMessages((prev) =>
               prev.map((m) =>
@@ -359,6 +399,20 @@ export function ChatInterface() {
         <Text fontSize="2xs" color="fg.subtle" ms="auto">
           Read-only mode
         </Text>
+        <Button
+          size="xs"
+          variant="ghost"
+          onClick={() => {
+            setMessages([{
+              id: createId(),
+              role: "assistant",
+              text: "I'm Sage, your AI Academic Advisor. Ask about next-semester planning, prerequisites, remaining requirements, or graduation progress.",
+            }]);
+            setConversationId(null);
+          }}
+        >
+          New Chat
+        </Button>
       </HStack>
 
       <VStack align="stretch" gap="4" p="5" maxH="520px" overflowY="auto">

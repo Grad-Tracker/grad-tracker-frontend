@@ -41,3 +41,20 @@ export type AdvisorStreamEvent =
   | { type: "delta"; text: string }
   | { type: "done"; response: AdvisorChatResponse }
   | { type: "error"; message: string };
+
+export interface AdvisorConversation {
+  id: number;
+  studentId: number;
+  title: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AdvisorPersistedMessage {
+  id: number;
+  conversationId: number;
+  role: AdvisorChatRole;
+  content: string;
+  metadata: Record<string, unknown>;
+  createdAt: string;
+}
