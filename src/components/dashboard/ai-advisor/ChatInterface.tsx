@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Badge,
   Box,
@@ -12,11 +12,11 @@ import {
   Text,
   VStack,
 } from "@chakra-ui/react";
-import { LuSend } from "react-icons/lu";
+import { LuSend, LuSquare } from "react-icons/lu";
 import type {
   AdvisorChatHistoryItem,
-  AdvisorChatResponse,
   AdvisorRecommendation,
+  AdvisorStreamEvent,
 } from "@/types/ai-advisor";
 
 type ChatRole = "assistant" | "user";
@@ -166,6 +166,12 @@ export function ChatInterface() {
   ]);
   const [draft, setDraft] = useState("");
   const [loading, setLoading] = useState(false);
+  const abortRef = useRef<AbortController | null>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
 
   const history = useMemo<AdvisorChatHistoryItem[]>(
     () =>
@@ -178,6 +184,12 @@ export function ChatInterface() {
     [messages]
   );
 
+  function stopGenerating() {
+    abortRef.current?.abort();
+    abortRef.current = null;
+    setLoading(false);
+  }
+
   async function sendMessage(rawMessage: string) {
     const message = rawMessage.trim();
     if (!message || loading) return;
@@ -188,21 +200,30 @@ export function ChatInterface() {
       text: message,
     };
 
-    setMessages((prev) => [...prev, userMessage]);
+    const assistantId = createId();
+    const assistantPlaceholder: AdvisorMessage = {
+      id: assistantId,
+      role: "assistant",
+      text: "",
+    };
+
+    setMessages((prev) => [...prev, userMessage, assistantPlaceholder]);
     setDraft("");
     setLoading(true);
 
+    const controller = new AbortController();
+    abortRef.current = controller;
+
     try {
-      const response = await fetch("/api/ai-advisor/chat", {
+      const response = await fetch("/api/ai-advisor/chat/stream", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           message,
           history: [...history, { role: "user", text: message }],
           activePlanId: null,
         }),
+        signal: controller.signal,
       });
 
       if (!response.ok) {
@@ -216,33 +237,101 @@ export function ChatInterface() {
         throw new Error(payload.error || fallbackError);
       }
 
-      const advisor = (await response.json()) as AdvisorChatResponse;
-      const assistantMessage: AdvisorMessage = {
-        id: createId(),
-        role: "assistant",
-        text: advisor.answer,
-        recommendations: advisor.recommendations,
-        risks: advisor.risks,
-        missingData: advisor.missingData,
-        citations: advisor.citations,
-      };
-      setMessages((prev) => [...prev, assistantMessage]);
-    } catch (error) {
-      const messageText =
-        error instanceof Error
-          ? error.message
-          : "Unexpected Sage error.";
+      const reader = response.body?.getReader();
+      if (!reader) throw new Error("No response stream available.");
 
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: createId(),
-          role: "assistant",
-          text: messageText,
-          risks: ["Unable to complete this request with current data."],
-        },
-      ]);
+      const decoder = new TextDecoder();
+      let buffer = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() ?? "";
+
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (!trimmed.startsWith("data: ")) continue;
+          const jsonStr = trimmed.slice(6);
+
+          let event: AdvisorStreamEvent;
+          try {
+            event = JSON.parse(jsonStr) as AdvisorStreamEvent;
+          } catch {
+            continue;
+          }
+
+          if (event.type === "delta") {
+            setMessages((prev) =>
+              prev.map((m) =>
+                m.id === assistantId
+                  ? { ...m, text: m.text + event.text }
+                  : m
+              )
+            );
+          } else if (event.type === "status") {
+            setMessages((prev) =>
+              prev.map((m) =>
+                m.id === assistantId && !m.text
+                  ? { ...m, text: event.text }
+                  : m
+              )
+            );
+          } else if (event.type === "done") {
+            const { response: resp } = event;
+            setMessages((prev) =>
+              prev.map((m) =>
+                m.id === assistantId
+                  ? {
+                      ...m,
+                      text: resp.answer,
+                      recommendations: resp.recommendations,
+                      risks: resp.risks,
+                      missingData: resp.missingData,
+                      citations: resp.citations,
+                    }
+                  : m
+              )
+            );
+          } else if (event.type === "error") {
+            setMessages((prev) =>
+              prev.map((m) =>
+                m.id === assistantId
+                  ? { ...m, text: event.message }
+                  : m
+              )
+            );
+          }
+        }
+      }
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") {
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === assistantId && !m.text
+              ? { ...m, text: "Response stopped." }
+              : m
+          )
+        );
+      } else {
+        const messageText =
+          error instanceof Error ? error.message : "Unexpected Sage error.";
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === assistantId
+              ? {
+                  ...m,
+                  text: messageText,
+                  risks: ["Unable to complete this request with current data."],
+                }
+              : m
+          )
+        );
+      }
     } finally {
+      abortRef.current = null;
       setLoading(false);
     }
   }
@@ -280,6 +369,7 @@ export function ChatInterface() {
             <UserMessage key={message.id} message={message} />
           )
         )}
+        <div ref={messagesEndRef} />
       </VStack>
 
       <Separator />
@@ -317,17 +407,32 @@ export function ChatInterface() {
             onChange={(event) => setDraft(event.target.value)}
             disabled={loading}
           />
-          <Button
-            type="submit"
-            colorPalette="purple"
-            size="md"
-            borderRadius="xl"
-            px="4"
-            flexShrink={0}
-            loading={loading}
-          >
-            <LuSend />
-          </Button>
+          {loading ? (
+            <Button
+              type="button"
+              colorPalette="red"
+              variant="outline"
+              size="md"
+              borderRadius="xl"
+              px="4"
+              flexShrink={0}
+              onClick={stopGenerating}
+            >
+              <LuSquare />
+              Stop
+            </Button>
+          ) : (
+            <Button
+              type="submit"
+              colorPalette="purple"
+              size="md"
+              borderRadius="xl"
+              px="4"
+              flexShrink={0}
+            >
+              <LuSend />
+            </Button>
+          )}
         </HStack>
       </Box>
     </Box>

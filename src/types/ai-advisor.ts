@@ -35,3 +35,9 @@ export interface AdvisorPromptContext {
   expectedGraduation: string | null;
   hasCompletedOnboarding: boolean;
 }
+
+export type AdvisorStreamEvent =
+  | { type: "status"; text: string }
+  | { type: "delta"; text: string }
+  | { type: "done"; response: AdvisorChatResponse }
+  | { type: "error"; message: string };

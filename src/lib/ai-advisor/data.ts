@@ -164,7 +164,7 @@ async function fetchProgramsForStudent(
   if (programsError) throw programsError;
 
   const orderMap = new Map<number, number>();
-  programIds.forEach((id, idx) => orderMap.set(id, idx));
+  programIds.forEach((id: number, idx: number) => orderMap.set(id, idx));
 
   return (programs ?? [])
     .map((p: any) => ({
@@ -173,7 +173,7 @@ async function fetchProgramsForStudent(
       catalogYear: p.catalog_year ? String(p.catalog_year) : null,
       programType: String(p.program_type ?? ""),
     }))
-    .sort((a, b) => (orderMap.get(a.id) ?? 0) - (orderMap.get(b.id) ?? 0));
+    .sort((a: AdvisorProgramInfo, b: AdvisorProgramInfo) => (orderMap.get(a.id) ?? 0) - (orderMap.get(b.id) ?? 0));
 }
 
 export async function resolveStudentProfile(
@@ -333,7 +333,7 @@ async function fetchRequirementBlocks(
   if (mappingsError) throw mappingsError;
 
   const courseIds = Array.from(
-    new Set((mappings ?? []).map((m: any) => Number(m.course_id)).filter((id) => Number.isFinite(id)))
+    new Set((mappings ?? []).map((m: any) => Number(m.course_id)).filter((id: number) => Number.isFinite(id)))
   );
 
   const courseMap = new Map<number, CourseRecord>();
@@ -364,7 +364,7 @@ async function fetchRequirementBlocks(
 
   return (blocks ?? []).map((block: any) => {
     const blockId = Number(block.id);
-    const uniqueIds = Array.from(
+    const uniqueIds: number[] = Array.from(
       new Set(
         (mappings ?? [])
           .filter((m: any) => Number(m.block_id) === blockId)
@@ -494,7 +494,7 @@ export async function getPlanSnapshot(
     })
     .filter((course: AdvisorPlannedCourseSnapshot) => Number.isFinite(course.courseId));
 
-  const totalPlannedCredits = plannedCourses.reduce((sum, c) => sum + c.credits, 0);
+  const totalPlannedCredits = plannedCourses.reduce((sum: number, c: AdvisorPlannedCourseSnapshot) => sum + c.credits, 0);
 
   return {
     planId: selectedPlan.id,
