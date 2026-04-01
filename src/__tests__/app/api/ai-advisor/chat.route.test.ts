@@ -144,6 +144,22 @@ describe("POST /api/ai-advisor/chat", () => {
     expect(mockGenerateAdvisorResponse).toHaveBeenCalledOnce();
   });
 
+  it("returns 500 when profile resolution throws", async () => {
+    mockGetUser.mockResolvedValue({
+      data: { user: { id: "auth-1" } },
+      error: null,
+    });
+    mockResolveStudentProfile.mockRejectedValue(new Error("DB connection failed"));
+
+    const response = await POST(
+      makeRequest({ message: "hello", history: [] })
+    );
+
+    expect(response.status).toBe(500);
+    const payload = await response.json();
+    expect(payload.error).toContain("Failed to load student profile");
+  });
+
   it("returns 200 for partial tool responses with missingData", async () => {
     mockGetUser.mockResolvedValue({
       data: { user: { id: "auth-1" } },

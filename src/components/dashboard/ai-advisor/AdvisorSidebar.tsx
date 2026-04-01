@@ -111,7 +111,12 @@ export function AdvisorSidebar() {
               borderColor="border.subtle"
               borderRadius="xl"
               h="80px"
-            />
+              display="flex"
+              alignItems="center"
+              justifyContent="center"
+            >
+              <Text fontSize="xs" color="fg.subtle">Loading context...</Text>
+            </Box>
           ))}
         </VStack>
       </Box>
