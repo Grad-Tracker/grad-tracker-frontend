@@ -268,16 +268,39 @@ describe("SignupPage", () => {
 
   it("shows error when passwords don't match", async () => {
     renderWithChakra(<SignupPage />);
-    fillForm({ first: "John", last: "Doe", email: "j@uwp.edu", pw: "password1", confirm: "password2" });
+    fillForm({ first: "John", last: "Doe", email: "j@rangers.uwp.edu", pw: "password1", confirm: "password2" });
     await act(async () => { clickCreateAccount(); });
     expect(mockToaster.create).toHaveBeenCalledWith(
       expect.objectContaining({ title: "Passwords don't match" })
     );
   });
 
+  it("blocks non-rangers emails before student signup", async () => {
+    renderWithChakra(<SignupPage />);
+    fillForm({
+      first: "John",
+      last: "Doe",
+      email: "j@gmail.com",
+      pw: "password123",
+      confirm: "password123",
+    });
+
+    await act(async () => {
+      clickCreateAccount();
+    });
+
+    expect(mockToaster.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: "Invalid email domain",
+        description: "Student sign up requires a @rangers.uwp.edu email address.",
+      })
+    );
+    expect(mockSignUp).not.toHaveBeenCalled();
+  });
+
   it("shows error for short password", async () => {
     renderWithChakra(<SignupPage />);
-    fillForm({ first: "John", last: "Doe", email: "j@uwp.edu", pw: "abc", confirm: "abc" });
+    fillForm({ first: "John", last: "Doe", email: "j@rangers.uwp.edu", pw: "abc", confirm: "abc" });
     await act(async () => { clickCreateAccount(); });
     expect(mockToaster.create).toHaveBeenCalledWith(
       expect.objectContaining({ title: "Password too short" })
@@ -290,11 +313,11 @@ describe("SignupPage", () => {
       error: null,
     });
     renderWithChakra(<SignupPage />);
-    fillForm({ first: "John", last: "Doe", email: "j@uwp.edu", pw: "password123", confirm: "password123" });
+    fillForm({ first: "John", last: "Doe", email: "j@rangers.uwp.edu", pw: "password123", confirm: "password123" });
     await act(async () => { clickCreateAccount(); });
     await waitFor(() => {
       expect(mockSignUp).toHaveBeenCalledWith({
-        email: "j@uwp.edu",
+        email: "j@rangers.uwp.edu",
         password: "password123",
         options: { data: { first_name: "John", last_name: "Doe" } },
       });
@@ -307,7 +330,7 @@ describe("SignupPage", () => {
       error: null,
     });
     renderWithChakra(<SignupPage />);
-    fillForm({ first: "John", last: "Doe", email: "j@uwp.edu", pw: "password123", confirm: "password123" });
+    fillForm({ first: "John", last: "Doe", email: "j@rangers.uwp.edu", pw: "password123", confirm: "password123" });
     await act(async () => { clickCreateAccount(); });
     await waitFor(() => {
       expect(mockToaster.create).toHaveBeenCalledWith(
@@ -323,7 +346,7 @@ describe("SignupPage", () => {
       error: null,
     });
     renderWithChakra(<SignupPage />);
-    fillForm({ first: "John", last: "Doe", email: "j@uwp.edu", pw: "password123", confirm: "password123" });
+    fillForm({ first: "John", last: "Doe", email: "j@rangers.uwp.edu", pw: "password123", confirm: "password123" });
     await act(async () => { clickCreateAccount(); });
     await waitFor(() => {
       expect(mockPush).toHaveBeenCalledWith("/dashboard");
@@ -336,7 +359,7 @@ describe("SignupPage", () => {
       error: { message: "Email taken" },
     });
     renderWithChakra(<SignupPage />);
-    fillForm({ first: "John", last: "Doe", email: "j@uwp.edu", pw: "password123", confirm: "password123" });
+    fillForm({ first: "John", last: "Doe", email: "j@rangers.uwp.edu", pw: "password123", confirm: "password123" });
     await act(async () => { clickCreateAccount(); });
     await waitFor(() => {
       expect(mockToaster.create).toHaveBeenCalledWith(

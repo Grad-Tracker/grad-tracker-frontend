@@ -142,11 +142,22 @@ export default function SignupPage() {
       return;
     }
 
+    const normalizedEmail = email.trim().toLowerCase();
+
+    if (!normalizedEmail.endsWith("@rangers.uwp.edu")) {
+      toaster.create({
+        title: "Invalid email domain",
+        description: "Student sign up requires a @rangers.uwp.edu email address.",
+        type: "error",
+      });
+      return;
+    }
+
     setLoading(true);
 
     const supabase = createClient();
     const { data, error } = await supabase.auth.signUp({
-      email,
+      email: normalizedEmail,
       password,
       options: {
         data: {

@@ -54,7 +54,8 @@ describe("AdminSigninPage", () => {
     expect(
       screen.getAllByText("Manage programs, Gen-Ed buckets, and course catalog.").length
     ).toBeGreaterThanOrEqual(1);
-    expect(screen.getByRole("button", { name: "Advisor" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.queryByRole("button", { name: "Advisor" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Student" })).not.toBeInTheDocument();
   });
 
   it("keeps advisor redirect behavior unchanged", async () => {
