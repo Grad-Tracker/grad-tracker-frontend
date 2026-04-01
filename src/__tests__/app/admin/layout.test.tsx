@@ -31,7 +31,7 @@ vi.mock("@/components/admin/AdminShell", () => ({
   ),
 }));
 
-import AdminLayout from "@/app/admin/layout";
+import AdminLayout from "@/app/admin/(protected)/layout";
 
 function renderWithChakra(ui: React.ReactElement) {
   return render(<ChakraProvider value={defaultSystem}>{ui}</ChakraProvider>);
