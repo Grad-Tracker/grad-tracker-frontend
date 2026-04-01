@@ -147,7 +147,7 @@ export default function CoursePanel({
       {/* Panel Header */}
       <Box px="4" py="4" borderBottomWidth="1px" borderColor="border.subtle">
         <HStack mb="3" gap="2">
-          <Icon boxSize="5" color="green.fg">
+          <Icon boxSize="5" color="blue.fg">
             <LuBookOpen />
           </Icon>
           <Heading
@@ -158,7 +158,7 @@ export default function CoursePanel({
           >
             Course Pool
           </Heading>
-          <Badge size="sm" variant="subtle" colorPalette="green">
+          <Badge size="sm" variant="subtle" colorPalette="blue">
             {totalAvailable} available
           </Badge>
         </HStack>
@@ -296,7 +296,7 @@ export default function CoursePanel({
       bg="transparent"
       borderRightWidth="1px"
       borderColor="border.subtle"
-      _hover={{ bg: "bg.subtle", borderColor: "green.300" }}
+      _hover={{ bg: "bg.subtle", borderColor: "blue.300" }}
       transition="all 0.15s"
       flexShrink={0}
       onPointerDown={handleResizeStart}

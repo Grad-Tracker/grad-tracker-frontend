@@ -712,7 +712,7 @@ export default function PlannerPage() {
     return (
       <Flex align="center" justify="center" minH="60vh">
         <VStack gap="4">
-          <Spinner size="xl" color="green.500" />
+          <Spinner size="xl" color="blue.500" />
           <Text color="fg.muted">Loading your planner...</Text>
         </VStack>
       </Flex>
@@ -769,7 +769,7 @@ export default function PlannerPage() {
                   <Text
                     color="fg.muted"
                     cursor="pointer"
-                    _hover={{ color: "green.fg" }}
+                    _hover={{ color: "blue.fg" }}
                     onClick={handleBackToHub}
                     fontWeight="500"
                     transition="color 0.15s"
@@ -799,7 +799,7 @@ export default function PlannerPage() {
                         key={p.id}
                         size="xs"
                         variant={p.id === activePlanId ? "solid" : "ghost"}
-                        colorPalette={p.id === activePlanId ? "green" : "gray"}
+                        colorPalette={p.id === activePlanId ? "blue" : "gray"}
                         borderRadius="md"
                         fontSize="xs"
                         fontWeight={p.id === activePlanId ? "600" : "500"}
@@ -829,7 +829,7 @@ export default function PlannerPage() {
           {planDataLoading ? (
             <Flex flex="1" align="center" justify="center">
               <VStack gap="3">
-                <Spinner size="lg" color="green.500" />
+                <Spinner size="lg" color="blue.500" />
                 <Text fontSize="sm" color="fg.muted">
                   Loading plan...
                 </Text>
@@ -879,14 +879,14 @@ export default function PlannerPage() {
                           w="16"
                           h="16"
                           borderRadius="2xl"
-                          bg="green.subtle"
+                          bg="blue.subtle"
                           display="flex"
                           alignItems="center"
                           justifyContent="center"
                           mx="auto"
                           mb="4"
                         >
-                          <LuCalendar size={32} color="var(--chakra-colors-green-fg)" />
+                          <LuCalendar size={32} color="var(--chakra-colors-blue-fg)" />
                         </Box>
                         <Heading
                           size="md"
@@ -904,7 +904,7 @@ export default function PlannerPage() {
                           Drag courses from the pool on the left into your semesters to build your plan.
                         </Text>
                         <Button
-                          colorPalette="green"
+                          colorPalette="blue"
                           borderRadius="lg"
                           size="sm"
                           onClick={() => setAddDialogOpen(true)}

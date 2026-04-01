@@ -90,7 +90,7 @@ export function ManualCourseForm({ onCourseCreated, onBack }: ManualCourseFormPr
           borderRadius="lg"
         />
       </Field>
-      <Button colorPalette="green" onClick={handleSubmit} loading={saving} borderRadius="lg">
+      <Button colorPalette="blue" onClick={handleSubmit} loading={saving} borderRadius="lg">
         Add Course
       </Button>
       <Button variant="ghost" size="sm" onClick={onBack} alignSelf="flex-start">

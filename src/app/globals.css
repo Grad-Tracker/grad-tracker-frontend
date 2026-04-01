@@ -10,6 +10,29 @@ body {
   overflow-x: hidden;
 }
 
+/* ── Custom palette overrides (Navy + Warm Gray) ── */
+.light {
+  --chakra-colors-bg: #F9F9F7;
+  --chakra-colors-bg-subtle: #F3F3F0;
+  --chakra-colors-bg-muted: #ECEAE7;
+  --chakra-colors-fg: #1C1D1F;
+  --chakra-colors-fg-muted: #7C7D80;
+  --chakra-colors-border: #E5E4E0;
+  --chakra-colors-border-muted: #ECEAE7;
+  --chakra-colors-border-subtle: #E5E4E0;
+}
+
+.dark {
+  --chakra-colors-bg: #1A1C20;
+  --chakra-colors-bg-subtle: #24262C;
+  --chakra-colors-bg-muted: #2E3038;
+  --chakra-colors-fg: #E4E2DE;
+  --chakra-colors-fg-muted: #8B8D95;
+  --chakra-colors-border: #2E3038;
+  --chakra-colors-border-muted: #24262C;
+  --chakra-colors-border-subtle: #2E3038;
+}
+
 /* ── Dot grid pattern with vignette fade ── */
 .mesh-gradient-subtle {
   position: relative;
@@ -21,41 +44,41 @@ body {
   inset: 0;
   z-index: 0;
   pointer-events: none;
-  background-image: radial-gradient(circle, rgba(0, 0, 0, 0.15) 1px, transparent 1px);
+  background-image: radial-gradient(circle, rgba(28, 29, 31, 0.08) 1px, transparent 1px);
   background-size: 24px 24px;
   mask-image: radial-gradient(ellipse 70% 60% at 50% 50%, black 20%, transparent 100%);
   -webkit-mask-image: radial-gradient(ellipse 70% 60% at 50% 50%, black 20%, transparent 100%);
 }
 
 .dark .mesh-gradient-subtle::before {
-  background-image: radial-gradient(circle, rgba(255, 255, 255, 0.12) 1px, transparent 1px);
+  background-image: radial-gradient(circle, rgba(228, 226, 222, 0.06) 1px, transparent 1px);
 }
 
 /* ── Frosted glass card ── */
 .glass-card {
   backdrop-filter: blur(12px) saturate(180%);
   -webkit-backdrop-filter: blur(12px) saturate(180%);
-  background: rgba(255, 255, 255, 0.7);
+  background: rgba(249, 249, 247, 0.85);
 }
 
 .dark .glass-card {
-  background: rgba(10, 10, 10, 0.7);
+  background: rgba(26, 28, 32, 0.85);
 }
 
 /* ── Mesh gradient wash (landing/auth pages) ── */
 .mesh-gradient {
   position: relative;
   background:
-    radial-gradient(ellipse at 20% 50%, rgba(34, 197, 94, 0.12) 0%, transparent 60%),
-    radial-gradient(ellipse at 80% 20%, rgba(16, 185, 129, 0.10) 0%, transparent 50%),
-    radial-gradient(ellipse at 50% 80%, rgba(5, 150, 105, 0.08) 0%, transparent 55%);
+    radial-gradient(ellipse at 20% 50%, rgba(30, 58, 95, 0.12) 0%, transparent 60%),
+    radial-gradient(ellipse at 80% 20%, rgba(37, 99, 235, 0.10) 0%, transparent 50%),
+    radial-gradient(ellipse at 50% 80%, rgba(59, 130, 246, 0.08) 0%, transparent 55%);
 }
 
 .dark .mesh-gradient {
   background:
-    radial-gradient(ellipse at 20% 50%, rgba(34, 197, 94, 0.16) 0%, transparent 60%),
-    radial-gradient(ellipse at 80% 20%, rgba(16, 185, 129, 0.14) 0%, transparent 50%),
-    radial-gradient(ellipse at 50% 80%, rgba(5, 150, 105, 0.12) 0%, transparent 55%);
+    radial-gradient(ellipse at 20% 50%, rgba(30, 58, 95, 0.16) 0%, transparent 60%),
+    radial-gradient(ellipse at 80% 20%, rgba(37, 99, 235, 0.14) 0%, transparent 50%),
+    radial-gradient(ellipse at 50% 80%, rgba(59, 130, 246, 0.12) 0%, transparent 55%);
 }
 
 /* ── Noise overlay (landing/auth pages) ── */

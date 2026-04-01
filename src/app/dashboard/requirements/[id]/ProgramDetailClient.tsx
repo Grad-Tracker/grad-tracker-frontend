@@ -498,7 +498,7 @@ export default function ProgramDetailClient({
                               Credits
                             </Text>
                           </HStack>
-                          <Text fontSize="2xl" fontWeight="700" color="green.fg">
+                          <Text fontSize="2xl" fontWeight="700" color="blue.fg">
                             {selectedCourse.credits}
                           </Text>
                         </Box>

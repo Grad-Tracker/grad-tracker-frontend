@@ -181,7 +181,7 @@ export default function CoursesClient({
           value={courseLevel}
           onValueChange={(e) => setCourseLevel(e.value)}
           variant="enclosed"
-          colorPalette="green"
+          colorPalette="blue"
         >
           <Tabs.List bg="bg" borderRadius="lg" p="1">
             <Tabs.Trigger value="undergraduate" px="6">
@@ -191,7 +191,7 @@ export default function CoursesClient({
               Undergraduate
               <Badge
                 ml="2"
-                colorPalette={courseLevel === "undergraduate" ? "green" : "gray"}
+                colorPalette={courseLevel === "undergraduate" ? "blue" : "gray"}
                 variant="solid"
                 size="sm"
               >
@@ -205,7 +205,7 @@ export default function CoursesClient({
               Graduate
               <Badge
                 ml="2"
-                colorPalette={courseLevel === "graduate" ? "green" : "gray"}
+                colorPalette={courseLevel === "graduate" ? "blue" : "gray"}
                 variant="solid"
                 size="sm"
               >
@@ -530,7 +530,7 @@ export default function CoursesClient({
                               Credits
                             </Text>
                           </HStack>
-                          <Text fontSize="2xl" fontWeight="700" color="green.fg">
+                          <Text fontSize="2xl" fontWeight="700" color="blue.fg">
                             {selectedCourse.credits}
                           </Text>
                         </Box>

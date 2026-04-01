@@ -142,10 +142,10 @@ export default function PlanSwitcher({
                   py="2.5"
                   borderRadius="lg"
                   cursor="pointer"
-                  bg={isActive ? "green.subtle" : "transparent"}
+                  bg={isActive ? "blue.subtle" : "transparent"}
                   borderLeftWidth="3px"
-                  borderLeftColor={isActive ? "green.solid" : "transparent"}
-                  _hover={{ bg: isActive ? "green.subtle" : "bg.subtle" }}
+                  borderLeftColor={isActive ? "blue.solid" : "transparent"}
+                  _hover={{ bg: isActive ? "blue.subtle" : "bg.subtle" }}
                   transition="all 0.15s"
                   onClick={() => {
                     if (!isRenaming) {
@@ -173,7 +173,7 @@ export default function PlanSwitcher({
                           aria-label="Confirm"
                           size="2xs"
                           variant="ghost"
-                          colorPalette="green"
+                          colorPalette="blue"
                           onClick={(e) => {
                             e.stopPropagation();
                             confirmRename();
@@ -198,7 +198,7 @@ export default function PlanSwitcher({
                         <Text
                           fontSize="sm"
                           fontWeight={isActive ? "600" : "500"}
-                          color={isActive ? "green.fg" : "fg"}
+                          color={isActive ? "blue.fg" : "fg"}
                           truncate
                         >
                           {plan.name}
@@ -297,8 +297,8 @@ export default function PlanSwitcher({
               w="full"
               borderRadius="lg"
               justifyContent="start"
-              color="green.fg"
-              _hover={{ bg: "green.subtle" }}
+              color="blue.fg"
+              _hover={{ bg: "blue.subtle" }}
               onClick={() => {
                 onCreatePlan();
                 setPopoverOpen(false);

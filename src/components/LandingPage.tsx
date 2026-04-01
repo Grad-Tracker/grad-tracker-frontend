@@ -39,59 +39,44 @@ import {
   TimelineTitle,
 } from "@/components/ui/timeline";
 import {
-  LuChartBar,
-  LuBell,
-  LuCalendar,
   LuCheck,
-  LuSquareCheck,
   LuGraduationCap,
-  LuChartPie,
-  LuUsers,
   LuArrowRight,
-  LuSparkles,
-  LuShield,
-  LuZap,
 } from "react-icons/lu";
 import Link from "next/link";
 
 const features = [
   {
-    icon: LuChartBar,
     title: "Credit Tracking",
     description:
       "Track your completed, in-progress, and remaining credits toward your Parkside degree requirements.",
-    color: "green",
+    color: "blue",
   },
   {
-    icon: LuSquareCheck,
     title: "Parkside Requirements",
     description:
       "Maps directly to UW-Parkside degree programs, general education, and major-specific requirements.",
     color: "teal",
   },
   {
-    icon: LuChartPie,
     title: "Progress Visualization",
     description:
       "See your progress toward your Parkside degree at a glance with clear visual indicators.",
-    color: "blue",
-  },
-  {
-    icon: LuUsers,
-    title: "Advisor Ready",
-    description:
-      "Generate progress reports to share with your Parkside academic advisor during meetings.",
     color: "purple",
   },
   {
-    icon: LuCalendar,
-    title: "Semester Planning",
+    title: "Advisor Ready",
     description:
-      "Plan your remaining semesters at Parkside to stay on track for graduation.",
+      "Generate progress reports to share with your Parkside academic advisor during meetings.",
     color: "orange",
   },
   {
-    icon: LuBell,
+    title: "Semester Planning",
+    description:
+      "Plan your remaining semesters at Parkside to stay on track for graduation.",
+    color: "teal",
+  },
+  {
     title: "Requirement Alerts",
     description:
       "Know when you're missing prerequisites or need specific courses before they fill up.",
@@ -144,7 +129,7 @@ export default function LandingPage() {
             <HStack gap="3">
               <Box
                 p="2"
-                bg="green.solid"
+                bg="blue.solid"
                 borderRadius="lg"
                 className="animate-pulse-glow"
               >
@@ -161,7 +146,7 @@ export default function LandingPage() {
                 GradTracker
               </Text>
               <Badge
-                colorPalette="green"
+                colorPalette="blue"
                 variant="surface"
                 size="sm"
                 fontWeight="500"
@@ -174,7 +159,7 @@ export default function LandingPage() {
               <LinkButton
                 href="/signin"
                 variant="solid"
-                colorPalette="green"
+                colorPalette="blue"
                 size="sm"
                 rounded="full"
                 px="5"
@@ -201,7 +186,7 @@ export default function LandingPage() {
           right="-10%"
           w="500px"
           h="500px"
-          bg="green.500"
+          bg="blue.500"
           opacity="0.05"
           borderRadius="full"
           filter="blur(100px)"
@@ -237,7 +222,7 @@ export default function LandingPage() {
             >
               <HStack className="animate-fade-up">
                 <Badge
-                  colorPalette="green"
+                  colorPalette="blue"
                   variant="surface"
                   size="lg"
                   px="4"
@@ -245,9 +230,6 @@ export default function LandingPage() {
                   rounded="full"
                   fontWeight="600"
                 >
-                  <Icon boxSize="4" mr="2">
-                    <LuSparkles />
-                  </Icon>
                   Built for UW-Parkside Students
                 </Badge>
               </HStack>
@@ -289,7 +271,7 @@ export default function LandingPage() {
                 <Link href="/signup">
                   <Button
                     size="lg"
-                    colorPalette="green"
+                    colorPalette="blue"
                     rounded="full"
                     px="8"
                     fontWeight="600"
@@ -331,18 +313,8 @@ export default function LandingPage() {
                 flexWrap="wrap"
                 justify={{ base: "center", lg: "start" }}
               >
-                <HStack gap="2">
-                  <Icon color="green.solid">
-                    <LuShield />
-                  </Icon>
-                  <Text>Secure & Private</Text>
-                </HStack>
-                <HStack gap="2">
-                  <Icon color="green.solid">
-                    <LuZap />
-                  </Icon>
-                  <Text>Always Free</Text>
-                </HStack>
+                <Text>Secure & Private</Text>
+                <Text>Always Free</Text>
               </HStack>
             </VStack>
 
@@ -352,7 +324,7 @@ export default function LandingPage() {
                 <Box
                   position="absolute"
                   inset="-4"
-                  bg="green.500"
+                  bg="blue.500"
                   opacity="0.15"
                   borderRadius="3xl"
                   filter="blur(40px)"
@@ -378,7 +350,7 @@ export default function LandingPage() {
                     h="1px"
                     bgGradient="to-r"
                     gradientFrom="transparent"
-                    gradientVia="green.500"
+                    gradientVia="blue.500"
                     gradientTo="transparent"
                   />
 
@@ -388,7 +360,7 @@ export default function LandingPage() {
                         <ProgressCircleRoot
                           value={72}
                           size="xl"
-                          colorPalette="green"
+                          colorPalette="blue"
                         >
                           <ProgressCircleRing
                             cap="round"
@@ -415,7 +387,7 @@ export default function LandingPage() {
                       </VStack>
                       <HStack gap="4" w="full" justify="center">
                         <VStack gap="0">
-                          <Text fontWeight="700" fontSize="lg" color="green.fg">
+                          <Text fontWeight="700" fontSize="lg" color="blue.fg">
                             34
                           </Text>
                           <Text fontSize="xs" color="fg.muted">
@@ -489,7 +461,7 @@ export default function LandingPage() {
           <VStack gap="16" align="center">
             <VStack gap="5" textAlign="center" maxW="2xl" mx="auto">
               <Badge
-                colorPalette="green"
+                colorPalette="blue"
                 variant="surface"
                 size="lg"
                 px="4"
@@ -521,6 +493,8 @@ export default function LandingPage() {
                   borderRadius="2xl"
                   borderWidth="1px"
                   borderColor="border.subtle"
+                  borderLeftWidth="3px"
+                  borderLeftColor={`${feature.color}.solid`}
                   overflow="hidden"
                   _hover={{
                     borderColor: `${feature.color}.solid`,
@@ -531,32 +505,17 @@ export default function LandingPage() {
                   style={{ animationDelay: `${index * 0.1}s` }}
                 >
                   <Card.Body p="6">
-                    <VStack align="start" gap="4">
-                      <Flex
-                        align="center"
-                        justify="center"
-                        w="12"
-                        h="12"
-                        bg={`${feature.color}.subtle`}
-                        borderRadius="xl"
-                        color={`${feature.color}.fg`}
+                    <VStack align="start" gap="2">
+                      <Heading
+                        size="md"
+                        fontWeight="600"
+                        letterSpacing="-0.01em"
                       >
-                        <Icon boxSize="6">
-                          <feature.icon />
-                        </Icon>
-                      </Flex>
-                      <VStack align="start" gap="2">
-                        <Heading
-                          size="md"
-                          fontWeight="600"
-                          letterSpacing="-0.01em"
-                        >
-                          {feature.title}
-                        </Heading>
-                        <Text color="fg.muted" lineHeight="1.6" fontSize="sm">
-                          {feature.description}
-                        </Text>
-                      </VStack>
+                        {feature.title}
+                      </Heading>
+                      <Text color="fg.muted" lineHeight="1.6" fontSize="sm">
+                        {feature.description}
+                      </Text>
                     </VStack>
                   </Card.Body>
                 </Card.Root>
@@ -611,11 +570,11 @@ export default function LandingPage() {
                     <Center
                       w="10"
                       h="10"
-                      bg={index === 0 ? "green.solid" : "bg"}
+                      bg={index === 0 ? "blue.solid" : "bg"}
                       borderWidth="2px"
-                      borderColor={index === 0 ? "green.solid" : "green.muted"}
+                      borderColor={index === 0 ? "blue.solid" : "blue.muted"}
                       borderRadius="full"
-                      color={index === 0 ? "white" : "green.fg"}
+                      color={index === 0 ? "white" : "blue.fg"}
                       fontWeight="700"
                       fontSize="sm"
                     >
@@ -663,13 +622,13 @@ export default function LandingPage() {
                     >
                       Your Dashboard
                     </Heading>
-                    <Badge colorPalette="green" variant="surface" size="sm">
+                    <Badge colorPalette="blue" variant="surface" size="sm">
                       Demo
                     </Badge>
                   </HStack>
 
                   <Stack gap="5">
-                    <ProgressRoot value={72} colorPalette="green" size="sm">
+                    <ProgressRoot value={72} colorPalette="blue" size="sm">
                       <HStack justify="space-between" mb="2">
                         <ProgressLabel fontWeight="500" fontSize="sm">
                           Overall Completion
@@ -758,10 +717,10 @@ export default function LandingPage() {
                       justify="center"
                       w="6"
                       h="6"
-                      bg="green.subtle"
+                      bg="blue.subtle"
                       borderRadius="full"
                     >
-                      <Icon color="green.fg" boxSize="3.5">
+                      <Icon color="blue.fg" boxSize="3.5">
                         <LuCheck />
                       </Icon>
                     </Flex>
@@ -781,8 +740,8 @@ export default function LandingPage() {
         position="relative"
         overflow="hidden"
         py={{ base: "16", md: "24" }}
-        bg="green.950"
-        _light={{ bg: "green.600" }}
+        bg="blue.950"
+        _light={{ bg: "blue.600" }}
       >
         {/* Decorative elements */}
         <Box
@@ -791,7 +750,7 @@ export default function LandingPage() {
           right="-20%"
           w="600px"
           h="600px"
-          bg="green.500"
+          bg="blue.500"
           opacity="0.15"
           borderRadius="full"
           filter="blur(100px)"
@@ -843,7 +802,7 @@ export default function LandingPage() {
                 <Button
                   size="lg"
                   bg="white"
-                  color="green.700"
+                  color="blue.700"
                   rounded="full"
                   px="8"
                   fontWeight="600"
@@ -893,7 +852,7 @@ export default function LandingPage() {
           <SimpleGrid columns={{ base: 1, md: 4 }} gap="8">
             <VStack align="start" gap="4">
               <HStack gap="3">
-                <Box p="2" bg="green.solid" borderRadius="lg">
+                <Box p="2" bg="blue.solid" borderRadius="lg">
                   <Icon color="white" boxSize="4">
                     <LuGraduationCap />
                   </Icon>
@@ -937,7 +896,7 @@ export default function LandingPage() {
                       color="fg.muted"
                       fontSize="sm"
                       cursor="pointer"
-                      _hover={{ color: "green.fg" }}
+                      _hover={{ color: "blue.fg" }}
                       transition="color 0.2s"
                     >
                       {link}

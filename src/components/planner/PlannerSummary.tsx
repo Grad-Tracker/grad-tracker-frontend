@@ -109,7 +109,7 @@ export default function PlannerSummary({
             <ProgressCircleRoot
               value={stats.degreePct}
               size="sm"
-              colorPalette="green"
+              colorPalette="blue"
             >
               <ProgressCircleRing
                 cap="round"
@@ -140,7 +140,7 @@ export default function PlannerSummary({
             </HStack>
 
             <HStack gap="1.5" pl="4">
-              <Icon color="green.fg" boxSize="3.5">
+              <Icon color="blue.fg" boxSize="3.5">
                 <LuGraduationCap />
               </Icon>
               <Text fontSize="sm" fontWeight="600">{totalPlannedCredits}</Text>
@@ -188,7 +188,7 @@ export default function PlannerSummary({
             <HStack gap="6" flexWrap="wrap">
               <Box>
                 <Text fontSize="xs" color="fg.muted" mb="0.5">Completed</Text>
-                <Text fontSize="sm" fontWeight="700" color="green.fg">
+                <Text fontSize="sm" fontWeight="700" color="blue.fg">
                   {stats.completedCredits} credits
                 </Text>
               </Box>

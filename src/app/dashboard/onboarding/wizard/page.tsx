@@ -48,7 +48,7 @@ export default function WizardPage() {
               </HStack>
             </Link>
             <HStack gap="3">
-              <Box p="2" bg="green.solid" borderRadius="lg">
+              <Box p="2" bg="blue.solid" borderRadius="lg">
                 <Icon color="white" boxSize="5">
                   <LuGraduationCap />
                 </Icon>

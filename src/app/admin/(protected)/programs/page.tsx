@@ -24,7 +24,7 @@ const PROGRAM_GROUPS = [
   { type: "MAJOR", label: "Majors", icon: LuTarget, color: "blue" },
   { type: "MINOR", label: "Minors", icon: LuBookOpen, color: "purple" },
   { type: "CERTIFICATE", label: "Certificates", icon: LuScrollText, color: "orange" },
-  { type: "GRADUATE", label: "Graduate Programs", icon: LuGraduationCap, color: "green" },
+  { type: "GRADUATE", label: "Graduate Programs", icon: LuGraduationCap, color: "teal" },
 ] as const;
 
 function ProgramCard({ program }: { program: AdminProgramSummary }) {
@@ -35,13 +35,13 @@ function ProgramCard({ program }: { program: AdminProgramSummary }) {
         borderRadius="xl"
         borderWidth="1px"
         borderColor="border.subtle"
-        _hover={{ borderColor: "green.muted", transform: "translateY(-2px)", boxShadow: "lg" }}
+        _hover={{ borderColor: "blue.muted", transform: "translateY(-2px)", boxShadow: "lg" }}
         transition="all 0.2s"
       >
         <Card.Body p="5">
           <VStack align="stretch" gap="4">
             <HStack justify="space-between" align="start">
-              <Badge colorPalette="green" variant="surface">
+              <Badge colorPalette="blue" variant="surface">
                 {program.program_type}
               </Badge>
               <Text fontSize="sm" color="fg.muted">

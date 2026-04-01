@@ -62,7 +62,7 @@ export default function AdminSidebar() {
         overflowX="auto"
         css={{ "&::-webkit-scrollbar": { display: "none" }, scrollbarWidth: "none" }}
       >
-        <Box p="1.5" bg="green.solid" borderRadius="md" flexShrink={0} mr="1">
+        <Box p="1.5" bg="blue.solid" borderRadius="md" flexShrink={0} mr="1">
           <Icon color="white" boxSize="4"><LuShield /></Icon>
         </Box>
 
@@ -75,11 +75,11 @@ export default function AdminSidebar() {
                 px="2.5"
                 py="1"
                 borderRadius="md"
-                bg={active ? "green.subtle" : "transparent"}
-                color={active ? "green.fg" : "fg.muted"}
+                bg={active ? "blue.subtle" : "transparent"}
+                color={active ? "blue.fg" : "fg.muted"}
                 align="center"
                 transition="all 0.15s"
-                _hover={{ bg: active ? "green.subtle" : "bg.subtle", color: active ? "green.fg" : "fg" }}
+                _hover={{ bg: active ? "blue.subtle" : "bg.subtle", color: active ? "blue.fg" : "fg" }}
               >
                 <Icon boxSize="4"><item.icon /></Icon>
                 <Text fontSize="2xs" fontWeight={active ? "600" : "500"} whiteSpace="nowrap">
@@ -122,7 +122,7 @@ export default function AdminSidebar() {
         flexDirection="column"
       >
         <HStack gap="3" px="6" py="5" borderBottomWidth="1px" borderColor="border.subtle">
-          <Box p="2" bg="green.solid" borderRadius="lg">
+          <Box p="2" bg="blue.solid" borderRadius="lg">
             <Icon color="white" boxSize="5"><LuShield /></Icon>
           </Box>
           <Box>
@@ -145,12 +145,12 @@ export default function AdminSidebar() {
                   py="2.5"
                   borderRadius="lg"
                   cursor="pointer"
-                  bg={active ? "green.subtle" : "transparent"}
-                  color={active ? "green.fg" : "fg.muted"}
+                  bg={active ? "blue.subtle" : "transparent"}
+                  color={active ? "blue.fg" : "fg.muted"}
                   fontWeight={active ? "600" : "500"}
                   _hover={{
-                    bg: active ? "green.subtle" : "bg.subtle",
-                    color: active ? "green.fg" : "fg",
+                    bg: active ? "blue.subtle" : "bg.subtle",
+                    color: active ? "blue.fg" : "fg",
                   }}
                   transition="all 0.15s"
                 >

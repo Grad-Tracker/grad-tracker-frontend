@@ -47,8 +47,8 @@ const TYPE_META: Record<
   Program["program_type"],
   { label: string; color: string; icon: typeof LuGraduationCap }
 > = {
-  MAJOR: { label: "Majors", color: "green", icon: LuGraduationCap },
-  MINOR: { label: "Minors", color: "blue", icon: LuBookOpen },
+  MAJOR: { label: "Majors", color: "blue", icon: LuGraduationCap },
+  MINOR: { label: "Minors", color: "purple", icon: LuBookOpen },
   CERTIFICATE: { label: "Certificates", color: "orange", icon: LuAward },
   GRADUATE: { label: "Graduate Programs", color: "purple", icon: LuGraduationCap },
 };
@@ -346,7 +346,7 @@ export default function CreatePlanDialog({
                 </Button>
               </Dialog.ActionTrigger>
               <Button
-                colorPalette={autoGenerate ? "purple" : "green"}
+                colorPalette={autoGenerate ? "purple" : "blue"}
                 borderRadius="lg"
                 onClick={handleCreate}
                 disabled={!name.trim() || selectedProgramIds.size === 0}

@@ -48,14 +48,10 @@ import {
   LuChevronRight,
   LuSparkles,
   LuPlus,
-  LuTrendingUp,
   LuClock,
   LuCircleCheck,
   LuCircleAlert,
   LuArrowRight,
-  LuFileText,
-  LuCalendar,
-  LuTarget,
   LuGraduationCap,
 } from "react-icons/lu";
 import type { Program } from "@/types/onboarding";
@@ -79,7 +75,7 @@ const mockRecentActivity = [
 ];
 
 function getStatusBadgeProps(status: string): { color: string; label: string } {
-  if (status === "enrolled") return { color: "green", label: "Enrolled" };
+  if (status === "enrolled") return { color: "emerald", label: "Enrolled" };
   if (status === "waitlist") return { color: "orange", label: "Waitlist" };
   return { color: "gray", label: "Planned" };
 }
@@ -214,14 +210,14 @@ export default function Dashboard() {
     completed: number;
     total: number;
     percentage: number;
-    color: "green" | "blue" | "purple" | "orange";
+    color: "violet" | "emerald" | "blue" | "amber";
   };
 
   const DEFAULT_REQUIREMENTS: RequirementBar[] = [
-    { name: "General Education", completed: 0, total: 0, percentage: 0, color: "green" },
-    { name: "Major Core", completed: 0, total: 0, percentage: 0, color: "blue" },
-    { name: "Major Electives", completed: 0, total: 0, percentage: 0, color: "purple" },
-    { name: "Free Electives", completed: 0, total: 0, percentage: 0, color: "orange" },
+    { name: "General Education", completed: 0, total: 0, percentage: 0, color: "violet" },
+    { name: "Major Core", completed: 0, total: 0, percentage: 0, color: "emerald" },
+    { name: "Major Electives", completed: 0, total: 0, percentage: 0, color: "blue" },
+    { name: "Free Electives", completed: 0, total: 0, percentage: 0, color: "amber" },
   ];
 
   const [requirements, setRequirements] = React.useState<RequirementBar[]>(DEFAULT_REQUIREMENTS);
@@ -443,20 +439,20 @@ export default function Dashboard() {
 
           const categorize = (blockName: string) => {
             const n = blockName.toLowerCase();
-            if (n.includes("general")) return { key: "General Education", color: "green" as const };
-            if (n.includes("core")) return { key: "Major Core", color: "blue" as const };
-            if (n.includes("elective")) return { key: "Major Electives", color: "purple" as const };
-            return { key: "Free Electives", color: "orange" as const };
+            if (n.includes("general")) return { key: "General Education", color: "violet" as const };
+            if (n.includes("core")) return { key: "Major Core", color: "emerald" as const };
+            if (n.includes("elective")) return { key: "Major Electives", color: "blue" as const };
+            return { key: "Free Electives", color: "amber" as const };
           };
 
           const agg: Record<
             string,
             { completed: number; total: number; color: RequirementBar["color"] }
           > = {
-            "General Education": { completed: 0, total: 0, color: "green" },
-            "Major Core": { completed: 0, total: 0, color: "blue" },
-            "Major Electives": { completed: 0, total: 0, color: "purple" },
-            "Free Electives": { completed: 0, total: 0, color: "orange" },
+            "General Education": { completed: 0, total: 0, color: "violet" },
+            "Major Core": { completed: 0, total: 0, color: "emerald" },
+            "Major Electives": { completed: 0, total: 0, color: "blue" },
+            "Free Electives": { completed: 0, total: 0, color: "amber" },
           };
 
           for (const b of blocks) {
@@ -617,9 +613,9 @@ export default function Dashboard() {
           overflow="hidden"
           position="relative"
           bgGradient="to-br"
-          gradientFrom="green.600"
-          gradientVia="green.500"
-          gradientTo="teal.500"
+          gradientFrom="blue.600"
+          gradientVia="blue.500"
+          gradientTo="blue.400"
         >
           <Box
             position="absolute"
@@ -674,7 +670,7 @@ export default function Dashboard() {
               <Link href="/dashboard/onboarding">
                 <Button
                   bg="white"
-                  color="green.700"
+                  color="blue.700"
                   size="lg"
                   rounded="full"
                   px="6"
@@ -708,14 +704,11 @@ export default function Dashboard() {
                     {loadingProgress ? "—" : `${progress.overall}%`}
                   </Text>
                 </Box>
-                <ProgressCircleRoot value={progress.overall} size="md" colorPalette="green">
+                <ProgressCircleRoot value={progress.overall} size="md" colorPalette="blue">
                   <ProgressCircleRing cap="round" css={{ "--thickness": "4px" }} />
                 </ProgressCircleRoot>
               </HStack>
               <HStack gap="1" fontSize="xs" color="fg.muted">
-                <Icon color="green.fg">
-                  <LuTrendingUp />
-                </Icon>
                 <Text>On track to graduate</Text>
               </HStack>
             </Card.Body>
@@ -872,13 +865,13 @@ export default function Dashboard() {
                         <Box
                           w="10"
                           h="10"
-                          bg="green.subtle"
+                          bg="blue.subtle"
                           borderRadius="lg"
                           display="flex"
                           alignItems="center"
                           justifyContent="center"
                         >
-                          <Icon color="green.fg" boxSize="5">
+                          <Icon color="blue.fg" boxSize="5">
                             <LuBookOpen />
                           </Icon>
                         </Box>
@@ -923,7 +916,7 @@ export default function Dashboard() {
           <Card.Root bg="bg" borderRadius="xl" borderWidth="1px" borderColor="border.subtle" className="animate-fade-up-delay-2">
             <Card.Body p="5">
               <VStack align="center" gap="4">
-                <Avatar.Root size="xl" colorPalette="green">
+                <Avatar.Root size="xl" colorPalette="blue">
                   <Avatar.Fallback name={student.name} />
                 </Avatar.Root>
 
@@ -950,7 +943,7 @@ export default function Dashboard() {
                     <Text fontSize="sm" color="fg.muted">
                       Expected Graduation
                     </Text>
-                    <Badge colorPalette="green" variant="subtle" size="sm">
+                    <Badge colorPalette="blue" variant="subtle" size="sm">
                       {student.expectedGraduation}
                     </Badge>
                   </HStack>
@@ -964,7 +957,7 @@ export default function Dashboard() {
             <Card.Root bg="bg" borderRadius="xl" borderWidth="1px" borderColor="border.subtle">
               <Card.Header p="5" pb="3">
                 <Flex align="center" gap="2">
-                  <Icon color="green.fg">
+                  <Icon color="blue.fg">
                     <LuGraduationCap />
                   </Icon>
                   <Heading size="sm" fontWeight="600">
@@ -988,7 +981,7 @@ export default function Dashboard() {
                     bg="bg"
                     fontSize="sm"
                     color="fg"
-                    _focus={{ outline: "2px solid", outlineColor: "green.fg", outlineOffset: "2px" }}
+                    _focus={{ outline: "2px solid", outlineColor: "blue.fg", outlineOffset: "2px" }}
                     cursor="pointer"
                   >
                     {majors.map((m) => (
@@ -998,7 +991,7 @@ export default function Dashboard() {
                     ))}
                   </chakra.select>
                   <Button
-                    colorPalette="green"
+                    colorPalette="blue"
                     size="sm"
                     borderRadius="lg"
                     loading={changingMajor}
@@ -1031,7 +1024,7 @@ export default function Dashboard() {
                         activity.type === "alert"
                           ? "orange.subtle"
                           : activity.type === "requirement_met"
-                            ? "green.subtle"
+                            ? "emerald.subtle"
                             : "blue.subtle"
                       }
                       borderRadius="full"
@@ -1043,7 +1036,7 @@ export default function Dashboard() {
                           activity.type === "alert"
                             ? "orange.fg"
                             : activity.type === "requirement_met"
-                              ? "green.fg"
+                              ? "emerald.fg"
                               : "blue.fg"
                         }
                       >
@@ -1080,24 +1073,14 @@ export default function Dashboard() {
             <Card.Body p="5">
               <Stack gap="2">
                 <Button variant="outline" justifyContent="start" size="sm" fontWeight="500">
-                  <Icon mr="2">
-                    <LuFileText />
-                  </Icon>
                   Generate Progress Report
                 </Button>
                 <Button variant="outline" justifyContent="start" size="sm" fontWeight="500">
-                  <Icon mr="2">
-                    <LuCalendar />
-                  </Icon>
                   Plan Next Semester
                 </Button>
                 <Button variant="outline" justifyContent="start" size="sm" fontWeight="500">
-                  <Icon mr="2">
-                    <LuTarget />
-                  </Icon>
                   Review Requirements
                 </Button>
-
               </Stack>
             </Card.Body>
           </Card.Root>

@@ -55,12 +55,12 @@ export default function PlansHub({
               w="10"
               h="10"
               borderRadius="xl"
-              bg="green.subtle"
+              bg="blue.subtle"
               display="flex"
               alignItems="center"
               justifyContent="center"
             >
-              <Icon color="green.fg" boxSize="5">
+              <Icon color="blue.fg" boxSize="5">
                 <LuLayoutGrid />
               </Icon>
             </Box>
@@ -80,13 +80,13 @@ export default function PlansHub({
         </Box>
 
         <Button
-          colorPalette="green"
+          colorPalette="blue"
           borderRadius="xl"
           size="lg"
           onClick={onCreatePlan}
-          boxShadow="0 2px 12px rgba(34, 139, 34, 0.2)"
+          boxShadow="0 2px 12px rgba(37, 99, 235, 0.2)"
           _hover={{
-            boxShadow: "0 4px 20px rgba(34, 139, 34, 0.3)",
+            boxShadow: "0 4px 20px rgba(37, 99, 235, 0.3)",
             transform: "translateY(-1px)",
           }}
           transition="all 0.2s"
@@ -147,13 +147,13 @@ export default function PlansHub({
             w="20"
             h="20"
             borderRadius="3xl"
-            bg="green.subtle"
+            bg="blue.subtle"
             display="flex"
             alignItems="center"
             justifyContent="center"
             mb="6"
           >
-            <LuLayoutGrid size={40} color="var(--chakra-colors-green-fg)" />
+            <LuLayoutGrid size={40} color="var(--chakra-colors-blue-fg)" />
           </Box>
           <Heading
             size="lg"
@@ -168,7 +168,7 @@ export default function PlansHub({
             Create your first graduation plan to start mapping out your semesters and courses.
           </Text>
           <Button
-            colorPalette="green"
+            colorPalette="blue"
             borderRadius="xl"
             size="lg"
             onClick={onCreatePlan}
@@ -212,8 +212,8 @@ export default function PlansHub({
             cursor="pointer"
             transition="all 0.3s cubic-bezier(0.4, 0, 0.2, 1)"
             _hover={{
-              borderColor: "green.300",
-              bg: "green.subtle",
+              borderColor: "blue.300",
+              bg: "blue.subtle",
               transform: "translateY(-2px)",
             }}
             onClick={onCreatePlan}
@@ -230,7 +230,7 @@ export default function PlansHub({
               justifyContent="center"
               mb="3"
               transition="all 0.2s"
-              _groupHover={{ bg: "green.subtle" }}
+              _groupHover={{ bg: "blue.subtle" }}
             >
               <LuPlus size={24} color="var(--chakra-colors-fg-muted)" />
             </Box>

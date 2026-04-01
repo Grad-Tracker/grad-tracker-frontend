@@ -340,11 +340,11 @@ export default function GenEdRequirements({ studentId }: { studentId: number }) 
                           border={completed ? "1px solid" : undefined}
                           borderWidth="1px"
                           boxShadow={
-                            completed ? "0 0 0 1px rgba(34,197,94,0.25)" : undefined
+                            completed ? "0 0 0 1px rgba(59,130,246,0.25)" : undefined
                           }
-                          bg={completed ? "green.700" : "bg.subtle"}
-                          borderColor={completed ? "green.500" : "border.subtle"}
-                          _hover={{ bg: completed ? "green.600" : "bg.subtle" }}
+                          bg={completed ? "blue.700" : "bg.subtle"}
+                          borderColor={completed ? "blue.500" : "border.subtle"}
+                          _hover={{ bg: completed ? "blue.600" : "bg.subtle" }}
                         >
                           <HStack gap="3">
                             <Box>
@@ -391,19 +391,19 @@ export default function GenEdRequirements({ studentId }: { studentId: number }) 
                     <Box>
                       <HStack gap="2" wrap="wrap">
                         <Heading size="md">{b.name}</Heading>
-                        <Badge colorPalette="green" variant="subtle">
+                        <Badge colorPalette="blue" variant="subtle">
                           {b.code}
                         </Badge>
                       </HStack>
                     </Box>
 
-                    <Badge colorPalette={b.remaining === 0 ? "green" : "gray"} variant="surface">
+                    <Badge colorPalette={b.remaining === 0 ? "blue" : "gray"} variant="surface">
                       {b.remaining === 0 ? "Done" : "In progress"}
                     </Badge>
                   </Flex>
 
                   <HStack gap="2" wrap="wrap">
-                    <Badge colorPalette="green" variant="subtle">
+                    <Badge colorPalette="blue" variant="subtle">
                       Completed ({completedCount}) • {completedCredits} cr
                     </Badge>
                     <Badge colorPalette="orange" variant="subtle">
@@ -414,7 +414,7 @@ export default function GenEdRequirements({ studentId }: { studentId: number }) 
                     </Badge>
                   </HStack>
 
-                  <Progress.Root value={b.pct} max={100} colorPalette="green" size="sm">
+                  <Progress.Root value={b.pct} max={100} colorPalette="blue" size="sm">
                     <Progress.Track borderRadius="md">
                       <Progress.Range borderRadius="md" />
                     </Progress.Track>
@@ -440,7 +440,7 @@ export default function GenEdRequirements({ studentId }: { studentId: number }) 
                               <Text fontSize="sm" fontWeight="600" color="fg.muted">
                                 Completed
                               </Text>
-                              <Badge variant="subtle" colorPalette="green">
+                              <Badge variant="subtle" colorPalette="blue">
                                 {completedCourses.length}
                               </Badge>
                             </HStack>

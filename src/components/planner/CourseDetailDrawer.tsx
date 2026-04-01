@@ -12,24 +12,8 @@ import {
 } from "@chakra-ui/react";
 import { CloseButton } from "@/components/ui/close-button";
 import { LuBookMarked, LuClock, LuCircleAlert } from "react-icons/lu";
+import { getSubjectColor } from "@/lib/subject-colors";
 import type { Course } from "@/types/course";
-
-const SUBJECT_COLORS: Record<string, string> = {
-  CS: "blue",
-  CSCI: "blue",
-  MATH: "purple",
-  ENGL: "orange",
-  PHYS: "teal",
-  BIOS: "green",
-  CHEM: "red",
-  HIST: "yellow",
-  PSYC: "pink",
-  COMM: "cyan",
-};
-
-function getSubjectColor(subject: string): string {
-  return SUBJECT_COLORS[subject] || "gray";
-}
 
 interface CourseDetailDrawerProps {
   course: Course | null;
@@ -134,7 +118,7 @@ export default function CourseDetailDrawer({
                             Credits
                           </Text>
                         </HStack>
-                        <Text fontSize="2xl" fontWeight="700" color="green.fg">
+                        <Text fontSize="2xl" fontWeight="700" color="blue.fg">
                           {course.credits}
                         </Text>
                       </Box>
