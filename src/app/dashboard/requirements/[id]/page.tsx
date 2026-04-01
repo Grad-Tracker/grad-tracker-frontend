@@ -244,7 +244,7 @@ export default async function ProgramDetailPage({
       const crossPairs = computeCrossPairs(orderedCourses, crossListings);
 
       return {
-        id: Number(block.block_id),
+        id: String(block.block_id),
         name: block.block_name,
         rule: block.rule,
         n_required: block.n_required == null ? null : Number(block.n_required),
