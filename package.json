@@ -10,6 +10,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
+    "perf:benchmark": "node scripts/perf/benchmark-replay.mjs",
     "skills:sync": "node scripts/skills/sync-skills.mjs",
     "skills:validate": "node scripts/skills/validate-skills.mjs",
     "skills:check": "npm run skills:validate && node scripts/skills/sync-skills.mjs --check"
