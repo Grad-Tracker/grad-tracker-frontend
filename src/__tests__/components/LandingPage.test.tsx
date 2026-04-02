@@ -170,6 +170,11 @@ describe("LandingPage", { timeout: 15000 }, () => {
     expect(signInLinks[0]).toHaveAttribute("href", "/signin");
   });
 
+  it("does not render Advisor sign in text in the header", () => {
+    renderWithChakra(<LandingPage />);
+    expect(screen.queryByRole("link", { name: "Advisor sign in" })).not.toBeInTheDocument();
+  });
+
   it("renders security and free badges", () => {
     renderWithChakra(<LandingPage />);
     expect(screen.getAllByText("Secure & Private").length).toBeGreaterThanOrEqual(1);
