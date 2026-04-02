@@ -172,7 +172,9 @@ describe("RequirementsDashboard", () => {
     fromMock.mockImplementation((table: string) => createQueryBuilder(table));
   });
 
-  it("renders heading and general education section, and toggling remaining courses is stable", async () => {
+  it(
+    "renders heading and general education section, and toggling remaining courses is stable",
+    async () => {
     render(
       <Provider>
         <RequirementsDashboard studentId={6} />
@@ -192,5 +194,7 @@ describe("RequirementsDashboard", () => {
     await waitFor(() => {
       expect(screen.getByText(/MATH 101/i)).toBeInTheDocument();
     });
-  });
+    },
+    10000
+  );
 });

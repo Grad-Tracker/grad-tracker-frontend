@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import {
   Badge,
   Box,
@@ -14,105 +14,23 @@ import {
   VStack,
 } from "@chakra-ui/react";
 import { ColorModeButton } from "@/components/ui/color-mode";
-import {
-  DialogBody,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogRoot,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { Field } from "@/components/ui/field";
 import { PasswordInput } from "@/components/ui/password-input";
 import { toaster } from "@/components/ui/toaster";
 import { LuGraduationCap, LuArrowRight, LuLoader } from "react-icons/lu";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { DB_TABLES } from "@/lib/supabase/queries/schema";
 
-function AdvisorAccessQuerySync({
-  onOpen,
-  onConsumeAdvisorParam,
-}: {
-  onOpen: () => void;
-  onConsumeAdvisorParam: () => void;
-}) {
-  const searchParams = useSearchParams();
-  const openedRef = useRef(false);
-
-  useEffect(() => {
-    if (searchParams.get("advisor") === "1" && !openedRef.current) {
-      openedRef.current = true;
-      onOpen();
-      onConsumeAdvisorParam();
-    }
-  }, [onConsumeAdvisorParam, onOpen, searchParams]);
-
-  return null;
-}
-
-export default function SignupPage() {
+export default function AdvisorSignupClient() {
   const router = useRouter();
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
-  const [advisorAccessCode, setAdvisorAccessCode] = useState("");
-  const [advisorDialogOpen, setAdvisorDialogOpen] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
-
-  async function handleAdvisorAccessContinue() {
-    try {
-      const response = await fetch("/api/advisor/verify-signup-code", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ code: advisorAccessCode }),
-      });
-
-      let payload: { ok?: boolean; message?: string } | null = null;
-
-      try {
-        payload = await response.json();
-      } catch {
-        payload = null;
-      }
-
-      if (payload?.ok) {
-        setAdvisorDialogOpen(false);
-        setAdvisorAccessCode("");
-        router.push("/admin/signup");
-        return;
-      }
-
-      if (response.status >= 500) {
-        throw new Error("verification failed");
-      }
-
-      if (payload?.message) {
-        toaster.create({
-          title: payload.message,
-          type: "error",
-        });
-        return;
-      }
-
-      toaster.create({
-        title: "Invalid access code",
-        type: "error",
-      });
-      return;
-    } catch {
-      // Fall through to generic verification failure handling below.
-    }
-
-    toaster.create({
-      title: "Verification failed",
-      type: "error",
-    });
-  }
 
   async function handleSignup() {
     if (!firstName || !lastName || !email || !password) {
@@ -144,10 +62,14 @@ export default function SignupPage() {
 
     const normalizedEmail = email.trim().toLowerCase();
 
-    if (!normalizedEmail.endsWith("@rangers.uwp.edu")) {
+    const hasValidAdvisorDomain =
+      normalizedEmail.endsWith("@uwp.edu") &&
+      !normalizedEmail.endsWith("@rangers.uwp.edu");
+
+    if (!hasValidAdvisorDomain) {
       toaster.create({
         title: "Invalid email domain",
-        description: "Student sign up requires a @rangers.uwp.edu email address.",
+        description: "Advisor sign up requires a @uwp.edu email address.",
         type: "error",
       });
       return;
@@ -156,49 +78,92 @@ export default function SignupPage() {
     setLoading(true);
 
     const supabase = createClient();
-    const { data, error } = await supabase.auth.signUp({
-      email: normalizedEmail,
-      password,
-      options: {
-        data: {
+
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email: normalizedEmail,
+        password,
+        options: {
+          data: {
+            role: "advisor",
+            first_name: firstName,
+            last_name: lastName,
+          },
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
+        },
+      });
+
+      if (error) {
+        toaster.create({
+          title: "Sign up failed",
+          description: error.message,
+          type: "error",
+        });
+        return;
+      }
+
+      if (!data.user) {
+        toaster.create({
+          title: "Sign up failed",
+          description: "Unable to create account. Please try again.",
+          type: "error",
+        });
+        return;
+      }
+
+      if (data.user.identities?.length === 0) {
+        await supabase.auth.signOut();
+        toaster.create({
+          title: "Account already exists",
+          description: "An account with this email already exists. Please sign in instead.",
+          type: "error",
+        });
+        return;
+      }
+
+      const { error: insertErr } = await supabase
+        .from(DB_TABLES.staff)
+        .insert({
+          auth_user_id: data.user.id,
+          email: normalizedEmail,
           first_name: firstName,
           last_name: lastName,
-        },
-      },
-    });
+          role: "advisor",
+          is_admin: false,
+        });
 
-    setLoading(false);
+      if (insertErr) {
+        await supabase.auth.signOut();
+        toaster.create({
+          title: "Advisor record failed",
+          description: insertErr.message,
+          type: "error",
+        });
+        return;
+      }
 
-    if (error) {
+      try {
+        await fetch("/api/advisor/consume-signup-gate", { method: "POST" });
+      } catch (consumeError) {
+        console.warn("Failed to consume advisor signup gate", consumeError);
+      }
+
+      toaster.create({
+        title: "Account created!",
+        description: "Welcome to GradTracker, Advisor.",
+        type: "success",
+      });
+
+      router.push("/admin");
+    } catch (e: any) {
       toaster.create({
         title: "Sign up failed",
-        description: error.message,
+        description: e?.message ?? "Unexpected error",
         type: "error",
       });
-      return;
+    } finally {
+      setLoading(false);
     }
-
-    // Supabase returns a user with empty identities when the email is already
-    // taken (instead of an error, to prevent email enumeration attacks).
-    // Detect this and show a friendly message without granting access.
-    if (data.user?.identities?.length === 0) {
-      // Sign out immediately so no session lingers
-      await supabase.auth.signOut();
-      toaster.create({
-        title: "Account already exists",
-        description: "An account with this email already exists. Please sign in instead.",
-        type: "error",
-      });
-      return;
-    }
-
-    toaster.create({
-      title: "Account created!",
-      description: "Welcome to GradTracker, Ranger.",
-      type: "success",
-    });
-
-    router.push("/dashboard");
   }
 
   return (
@@ -207,14 +172,6 @@ export default function SignupPage() {
       fontFamily="var(--font-plus-jakarta), sans-serif"
       position="relative"
     >
-      <Suspense fallback={null}>
-        <AdvisorAccessQuerySync
-          onOpen={() => setAdvisorDialogOpen(true)}
-          onConsumeAdvisorParam={() => router.replace("/signup")}
-        />
-      </Suspense>
-
-      {/* Navigation Header */}
       <Box
         as="header"
         position="sticky"
@@ -263,7 +220,6 @@ export default function SignupPage() {
         </Container>
       </Box>
 
-      {/* Signup Section */}
       <Box
         className="mesh-gradient noise-overlay"
         py={{ base: "16", md: "24" }}
@@ -273,7 +229,6 @@ export default function SignupPage() {
         position="relative"
         overflow="hidden"
       >
-        {/* Decorative elements */}
         <Box
           position="absolute"
           top="-20%"
@@ -299,7 +254,6 @@ export default function SignupPage() {
 
         <Container maxW="md" position="relative" zIndex="2">
           <Box position="relative">
-            {/* Glow effect */}
             <Box
               position="absolute"
               inset="-4"
@@ -319,7 +273,6 @@ export default function SignupPage() {
               position="relative"
               overflow="hidden"
             >
-              {/* Subtle gradient overlay */}
               <Box
                 position="absolute"
                 top="0"
@@ -341,11 +294,10 @@ export default function SignupPage() {
                       fontFamily="var(--font-outfit), sans-serif"
                       letterSpacing="-0.02em"
                     >
-                      Create Student Account
+                      Create Advisor Account
                     </Text>
                     <Text color="fg.muted" fontSize="sm">
-                      Join fellow Rangers and start tracking your path to
-                      graduation with your student tools.
+                      Create an advisor account for advisor tools access.
                     </Text>
                   </VStack>
 
@@ -373,7 +325,7 @@ export default function SignupPage() {
 
                     <Field label="Email">
                       <Input
-                        placeholder="your.name@rangers.uwp.edu"
+                        placeholder="your.name@uwp.edu"
                         type="email"
                         rounded="lg"
                         size="lg"
@@ -426,7 +378,7 @@ export default function SignupPage() {
                       </>
                     ) : (
                       <>
-                        Create Account
+                        Create Advisor Account
                         <Icon ml="2">
                           <LuArrowRight />
                         </Icon>
@@ -448,79 +400,12 @@ export default function SignupPage() {
                       </Text>
                     </Link>
                   </Text>
-
-                  <Text fontSize="sm" color="fg.muted" textAlign="center">
-                    Are you an advisor?{" "}
-                    <Button
-                      type="button"
-                      variant="plain"
-                      size="sm"
-                      minH="unset"
-                      h="auto"
-                      px="0"
-                      py="0"
-                      verticalAlign="baseline"
-                      color="green.solid"
-                      cursor="pointer"
-                      fontWeight="600"
-                      _hover={{ textDecoration: "underline" }}
-                      onClick={() => setAdvisorDialogOpen(true)}
-                    >
-                      Access code required &rarr;
-                    </Button>
-                  </Text>
                 </VStack>
               </Card.Body>
             </Card.Root>
           </Box>
         </Container>
       </Box>
-
-      <DialogRoot
-        open={advisorDialogOpen}
-        onOpenChange={(event) => {
-          setAdvisorDialogOpen(event.open);
-          if (!event.open) {
-            setAdvisorAccessCode("");
-          }
-        }}
-      >
-        <DialogContent maxW="sm">
-          <DialogHeader>
-            <DialogTitle>Advisor Access</DialogTitle>
-          </DialogHeader>
-          <DialogBody pb="6">
-            <VStack gap="4" align="stretch">
-              <Text fontSize="sm" color="fg.muted">
-                Enter the access code provided by the department.
-              </Text>
-              <Field label="Advisor Access Code">
-                <Input
-                  type="password"
-                  placeholder="Advisor Access Code"
-                  rounded="lg"
-                  value={advisorAccessCode}
-                  onChange={(e) => setAdvisorAccessCode(e.target.value)}
-                />
-              </Field>
-            </VStack>
-          </DialogBody>
-          <DialogFooter>
-            <Button
-              variant="ghost"
-              onClick={() => {
-                setAdvisorDialogOpen(false);
-                setAdvisorAccessCode("");
-              }}
-            >
-              Cancel
-            </Button>
-            <Button colorPalette="green" onClick={handleAdvisorAccessContinue}>
-              Continue
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </DialogRoot>
     </Box>
   );
 }

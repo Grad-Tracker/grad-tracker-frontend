@@ -1,5 +1,9 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import {
+  getAdvisorSignupGateCookieName,
+  verifyAdvisorSignupGateToken,
+} from "@/lib/advisor-signup-gate";
 
 export async function proxy(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
@@ -38,18 +42,35 @@ export async function proxy(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   const { pathname } = request.nextUrl;
+  const isAdminSignin = pathname === "/admin/signin";
+  const isAdminSignup = pathname === "/admin/signup";
+  const isAdminPublicAuth = isAdminSignin || isAdminSignup;
+  const hasAdvisorSignupCookie = verifyAdvisorSignupGateToken(
+    request.cookies.get(getAdvisorSignupGateCookieName())?.value
+  );
 
   const isAdvisor = user?.user_metadata?.role === "advisor";
 
+  if (!user && isAdminSignup && !hasAdvisorSignupCookie) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/signup";
+    url.searchParams.set("advisor", "1");
+    return NextResponse.redirect(url);
+  }
+
   // Unauthenticated users trying to access protected routes → redirect to signin
-  if (!user && (pathname.startsWith("/dashboard") || pathname.startsWith("/admin"))) {
+  if (
+    !user &&
+    (pathname.startsWith("/dashboard") ||
+      (pathname.startsWith("/admin") && !isAdminPublicAuth))
+  ) {
     const url = request.nextUrl.clone();
     url.pathname = "/signin";
     return NextResponse.redirect(url);
   }
 
   // Authenticated non-advisors trying to access /admin → redirect to dashboard
-  if (user && !isAdvisor && pathname.startsWith("/admin")) {
+  if (user && !isAdvisor && pathname.startsWith("/admin") && !isAdminPublicAuth) {
     const url = request.nextUrl.clone();
     url.pathname = "/dashboard";
     return NextResponse.redirect(url);
@@ -60,6 +81,8 @@ export async function proxy(request: NextRequest) {
   if (
     user &&
     (pathname === "/signin" ||
+      isAdminSignin ||
+      isAdminSignup ||
       pathname === "/signup" ||
       pathname === "/forgot-password")
   ) {
