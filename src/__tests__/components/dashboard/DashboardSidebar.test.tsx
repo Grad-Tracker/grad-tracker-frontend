@@ -69,6 +69,7 @@ describe("DashboardSidebar", () => {
     expect(hrefs).toContain("/dashboard/courses");
     expect(hrefs).toContain("/dashboard/requirements");
     expect(hrefs).toContain("/dashboard/planner");
+    expect(hrefs).toContain("/dashboard/ai-advisor");
   });
 
   it("calls signOut and redirects to signin on Sign Out click", async () => {

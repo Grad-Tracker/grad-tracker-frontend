@@ -398,11 +398,20 @@ describe("GenEdAdminClient", () => {
     renderWithChakra(<GenEdAdminClient initialBuckets={initialBuckets} />);
 
     fireEvent.click(screen.getAllByRole("button", { name: /add courses/i })[0]);
-    await screen.findByLabelText("Search Courses");
+    await screen.findByText("ENGL 101 - Composition");
+    const searchInput = await screen.findByLabelText("Search Courses");
+    fireEvent.change(searchInput, { target: { value: "engl" } });
 
-    const existingCourseButton = screen.getByRole("button", { name: /engl 101 - composition/i });
-    fireEvent.click(existingCourseButton);
-    fireEvent.click(existingCourseButton);
+    const courseLabel = await screen.findByText(/ENGL 101 - Composition/i);
+    const selectableCourse =
+      courseLabel.closest("button") ??
+      courseLabel.closest("label") ??
+      courseLabel.parentElement;
+
+    expect(selectableCourse).not.toBeNull();
+
+    fireEvent.click(selectableCourse!);
+    fireEvent.click(selectableCourse!);
     fireEvent.click(screen.getByRole("button", { name: /add selected/i }));
 
     await waitFor(() => {
@@ -420,7 +429,7 @@ describe("GenEdAdminClient", () => {
     renderWithChakra(<GenEdAdminClient initialBuckets={initialBuckets} />);
 
     fireEvent.click(screen.getAllByRole("button", { name: /add courses/i })[0]);
-    await screen.findByLabelText("Search Courses");
+    await screen.findByText("ENGL 101 - Composition");
 
     fireEvent.click(screen.getByRole("button", { name: /engl 101 - composition/i }));
     fireEvent.click(screen.getByRole("button", { name: /add selected/i }));
@@ -437,7 +446,7 @@ describe("GenEdAdminClient", () => {
     renderWithChakra(<GenEdAdminClient initialBuckets={initialBuckets} />);
 
     fireEvent.click(screen.getAllByRole("button", { name: /add courses/i })[1]);
-    await screen.findByLabelText("Search Courses");
+    await screen.findByText("ENGL 101 - Composition");
 
     fireEvent.click(screen.getByRole("button", { name: /engl 101 - composition/i }));
     fireEvent.click(screen.getByRole("button", { name: /add selected/i }));

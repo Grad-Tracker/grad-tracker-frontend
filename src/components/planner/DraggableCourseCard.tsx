@@ -11,6 +11,7 @@ interface DraggableCourseCardProps {
   termId?: number;
   isCompleted?: boolean;
   isPlanned?: boolean;
+  dragContextId?: string | number;
 }
 
 const SUBJECT_COLORS: Record<string, string> = {
@@ -78,10 +79,12 @@ export default function DraggableCourseCard({
   termId,
   isCompleted = false,
   isPlanned = false,
+  dragContextId,
 }: DraggableCourseCardProps) {
+  const poolScope = dragContextId != null ? `panel-${dragContextId}` : "panel";
   const { attributes, listeners, setNodeRef, transform, isDragging } =
     useDraggable({
-      id: `course-${course.id}-term-${termId ?? "panel"}`,
+      id: `course-${course.id}-term-${termId ?? poolScope}`,
       data: { course, fromTermId: termId },
       disabled: isCompleted,
     });

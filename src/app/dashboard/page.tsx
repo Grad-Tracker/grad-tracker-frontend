@@ -25,12 +25,14 @@ import { createClient } from "@/lib/supabase/client";
 import {
   checkOnboardingStatus,
   fetchPrograms,
+  fetchStudentMajorProgram,
+  fetchStudentProfileByAuthUserId,
   getOrCreateStudent,
 } from "@/lib/supabase/queries/onboarding";
+import { fetchStudentCourseProgress } from "@/lib/supabase/queries/planner";
 import {
-  DB_TABLES,
-  PROGRAM_TYPES,
-  STUDENT_COLUMNS,
+  DB_VIEWS,
+  DB_TABLES
 } from "@/lib/supabase/queries/schema";
 import { toaster } from "@/components/ui/toaster";
 import {
@@ -90,31 +92,15 @@ function getStatusBadgeProps(status: string): { color: string; label: string } {
  */
 async function resolveMajorAndBlocks(
   supabase: ReturnType<typeof createClient>,
-  programsPromise: PromiseLike<{ data: any; error: any }>
+  studentId: number
 ) {
   let majorName = "Unknown";
   let majorProgramId: number | null = null;
 
-  const { data: studentPrograms, error: spErr } = await programsPromise;
-
-  if (!spErr && studentPrograms?.length) {
-    const programIds = (studentPrograms as any[])
-      .map((sp) => sp?.program_id)
-      .filter((x) => x !== null && x !== undefined);
-
-    if (programIds.length) {
-      const { data: majorProgram, error: majorProgramErr } = await supabase
-        .from(DB_TABLES.programs)
-        .select("id,name")
-        .in("id", programIds)
-        .eq("program_type", PROGRAM_TYPES.major)
-        .maybeSingle();
-
-      if (!majorProgramErr && majorProgram?.name) {
-        majorName = majorProgram.name;
-        majorProgramId = majorProgram.id;
-      }
-    }
+  const majorProgram = await fetchStudentMajorProgram(studentId);
+  if (majorProgram) {
+    majorName = majorProgram.program_name;
+    majorProgramId = Number(majorProgram.program_id);
   }
 
   if (!majorProgramId) {
@@ -127,18 +113,8 @@ async function resolveMajorAndBlocks(
   }
 
   const blocksRes = await supabase
-    .from(DB_TABLES.programRequirementBlocks)
-    .select(
-      `
-        id,
-        name,
-        credits_required,
-        program_requirement_courses (
-          course_id,
-          courses:course_id ( credits )
-        )
-      `
-    )
+    .from(DB_VIEWS.programBlockCourses)
+    .select("block_id, block_name, credits_required, courses")
     .eq("program_id", majorProgramId);
 
   return { ...blocksRes, majorName, majorProgramId };
@@ -146,7 +122,6 @@ async function resolveMajorAndBlocks(
 
 export default function Dashboard() {
   const router = useRouter();
-  const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState(true);
 
   useEffect(() => {
     async function checkStatus() {
@@ -156,26 +131,13 @@ export default function Dashboard() {
           data: { user },
         } = await supabase.auth.getUser();
         if (!user) return;
-        const completed = await checkOnboardingStatus(user.id);
-        setHasCompletedOnboarding(completed);
+        await checkOnboardingStatus(user.id);
       } catch {
         // Default to hiding banner on error
       }
     }
     checkStatus();
   }, []);
-
-  type StudentRow = {
-    id: number;
-    name?: string | null;
-    first_name: string | null;
-    last_name: string | null;
-    email: string | null;
-    has_completed_onboarding: boolean | null;
-    expected_graduation_semester: string | null;
-    expected_graduation_term?: string | null;
-    expected_graduation_year: number | null;
-  };
 
   type DashboardStudent = {
     id: number;
@@ -257,60 +219,8 @@ export default function Dashboard() {
           return;
         }
 
-        // 2) Student row via auth_user_id (new schema first, then legacy fallback)
-        const { data: studentRowNew, error: studentErrNew } = await supabase
-          .from(DB_TABLES.students)
-          .select(
-            "id,first_name,last_name,email,has_completed_onboarding,expected_graduation_semester,expected_graduation_year"
-          )
-          .eq(STUDENT_COLUMNS.authUserId, userData.user.id)
-          .maybeSingle<StudentRow>();
-
-        let studentRow = studentRowNew;
-        let studentErr = studentErrNew;
-
-        if (studentErrNew && String(studentErrNew.message ?? "").includes("column")) {
-          const { data: studentRowLegacy, error: studentErrLegacy } = await supabase
-            .from(DB_TABLES.students)
-            .select("id,name,email,has_completed_onboarding,expected_graduation_term,expected_graduation_year")
-            .eq(STUDENT_COLUMNS.authUserId, userData.user.id)
-            .maybeSingle<{
-              id: number;
-              name: string | null;
-              email: string | null;
-              has_completed_onboarding: boolean | null;
-              expected_graduation_term: string | null;
-              expected_graduation_year: number | null;
-            }>();
-
-          studentErr = studentErrLegacy;
-          studentRow = studentRowLegacy
-            ? {
-                id: studentRowLegacy.id,
-                name: studentRowLegacy.name,
-                first_name: null,
-                last_name: null,
-                email: studentRowLegacy.email,
-                has_completed_onboarding: studentRowLegacy.has_completed_onboarding,
-                expected_graduation_semester: studentRowLegacy.expected_graduation_term,
-                expected_graduation_term: studentRowLegacy.expected_graduation_term,
-                expected_graduation_year: studentRowLegacy.expected_graduation_year,
-              }
-            : null;
-        }
-
-        if (studentErr) {
-          toaster.create({
-            title: "Profile not found",
-            description: studentErr.message ?? "We couldn't load your student profile.",
-            type: "error",
-          });
-          await supabase.auth.signOut();
-          router.push("/signin");
-          return;
-        }
-
-        let resolvedStudentRow = studentRow;
+        // 2) Student profile via view by auth user id
+        let resolvedStudentRow = await fetchStudentProfileByAuthUserId(userData.user.id);
         if (!resolvedStudentRow) {
           const displayName =
             userData.user.user_metadata?.first_name
@@ -324,13 +234,16 @@ export default function Dashboard() {
           );
 
           resolvedStudentRow = {
-            id: created.id,
+            student_id: created.id,
             first_name: userData.user.user_metadata?.first_name ?? null,
             last_name: userData.user.user_metadata?.last_name ?? null,
             email: userData.user.email ?? null,
             has_completed_onboarding: false,
             expected_graduation_semester: null,
             expected_graduation_year: null,
+            auth_user_id: userData.user.id,
+            full_name: displayName,
+            breadth_package_id: null,
           };
 
           toaster.create({
@@ -346,26 +259,15 @@ export default function Dashboard() {
         setLoadingCourses(true);
         setLoadingProgress(true);
 
-        const studentId = resolvedStudentRow.id;
+        const studentId = resolvedStudentRow.student_id;
         setStudentIdForReset(studentId);
 
-        const programsPromise = supabase
-          .from(DB_TABLES.studentPrograms)
-          .select("program_id")
-          .eq("student_id", studentId);
-
-        const completedPromise = supabase
-          .from(DB_TABLES.studentCourseHistory)
-          .select(`course_id, courses:course_id(credits)`)
-          .eq("student_id", studentId);
-
+        const completedPromise = fetchStudentCourseProgress(studentId);
         const plannedPromise = supabase
-          .from(DB_TABLES.studentPlannedCourses)
-          .select(`status, courses:course_id(subject, number, title, credits)`)
+          .from(DB_VIEWS.planCourses)
+          .select("status, subject, number, title, credits")
           .eq("student_id", studentId);
-
-        // blocksPromise depends on majorProgramId, which depends on student_programs -> programs.
-        const blocksPromise = resolveMajorAndBlocks(supabase, programsPromise);
+        const blocksPromise = resolveMajorAndBlocks(supabase, studentId);
 
         const [completedResult, blocksResult, plannedResult] = await Promise.all([
           completedPromise,
@@ -381,18 +283,17 @@ export default function Dashboard() {
         // Reuse completedResult for BOTH:
         //  - requirement-block matching
         //  - credit summary (completed credits)
-        const completedCourseRows = (completedResult as any)?.data ?? [];
+        const completedCourseRows = (completedResult ?? []) as any[];
         const completedCourseIds = new Set<number>(
           (completedCourseRows ?? [])
+            .filter(
+              (r: any) =>
+                r?.completed === true ||
+                String(r?.progress_status ?? "").toUpperCase() === "COMPLETED"
+            )
             .map((r: any) => Number(r?.course_id))
             .filter((x: number) => !Number.isNaN(x))
         );
-
-        const completedCredits =
-          (completedCourseRows ?? []).reduce((sum: number, r: any) => {
-            const credits = Number(r?.courses?.credits ?? 0);
-            return sum + credits;
-          }, 0);
 
         // Reuse plannedResult for BOTH:
         //  - course cards
@@ -402,9 +303,6 @@ export default function Dashboard() {
         const mapped: PlannedCourseCard[] =
           (plannedRows ?? [])
             .map((r: any) => {
-              const c = r.courses;
-              if (!c) return null;
-
               const rawStatus = String(r.status ?? "").toLowerCase();
               const status: PlannedCourseCard["status"] =
                 rawStatus === "enrolled"
@@ -416,9 +314,9 @@ export default function Dashboard() {
                       : "unknown";
 
               return {
-                code: `${c.subject} ${c.number}`.trim(),
-                name: c.title ?? "Untitled course",
-                credits: Number(c.credits ?? 0),
+                code: `${r.subject ?? ""} ${r.number ?? ""}`.trim(),
+                name: r.title ?? "Untitled course",
+                credits: Number(r.credits ?? 0),
                 status,
               };
             })
@@ -431,7 +329,7 @@ export default function Dashboard() {
           (plannedRows ?? []).reduce((sum: number, r: any) => {
             const s = String(r?.status ?? "").toLowerCase();
             if (s !== "enrolled" && s !== "waitlist") return sum;
-            return sum + Number(r?.courses?.credits ?? 0);
+            return sum + Number(r?.credits ?? 0);
           }, 0);
 
         // Requirements (uses blocksResult + completedCourseIds)
@@ -460,19 +358,19 @@ export default function Dashboard() {
           };
 
           for (const b of blocks) {
-            const { key, color } = categorize(String(b?.name ?? ""));
-            const blockCourseRows = b?.program_requirement_courses ?? [];
+            const { key, color } = categorize(String(b?.block_name ?? ""));
+            const blockCourseRows = b?.courses ?? [];
 
             const fallbackTotal = blockCourseRows.reduce((sum: number, r: any) => {
-              return sum + Number(r?.courses?.credits ?? 0);
+              return sum + Number(r?.credits ?? 0);
             }, 0);
 
             const total = Number(b?.credits_required ?? fallbackTotal ?? 0);
 
             const completed = blockCourseRows.reduce((sum: number, r: any) => {
-              const cid = Number(r?.course_id);
+              const cid = Number(r?.course_id ?? r?.id);
               if (!completedCourseIds.has(cid)) return sum;
-              return sum + Number(r?.courses?.credits ?? 0);
+              return sum + Number(r?.credits ?? 0);
             }, 0);
 
             agg[key].total += total;
@@ -490,6 +388,27 @@ export default function Dashboard() {
           setRequirements(bars);
           setLoadingRequirements(false);
         }
+
+        const courseCreditsById = new Map<number, number>();
+        for (const b of ((blocksResult as any)?.data ?? [])) {
+          for (const c of (b?.courses ?? [])) {
+            const courseId = Number(c?.course_id ?? c?.id);
+            if (Number.isNaN(courseId)) continue;
+            if (!courseCreditsById.has(courseId)) {
+              courseCreditsById.set(courseId, Number(c?.credits ?? 0));
+            }
+          }
+        }
+        for (const r of plannedRows ?? []) {
+          const cid = Number(r?.course_id);
+          if (!Number.isNaN(cid) && !courseCreditsById.has(cid)) {
+            courseCreditsById.set(cid, Number(r?.credits ?? 0));
+          }
+        }
+        const completedCredits = Array.from(completedCourseIds).reduce(
+          (sum, cid) => sum + Number(courseCreditsById.get(cid) ?? 0),
+          0
+        );
 
         // Progress summary (reused completedCredits + inProgressCredits)
         const totalCredits = TOTAL_REQUIRED_CREDITS;
@@ -514,10 +433,10 @@ export default function Dashboard() {
           [resolvedStudentRow.first_name, resolvedStudentRow.last_name]
             .filter(Boolean)
             .join(" ")
-            .trim() || resolvedStudentRow.name || "";
+            .trim() || resolvedStudentRow.full_name || "";
 
         setStudent({
-          id: resolvedStudentRow.id,
+          id: resolvedStudentRow.student_id,
           name: fullName || "Student",
           email: resolvedStudentRow.email ?? "",
           major: majorName,
