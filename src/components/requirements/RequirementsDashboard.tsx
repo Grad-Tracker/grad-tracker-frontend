@@ -16,7 +16,6 @@ import {
 import { LuCircleCheck, LuClock, LuMinus } from "react-icons/lu";
 
 import GenEdRequirements from "@/components/requirements/GenEdRequirements";
-import { createClient } from "@/lib/supabase/client";
 import { evaluatePrereqsForCourses, type PrereqEvaluationMap } from "@/lib/prereq";
 import {
   ProgressBar,
@@ -24,7 +23,11 @@ import {
   ProgressRoot,
   ProgressValueText,
 } from "@/components/ui/progress";
-import { DB_TABLES, PROGRAM_TYPES } from "@/lib/supabase/queries/schema";
+import {
+  fetchProgramRequirements,
+  fetchStudentMajorProgram,
+} from "@/lib/supabase/queries/onboarding";
+import { fetchStudentCourseProgress } from "@/lib/supabase/queries/planner";
 
 type CourseRow = {
   id: number;
@@ -32,18 +35,6 @@ type CourseRow = {
   number: string | null;
   title: string | null;
   credits: number | null;
-};
-
-type RequirementCourseRow = {
-  course_id: number | null;
-  courses: CourseRow | null;
-};
-
-type RequirementBlockRow = {
-  id: number;
-  name: string | null;
-  credits_required: number | null;
-  program_requirement_courses: RequirementCourseRow[] | null;
 };
 
 type BlockUI = {
@@ -123,22 +114,10 @@ export default function RequirementsDashboard({
       setLoading(true);
       setErrorMsg(null);
 
-      const supabase = createClient();
-
       try {
-        // 1) Find the student's major program (student_programs -> programs where program_type = major)
-        const { data: studentPrograms, error: spErr } = await supabase
-          .from(DB_TABLES.studentPrograms)
-          .select("program_id")
-          .eq("student_id", studentId);
-
-        if (spErr) throw spErr;
-
-        const programIds = (studentPrograms ?? [])
-          .map((r: any) => Number(r?.program_id))
-          .filter((x: number) => !Number.isNaN(x));
-
-        if (programIds.length === 0) {
+        // 1) Find the student's major program
+        const majorProgram = await fetchStudentMajorProgram(studentId);
+        if (!majorProgram) {
           // No major chosen yet
           setBlocks([]);
           setCompletedIds(new Set());
@@ -148,16 +127,7 @@ export default function RequirementsDashboard({
           return;
         }
 
-        const { data: majorProgram, error: mpErr } = await supabase
-          .from(DB_TABLES.programs)
-          .select("id,name,program_type")
-          .in("id", programIds)
-          .eq("program_type", PROGRAM_TYPES.major)
-          .maybeSingle();
-
-        if (mpErr) throw mpErr;
-
-        const majorProgramId = Number((majorProgram as any)?.id);
+        const majorProgramId = Number(majorProgram.program_id);
         if (!majorProgramId) {
           setBlocks([]);
           setCompletedIds(new Set());
@@ -167,61 +137,31 @@ export default function RequirementsDashboard({
           return;
         }
 
-        // 2) Completed courses (green)
-        const { data: completedRows, error: completedErr } = await supabase
-          .from(DB_TABLES.studentCourseHistory)
-          .select("course_id")
-          .eq("student_id", studentId);
-
-        if (completedErr) throw completedErr;
+        const [progressRows, rawBlocks] = await Promise.all([
+          fetchStudentCourseProgress(studentId),
+          fetchProgramRequirements(majorProgramId),
+        ]);
 
         const completedSet = new Set<number>(
-          (completedRows ?? [])
-            .map((r: any) => Number(r?.course_id))
-            .filter((x: number) => !Number.isNaN(x))
+          progressRows
+            .filter(
+              (r) =>
+                r.completed === true ||
+                String(r.progress_status ?? "").toUpperCase() === "COMPLETED"
+            )
+            .map((r) => Number(r.course_id))
+            .filter((x) => !Number.isNaN(x))
         );
-
-        // 3) In-progress courses (yellow) from planned courses
-        const { data: plannedRows, error: plannedErr } = await supabase
-          .from(DB_TABLES.studentPlannedCourses)
-          .select("course_id,status")
-          .eq("student_id", studentId);
-
-        if (plannedErr) throw plannedErr;
 
         const inProgressSet = new Set<number>(
-          (plannedRows ?? [])
-            .filter((r: any) => {
-              const s = String(r?.status ?? "").toLowerCase();
+          progressRows
+            .filter((r) => {
+              const s = String(r.progress_status ?? "").toLowerCase();
               return s === "enrolled" || s === "waitlist";
             })
-            .map((r: any) => Number(r?.course_id))
-            .filter((x: number) => !Number.isNaN(x))
+            .map((r) => Number(r.course_id))
+            .filter((x) => !Number.isNaN(x))
         );
-
-        // 4) Program requirement blocks + their courses
-        const { data: blockRows, error: blocksErr } = await supabase
-          .from(DB_TABLES.programRequirementBlocks)
-          .select(`
-            id,
-            name,
-            credits_required,
-            program_requirement_courses (
-              course_id,
-              courses:course_id (
-                id,
-                subject,
-                number,
-                title,
-                credits
-              )
-            )
-          `)
-          .eq("program_id", majorProgramId);
-
-        if (blocksErr) throw blocksErr;
-
-        const rawBlocks = (blockRows ?? []) as unknown as RequirementBlockRow[];
 
         // 5) Aggregate blocks into the 3 UI buckets we render here
         const agg: Record<string, BlockUI> = {
@@ -257,9 +197,13 @@ export default function RequirementsDashboard({
 
           const bucket = categorizeBlock(name);
 
-          const courseRows = (b.program_requirement_courses ?? [])
-            .map((r) => r?.courses)
-            .filter((c): c is CourseRow => !!c);
+          const courseRows = (b.courses ?? []).map((c) => ({
+            id: Number(c.id),
+            subject: c.subject ?? null,
+            number: c.number ?? null,
+            title: c.title ?? null,
+            credits: c.credits ?? null,
+          })) as CourseRow[];
 
           // total credits required:
           // prefer credits_required if present, else sum the course credits

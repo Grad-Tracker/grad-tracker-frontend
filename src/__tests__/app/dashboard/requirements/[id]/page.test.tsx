@@ -19,9 +19,9 @@ vi.mock("@/lib/supabase/server", () => ({
 }));
 
 vi.mock("@/lib/supabase/queries/schema", () => ({
-  DB_TABLES: {
-    programs: "programs",
-    programRequirementBlocks: "program_requirement_blocks",
+  DB_VIEWS: {
+    programCatalog: "v_program_catalog",
+    programRequirementDetail: "v_program_requirement_detail",
   },
 }));
 
@@ -36,78 +36,54 @@ vi.mock("@/app/dashboard/requirements/[id]/ProgramDetailClient", () => ({
 import ProgramDetailPage from "@/app/dashboard/requirements/[id]/page";
 
 const mockProgram = {
-  id: "42",
-  name: "Computer Science",
-  catalog_year: 2024,
+  program_id: "42",
+  program_name: "Computer Science",
+  catalog_year: "2024",
   program_type: "MAJOR",
 };
 
 const mockBlock = {
-  id: 10,
-  name: "Major Core",
+  block_id: 10,
+  block_name: "Major Core",
   rule: "ALL_OF",
   n_required: null,
   credits_required: null,
-  program_requirement_courses: [
+  courses: [
     {
-      courses: {
-        id: 241,
-        subject: "CSCI",
-        number: "241",
-        title: "Software Engineering",
-        credits: 3,
-        description: "Course description",
-        course_req_sets: [{ set_type: "PREREQ", note: "CSCI 240" }],
-      },
+      course_id: 241,
+      subject: "CSCI",
+      number: "241",
+      title: "Software Engineering",
+      credits: 3,
+      description: "Course description",
+      prereq_text: "CSCI 240",
     },
   ],
+  cross_listings: [],
+  req_nodes: [],
 };
 
 function makeClient(
   programResult: any,
   overrides: {
     blocksResult?: any;
-    crossListingsResult?: any;
-    reqSetsResult?: any;
-    atomRowsResult?: any;
   } = {}
 ) {
-  const {
-    blocksResult = { data: [], error: null },
-    crossListingsResult = { data: [], error: null },
-    reqSetsResult = { data: [], error: null },
-    atomRowsResult = { data: [], error: null },
-  } = overrides;
+  const { blocksResult = { data: [], error: null } } = overrides;
 
   mockFrom.mockImplementation((table: string) => {
-    if (table === "programs") {
+    if (table === "v_program_catalog") {
       return createChainMock({
-        single: vi.fn().mockResolvedValue(programResult),
+        maybeSingle: vi.fn().mockResolvedValue(programResult),
       });
     }
-    if (table === "program_requirement_blocks") {
+    if (table === "v_program_requirement_detail") {
       return createChainMock({
         order: vi.fn().mockResolvedValue(blocksResult),
       });
     }
-    if (table === "course_crosslistings") {
-      return createChainMock({
-        in: vi.fn().mockResolvedValue(crossListingsResult),
-      });
-    }
-    if (table === "program_req_sets") {
-      return createChainMock({
-        in: vi.fn().mockResolvedValue(reqSetsResult),
-      });
-    }
-    if (table === "program_req_atoms") {
-      return createChainMock({
-        in: vi.fn().mockResolvedValue(atomRowsResult),
-      });
-    }
-
     return createChainMock({
-      in: vi.fn().mockResolvedValue({ data: [], error: null }),
+      order: vi.fn().mockResolvedValue({ data: [], error: null }),
     });
   });
 }
@@ -127,7 +103,7 @@ describe("/dashboard/requirements/[id] page", () => {
     expect(mockNotFound).toHaveBeenCalled();
   });
 
-  it("calls notFound when program query returns programError", async () => {
+  it("calls notFound when program query returns error", async () => {
     makeClient({ data: null, error: { code: "PGRST116" } });
 
     await expect(
@@ -146,14 +122,14 @@ describe("/dashboard/requirements/[id] page", () => {
     ).toBeInTheDocument();
   });
 
-  it("queries the programs table with the correct id", async () => {
+  it("queries the program catalog view with the correct id", async () => {
     makeClient({ data: mockProgram, error: null });
 
     await ProgramDetailPage({ params: Promise.resolve({ id: "42" }) });
 
-    expect(mockFrom).toHaveBeenCalledWith("programs");
+    expect(mockFrom).toHaveBeenCalledWith("v_program_catalog");
     const programsChain = mockFrom.mock.results[0].value;
-    expect(programsChain.eq).toHaveBeenCalledWith("id", "42");
+    expect(programsChain.eq).toHaveBeenCalledWith("program_id", "42");
   });
 
   it("throws when loading requirement blocks fails", async () => {
@@ -167,88 +143,10 @@ describe("/dashboard/requirements/[id] page", () => {
     ).rejects.toThrow("Failed to load requirement blocks: blocks failed");
   });
 
-  it("throws when loading cross-listings fails for block courses", async () => {
+  it("renders a populated block when requirement detail view succeeds", async () => {
     makeClient(
       { data: mockProgram, error: null },
-      {
-        blocksResult: { data: [mockBlock], error: null },
-        crossListingsResult: {
-          data: null,
-          error: { message: "cross-listings failed" },
-        },
-      }
-    );
-
-    await expect(
-      ProgramDetailPage({ params: Promise.resolve({ id: "42" }) })
-    ).rejects.toThrow("Failed to load cross-listings: cross-listings failed");
-  });
-
-  it("throws when loading requirement sets fails for existing blocks", async () => {
-    makeClient(
-      { data: mockProgram, error: null },
-      {
-        blocksResult: { data: [mockBlock], error: null },
-        reqSetsResult: { data: null, error: { message: "req sets failed" } },
-      }
-    );
-
-    await expect(
-      ProgramDetailPage({ params: Promise.resolve({ id: "42" }) })
-    ).rejects.toThrow("Failed to load requirement sets: req sets failed");
-  });
-
-  it("throws when loading requirement atoms fails for existing req nodes", async () => {
-    makeClient(
-      { data: mockProgram, error: null },
-      {
-        blocksResult: { data: [mockBlock], error: null },
-        reqSetsResult: {
-          data: [
-            {
-              id: 1,
-              block_id: 10,
-              program_req_nodes: [
-                { id: 100, node_type: "ATOM", parent_id: null, sort_order: 1 },
-              ],
-            },
-          ],
-          error: null,
-        },
-        atomRowsResult: { data: null, error: { message: "atoms failed" } },
-      }
-    );
-
-    await expect(
-      ProgramDetailPage({ params: Promise.resolve({ id: "42" }) })
-    ).rejects.toThrow("Failed to load requirement atoms: atoms failed");
-  });
-
-  it("renders a populated block when all requirement queries succeed", async () => {
-    makeClient(
-      { data: mockProgram, error: null },
-      {
-        blocksResult: { data: [mockBlock], error: null },
-        crossListingsResult: { data: [], error: null },
-        reqSetsResult: {
-          data: [
-            {
-              id: 1,
-              block_id: 10,
-              program_req_nodes: [
-                { id: 100, node_type: "ATOM", parent_id: null, sort_order: 1 },
-              ],
-            },
-          ],
-          error: null,
-        },
-        atomRowsResult: {
-          data: [
-            { node_id: 100, atom_type: "COURSE", required_course_id: 241 },
-          ],
-          error: null,
-        },
-      }
+      { blocksResult: { data: [mockBlock], error: null } }
     );
 
     const el = await ProgramDetailPage({ params: Promise.resolve({ id: "42" }) });

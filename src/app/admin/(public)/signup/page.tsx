@@ -1,148 +1,18 @@
-"use client";
-
-import { useState } from "react";
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 import {
-  Badge,
-  Box,
-  Button,
-  Card,
-  Container,
-  HStack,
-  Icon,
-  Input,
-  Text,
-  VStack,
-} from "@chakra-ui/react";
-import { ColorModeButton } from "@/components/ui/color-mode";
-import { Field } from "@/components/ui/field";
-import { PasswordInput } from "@/components/ui/password-input";
-import { toaster } from "@/components/ui/toaster";
-import { LuGraduationCap, LuArrowRight, LuLoader } from "react-icons/lu";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
-import { DB_TABLES } from "@/lib/supabase/queries/schema";
+  getAdvisorSignupGateCookieName,
+  verifyAdvisorSignupGateToken,
+} from "@/lib/advisor-signup-gate";
+import AdvisorSignupClient from "./AdvisorSignupClient";
 
-export default function AdminSignupPage() {
-  const router = useRouter();
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [loading, setLoading] = useState(false);
+export default async function AdminSignupPage() {
+  const cookieStore = await cookies();
 
-  async function handleSignup() {
-    if (!firstName || !lastName || !email || !password) {
-      toaster.create({
-        title: "Missing fields",
-        description: "Please fill in all fields.",
-        type: "error",
-      });
-      return;
-    }
+  const gateToken = cookieStore.get(getAdvisorSignupGateCookieName())?.value;
 
-    if (password !== confirmPassword) {
-      toaster.create({
-        title: "Passwords don't match",
-        description: "Please make sure your passwords match.",
-        type: "error",
-      });
-      return;
-    }
-
-    if (password.length < 6) {
-      toaster.create({
-        title: "Password too short",
-        description: "Password must be at least 6 characters.",
-        type: "error",
-      });
-      return;
-    }
-
-    setLoading(true);
-
-    const supabase = createClient();
-
-    try {
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            role: "advisor",
-            first_name: firstName,
-            last_name: lastName,
-          },
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
-        },
-      });
-
-      if (error) {
-        toaster.create({
-          title: "Sign up failed",
-          description: error.message,
-          type: "error",
-        });
-        return;
-      }
-
-      if (!data.user) {
-        toaster.create({
-          title: "Sign up failed",
-          description: "Unable to create account. Please try again.",
-          type: "error",
-        });
-        return;
-      }
-
-      if (data.user.identities?.length === 0) {
-        await supabase.auth.signOut();
-        toaster.create({
-          title: "Account already exists",
-          description: "An account with this email already exists. Please sign in instead.",
-          type: "error",
-        });
-        return;
-      }
-
-      const { error: insertErr } = await supabase
-        .from(DB_TABLES.staff)
-        .insert({
-          auth_user_id: data.user.id,
-          email,
-          first_name: firstName,
-          last_name: lastName,
-          role: "advisor",
-          is_admin: false,
-        });
-
-      if (insertErr) {
-        await supabase.auth.signOut();
-        toaster.create({
-          title: "Advisor record failed",
-          description: insertErr.message,
-          type: "error",
-        });
-        return;
-      }
-
-      toaster.create({
-        title: "Account created!",
-        description: "Welcome to GradTracker, Advisor.",
-        type: "success",
-      });
-
-      router.push("/admin");
-    } catch (e: any) {
-      toaster.create({
-        title: "Sign up failed",
-        description: e?.message ?? "Unexpected error",
-        type: "error",
-      });
-    } finally {
-      setLoading(false);
-    }
+  if (!verifyAdvisorSignupGateToken(gateToken)) {
+    redirect("/signup");
   }
 
   return (

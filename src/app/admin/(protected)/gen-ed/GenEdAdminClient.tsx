@@ -594,6 +594,7 @@ export default function GenEdAdminClient({
                         return (
                           <Button
                             key={course.id}
+                            data-testid={`course-option-${course.id}`}
                             variant={selected ? "solid" : "outline"}
                             colorPalette={selected ? "blue" : "gray"}
                             justifyContent="space-between"

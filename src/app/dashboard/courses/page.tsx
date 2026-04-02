@@ -1,14 +1,15 @@
 import { createClient } from "@/lib/supabase/server";
 import CoursesClient from "./CoursesClient";
 import type { Course } from "@/types/course";
-import { DB_TABLES } from "@/lib/supabase/queries/schema";
+import { DB_VIEWS } from "@/lib/supabase/queries/schema";
+import type { ViewCourseCatalogRow } from "@/lib/supabase/queries/view-types";
 
 export default async function CoursesPage() {
   const supabase = await createClient();
 
   const { data: rawCourses, error } = await supabase
-    .from(DB_TABLES.courses)
-    .select("*, course_req_sets(set_type, note)")
+    .from(DB_VIEWS.courseCatalog)
+    .select("course_id, subject, number, title, credits, description, prereq_text")
     .order("subject", { ascending: true })
     .order("number", { ascending: true });
 
@@ -16,16 +17,14 @@ export default async function CoursesPage() {
     console.error("Error fetching courses:", error);
   }
 
-  const courses: Course[] = (rawCourses || []).map((c: any) => ({
-    id: c.id,
+  const courses: Course[] = ((rawCourses as ViewCourseCatalogRow[] | null) ?? []).map((c) => ({
+    id: Number(c.course_id),
     subject: c.subject,
     number: c.number,
     title: c.title,
-    credits: c.credits,
+    credits: Number(c.credits ?? 0),
     description: c.description,
-    prereq_text:
-      (c.course_req_sets as Array<{ set_type: string; note: string | null }> | null)
-        ?.find((s) => s.set_type === "PREREQ")?.note ?? null,
+    prereq_text: c.prereq_text,
   }));
 
   // Extract unique subjects for filter

@@ -1,26 +1,4 @@
-"use client";
-
-import { useState } from "react";
-import {
-  Badge,
-  Box,
-  Button,
-  Card,
-  Container,
-  HStack,
-  Icon,
-  Input,
-  Text,
-  VStack,
-} from "@chakra-ui/react";
-import { ColorModeButton } from "@/components/ui/color-mode";
-import { Field } from "@/components/ui/field";
-import { PasswordInput } from "@/components/ui/password-input";
-import { toaster } from "@/components/ui/toaster";
-import { LuGraduationCap, LuArrowRight, LuLoader } from "react-icons/lu";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
+import RoleSignInForm from "@/components/auth/RoleSignInForm";
 
 export default function SigninPage() {
   const router = useRouter();
