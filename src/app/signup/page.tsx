@@ -450,19 +450,17 @@ export default function SignupPage() {
                   </Text>
 
                   <Text fontSize="sm" color="fg.muted" textAlign="center">
-                    Are you an advisor?{" "}
-                    <Link href="/admin/signup">
-                      <Text
-                        as="span"
-                        color="blue.solid"
-                        cursor="pointer"
-                        fontWeight="600"
-                        _hover={{ textDecoration: "underline" }}
-                      >
-                        Sign up here
-                      </Text>
-                    </Link>
+                    Are you an advisor?
                   </Text>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    color="blue.solid"
+                    fontWeight="600"
+                    onClick={() => setAdvisorDialogOpen(true)}
+                  >
+                    Access code required →
+                  </Button>
                 </VStack>
               </Card.Body>
             </Card.Root>

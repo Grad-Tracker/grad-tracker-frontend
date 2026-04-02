@@ -380,59 +380,9 @@ export default function GenEdRequirements({ studentId }: { studentId: number }) 
                                 {completedCourses.length}
                               </Badge>
                             </HStack>
-                          </Box>
-
-                          <Badge colorPalette={b.remaining === 0 ? "green" : "gray"} variant="surface">
-                            {b.remaining === 0 ? "Done" : "In progress"}
-                          </Badge>
-                        </Flex>
-
-                        <HStack gap="2" wrap="wrap">
-                          <Badge colorPalette="green" variant="subtle">
-                            Completed ({completedCount})  {completedCredits} cr
-                          </Badge>
-                          <Badge colorPalette="orange" variant="subtle">
-                            In progress ({inProgressCount})  {inProgressCredits} cr
-                          </Badge>
-                          <Badge colorPalette="gray" variant="outline">
-                            Remaining ({remainingCount})  {remainingCredits} cr
-                          </Badge>
-                        </HStack>
-
-                        <Progress.Root value={b.pct} max={100} colorPalette="green" size="sm">
-                          <Progress.Track borderRadius="md">
-                            <Progress.Range borderRadius="md" />
-                          </Progress.Track>
-                        </Progress.Root>
-
-                        <Separator />
-
-                        <Box>
-                          <Text fontSize="sm" fontWeight="600" color="fg.muted" mb="2">
-                            Courses in this bucket
-                          </Text>
-
-                          {b.detailed.length === 0 ? (
-                            <Text color="fg.muted" fontSize="sm">
-                              No courses found for this bucket.
-                            </Text>
-                          ) : (
-                            <VStack align="stretch" gap="1">
-                              {completedCourses.length > 0 ? (
-                                <>
-                                  <Divider opacity={0.4} mt="3" mb="2" />
-                                  <HStack justify="space-between" mt="3" mb="2">
-                                    <Text fontSize="sm" fontWeight="600" color="fg.muted">
-                                      Completed
-                                    </Text>
-                                    <Badge variant="subtle" colorPalette="green">
-                                      {completedCourses.length}
-                                    </Badge>
-                                  </HStack>
-                                  {completedCourses.map(renderCourseRow)}
-                                </>
-                              ) : null}
-
+                          {completedCourses.map(renderCourseRow)}
+                          </>
+                        ) : null}
                               {inProgressCourses.length > 0 ? (
                                 <>
                                   <Divider opacity={0.4} mt="3" mb="2" />
