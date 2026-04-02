@@ -51,7 +51,7 @@ import {
   fetchBreadthPackageId,
   updateBreadthPackageId,
 } from "@/lib/supabase/queries/planner";
-import { DB_TABLES, PLANNED_COURSE_STATUS } from "@/lib/supabase/queries/schema";
+import { DB_TABLES, DB_VIEWS, PLANNED_COURSE_STATUS } from "@/lib/supabase/queries/schema";
 
 import type {
   Term,
@@ -219,6 +219,46 @@ export default function PlannerPage() {
     [blocks, isGraduatePlan]
   );
 
+  const plannerPoolBlocks = useMemo(() => {
+    if (isGraduatePlan) return blocks;
+
+    const genEdCourses = (() => {
+      const seenCourseIds = new Set<number>();
+      return genEdBuckets
+        .flatMap((bucket) => bucket.courses ?? [])
+        .filter((course) => {
+          if (seenCourseIds.has(course.id)) return false;
+          seenCourseIds.add(course.id);
+          return true;
+        });
+    })();
+
+    if (!genEdCourses.length) return blocks;
+
+    const hasGeneralEdBlock = blocks.some((block) => {
+      const name = block.name.toLowerCase();
+      return name.includes("general education") || name.includes("gen ed");
+    });
+
+    if (hasGeneralEdBlock) return blocks;
+
+    return [
+      ...blocks,
+      {
+        id: -2,
+        program_id: 0,
+        name: "General Education",
+        rule: "CREDITS_OF",
+        n_required: null,
+        credits_required: genEdBuckets.reduce(
+          (sum, bucket) => sum + Number(bucket.credits_required ?? 0),
+          0
+        ),
+        courses: genEdCourses,
+      },
+    ];
+  }, [blocks, genEdBuckets, isGraduatePlan]);
+
   // Auto-select first concentration track when a graduate plan loads
   useEffect(() => {
     if (isGraduatePlan && graduateTracks.length >= 2 && selectedTrackId === null) {
@@ -227,18 +267,18 @@ export default function PlannerPage() {
   }, [isGraduatePlan, graduateTracks, selectedTrackId, handleTrackSelect]);
 
   const allDedupedBlocks = useMemo(
-    () => deduplicateBlocks(blocks, { isGraduate: isGraduatePlan }),
-    [blocks, isGraduatePlan]
+    () => deduplicateBlocks(plannerPoolBlocks, { isGraduate: isGraduatePlan }),
+    [plannerPoolBlocks, isGraduatePlan]
   );
 
   const displayBlocks = useMemo(
     () =>
-      deduplicateBlocks(blocks, {
+      deduplicateBlocks(plannerPoolBlocks, {
         selectedPackage: isGraduatePlan ? null : selectedBreadthPackage,
         isGraduate: isGraduatePlan,
         selectedTrackId: isGraduatePlan ? selectedTrackId : null,
       }),
-    [blocks, selectedBreadthPackage, isGraduatePlan, selectedTrackId]
+    [plannerPoolBlocks, selectedBreadthPackage, isGraduatePlan, selectedTrackId]
   );
 
   // ── Load plan-specific data ────────────────────────────
@@ -318,8 +358,8 @@ export default function PlannerPage() {
         }
 
         const { data: studentRow, error: studentErr } = await supabase
-          .from(DB_TABLES.students)
-          .select("id")
+          .from(DB_VIEWS.studentProfile)
+          .select("student_id")
           .eq("auth_user_id", user.id)
           .maybeSingle();
 
@@ -336,7 +376,7 @@ export default function PlannerPage() {
           return;
         }
 
-        const sid = studentRow.id;
+        const sid = Number((studentRow as any).student_id ?? (studentRow as any).id);
         setStudentId(sid);
 
         // Fetch plans (can fail — must be caught to avoid unhandled rejection)

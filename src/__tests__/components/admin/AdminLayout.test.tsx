@@ -122,11 +122,8 @@ describe("Admin layout components", () => {
 
     it("displays advisor name after loading from user metadata", async () => {
       renderWithChakra(<AdminHeader />);
-      await waitFor(() => {
-        expect(mockGetUser).toHaveBeenCalled();
-      });
-      expect(screen.getByText("Ada Lovelace")).toBeInTheDocument();
-      expect(screen.getByText("Advisor")).toBeInTheDocument();
+      expect(await screen.findByText("Ada Lovelace")).toBeInTheDocument();
+      expect(await screen.findByText("Advisor")).toBeInTheDocument();
     });
 
     it("shows no name when user has empty metadata", async () => {

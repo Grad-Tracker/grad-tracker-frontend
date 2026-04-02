@@ -267,18 +267,17 @@ export default function CoursePanel({
                     allBreadthCourses={allBreadthCourses}
                   />
                 )}
-                {(!isBreadth || selectedBreadthPackageId) && (
-                  <VStack align="stretch" gap="1.5" px="3" py="2">
-                    {block.courses.map((course) => (
-                      <DraggableCourseCard
-                        key={course.id}
-                        course={course}
-                        isCompleted={completedCourseIds.has(course.id)}
-                        isPlanned={plannedCourseIds.has(course.id)}
-                      />
-                    ))}
-                  </VStack>
-                )}
+                <VStack align="stretch" gap="1.5" px="3" py="2">
+                  {block.courses.map((course) => (
+                    <DraggableCourseCard
+                      key={course.id}
+                      course={course}
+                      isCompleted={completedCourseIds.has(course.id)}
+                      isPlanned={plannedCourseIds.has(course.id)}
+                      dragContextId={block.id}
+                    />
+                  ))}
+                </VStack>
               </Collapsible.Content>
             </Collapsible.Root>
           );

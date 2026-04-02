@@ -398,6 +398,7 @@ describe("GenEdAdminClient", () => {
     renderWithChakra(<GenEdAdminClient initialBuckets={initialBuckets} />);
 
     fireEvent.click(screen.getAllByRole("button", { name: /add courses/i })[0]);
+    await screen.findByText("ENGL 101 - Composition");
     const searchInput = await screen.findByLabelText("Search Courses");
     fireEvent.change(searchInput, { target: { value: "engl" } });
 
@@ -428,7 +429,7 @@ describe("GenEdAdminClient", () => {
     renderWithChakra(<GenEdAdminClient initialBuckets={initialBuckets} />);
 
     fireEvent.click(screen.getAllByRole("button", { name: /add courses/i })[0]);
-    await screen.findByLabelText("Search Courses");
+    await screen.findByText("ENGL 101 - Composition");
 
     fireEvent.click(screen.getByRole("button", { name: /engl 101 - composition/i }));
     fireEvent.click(screen.getByRole("button", { name: /add selected/i }));
@@ -445,7 +446,7 @@ describe("GenEdAdminClient", () => {
     renderWithChakra(<GenEdAdminClient initialBuckets={initialBuckets} />);
 
     fireEvent.click(screen.getAllByRole("button", { name: /add courses/i })[1]);
-    await screen.findByLabelText("Search Courses");
+    await screen.findByText("ENGL 101 - Composition");
 
     fireEvent.click(screen.getByRole("button", { name: /engl 101 - composition/i }));
     fireEvent.click(screen.getByRole("button", { name: /add selected/i }));
