@@ -101,7 +101,7 @@ export default function PlanSwitcher({
             <HStack gap="1.5">
               <Heading
                 size="lg"
-                fontFamily="var(--font-outfit), sans-serif"
+                fontFamily="var(--font-dm-sans), sans-serif"
                 fontWeight="400"
                 letterSpacing="-0.02em"
               >

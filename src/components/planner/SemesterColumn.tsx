@@ -145,7 +145,7 @@ export default function SemesterColumn({
                   <Text
                     fontSize="sm"
                     fontWeight="500"
-                    fontFamily="var(--font-outfit), sans-serif"
+                    fontFamily="var(--font-dm-sans), sans-serif"
                     letterSpacing="-0.02em"
                   >
                     {term.season} {term.year}

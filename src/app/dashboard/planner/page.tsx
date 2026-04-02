@@ -781,7 +781,7 @@ export default function PlannerPage() {
                   </Icon>
                   <Heading
                     size="md"
-                    fontFamily="var(--font-outfit), sans-serif"
+                    fontFamily="var(--font-dm-sans), sans-serif"
                     fontWeight="400"
                     letterSpacing="-0.02em"
                   >
@@ -886,12 +886,12 @@ export default function PlannerPage() {
                           mx="auto"
                           mb="4"
                         >
-                          <LuCalendar size={32} color="var(--chakra-colors-blue-fg)" />
+                          <LuCalendar size={32} color="blue.fg" />
                         </Box>
                         <Heading
                           size="md"
                           mb="2"
-                          fontFamily="var(--font-outfit), sans-serif"
+                          fontFamily="var(--font-dm-sans), sans-serif"
                           fontWeight="400"
                           letterSpacing="-0.02em"
                         >

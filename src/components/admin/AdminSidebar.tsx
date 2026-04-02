@@ -126,7 +126,7 @@ export default function AdminSidebar() {
             <Icon color="white" boxSize="5"><LuShield /></Icon>
           </Box>
           <Box>
-            <Text fontWeight="700" fontSize="lg" fontFamily="var(--font-outfit), sans-serif">
+            <Text fontWeight="700" fontSize="lg" fontFamily="var(--font-dm-sans), sans-serif">
               GradTracker
             </Text>
             <Text fontSize="xs" color="fg.muted">

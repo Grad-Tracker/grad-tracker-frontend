@@ -100,7 +100,7 @@ export default function ProgramSelectionStep({
             Required
           </Badge>
           <Heading
-            fontFamily="var(--font-outfit), sans-serif"
+            fontFamily="var(--font-dm-sans), sans-serif"
             size="xl"
             fontWeight="400"
             letterSpacing="-0.01em"
@@ -198,7 +198,7 @@ export default function ProgramSelectionStep({
                 Optional
               </Badge>
               <Heading
-                fontFamily="var(--font-outfit), sans-serif"
+                fontFamily="var(--font-dm-sans), sans-serif"
                 size="xl"
                 fontWeight="400"
                 letterSpacing="-0.01em"
@@ -258,7 +258,7 @@ export default function ProgramSelectionStep({
             Optional
           </Badge>
           <Heading
-            fontFamily="var(--font-outfit), sans-serif"
+            fontFamily="var(--font-dm-sans), sans-serif"
             size="xl"
             fontWeight="400"
             letterSpacing="-0.01em"

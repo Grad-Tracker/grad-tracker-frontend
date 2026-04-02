@@ -153,7 +153,7 @@ export default function ProgramsClient({ programs }: ProgramsClientProps) {
         </Text>
         <Heading
           size="lg"
-          fontFamily="var(--font-outfit), sans-serif"
+          fontFamily="var(--font-dm-sans), sans-serif"
           fontWeight="400"
           letterSpacing="-0.02em"
         >
@@ -269,7 +269,7 @@ export default function ProgramsClient({ programs }: ProgramsClientProps) {
                           <HStack gap="2">
                             <Heading
                               size="sm"
-                              fontFamily="var(--font-outfit), sans-serif"
+                              fontFamily="var(--font-dm-sans), sans-serif"
                               fontWeight="500"
                               color="fg.muted"
                               letterSpacing="0.05em"
@@ -323,7 +323,7 @@ export default function ProgramsClient({ programs }: ProgramsClientProps) {
                     </Box>
                     <Heading
                       size="md"
-                      fontFamily="var(--font-outfit), sans-serif"
+                      fontFamily="var(--font-dm-sans), sans-serif"
                       fontWeight="400"
                     >
                       No programs found

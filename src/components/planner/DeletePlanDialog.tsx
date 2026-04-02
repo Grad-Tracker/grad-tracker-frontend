@@ -47,7 +47,7 @@ export default function DeletePlanDialog({
           <Dialog.Content borderRadius="xl">
             <Dialog.Header>
               <Dialog.Title
-                fontFamily="var(--font-outfit), sans-serif"
+                fontFamily="var(--font-dm-sans), sans-serif"
                 fontWeight="400"
                 letterSpacing="-0.02em"
               >

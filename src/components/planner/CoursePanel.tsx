@@ -152,7 +152,7 @@ export default function CoursePanel({
           </Icon>
           <Heading
             size="sm"
-            fontFamily="var(--font-outfit), sans-serif"
+            fontFamily="var(--font-dm-sans), sans-serif"
             fontWeight="400"
             letterSpacing="-0.02em"
           >

@@ -35,10 +35,10 @@ const promptChips = [
 ];
 
 const creditCategories = [
-  { label: "Major Core", completed: 30, required: 42, color: "blue" },
-  { label: "Major Electives", completed: 12, required: 18, color: "purple" },
-  { label: "General Education", completed: 28, required: 36, color: "blue" },
-  { label: "Free Electives", completed: 8, required: 24, color: "orange" },
+  { label: "General Education", completed: 28, required: 36, color: "violet" },
+  { label: "Major Core", completed: 30, required: 42, color: "emerald" },
+  { label: "Major Electives", completed: 12, required: 18, color: "blue" },
+  { label: "Free Electives", completed: 8, required: 24, color: "amber" },
 ];
 
 const semesterStats = [
@@ -251,7 +251,7 @@ export default function AIAdvisorPage() {
         </Box>
         <Box flex="1">
           <HStack gap="3" mb="0.5">
-            <Heading size="xl" fontFamily="var(--font-outfit), sans-serif">
+            <Heading size="xl" fontFamily="var(--font-dm-sans), sans-serif">
               AI Academic Advisor
             </Heading>
             <Badge colorPalette="purple" variant="subtle" size="sm">

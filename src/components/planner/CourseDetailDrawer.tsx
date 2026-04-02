@@ -63,7 +63,7 @@ export default function CourseDetailDrawer({
                       </Box>
                       <VStack align="start" gap="0">
                         <Drawer.Title
-                          fontFamily="var(--font-outfit), sans-serif"
+                          fontFamily="var(--font-dm-sans), sans-serif"
                           fontWeight="400"
                           fontSize="xl"
                         >

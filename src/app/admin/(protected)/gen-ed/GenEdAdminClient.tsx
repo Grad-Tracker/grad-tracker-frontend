@@ -342,7 +342,7 @@ export default function GenEdAdminClient({
           <Text
             fontSize={{ base: "2xl", md: "3xl" }}
             fontWeight="700"
-            fontFamily="var(--font-outfit), sans-serif"
+            fontFamily="var(--font-dm-sans), sans-serif"
             letterSpacing="-0.02em"
           >
             Gen-Ed Buckets

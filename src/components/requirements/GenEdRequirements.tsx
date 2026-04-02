@@ -283,7 +283,7 @@ export default function GenEdRequirements({ studentId }: { studentId: number }) 
           </Text>
           <Heading
             size="lg"
-            fontFamily="var(--font-outfit), sans-serif"
+            fontFamily="var(--font-dm-sans), sans-serif"
             fontWeight="400"
             letterSpacing="-0.02em"
           >
@@ -340,7 +340,7 @@ export default function GenEdRequirements({ studentId }: { studentId: number }) 
                           border={completed ? "1px solid" : undefined}
                           borderWidth="1px"
                           boxShadow={
-                            completed ? "0 0 0 1px rgba(59,130,246,0.25)" : undefined
+                            completed ? "0 0 0 1px var(--chakra-colors-blue-500 / 0.25)" : undefined
                           }
                           bg={completed ? "blue.700" : "bg.subtle"}
                           borderColor={completed ? "blue.500" : "border.subtle"}

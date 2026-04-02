@@ -50,7 +50,7 @@ export default function ReviewStep({
           <LuCircleCheck />
         </Icon>
         <Heading
-          fontFamily="var(--font-outfit), sans-serif"
+          fontFamily="var(--font-dm-sans), sans-serif"
           size="xl"
           fontWeight="400"
           letterSpacing="-0.01em"
@@ -93,7 +93,7 @@ export default function ReviewStep({
             {major ? (
               <Box>
                 <Text
-                  fontFamily="var(--font-outfit), sans-serif"
+                  fontFamily="var(--font-dm-sans), sans-serif"
                   fontSize="xl"
                   fontWeight="400"
                 >
@@ -255,7 +255,7 @@ export default function ReviewStep({
           </HStack>
           {expectedGradSemester && expectedGradYear ? (
             <Text
-              fontFamily="var(--font-outfit), sans-serif"
+              fontFamily="var(--font-dm-sans), sans-serif"
               fontSize="xl"
               fontWeight="400"
             >
@@ -280,7 +280,7 @@ export default function ReviewStep({
           <HStack justify="center" gap="8" flexWrap="wrap">
             <VStack gap="0">
               <Text
-                fontFamily="var(--font-outfit), sans-serif"
+                fontFamily="var(--font-dm-sans), sans-serif"
                 fontSize="2xl"
                 fontWeight="400"
                 color="blue.fg"
@@ -294,7 +294,7 @@ export default function ReviewStep({
             <Separator orientation="vertical" h="10" />
             <VStack gap="0">
               <Text
-                fontFamily="var(--font-outfit), sans-serif"
+                fontFamily="var(--font-dm-sans), sans-serif"
                 fontSize="2xl"
                 fontWeight="400"
                 color="blue.fg"
@@ -308,7 +308,7 @@ export default function ReviewStep({
             <Separator orientation="vertical" h="10" />
             <VStack gap="0">
               <Text
-                fontFamily="var(--font-outfit), sans-serif"
+                fontFamily="var(--font-dm-sans), sans-serif"
                 fontSize="2xl"
                 fontWeight="400"
                 color="blue.fg"

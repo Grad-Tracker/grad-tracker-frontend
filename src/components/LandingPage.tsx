@@ -111,7 +111,7 @@ export default function LandingPage() {
   return (
     <Box
       minH="100vh"
-      fontFamily="var(--font-plus-jakarta), sans-serif"
+      fontFamily="var(--font-dm-sans), sans-serif"
       position="relative"
     >
       {/* Navigation Header */}
@@ -140,7 +140,7 @@ export default function LandingPage() {
               <Text
                 fontWeight="700"
                 fontSize="xl"
-                fontFamily="var(--font-outfit), sans-serif"
+                fontFamily="var(--font-dm-sans), sans-serif"
                 letterSpacing="-0.02em"
               >
                 GradTracker
@@ -236,7 +236,7 @@ export default function LandingPage() {
 
               <Heading
                 className="animate-fade-up-delay-1"
-                fontFamily="var(--font-outfit), sans-serif"
+                fontFamily="var(--font-dm-sans), sans-serif"
                 size={{ base: "4xl", md: "5xl", lg: "6xl" }}
                 lineHeight="1.1"
                 letterSpacing="-0.03em"
@@ -369,7 +369,7 @@ export default function LandingPage() {
                           <ProgressCircleValueText
                             fontSize="4xl"
                             fontWeight="700"
-                            fontFamily="var(--font-outfit), sans-serif"
+                            fontFamily="var(--font-dm-sans), sans-serif"
                           />
                         </ProgressCircleRoot>
                       </Box>
@@ -377,7 +377,7 @@ export default function LandingPage() {
                         <Text
                           fontWeight="700"
                           fontSize="xl"
-                          fontFamily="var(--font-outfit), sans-serif"
+                          fontFamily="var(--font-dm-sans), sans-serif"
                         >
                           Graduation Progress
                         </Text>
@@ -440,7 +440,7 @@ export default function LandingPage() {
                 <StatValueText
                   fontSize={{ base: "3xl", md: "5xl" }}
                   fontWeight="400"
-                  fontFamily="var(--font-outfit), sans-serif"
+                  fontFamily="var(--font-dm-sans), sans-serif"
                   className="gradient-text"
                   style={{ animationDelay: `${i * 0.1}s` }}
                 >
@@ -471,7 +471,7 @@ export default function LandingPage() {
                 Features
               </Badge>
               <Heading
-                fontFamily="var(--font-outfit), sans-serif"
+                fontFamily="var(--font-dm-sans), sans-serif"
                 size={{ base: "3xl", md: "4xl" }}
                 letterSpacing="-0.02em"
                 fontWeight="400"
@@ -545,7 +545,7 @@ export default function LandingPage() {
                 How It Works
               </Badge>
               <Heading
-                fontFamily="var(--font-outfit), sans-serif"
+                fontFamily="var(--font-dm-sans), sans-serif"
                 size={{ base: "3xl", md: "4xl" }}
                 letterSpacing="-0.02em"
                 fontWeight="400"
@@ -617,7 +617,7 @@ export default function LandingPage() {
                   <HStack justify="space-between" align="center">
                     <Heading
                       size="lg"
-                      fontFamily="var(--font-outfit), sans-serif"
+                      fontFamily="var(--font-dm-sans), sans-serif"
                       fontWeight="400"
                     >
                       Your Dashboard
@@ -688,7 +688,7 @@ export default function LandingPage() {
                 Progress Tracking
               </Badge>
               <Heading
-                fontFamily="var(--font-outfit), sans-serif"
+                fontFamily="var(--font-dm-sans), sans-serif"
                 size={{ base: "2xl", md: "3xl" }}
                 letterSpacing="-0.02em"
                 fontWeight="400"
@@ -776,7 +776,7 @@ export default function LandingPage() {
         >
           <VStack gap="8" textAlign="center">
             <Heading
-              fontFamily="var(--font-outfit), sans-serif"
+              fontFamily="var(--font-dm-sans), sans-serif"
               size={{ base: "3xl", md: "4xl", lg: "5xl" }}
               color="white"
               letterSpacing="-0.02em"
@@ -860,7 +860,7 @@ export default function LandingPage() {
                 <Text
                   fontWeight="700"
                   fontSize="lg"
-                  fontFamily="var(--font-outfit), sans-serif"
+                  fontFamily="var(--font-dm-sans), sans-serif"
                 >
                   GradTracker
                 </Text>

@@ -305,7 +305,7 @@ export default function CoursesAdminClient({
           </Text>
           <Heading
             size="lg"
-            fontFamily="var(--font-outfit), sans-serif"
+            fontFamily="var(--font-dm-sans), sans-serif"
             fontWeight="400"
             letterSpacing="-0.02em"
           >
@@ -588,7 +588,7 @@ export default function CoursesAdminClient({
           <Dialog.Positioner>
             <Dialog.Content>
               <Dialog.Header borderBottomWidth="1px" borderColor="border.subtle">
-                <Dialog.Title fontFamily="var(--font-outfit), sans-serif" fontWeight="400">
+                <Dialog.Title fontFamily="var(--font-dm-sans), sans-serif" fontWeight="400">
                   {dialogMode === "add" ? "Add Course" : "Edit Course"}
                 </Dialog.Title>
                 <Dialog.CloseTrigger asChild>
@@ -755,7 +755,7 @@ export default function CoursesAdminClient({
                         )}
                       </HStack>
                       <Drawer.Title
-                        fontFamily="var(--font-outfit), sans-serif"
+                        fontFamily="var(--font-dm-sans), sans-serif"
                         fontWeight="400"
                         fontSize="xl"
                       >

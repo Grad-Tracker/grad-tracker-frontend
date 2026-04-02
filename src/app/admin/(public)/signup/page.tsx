@@ -148,7 +148,7 @@ export default function AdminSignupPage() {
   return (
     <Box
       minH="100vh"
-      fontFamily="var(--font-plus-jakarta), sans-serif"
+      fontFamily="var(--font-dm-sans), sans-serif"
       position="relative"
     >
       {/* Navigation Header */}
@@ -178,7 +178,7 @@ export default function AdminSignupPage() {
                 <Text
                   fontWeight="700"
                   fontSize="xl"
-                  fontFamily="var(--font-outfit), sans-serif"
+                  fontFamily="var(--font-dm-sans), sans-serif"
                   letterSpacing="-0.02em"
                 >
                   GradTracker
@@ -275,7 +275,7 @@ export default function AdminSignupPage() {
                     <Text
                       fontWeight="700"
                       fontSize="2xl"
-                      fontFamily="var(--font-outfit), sans-serif"
+                      fontFamily="var(--font-dm-sans), sans-serif"
                       letterSpacing="-0.02em"
                     >
                       Advisor Sign Up

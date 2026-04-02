@@ -16,6 +16,7 @@ body {
   --chakra-colors-bg-subtle: #F3F3F0;
   --chakra-colors-bg-muted: #ECEAE7;
   --chakra-colors-fg: #1C1D1F;
+  --chakra-colors-fg-subtle: #4C4D50;
   --chakra-colors-fg-muted: #7C7D80;
   --chakra-colors-border: #E5E4E0;
   --chakra-colors-border-muted: #ECEAE7;
@@ -27,6 +28,7 @@ body {
   --chakra-colors-bg-subtle: #24262C;
   --chakra-colors-bg-muted: #2E3038;
   --chakra-colors-fg: #E4E2DE;
+  --chakra-colors-fg-subtle: #B7B8BA;
   --chakra-colors-fg-muted: #8B8D95;
   --chakra-colors-border: #2E3038;
   --chakra-colors-border-muted: #24262C;

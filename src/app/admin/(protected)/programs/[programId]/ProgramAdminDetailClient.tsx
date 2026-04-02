@@ -491,7 +491,7 @@ export default function ProgramAdminDetailClient({
                   <Text
                     fontSize="2xl"
                     fontWeight="700"
-                    fontFamily="var(--font-outfit), sans-serif"
+                    fontFamily="var(--font-dm-sans), sans-serif"
                     letterSpacing="-0.02em"
                   >
                     {program.name}
