@@ -98,7 +98,7 @@ function setupAuthMock(studentId: number | null = 1) {
     select: vi.fn().mockReturnValue({
       eq: vi.fn().mockReturnValue({
         maybeSingle: vi.fn().mockResolvedValue({
-          data: studentId ? { id: studentId } : null,
+          data: studentId ? { student_id: studentId } : null,
           error: null,
         }),
       }),
