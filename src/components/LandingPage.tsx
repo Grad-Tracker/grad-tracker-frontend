@@ -638,7 +638,7 @@ export default function LandingPage() {
                       <ProgressBar rounded="full" />
                     </ProgressRoot>
 
-                    <ProgressRoot value={100} colorPalette="teal" size="sm">
+                    <ProgressRoot value={100} colorPalette="violet" size="sm">
                       <HStack justify="space-between" mb="2">
                         <ProgressLabel fontWeight="500" fontSize="sm">
                           General Education
@@ -648,7 +648,7 @@ export default function LandingPage() {
                       <ProgressBar rounded="full" />
                     </ProgressRoot>
 
-                    <ProgressRoot value={85} colorPalette="blue" size="sm">
+                    <ProgressRoot value={85} colorPalette="emerald" size="sm">
                       <HStack justify="space-between" mb="2">
                         <ProgressLabel fontWeight="500" fontSize="sm">
                           Major Requirements
@@ -658,7 +658,7 @@ export default function LandingPage() {
                       <ProgressBar rounded="full" />
                     </ProgressRoot>
 
-                    <ProgressRoot value={40} colorPalette="orange" size="sm">
+                    <ProgressRoot value={40} colorPalette="amber" size="sm">
                       <HStack justify="space-between" mb="2">
                         <ProgressLabel fontWeight="500" fontSize="sm">
                           Electives

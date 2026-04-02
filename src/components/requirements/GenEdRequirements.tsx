@@ -340,7 +340,7 @@ export default function GenEdRequirements({ studentId }: { studentId: number }) 
                           border={completed ? "1px solid" : undefined}
                           borderWidth="1px"
                           boxShadow={
-                            completed ? "0 0 0 1px var(--chakra-colors-blue-500 / 0.25)" : undefined
+                            completed ? "0 0 0 1px color-mix(in srgb, var(--chakra-colors-blue-500) 25%, transparent)" : undefined
                           }
                           bg={completed ? "blue.700" : "bg.subtle"}
                           borderColor={completed ? "blue.500" : "border.subtle"}
