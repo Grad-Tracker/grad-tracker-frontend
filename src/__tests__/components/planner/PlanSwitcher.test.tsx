@@ -229,7 +229,11 @@ describe("PlanSwitcher", () => {
     await waitFor(() => {
       expect(defaultProps.onRenamePlan).toHaveBeenCalledWith(1, "Confirmed Name");
     });
-  });
+
+    await waitFor(() => {
+      expect(screen.queryByRole("textbox")).toBeNull();
+    });
+  }, 15000);
 
   it("shows 'No Plan' when activePlanId does not match any plan", () => {
     renderWithChakra(<PlanSwitcher {...defaultProps} activePlanId={999} />);
