@@ -22,7 +22,7 @@ export function AdditionalCourses({ courses, onDelete, onCourseSelected }: Addit
           Additional Courses
         </Heading>
         <Button
-          colorPalette="green"
+          colorPalette="blue"
           size="sm"
           borderRadius="lg"
           onClick={() => setDialogOpen(true)}

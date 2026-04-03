@@ -36,7 +36,7 @@ export default function WizardNavigation({
 
       {isLastStep ? (
         <Button
-          colorPalette="green"
+          colorPalette="blue"
           onClick={onComplete}
           rounded="full"
           px="6"
@@ -53,7 +53,7 @@ export default function WizardNavigation({
       ) : (
         <Steps.NextTrigger asChild>
           <Button
-            colorPalette="green"
+            colorPalette="blue"
             disabled={!canProceed}
             rounded="full"
             px="6"

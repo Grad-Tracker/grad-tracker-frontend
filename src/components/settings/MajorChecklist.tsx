@@ -20,7 +20,7 @@ export function MajorChecklist({ major, completedCourseIds, onToggle }: MajorChe
         <Heading size="md" fontWeight="600">
           {major.majorName}
         </Heading>
-        <Badge colorPalette="green" variant="subtle">
+        <Badge colorPalette="blue" variant="subtle">
           {completedCount}/{allCourses.length} courses
         </Badge>
       </HStack>
@@ -40,7 +40,7 @@ export function MajorChecklist({ major, completedCourseIds, onToggle }: MajorChe
                 <Heading size="sm" fontWeight="600">
                   {block.name}
                 </Heading>
-                <Badge colorPalette="green" variant="outline">
+                <Badge colorPalette="blue" variant="outline">
                   {blockCompleted}/{block.courses.length}
                 </Badge>
               </HStack>
@@ -50,7 +50,7 @@ export function MajorChecklist({ major, completedCourseIds, onToggle }: MajorChe
                 {block.courses.map((course) => (
                   <Checkbox
                     key={course.id}
-                    colorPalette="green"
+                    colorPalette="blue"
                     checked={completedCourseIds.has(course.id)}
                     onCheckedChange={(e) => onToggle(course.id, !!e.checked)}
                   >

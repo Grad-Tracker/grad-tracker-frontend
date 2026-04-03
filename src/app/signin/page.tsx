@@ -1,3 +1,5 @@
+"use client";
+
 import RoleSignInForm from "@/components/auth/RoleSignInForm";
 
 export default function SigninPage() {

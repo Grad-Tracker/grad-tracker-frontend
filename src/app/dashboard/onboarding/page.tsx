@@ -29,7 +29,7 @@ const steps = [
     title: "Select Your Degree",
     description: "Choose your major and expected graduation date",
     icon: LuTarget,
-    color: "green",
+    color: "blue",
   },
   {
     number: 2,
@@ -52,7 +52,7 @@ export default function OnboardingPage() {
     <Box
       minH="100vh"
       bg="bg"
-      fontFamily="var(--font-plus-jakarta), sans-serif"
+      fontFamily="var(--font-dm-sans), sans-serif"
       className="mesh-gradient-subtle"
     >
       {/* Header */}
@@ -80,7 +80,7 @@ export default function OnboardingPage() {
               </HStack>
             </Link>
             <HStack gap="3">
-              <Box p="2" bg="green.solid" borderRadius="lg">
+              <Box p="2" bg="blue.solid" borderRadius="lg">
                 <Icon color="white" boxSize="5">
                   <LuGraduationCap />
                 </Icon>
@@ -88,7 +88,7 @@ export default function OnboardingPage() {
               <Text
                 fontWeight="700"
                 fontSize="lg"
-                fontFamily="var(--font-outfit), sans-serif"
+                fontFamily="var(--font-dm-sans), sans-serif"
                 letterSpacing="-0.02em"
               >
                 GradTracker
@@ -104,7 +104,7 @@ export default function OnboardingPage() {
           {/* Hero Section */}
           <VStack gap="4" textAlign="center" maxW="xl" className="animate-fade-up">
             <Badge
-              colorPalette="green"
+              colorPalette="blue"
               variant="surface"
               size="lg"
               px="4"
@@ -117,7 +117,7 @@ export default function OnboardingPage() {
               Setup Wizard
             </Badge>
             <Heading
-              fontFamily="var(--font-outfit), sans-serif"
+              fontFamily="var(--font-dm-sans), sans-serif"
               size={{ base: "3xl", md: "4xl" }}
               letterSpacing="-0.02em"
               fontWeight="400"
@@ -197,7 +197,7 @@ export default function OnboardingPage() {
             <Link href="/dashboard/onboarding/wizard">
               <Button
                 size="lg"
-                colorPalette="green"
+                colorPalette="blue"
                 rounded="full"
                 px="8"
                 fontWeight="600"

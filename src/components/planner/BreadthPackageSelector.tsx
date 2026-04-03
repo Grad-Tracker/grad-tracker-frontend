@@ -77,11 +77,11 @@ export default function BreadthPackageSelector({
               py="2"
               borderRadius="lg"
               borderWidth="1px"
-              borderColor={isSelected ? "green.500" : hasProgress ? "orange.300" : "border.subtle"}
-              bg={isSelected ? "green.subtle" : "bg"}
+              borderColor={isSelected ? "blue.500" : hasProgress ? "orange.300" : "border.subtle"}
+              bg={isSelected ? "blue.subtle" : "bg"}
               _hover={{
-                bg: isSelected ? "green.subtle" : "bg.subtle",
-                borderColor: isSelected ? "green.500" : "border",
+                bg: isSelected ? "blue.subtle" : "bg.subtle",
+                borderColor: isSelected ? "blue.500" : "border",
               }}
               transition="all 0.15s"
               cursor="pointer"
@@ -90,7 +90,7 @@ export default function BreadthPackageSelector({
               <HStack justify="space-between" gap="2">
                 <HStack gap="2" flex="1" minW="0">
                   {isSelected && (
-                    <Icon boxSize="3.5" color="green.fg" flexShrink={0}>
+                    <Icon boxSize="3.5" color="blue.fg" flexShrink={0}>
                       <LuCheck />
                     </Icon>
                   )}
@@ -98,7 +98,7 @@ export default function BreadthPackageSelector({
                     <Text
                       fontSize="xs"
                       fontWeight={isSelected ? "700" : "600"}
-                      color={isSelected ? "green.fg" : "fg"}
+                      color={isSelected ? "blue.fg" : "fg"}
                       truncate
                     >
                       {pkg.name}
@@ -111,7 +111,7 @@ export default function BreadthPackageSelector({
 
                 <HStack gap="1.5" flexShrink={0}>
                   {completed > 0 && (
-                    <Badge size="sm" variant="subtle" colorPalette="green">
+                    <Badge size="sm" variant="subtle" colorPalette="blue">
                       {completed} done
                     </Badge>
                   )}
