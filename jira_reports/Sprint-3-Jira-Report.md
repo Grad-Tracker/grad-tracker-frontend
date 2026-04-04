@@ -2,7 +2,7 @@
 
 ## Project Information
 - **Jira Project:** Grad Tracker (GT)  
-- **Project Link:** NA 
+- **Project Link:** https://lab-signoff-app.atlassian.net/jira/software/projects/GT/boards/68
 - **Sprint:** Sprint 3 (Sprint 136)  
 - **Data captured on:** 2026-03-18  
 
