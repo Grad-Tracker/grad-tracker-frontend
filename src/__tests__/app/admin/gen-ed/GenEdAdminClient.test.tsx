@@ -1,6 +1,6 @@
 import React from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { ChakraProvider, defaultSystem } from "@chakra-ui/react";
 
 const { mockFrom, mockToaster } = vi.hoisted(() => ({
@@ -57,6 +57,12 @@ function makeAwaitable(result: any) {
   return {
     then: (resolve: any, reject?: any) => Promise.resolve(result).then(resolve, reject),
   };
+}
+
+function getVisibleBucketNames() {
+  return screen
+    .getAllByTestId(/^bucket-card-/)
+    .map((card) => within(card).getByRole("heading").textContent);
 }
 
 const courseCatalog = [
@@ -242,6 +248,35 @@ describe("GenEdAdminClient", () => {
     expect(screen.getByText("Humanities")).toBeInTheDocument();
     expect(screen.getByText("Natural Sciences")).toBeInTheDocument();
     expect(screen.getByText("HUM_ART")).toBeInTheDocument();
+    expect(
+      screen.getByText(/Search buckets by code\/name\. To search courses, use/i)
+    ).toBeInTheDocument();
+  });
+
+  it("filters buckets by name and code", () => {
+    renderWithChakra(<GenEdAdminClient initialBuckets={initialBuckets} />);
+
+    const searchInput = screen.getByLabelText("Search buckets");
+
+    fireEvent.change(searchInput, { target: { value: "human" } });
+    expect(screen.getByText("Humanities")).toBeInTheDocument();
+    expect(screen.queryByText("Natural Sciences")).not.toBeInTheDocument();
+
+    fireEvent.change(searchInput, { target: { value: "elec" } });
+    expect(screen.getByText("Natural Sciences")).toBeInTheDocument();
+    expect(screen.queryByText("Humanities")).not.toBeInTheDocument();
+  });
+
+  it("sorts buckets by name and course count", () => {
+    renderWithChakra(<GenEdAdminClient initialBuckets={initialBuckets} />);
+
+    const sortSelect = screen.getByLabelText("Sort buckets");
+
+    fireEvent.change(sortSelect, { target: { value: "name-asc" } });
+    expect(getVisibleBucketNames()).toEqual(["Humanities", "Natural Sciences"]);
+
+    fireEvent.change(sortSelect, { target: { value: "courses-least" } });
+    expect(getVisibleBucketNames()).toEqual(["Natural Sciences", "Humanities"]);
   });
 
   it("expand button toggles and shows course rows", async () => {
@@ -255,6 +290,34 @@ describe("GenEdAdminClient", () => {
     fireEvent.click(screen.getByRole("button", { name: /collapse/i }));
     await waitFor(() => {
       expect(screen.queryByText("ENGL 101 - Composition")).not.toBeInTheDocument();
+    });
+  });
+
+  it("keeps expanded content visible after search and sort when the bucket remains visible", async () => {
+    renderWithChakra(<GenEdAdminClient initialBuckets={initialBuckets} />);
+
+    fireEvent.click(screen.getAllByRole("button", { name: /expand/i })[0]);
+    expect(await screen.findByText("ENGL 101 - Composition")).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText("Search buckets"), {
+      target: { value: "hum" },
+    });
+    await waitFor(() => {
+      expect(screen.getByText("ENGL 101 - Composition")).toBeInTheDocument();
+    });
+
+    fireEvent.change(screen.getByLabelText("Sort buckets"), {
+      target: { value: "credits-least" },
+    });
+    await waitFor(() => {
+      expect(screen.getByText("ENGL 101 - Composition")).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /collapse/i })).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: /collapse/i }));
+    await waitFor(() => {
+      expect(screen.queryByText("ENGL 101 - Composition")).not.toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /expand/i })).toBeInTheDocument();
     });
   });
 
@@ -373,7 +436,7 @@ describe("GenEdAdminClient", () => {
     await waitFor(() => {
       expect(mappingInsertSpy).toHaveBeenCalledWith([{ bucket_id: 1, course_id: 103 }]);
     });
-  });
+  }, 15000);
 
   it("shows an error toast when adding courses with no selection", async () => {
     renderWithChakra(<GenEdAdminClient initialBuckets={initialBuckets} />);

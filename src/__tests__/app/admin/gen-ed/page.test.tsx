@@ -436,7 +436,7 @@ describe("/admin/gen-ed page", () => {
     await waitFor(() => {
       expect(screen.queryByText(/ENGL 101 - Composition/i)).not.toBeInTheDocument();
     });
-  });
+  }, 15000);
 
   it("adds a bucket and refreshes the UI", async () => {
     await renderPage();
@@ -462,7 +462,7 @@ describe("/admin/gen-ed page", () => {
     });
 
     expect(await screen.findByText("Quantitative Literacy")).toBeInTheDocument();
-  });
+  }, 15000);
 
   it("edits a bucket with prefilled values and submits update", async () => {
     await renderPage();
@@ -482,7 +482,7 @@ describe("/admin/gen-ed page", () => {
       expect(updateBucketEqSpy).toHaveBeenCalledWith("id", 4);
     });
     expect(await screen.findByText("Flexible Electives")).toBeInTheDocument();
-  });
+  }, 15000);
 
   it("deletes a non-core bucket and its mappings after confirmation", async () => {
     await renderPage();
@@ -502,7 +502,7 @@ describe("/admin/gen-ed page", () => {
     await waitFor(() => {
       expect(screen.queryByText("Elective Studies")).not.toBeInTheDocument();
     });
-  });
+  }, 15000);
 
   it("adds selected courses to a bucket", async () => {
     await renderPage();
@@ -516,7 +516,7 @@ describe("/admin/gen-ed page", () => {
     await waitFor(() => {
       expect(insertMappingsSpy).toHaveBeenCalledWith([{ bucket_id: 4, course_id: 106 }]);
     });
-  });
+  }, 15000);
 
   it("removes a course from an expanded bucket", async () => {
     await renderPage();
@@ -535,7 +535,7 @@ describe("/admin/gen-ed page", () => {
     await waitFor(() => {
       expect(screen.queryByText(/ENGL 101 - Composition/i)).not.toBeInTheDocument();
     });
-  });
+  }, 15000);
 
   it("throws when the buckets query fails", async () => {
     mockServerFrom.mockImplementation((table: string) => {

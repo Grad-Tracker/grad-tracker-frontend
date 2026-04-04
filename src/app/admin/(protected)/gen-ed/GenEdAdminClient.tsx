@@ -14,6 +14,7 @@ import {
   Portal,
   Separator,
   SimpleGrid,
+  Heading,
   Text,
   VStack,
 } from "@chakra-ui/react";
@@ -27,6 +28,7 @@ import {
   LuTrash2,
 } from "react-icons/lu";
 import { Field } from "@/components/ui/field";
+import { NativeSelectField, NativeSelectRoot } from "@/components/ui/native-select";
 import { Tooltip } from "@/components/ui/tooltip";
 import { toaster } from "@/components/ui/toaster";
 import { createClient } from "@/lib/supabase/client";
@@ -47,6 +49,14 @@ export type GenEdBucket = {
   credits_required: number;
   courses: Course[];
 };
+
+type BucketSortOption =
+  | "name-asc"
+  | "name-desc"
+  | "courses-most"
+  | "courses-least"
+  | "credits-most"
+  | "credits-least";
 
 type BucketForm = {
   code: string;
@@ -88,6 +98,8 @@ export default function GenEdAdminClient({
   const [courseResults, setCourseResults] = useState<Course[]>([]);
   const [selectedCourseIds, setSelectedCourseIds] = useState<number[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
+  const [bucketQuery, setBucketQuery] = useState("");
+  const [bucketSort, setBucketSort] = useState<BucketSortOption>("name-asc");
 
   async function loadBuckets() {
     const { data: bucketRows, error: bucketsError } = await supabase
@@ -330,15 +342,54 @@ export default function GenEdAdminClient({
     setCoursesDialogOpen(false);
   }
 
-  const bucketCountText = useMemo(
-    () => `${buckets.length} bucket${buckets.length === 1 ? "" : "s"}`,
-    [buckets.length]
-  );
+  const visibleBuckets = useMemo(() => {
+    const normalizedQuery = bucketQuery.trim().toLowerCase();
+    const filtered = buckets.filter((bucket) => {
+      if (!normalizedQuery) return true;
+
+      return [bucket.name, bucket.code ?? ""].join(" ").toLowerCase().includes(normalizedQuery);
+    });
+
+    return [...filtered].sort((a, b) => {
+      const nameA = a.name ?? "";
+      const nameB = b.name ?? "";
+      const courseCountA = a.courses.length;
+      const courseCountB = b.courses.length;
+      const creditsA = Number(a.credits_required ?? 0);
+      const creditsB = Number(b.credits_required ?? 0);
+
+      switch (bucketSort) {
+        case "name-desc":
+          return nameB.localeCompare(nameA);
+        case "courses-most":
+          return courseCountB - courseCountA || nameA.localeCompare(nameB);
+        case "courses-least":
+          return courseCountA - courseCountB || nameA.localeCompare(nameB);
+        case "credits-most":
+          return creditsB - creditsA || nameA.localeCompare(nameB);
+        case "credits-least":
+          return creditsA - creditsB || nameA.localeCompare(nameB);
+        case "name-asc":
+        default:
+          return nameA.localeCompare(nameB);
+      }
+    });
+  }, [bucketQuery, bucketSort, buckets]);
+
+  const bucketCountText = useMemo(() => {
+    if (visibleBuckets.length === buckets.length) {
+      return `${buckets.length} bucket${buckets.length === 1 ? "" : "s"}`;
+    }
+
+    return `Showing ${visibleBuckets.length} of ${buckets.length} bucket${
+      buckets.length === 1 ? "" : "s"
+    }`;
+  }, [buckets.length, visibleBuckets.length]);
 
   return (
     <VStack align="stretch" gap="6">
       <Flex justify="space-between" align={{ base: "start", md: "center" }} gap="4" wrap="wrap">
-        <Box>
+        <Box flex="1" minW={{ base: "full", xl: "auto" }}>
           <Text
             fontSize={{ base: "2xl", md: "3xl" }}
             fontWeight="700"
@@ -349,24 +400,84 @@ export default function GenEdAdminClient({
           </Text>
           <Text color="fg.muted">{bucketCountText}</Text>
         </Box>
-        <Button
-          colorPalette="green"
-          borderRadius="lg"
-          onClick={() => {
-            setEditingBucket(null);
-            setBucketForm(emptyBucketForm());
-            setBucketDialogOpen(true);
-          }}
+        <HStack
+          gap="3"
+          flex="1"
+          minW={{ base: "full", xl: "auto" }}
+          align={{ base: "stretch", xl: "center" }}
+          flexDir={{ base: "column", xl: "row" }}
         >
-          <LuPlus />
-          Add Bucket
-        </Button>
+          <Box flex="1" position="relative">
+            <Box
+              position="absolute"
+              left="3"
+              top="50%"
+              transform="translateY(-50%)"
+              color="fg.muted"
+              zIndex="1"
+            >
+              <LuSearch />
+            </Box>
+            <Input
+              aria-label="Search buckets"
+              placeholder="Search buckets"
+              value={bucketQuery}
+              onChange={(event) => setBucketQuery(event.target.value)}
+              pl="10"
+              rounded="lg"
+              bg="bg"
+              borderColor="border.subtle"
+            />
+          </Box>
+
+          <NativeSelectRoot width={{ base: "full", xl: "240px" }}>
+            <NativeSelectField
+              aria-label="Sort buckets"
+              value={bucketSort}
+              onChange={(event) => setBucketSort(event.target.value as BucketSortOption)}
+            >
+              <option value="name-asc">Name (A-Z)</option>
+              <option value="name-desc">Name (Z-A)</option>
+              <option value="courses-most">Course count (most)</option>
+              <option value="courses-least">Course count (least)</option>
+              <option value="credits-most">Credits required (most)</option>
+              <option value="credits-least">Credits required (least)</option>
+            </NativeSelectField>
+          </NativeSelectRoot>
+
+          <Button
+            colorPalette="green"
+            borderRadius="lg"
+            onClick={() => {
+              setEditingBucket(null);
+              setBucketForm(emptyBucketForm());
+              setBucketDialogOpen(true);
+            }}
+          >
+            <LuPlus />
+            Add Bucket
+          </Button>
+        </HStack>
       </Flex>
 
-      <SimpleGrid columns={{ base: 1, xl: 2 }} gap="4">
-        {buckets.map((bucket) => (
+      <Text color="fg.muted" fontSize="sm" mt="-2">
+        Search buckets by code/name. To search courses, use &ldquo;Add Courses&rdquo;.
+      </Text>
+
+      {visibleBuckets.length === 0 ? (
+        <Card.Root bg="bg" borderRadius="xl" borderWidth="1px" borderColor="border.subtle">
+          <Card.Body p="8">
+            <Text color="fg.muted" textAlign="center">
+              No buckets match your search.
+            </Text>
+          </Card.Body>
+        </Card.Root>
+      ) : (
+        <SimpleGrid columns={{ base: 1, xl: 2 }} gap="4">
+          {visibleBuckets.map((bucket) => (
           <Card.Root
             key={bucket.id}
+            data-testid={`bucket-card-${bucket.id}`}
             bg="bg"
             borderRadius="xl"
             borderWidth="1px"
@@ -390,9 +501,9 @@ export default function GenEdAdminClient({
                         {bucket.courses.length} course{bucket.courses.length === 1 ? "" : "s"}
                       </Badge>
                     </HStack>
-                    <Text fontWeight="700" fontSize="lg">
+                    <Heading size="sm">
                       {bucket.name}
-                    </Text>
+                    </Heading>
                   </Box>
                   <Button
                     size="sm"
@@ -504,8 +615,9 @@ export default function GenEdAdminClient({
               </VStack>
             </Card.Body>
           </Card.Root>
-        ))}
-      </SimpleGrid>
+          ))}
+        </SimpleGrid>
+      )}
 
       <Dialog.Root open={bucketDialogOpen} onOpenChange={(e) => setBucketDialogOpen(e.open)}>
         <Portal>

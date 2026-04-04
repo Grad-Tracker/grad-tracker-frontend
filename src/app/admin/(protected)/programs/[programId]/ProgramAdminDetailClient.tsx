@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Badge,
   Box,
@@ -58,6 +58,8 @@ type BlockFormState = {
   n_required: string;
   credits_required: string;
 };
+
+type BlockSortOption = "name-asc" | "name-desc" | "courses-desc" | "courses-asc";
 
 const PROGRAM_TYPE_OPTIONS = ["MAJOR", "MINOR", "CERTIFICATE", "GRADUATE"];
 const RULE_OPTIONS = ["ALL_OF", "ANY_OF", "N_OF", "CREDITS_OF"];
@@ -122,6 +124,12 @@ export default function ProgramAdminDetailClient({
   const [searchTerm, setSearchTerm] = useState("");
   const [courseResults, setCourseResults] = useState<Course[]>([]);
   const [selectedCourseIds, setSelectedCourseIds] = useState<number[]>([]);
+  const [blockQuery, setBlockQuery] = useState("");
+  const [blockSort, setBlockSort] = useState<BlockSortOption>("name-asc");
+  const [courseSearchEnabled, setCourseSearchEnabled] = useState<Record<number, boolean>>({});
+  const [userCollapsedDuringSearch, setUserCollapsedDuringSearch] = useState<Record<number, string>>(
+    {}
+  );
   const [programForm, setProgramForm] = useState({
     name: initialProgram.name,
     catalog_year: initialProgram.catalog_year?.toString() ?? "",
@@ -257,6 +265,84 @@ export default function ProgramAdminDetailClient({
       cancelled = true;
     };
   }, [activeBlockId, coursesDialogOpen, searchTerm, supabase]);
+
+  const normalizedBlockQuery = blockQuery.trim().toLowerCase();
+
+  const blockMatches = useMemo(() => {
+    return blocks.map((block) => {
+      const matchesBlockText =
+        normalizedBlockQuery.length === 0 ||
+        [block.name, block.rule, (block as Block & { description?: string | null }).description ?? ""]
+          .join(" ")
+          .toLowerCase()
+          .includes(normalizedBlockQuery);
+
+      const matchesLoadedCourse =
+        normalizedBlockQuery.length > 0 &&
+        courseSearchEnabled[block.id] === true &&
+        block.courses.some((course) => {
+          const courseCode = `${course.subject ?? ""} ${course.number ?? ""}`.trim().toLowerCase();
+          const courseTitle = (course.title ?? "").toLowerCase();
+          return (
+            courseCode.includes(normalizedBlockQuery) ||
+            courseTitle.includes(normalizedBlockQuery)
+          );
+        });
+
+      return {
+        block,
+        matchesBlockText,
+        matchesLoadedCourse,
+        matches: matchesBlockText || matchesLoadedCourse,
+      };
+    });
+  }, [blocks, courseSearchEnabled, normalizedBlockQuery]);
+
+  const visibleBlocks = useMemo(() => {
+    return blockMatches
+      .filter(({ matches }) => matches)
+      .map(({ block }) => block)
+      .sort((left, right) => {
+        const leftName = left.name.toLowerCase();
+        const rightName = right.name.toLowerCase();
+        const leftCourses = left.courses.length;
+        const rightCourses = right.courses.length;
+
+        switch (blockSort) {
+          case "name-desc":
+            return rightName.localeCompare(leftName);
+          case "courses-desc":
+            return rightCourses - leftCourses || leftName.localeCompare(rightName);
+          case "courses-asc":
+            return leftCourses - rightCourses || leftName.localeCompare(rightName);
+          case "name-asc":
+          default:
+            return leftName.localeCompare(rightName);
+        }
+      });
+  }, [blockMatches, blockSort]);
+
+  useEffect(() => {
+    if (!normalizedBlockQuery) return;
+
+    setExpanded((prev) => {
+      let changed = false;
+      const next = { ...prev };
+
+      for (const match of blockMatches) {
+        if (
+          match.matchesLoadedCourse &&
+          !prev[match.block.id] &&
+          userCollapsedDuringSearch[match.block.id] !== normalizedBlockQuery
+        ) {
+          next[match.block.id] = true;
+          changed = true;
+        }
+      }
+
+      return changed ? next : prev;
+    });
+  }, [blockMatches, normalizedBlockQuery, userCollapsedDuringSearch]);
 
   async function handleSaveProgram() {
     setLoading(true);
@@ -511,9 +597,66 @@ export default function ProgramAdminDetailClient({
             </Card.Body>
           </Card.Root>
 
+          <HStack
+            gap="3"
+            align={{ base: "stretch", md: "center" }}
+            flexDir={{ base: "column", md: "row" }}
+          >
+            <Box flex="1" position="relative">
+              <Box
+                position="absolute"
+                left="3"
+                top="50%"
+                transform="translateY(-50%)"
+                color="fg.muted"
+                zIndex="1"
+                pointerEvents="none"
+              >
+                <LuSearch />
+              </Box>
+              <Input
+                aria-label="Search blocks"
+                placeholder="Search blocks or courses"
+                value={blockQuery}
+                onChange={(e) => setBlockQuery(e.target.value)}
+                pl="10"
+                rounded="lg"
+                bg="bg"
+                borderColor="border.subtle"
+              />
+            </Box>
+
+            <NativeSelectRoot width={{ base: "full", md: "280px" }}>
+              <NativeSelectField
+                aria-label="Sort blocks"
+                value={blockSort}
+                onChange={(e) => setBlockSort(e.target.value as BlockSortOption)}
+              >
+                <option value="name-asc">Name (A-Z)</option>
+                <option value="name-desc">Name (Z-A)</option>
+                <option value="courses-desc">Courses (most)</option>
+                <option value="courses-asc">Courses (least)</option>
+              </NativeSelectField>
+            </NativeSelectRoot>
+          </HStack>
+
           <VStack align="stretch" gap="4">
-            {blocks.map((block) => (
-              <Card.Root key={block.id} bg="bg" borderRadius="xl" borderWidth="1px" borderColor="border.subtle">
+            {visibleBlocks.length === 0 ? (
+              <Card.Root bg="bg" borderRadius="xl" borderWidth="1px" borderColor="border.subtle">
+                <Card.Body p="6">
+                  <Text color="fg.muted">No blocks or courses match your search.</Text>
+                </Card.Body>
+              </Card.Root>
+            ) : (
+              visibleBlocks.map((block) => (
+              <Card.Root
+                key={block.id}
+                data-testid={`requirement-block-${block.id}`}
+                bg="bg"
+                borderRadius="xl"
+                borderWidth="1px"
+                borderColor="border.subtle"
+              >
                 <Card.Body p="5">
                   <VStack align="stretch" gap="4">
                     <Flex justify="space-between" align="start" gap="4" wrap="wrap">
@@ -538,9 +681,24 @@ export default function ProgramAdminDetailClient({
                         <Button
                           size="sm"
                           variant="ghost"
-                          onClick={() =>
-                            setExpanded((prev) => ({ ...prev, [block.id]: !prev[block.id] }))
-                          }
+                          onClick={() => {
+                            const isExpanded = expanded[block.id];
+                            setExpanded((prev) => ({ ...prev, [block.id]: !prev[block.id] }));
+                            setCourseSearchEnabled((prev) => ({ ...prev, [block.id]: true }));
+                            setUserCollapsedDuringSearch((prev) => {
+                              if (!normalizedBlockQuery) {
+                                return prev;
+                              }
+
+                              const next = { ...prev };
+                              if (isExpanded) {
+                                next[block.id] = normalizedBlockQuery;
+                              } else {
+                                delete next[block.id];
+                              }
+                              return next;
+                            });
+                          }}
                         >
                           {expanded[block.id] ? "Collapse" : "Expand"}
                         </Button>
@@ -631,7 +789,7 @@ export default function ProgramAdminDetailClient({
                   </VStack>
                 </Card.Body>
               </Card.Root>
-            ))}
+            )))}
           </VStack>
         </VStack>
       </Box>
