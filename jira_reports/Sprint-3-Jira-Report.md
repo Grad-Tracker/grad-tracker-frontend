@@ -2,9 +2,16 @@
 
 ## Project Information
 - **Jira Project:** Grad Tracker (GT)  
-- **Project Link:** https://lab-signoff-app.atlassian.net/jira/software/projects/GT  
+- **Project Link:** NA 
 - **Sprint:** Sprint 3 (Sprint 136)  
 - **Data captured on:** 2026-03-18  
+
+---
+
+## Sprint Work Completed (Done)
+- Create advisor-specific signup page and auth flow  
+- Build program detail page with requirement block editing  
+- Build gen-ed bucket management page for advisors  
 
 ---
 
@@ -13,9 +20,9 @@
 | Metric | Count |
 |---|---:|
 | Issues committed at sprint start | N/A |
-| Issues completed | N/A |
-| Issues not completed | N/A |
-| Issues added mid-sprint | N/A |
+| Issues completed | 3 |
+| Issues not completed | 0 |
+| Issues added mid-sprint | 0 |
 
 ---
 
@@ -23,9 +30,9 @@
 
 | Type | To Do | In Progress | Done |
 |---|---:|---:|---:|
-| Story | N/A | N/A | N/A |
-| Task | N/A | N/A | N/A |
-| Bug | N/A | N/A | N/A |
+| Story | 0 | 0 | 0 |
+| Task | 0 | 0 | 3 |
+| Bug | 0 | 0 | 0 |
 
 ---
 
@@ -33,7 +40,7 @@
 
 | Student | Issues Assigned | Issues Completed |
 |---|---:|---:|
-| Arjun Nyein | N/A | N/A |
+| Arjun Nyein | 3 | 3 |
 
 ---
 
@@ -56,7 +63,7 @@
 
 ## Blockers & Scope Changes
 - **Major blockers:** PR review/approval timing and CI feedback loops (tests/coverage gates).  
-- **Scope changes:** Minor adjustments added mid-sprint to align routing/guards and tests with acceptance criteria and coverage thresholds.  
+- **Scope changes:** Minor adjustments during implementation to align routing/guards and tests with acceptance criteria.  
 - **Why work spilled over (if any):** N/A  
 
 ---
@@ -74,4 +81,4 @@
 ---
 
 ## Required Statement
-“This static analysis was generated using automated tools during this sprint.”
+“This report was generated using Jira sprint artifacts during this sprint.”
