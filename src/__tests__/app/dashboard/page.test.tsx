@@ -73,6 +73,14 @@ vi.mock("@/components/ui/progress-circle", () => ({
   ProgressCircleRoot: (p: any) => <div>{p.children}</div>,
   ProgressCircleValueText: () => null,
 }));
+vi.mock("@/components/dashboard/DashboardSkeleton", () => ({
+  default: () => <div data-testid="dashboard-skeleton">Loading skeleton</div>,
+}));
+vi.mock("@/components/ui/skeleton", () => ({
+  Skeleton: (p: any) => <div data-testid="skeleton" {...p} />,
+  SkeletonCircle: (p: any) => <div data-testid="skeleton-circle" {...p} />,
+  SkeletonText: (p: any) => <div data-testid="skeleton-text" {...p} />,
+}));
 
 import Dashboard from "@/app/dashboard/page";
 
@@ -214,7 +222,7 @@ describe("Dashboard", () => {
   it("shows loading state initially", () => {
     mockGetUser.mockReturnValue(new Promise(() => {}));
     renderWithChakra(<Dashboard />);
-    expect(screen.getAllByText("Loading...").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByTestId("dashboard-skeleton")).toBeInTheDocument();
   });
 
   it("redirects to /signin when no user", async () => {
