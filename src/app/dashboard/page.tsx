@@ -442,7 +442,7 @@ export default function Dashboard() {
           hasCompletedOnboarding: !!resolvedStudentRow.has_completed_onboarding,
         });
 
-        setStudentIdForReset(resolvedStudentRow.id);
+        setStudentIdForReset(resolvedStudentRow.student_id);
         setCurrentMajorProgramId(majorProgramId);
         setSelectedMajorId(majorProgramId);
         try {
