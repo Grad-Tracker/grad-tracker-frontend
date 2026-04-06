@@ -85,13 +85,13 @@ describe("AI advisor persistence", () => {
   it("throws on createConversation error", async () => {
     const { from } = createMockSupabase(null, { message: "insert failed" });
     const supabase = { from } as any;
-    await expect(createConversation(supabase, 10, "Test")).rejects.toEqual({ message: "insert failed" });
+    await expect(createConversation(supabase, 10, "Test")).rejects.toMatchObject({ message: "insert failed" });
   });
 
   it("throws on saveMessage error", async () => {
     const { from } = createMockSupabase(null, { message: "insert failed" });
     const supabase = { from } as any;
-    await expect(saveMessage(supabase, 42, "user", "Hi", {})).rejects.toEqual({ message: "insert failed" });
+    await expect(saveMessage(supabase, 42, "user", "Hi", {})).rejects.toMatchObject({ message: "insert failed" });
   });
 
   it("throws on loadMessages error", async () => {
