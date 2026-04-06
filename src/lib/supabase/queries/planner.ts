@@ -254,14 +254,13 @@ export async function fetchAvailableCourses(
 ): Promise<RequirementBlockWithCourses[]> {
   const supabase = createClient();
 
-  let metaQuery = supabase
+  let metaBuilder = supabase
     .from(DB_VIEWS.planMeta)
     .select("program_ids")
     .eq("student_id", studentId)
-    .eq("plan_id", planId)
-    .single();
-  if (signal) metaQuery = metaQuery.abortSignal(signal);
-  const { data: planMeta, error: ppError } = await metaQuery;
+    .eq("plan_id", planId);
+  if (signal) metaBuilder = metaBuilder.abortSignal(signal);
+  const { data: planMeta, error: ppError } = await metaBuilder.single();
 
   if (ppError) throw ppError;
   const programIds = (planMeta?.program_ids ?? []).map(Number);
