@@ -106,31 +106,25 @@ describe("onboarding queries", () => {
     });
 
     it("assembles blocks with their courses", async () => {
-      const blocks = [
-        { id: 10, program_id: 1, name: "Core", rule: "ALL_OF", n_required: null, credits_required: null },
-      ];
-      const mappings = [
-        { block_id: 10, course_id: 100 },
-        { block_id: 10, course_id: 101 },
-      ];
-      const courses = [
-        { id: 100, subject: "CS", number: "101", title: "Intro CS", credits: 3 },
-        { id: 101, subject: "CS", number: "201", title: "Data Structures", credits: 3 },
+      const viewRows = [
+        {
+          block_id: 10,
+          program_id: 1,
+          block_name: "Core",
+          rule: "ALL_OF",
+          n_required: null,
+          credits_required: null,
+          courses: [
+            { course_id: 100, subject: "CS", number: "101", title: "Intro CS", credits: 3 },
+            { course_id: 101, subject: "CS", number: "201", title: "Data Structures", credits: 3 },
+          ],
+        },
       ];
 
       const mockFrom = vi.fn().mockImplementation((table: string) => {
         const chain = createChainMock();
-
-        if (table === "program_requirement_blocks") {
-          chain.order = vi.fn().mockResolvedValue({ data: blocks, error: null });
-        } else if (table === "program_requirement_courses") {
-          // .in() is the terminal call here
-          chain.in = vi.fn().mockResolvedValue({ data: mappings, error: null });
-        } else if (table === "courses") {
-          // second .order() is terminal
-          chain.order = vi.fn().mockReturnValue({
-            order: vi.fn().mockResolvedValue({ data: courses, error: null }),
-          });
+        if (table === "v_program_block_courses") {
+          chain.order = vi.fn().mockResolvedValue({ data: viewRows, error: null });
         }
 
         return chain;
@@ -316,19 +310,32 @@ describe("onboarding queries", () => {
 
   describe("saveOnboardingSelections", () => {
     it("inserts programs, courses, and updates onboarding flag", async () => {
+      const deleteCalls: Array<{ table: string; column: string; value: unknown }> = [];
+      const upsertCalls: Array<{ table: string; data: unknown; options?: unknown }> = [];
+      let studentUpdatePayload: Record<string, unknown> = {};
+
       const mockFrom = vi.fn().mockImplementation((table: string) => {
         const chain = createChainMock();
 
         // delete is always called first on both tables before upsert
         chain.delete = vi.fn().mockReturnValue({
-          eq: vi.fn().mockResolvedValue({ error: null }),
+          eq: vi.fn().mockImplementation((column: string, value: unknown) => {
+            deleteCalls.push({ table, column, value });
+            return Promise.resolve({ error: null });
+          }),
         });
 
         if (table === "student_programs" || table === "student_course_history") {
-          chain.upsert = vi.fn().mockReturnValue({ error: null });
+          chain.upsert = vi.fn().mockImplementation((data: unknown, options?: unknown) => {
+            upsertCalls.push({ table, data, options });
+            return { error: null };
+          });
         } else if (table === "students") {
-          chain.update = vi.fn().mockReturnValue({
-            eq: vi.fn().mockResolvedValue({ error: null }),
+          chain.update = vi.fn().mockImplementation((payload: Record<string, unknown>) => {
+            studentUpdatePayload = payload;
+            return {
+              eq: vi.fn().mockResolvedValue({ error: null }),
+            };
           });
         }
 
@@ -395,7 +402,10 @@ describe("onboarding queries", () => {
         });
 
         if (table === "student_programs" || table === "student_course_history") {
-          chain.upsert = vi.fn().mockReturnValue({ error: null });
+          chain.upsert = vi.fn().mockImplementation((data: unknown, options?: unknown) => {
+            upsertCalls.push({ table, data, options });
+            return { error: null };
+          });
         } else if (table === "students") {
           chain.update = vi.fn().mockImplementation((payload) => {
             updatePayload = payload;

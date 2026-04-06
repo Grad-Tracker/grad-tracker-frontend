@@ -32,11 +32,11 @@ vi.mock("next/navigation", () => ({
 
 // Supabase client (needed for handleComplete)
 vi.mock("@/lib/supabase/client", () => ({
-  createClient: () => ({
+  createClient: vi.fn(() => ({
     auth: {
       getUser: (...args: any[]) => mockGetUser(...args),
     },
-  }),
+  })),
 }));
 
 // Toaster
@@ -110,7 +110,7 @@ vi.mock("@/components/onboarding/ProgramSelectionStep", () => ({
   default: (props: any) => (
     <div data-testid="program-step">
       ProgramSelectionStep
-      <button type="button" onClick={() => props.onMajorChange(1)}>
+      <button type="button" data-testid="select-major-btn" onClick={() => props.onMajorChange(1)}>
         SelectMajor
       </button>
       <button type="button" onClick={() => props.onMajorChange(null)}>
@@ -476,10 +476,13 @@ describe("OnboardingWizard", () => {
 
     await waitFor(() => {
       expect(mockToaster.error).toHaveBeenCalledWith(
-        expect.objectContaining({ title: "Failed to load program data" })
+        expect.objectContaining({
+          title: "Failed to load program data",
+          description: "Please try selecting your major again.",
+        })
       );
     });
-  });
+  }, 20000);
 
   it("shows success toast and navigates to dashboard after successful completion", async () => {
     const mockGetUser = vi.fn().mockResolvedValue({

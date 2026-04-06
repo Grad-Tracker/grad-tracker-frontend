@@ -93,14 +93,14 @@ export default function ProgramSelectionStep({
       {/* Major Selection */}
       <Box>
         <VStack gap="2" align="start" mb="5">
-          <Badge colorPalette="green" variant="surface" rounded="full" px="3" py="1">
+          <Badge colorPalette="blue" variant="surface" rounded="full" px="3" py="1">
             <Icon mr="1.5" boxSize="3.5">
               <LuGraduationCap />
             </Icon>
             Required
           </Badge>
           <Heading
-            fontFamily="var(--font-outfit), sans-serif"
+            fontFamily="var(--font-dm-sans), sans-serif"
             size="xl"
             fontWeight="400"
             letterSpacing="-0.01em"
@@ -133,7 +133,7 @@ export default function ProgramSelectionStep({
             borderRadius="xl"
             size="lg"
             bg="bg.subtle"
-            _focus={{ bg: "bg", borderColor: "green.solid" }}
+            _focus={{ bg: "bg", borderColor: "blue.solid" }}
           />
         </Box>
 
@@ -147,7 +147,7 @@ export default function ProgramSelectionStep({
           onValueChange={(details) =>
             onMajorChange(details.value ? Number(details.value) : null)
           }
-          colorPalette="green"
+          colorPalette="blue"
         >
           <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} gap="3">
             {filteredMajors.map((major) => (
@@ -156,8 +156,8 @@ export default function ProgramSelectionStep({
                 value={major.id.toString()}
                 borderRadius="xl"
                 _checked={{
-                  borderColor: "green.solid",
-                  bg: "green.subtle",
+                  borderColor: "blue.solid",
+                  bg: "blue.subtle",
                 }}
               >
                 <RadioCard.ItemHiddenInput />
@@ -198,7 +198,7 @@ export default function ProgramSelectionStep({
                 Optional
               </Badge>
               <Heading
-                fontFamily="var(--font-outfit), sans-serif"
+                fontFamily="var(--font-dm-sans), sans-serif"
                 size="xl"
                 fontWeight="400"
                 letterSpacing="-0.01em"
@@ -225,7 +225,7 @@ export default function ProgramSelectionStep({
                         {cert.catalog_year}
                       </Text>
                     }
-                    colorPalette="green"
+                    colorPalette="blue"
                     borderRadius="xl"
                   />
                 ))}
@@ -258,7 +258,7 @@ export default function ProgramSelectionStep({
             Optional
           </Badge>
           <Heading
-            fontFamily="var(--font-outfit), sans-serif"
+            fontFamily="var(--font-dm-sans), sans-serif"
             size="xl"
             fontWeight="400"
             letterSpacing="-0.01em"
@@ -322,7 +322,7 @@ export default function ProgramSelectionStep({
 
           <Button
             variant={isAsapSelected ? "solid" : "outline"}
-            colorPalette="green"
+            colorPalette="blue"
             size="lg"
             borderRadius="xl"
             onClick={handleAsap}
@@ -334,7 +334,7 @@ export default function ProgramSelectionStep({
         </HStack>
 
         {expectedGradSemester && expectedGradYear && (
-          <Text fontSize="sm" color="green.fg" mt="3" fontWeight="500">
+          <Text fontSize="sm" color="blue.fg" mt="3" fontWeight="500">
             Target: {expectedGradSemester} {expectedGradYear}
           </Text>
         )}

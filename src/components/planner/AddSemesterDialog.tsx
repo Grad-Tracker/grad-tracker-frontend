@@ -69,7 +69,7 @@ export default function AddSemesterDialog({
           <Dialog.Content borderRadius="xl">
             <Dialog.Header>
               <Dialog.Title
-                fontFamily="var(--font-outfit), sans-serif"
+                fontFamily="var(--font-dm-sans), sans-serif"
                 fontWeight="400"
                 letterSpacing="-0.02em"
               >
@@ -88,7 +88,7 @@ export default function AddSemesterDialog({
                         key={s}
                         flex="1"
                         variant={season === s ? "solid" : "outline"}
-                        colorPalette={season === s ? "green" : "gray"}
+                        colorPalette={season === s ? "blue" : "gray"}
                         size="sm"
                         borderRadius="lg"
                         onClick={() => setSeason(s)}
@@ -126,7 +126,7 @@ export default function AddSemesterDialog({
                 </Button>
               </Dialog.ActionTrigger>
               <Button
-                colorPalette="green"
+                colorPalette="blue"
                 borderRadius="lg"
                 onClick={handleAdd}
                 disabled={isDuplicate}
