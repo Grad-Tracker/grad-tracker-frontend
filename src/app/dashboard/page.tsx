@@ -442,6 +442,16 @@ export default function Dashboard() {
           hasCompletedOnboarding: !!resolvedStudentRow.has_completed_onboarding,
         });
 
+        setStudentIdForReset(resolvedStudentRow.student_id);
+        setCurrentMajorProgramId(majorProgramId);
+        setSelectedMajorId(majorProgramId);
+        try {
+          const allMajors = await fetchPrograms("MAJOR");
+          setMajors(allMajors);
+        } catch {
+          // Non-critical – skip if it fails
+        }
+
         setLoadingStudent(false);
 
         // Load majors for Change Major card (only if onboarded)
