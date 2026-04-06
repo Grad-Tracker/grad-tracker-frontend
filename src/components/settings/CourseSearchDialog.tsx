@@ -95,13 +95,16 @@ export function CourseSearchDialog({ open, onClose, onCourseSelected }: CourseSe
               {!searching && results.length > 0 && (
                 <Stack gap="1" maxH="300px" overflowY="auto">
                   {results.map((course) => (
-                    <Box
+                    <Button
                       key={course.id}
-                      as="button"
                       type="button"
+                      variant="plain"
                       w="full"
                       p="2"
                       textAlign="left"
+                      justifyContent="flex-start"
+                      h="auto"
+                      whiteSpace="normal"
                       borderRadius="md"
                       borderWidth="1px"
                       borderColor="transparent"
@@ -116,7 +119,7 @@ export function CourseSearchDialog({ open, onClose, onCourseSelected }: CourseSe
                       <Text fontSize="sm" color="fg.muted">
                         — {course.title} ({course.credits} cr)
                       </Text>
-                    </Box>
+                    </Button>
                   ))}
                 </Stack>
               )}

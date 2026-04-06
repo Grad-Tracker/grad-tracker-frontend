@@ -857,10 +857,8 @@ export default function CoursesClient({
                         Add Class to Current Semester
                       </Button>
                       <Drawer.ActionTrigger asChild>
-                        <Box
-                          as="button"
-                          px="4"
-                          py="2"
+                        <Button
+                          variant="plain"
                           borderRadius="lg"
                           fontWeight="500"
                           fontSize="sm"
@@ -869,7 +867,7 @@ export default function CoursesClient({
                           transition="all 0.15s"
                         >
                           Close
-                        </Box>
+                        </Button>
                       </Drawer.ActionTrigger>
                     </HStack>
                   </Drawer.Footer>
@@ -938,10 +936,13 @@ export default function CoursesClient({
                           const isSelected = selectedPlanId === plan.id;
                           const termCount = planTerms[plan.id]?.length ?? 0;
                           return (
-                            <Box
+                            <Button
                               key={plan.id}
-                              as="button"
                               type="button"
+                              variant="plain"
+                              h="auto"
+                              justifyContent="flex-start"
+                              whiteSpace="normal"
                               textAlign="left"
                               borderWidth="1px"
                               borderColor={isSelected ? "blue.500" : "border.subtle"}
@@ -966,7 +967,7 @@ export default function CoursesClient({
                                   ? "Select this plan to choose a semester."
                                   : "This plan does not have any semesters yet."}
                               </Text>
-                            </Box>
+                            </Button>
                           );
                         })}
                       </SimpleGrid>

@@ -563,7 +563,7 @@ export default function Dashboard() {
           {
             id: Date.now(),
             student_id: studentIdForReset,
-            activity_type: "major_changed",
+            activity_type: "major_changed" as const,
             message: `Changed major from ${previousMajor} to ${newMajor.name}`,
             metadata: {
               previous_program_id: currentMajorProgramId,
