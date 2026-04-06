@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { Input, Stack, Text, HStack, Button } from "@chakra-ui/react";
+import { Box, Input, Stack, Text, Button } from "@chakra-ui/react";
 import {
   DialogRoot,
   DialogContent,
@@ -95,12 +95,19 @@ export function CourseSearchDialog({ open, onClose, onCourseSelected }: CourseSe
               {!searching && results.length > 0 && (
                 <Stack gap="1" maxH="300px" overflowY="auto">
                   {results.map((course) => (
-                    <HStack
+                    <Box
                       key={course.id}
+                      as="button"
+                      type="button"
+                      w="full"
                       p="2"
+                      textAlign="left"
                       borderRadius="md"
-                      cursor="pointer"
+                      borderWidth="1px"
+                      borderColor="transparent"
                       _hover={{ bg: "bg.subtle" }}
+                      _focusVisible={{ outline: "2px solid", outlineColor: "blue.fg", outlineOffset: "2px" }}
+                      aria-label={`Select course ${course.subject} ${course.number} ${course.title}`}
                       onClick={() => handleSelect(course)}
                     >
                       <Text fontSize="sm" fontWeight="500">
@@ -109,7 +116,7 @@ export function CourseSearchDialog({ open, onClose, onCourseSelected }: CourseSe
                       <Text fontSize="sm" color="fg.muted">
                         — {course.title} ({course.credits} cr)
                       </Text>
-                    </HStack>
+                    </Box>
                   ))}
                 </Stack>
               )}

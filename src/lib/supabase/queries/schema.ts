@@ -11,6 +11,7 @@ export const DB_TABLES = {
   programRequirementCourses: "program_requirement_courses",
   programs: "programs",
   studentCourseHistory: "student_course_history",
+  studentActivityLog: "student_activity_log",
   studentPlannedCourses: "student_planned_courses",
   studentPrograms: "student_programs",
   studentTermPlan: "student_term_plan",

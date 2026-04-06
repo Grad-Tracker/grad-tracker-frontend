@@ -91,12 +91,12 @@ export default function PlansHub({
               w="10"
               h="10"
               borderRadius="xl"
-              bg="green.subtle"
+              bg="blue.subtle"
               display="flex"
               alignItems="center"
               justifyContent="center"
             >
-              <Icon color="green.fg" boxSize="5">
+              <Icon color="blue.fg" boxSize="5">
                 <LuLayoutGrid />
               </Icon>
             </Box>
@@ -116,13 +116,14 @@ export default function PlansHub({
         </Box>
 
         <Button
-          colorPalette="green"
+          aria-label="Create a new plan"
+          colorPalette="blue"
           borderRadius="xl"
           size="lg"
           onClick={onCreatePlan}
-          boxShadow="0 2px 12px rgba(34, 139, 34, 0.2)"
+          boxShadow="0 2px 12px rgba(37, 99, 235, 0.2)"
           _hover={{
-            boxShadow: "0 4px 20px rgba(34, 139, 34, 0.3)",
+            boxShadow: "0 4px 20px rgba(37, 99, 235, 0.3)",
             transform: "translateY(-1px)",
           }}
           transition="all 0.2s"
@@ -183,13 +184,13 @@ export default function PlansHub({
             w="20"
             h="20"
             borderRadius="3xl"
-            bg="green.subtle"
+            bg="blue.subtle"
             display="flex"
             alignItems="center"
             justifyContent="center"
             mb="6"
           >
-            <LuSparkles size={40} color="var(--chakra-colors-green-fg)" />
+            <LuSparkles size={40} color="var(--chakra-colors-blue-fg)" />
           </Box>
           <Heading
             size="lg"
@@ -204,7 +205,8 @@ export default function PlansHub({
             Create your first graduation plan to start mapping out your semesters and courses.
           </Text>
           <Button
-            colorPalette="green"
+            aria-label="Create your first plan"
+            colorPalette="blue"
             borderRadius="xl"
             size="lg"
             onClick={onCreatePlan}
@@ -236,6 +238,9 @@ export default function PlansHub({
 
           {/* New Plan card */}
           <Box
+            role="button"
+            tabIndex={0}
+            aria-label="Create a new plan"
             borderRadius="2xl"
             borderWidth="2px"
             borderStyle="dashed"
@@ -248,11 +253,17 @@ export default function PlansHub({
             cursor="pointer"
             transition="all 0.3s cubic-bezier(0.4, 0, 0.2, 1)"
             _hover={{
-              borderColor: "green.300",
-              bg: "green.subtle",
+              borderColor: "blue.300",
+              bg: "blue.subtle",
               transform: "translateY(-2px)",
             }}
             onClick={onCreatePlan}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                onCreatePlan();
+              }
+            }}
             className="plan-card-enter"
             style={{ animationDelay: `${plans.length * 80}ms` }}
           >
@@ -266,7 +277,7 @@ export default function PlansHub({
               justifyContent="center"
               mb="3"
               transition="all 0.2s"
-              _groupHover={{ bg: "green.subtle" }}
+              _groupHover={{ bg: "blue.subtle" }}
             >
               <LuPlus size={24} color="var(--chakra-colors-fg-muted)" />
             </Box>
@@ -296,12 +307,12 @@ export default function PlansHub({
               w="10"
               h="10"
               borderRadius="xl"
-              bg="green.subtle"
+              bg="blue.subtle"
               display="flex"
               alignItems="center"
               justifyContent="center"
             >
-              <Icon color="green.fg" boxSize="5">
+              <Icon color="blue.fg" boxSize="5">
                 <LuShare2 />
               </Icon>
             </Box>
@@ -320,7 +331,7 @@ export default function PlansHub({
           </Text>
         </Box>
 
-        <Button asChild colorPalette="green" borderRadius="xl" size="lg">
+        <Button asChild colorPalette="blue" borderRadius="xl" size="lg" aria-label="Browse shared plans">
           <Link href="/shared/plans">
             <LuShare2 size={18} />
             View Shared Plans
@@ -340,19 +351,19 @@ export default function PlansHub({
               overflow="hidden"
               transition="all 0.3s cubic-bezier(0.4, 0, 0.2, 1)"
               _hover={{
-                borderColor: "green.300",
+                borderColor: "blue.300",
                 boxShadow: "0 8px 30px rgba(0, 0, 0, 0.08)",
                 transform: "translateY(-4px)",
               }}
               className="plan-card-enter"
               style={{ animationDelay: `${index * 80}ms` }}
             >
-              <Box h="3px" bg="green.500" />
+              <Box h="3px" bg="blue.500" />
               <Card.Body p="5">
                 <VStack align="start" gap="4">
                   <Stack gap="1.5">
                     <HStack gap="2" flexWrap="wrap">
-                      <Badge colorPalette="green" variant="subtle">
+                      <Badge colorPalette="blue" variant="subtle">
                         {plan.studentFirstName}'s plan
                       </Badge>
                       <Badge colorPalette="gray" variant="surface">
@@ -408,7 +419,14 @@ export default function PlansHub({
                 <Text fontSize="xs" color="fg.muted">
                   Recommended shared plan
                 </Text>
-                <Button asChild size="sm" variant="ghost" colorPalette="green" borderRadius="lg">
+                <Button
+                  asChild
+                  size="sm"
+                  variant="ghost"
+                  colorPalette="blue"
+                  borderRadius="lg"
+                  aria-label={`Open shared plan ${plan.planName}`}
+                >
                   <Link href={`/shared/plan/${plan.shareToken}`}>
                     Open
                     <LuArrowRight size={14} />

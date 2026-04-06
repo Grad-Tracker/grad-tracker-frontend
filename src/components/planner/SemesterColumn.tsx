@@ -18,7 +18,7 @@ interface SemesterColumnProps {
   term: Term;
   courses: PlannedCourseWithDetails[];
   onRemoveTerm: (termId: number) => void;
-  onCourseClick: (course: Course) => void;
+  onCourseClick: (course: Course, termId: number) => void;
   isCollapsed?: boolean;
   onToggleCollapse?: () => void;
   isGraduatePlan?: boolean;

@@ -88,19 +88,19 @@ function renderCourseList(
       <Box
         key={`${item.term_id}-${item.course_id}`}
         borderWidth="1px"
-        borderColor={isSharedCourse ? "green.200" : "border.subtle"}
+        borderColor={isSharedCourse ? "blue.200" : "border.subtle"}
         borderRadius="xl"
         p="4"
-        bg={isSharedCourse ? "green.subtle" : "bg.subtle"}
+        bg={isSharedCourse ? "blue.subtle" : "bg.subtle"}
       >
         <HStack justify="space-between" align="start" gap="3">
           <Stack gap="1" minW="0">
             <HStack gap="2" flexWrap="wrap">
-              <Text fontSize="sm" fontWeight="700" color="green.fg">
+              <Text fontSize="sm" fontWeight="700" color="blue.fg">
                 {item.course.subject} {item.course.number}
               </Text>
               {isSharedCourse ? (
-                <Badge colorPalette="green" variant="solid">
+                <Badge colorPalette="blue" variant="solid">
                   In both plans
                 </Badge>
               ) : null}
@@ -116,7 +116,7 @@ function renderCourseList(
         {item.requirementLabel ? (
           <Badge
             mt="3"
-            colorPalette={isSharedCourse ? "green" : "gray"}
+            colorPalette={isSharedCourse ? "blue" : "gray"}
             variant={isSharedCourse ? "subtle" : "surface"}
             alignSelf="start"
           >
@@ -177,7 +177,7 @@ function SinglePlanGrid({ plan }: { plan: SharedPlanDetail }) {
                     {courses.length} course{courses.length === 1 ? "" : "s"}
                   </Text>
                 </Stack>
-                <Badge colorPalette="green" variant="subtle">
+                <Badge colorPalette="blue" variant="subtle">
                   {totalCredits} cr
                 </Badge>
               </HStack>
@@ -194,7 +194,7 @@ function SinglePlanGrid({ plan }: { plan: SharedPlanDetail }) {
                 <Text fontSize="xs" color="fg.muted">
                   Semester total
                 </Text>
-                <Text fontSize="sm" fontWeight="700" color="green.fg">
+                <Text fontSize="sm" fontWeight="700" color="blue.fg">
                   {totalCredits} credits
                 </Text>
               </HStack>
@@ -238,7 +238,7 @@ function ComparePlansView({
           >
             <Stack gap="2">
               <HStack gap="2">
-                <Badge colorPalette="green" variant="solid">
+                <Badge colorPalette="blue" variant="solid">
                   Comparison View
                 </Badge>
                 <Badge colorPalette="gray" variant="surface">
@@ -283,7 +283,7 @@ function ComparePlansView({
                   >
                     {term.season} {term.year}
                   </Heading>
-                  <Badge colorPalette="green" variant="subtle">
+                  <Badge colorPalette="blue" variant="subtle">
                     Side-by-side
                   </Badge>
                 </HStack>
@@ -346,7 +346,7 @@ function ComparePlansView({
         <Card.Root borderRadius="2xl" borderWidth="1px" borderColor="border.subtle">
           <Card.Body p="5">
             <HStack gap="3">
-              <Icon color="green.fg" boxSize="5">
+              <Icon color="blue.fg" boxSize="5">
                 <LuCopyCheck />
               </Icon>
               <Box>
@@ -438,7 +438,7 @@ export function SharedPlanUnavailable({
               </Heading>
               <Text color="fg.muted">{description}</Text>
             </Stack>
-            <Button asChild colorPalette="green" borderRadius="xl">
+            <Button asChild colorPalette="blue" borderRadius="xl" aria-label="Browse shared plans">
               <Link href="/shared/plans">Browse Shared Plans</Link>
             </Button>
           </VStack>
@@ -471,12 +471,12 @@ export function SharedPlansIndex({
                 w="11"
                 h="11"
                 borderRadius="2xl"
-                bg="green.subtle"
+                bg="blue.subtle"
                 display="flex"
                 alignItems="center"
                 justifyContent="center"
               >
-                <Icon color="green.fg" boxSize="5">
+                <Icon color="blue.fg" boxSize="5">
                   <LuShare2 />
                 </Icon>
               </Box>
@@ -499,7 +499,7 @@ export function SharedPlansIndex({
             {ownPlans.length > 0 ? (
               <SharedPlanComparePicker sharedPlans={plans} ownPlans={ownPlans} />
             ) : null}
-            <Button asChild variant="outline" borderRadius="xl">
+            <Button asChild variant="outline" borderRadius="xl" aria-label="Return to the planner">
               <Link href="/dashboard/planner">Back to Planner</Link>
             </Button>
           </HStack>
@@ -513,12 +513,12 @@ export function SharedPlansIndex({
                   w="16"
                   h="16"
                   borderRadius="3xl"
-                  bg="green.subtle"
+                  bg="blue.subtle"
                   display="flex"
                   alignItems="center"
                   justifyContent="center"
                 >
-                  <Icon color="green.fg" boxSize="7">
+                  <Icon color="blue.fg" boxSize="7">
                     <LuCompass />
                   </Icon>
                 </Box>
@@ -539,14 +539,14 @@ export function SharedPlansIndex({
                 key={plan.shareToken}
                 borderRadius="2xl"
                 borderWidth="1px"
-                borderColor="green.800"
+                borderColor="blue.800"
                 overflow="hidden"
               >
                 <Card.Body p="5">
                   <VStack align="start" gap="4">
                     <Stack gap="1.5">
                       <HStack gap="2" flexWrap="wrap">
-                        <Badge colorPalette="green" variant="subtle">
+                        <Badge colorPalette="blue" variant="subtle">
                           Shared plan
                         </Badge>
                         {plan.programNames.length > 0 ? (
@@ -593,7 +593,13 @@ export function SharedPlansIndex({
                       </Text>
                     ) : null}
 
-                    <Button asChild colorPalette="green" borderRadius="xl" w="full">
+                    <Button
+                      asChild
+                      colorPalette="blue"
+                      borderRadius="xl"
+                      w="full"
+                      aria-label={`Open shared plan ${plan.planName}`}
+                    >
                       <Link href={`/shared/plan/${plan.shareToken}`}>
                         Open Shared Plan
                         <LuArrowRight size={16} />
@@ -629,7 +635,7 @@ export function SharedPlanView({
             borderRadius="3xl"
             borderWidth="1px"
             borderColor="border.subtle"
-            bg="linear-gradient(135deg, var(--chakra-colors-bg) 0%, var(--chakra-colors-green-subtle) 100%)"
+            bg="linear-gradient(135deg, var(--chakra-colors-bg) 0%, var(--chakra-colors-blue-subtle) 100%)"
             overflow="hidden"
           >
             <Card.Body p={{ base: "6", md: "8" }}>
@@ -641,7 +647,7 @@ export function SharedPlanView({
               >
                 <Stack gap="3" maxW="3xl">
                   <HStack gap="2" flexWrap="wrap">
-                    <Badge colorPalette="green" variant="solid">
+                    <Badge colorPalette="blue" variant="solid">
                       Shared read-only plan
                     </Badge>
                     <Badge colorPalette="gray" variant="surface">
@@ -665,7 +671,7 @@ export function SharedPlanView({
                 </Stack>
 
                 <Stack gap="3" align={{ base: "stretch", lg: "end" }} w={{ base: "full", lg: "auto" }}>
-                  <Button asChild variant="outline" borderRadius="xl">
+                  <Button asChild variant="outline" borderRadius="xl" aria-label="Back to shared plans">
                     <Link href="/shared/plans">
                       <LuArrowLeft size={16} />
                       Back to Shared Plans
@@ -684,14 +690,14 @@ export function SharedPlanView({
                     )
                   ) : null}
                   {showPlannerCta ? (
-                    <Button asChild colorPalette="green" borderRadius="xl">
+                    <Button asChild colorPalette="blue" borderRadius="xl" aria-label="Open planner">
                       <Link href="/dashboard/planner">
                         Open in Planner
                         <LuArrowRight size={16} />
                       </Link>
                     </Button>
                   ) : (
-                    <Button asChild variant="outline" borderRadius="xl">
+                    <Button asChild variant="outline" borderRadius="xl" aria-label="View more shared plans">
                       <Link href="/shared/plans">View More Shared Plans</Link>
                     </Button>
                   )}
@@ -708,7 +714,7 @@ export function SharedPlanView({
             <Card.Root borderRadius="2xl" borderWidth="1px" borderColor="border.subtle">
               <Card.Body p="5">
                 <HStack gap="3" align="start">
-                  <Icon color="green.fg" boxSize="5">
+                  <Icon color="blue.fg" boxSize="5">
                     <LuBookOpen />
                   </Icon>
                   <Box>

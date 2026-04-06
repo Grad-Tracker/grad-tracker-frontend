@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/client";
 import type { Program, RequirementBlock, CourseRow } from "@/types/onboarding";
 import { DB_TABLES, DB_VIEWS, PROGRAM_TYPES, STUDENT_COLUMNS } from "./schema";
+import { logStudentActivity } from "./activity";
 import type {
   ViewProgramBlockCourseItem,
   ViewProgramBlockCoursesRow,
@@ -31,6 +32,19 @@ function toCourseRowFromView(item: ViewProgramBlockCourseItem): CourseRow {
     title: String(item.title ?? ""),
     credits: Number(item.credits ?? 0),
   };
+}
+
+async function safeLogActivity(
+  studentId: number,
+  activityType: Parameters<typeof logStudentActivity>[1],
+  message: string,
+  metadata: Record<string, unknown>
+) {
+  try {
+    await logStudentActivity(studentId, activityType, message, metadata);
+  } catch (error) {
+    console.error("Failed to log student activity:", error);
+  }
 }
 
 export async function fetchStudentProfileByAuthUserId(
@@ -290,6 +304,14 @@ export async function saveOnboardingSelections(
       .eq(STUDENT_COLUMNS.id, studentId);
 
     if (updateError) throw updateError;
+
+    await safeLogActivity(studentId, "onboarding_completed", "Completed onboarding setup", {
+      major_id: majorId,
+      certificate_ids: certificateIds,
+      course_ids: courseIds,
+      expected_graduation_semester: expectedGradSemester ?? null,
+      expected_graduation_year: expectedGradYear ?? null,
+    });
   } catch (err) {
     // Best-effort rollback: remove partial rows so we don't leave inconsistent state
     try {

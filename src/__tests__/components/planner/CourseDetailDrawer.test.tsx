@@ -1,4 +1,4 @@
-import { render, cleanup } from "@testing-library/react";
+import { render, cleanup, screen, fireEvent } from "@testing-library/react";
 import { ChakraProvider, defaultSystem } from "@chakra-ui/react";
 import { describe, it, expect, afterEach, vi } from "vitest";
 import CourseDetailDrawer from "@/components/planner/CourseDetailDrawer";
@@ -80,5 +80,34 @@ describe("CourseDetailDrawer", () => {
 
     expect(queryAllByText("CS 201")).toHaveLength(0);
     expect(queryAllByText("Data Structures")).toHaveLength(0);
+  });
+
+  it("shows remove button when removal callback is provided", () => {
+    renderWithChakra(
+      <CourseDetailDrawer
+        course={baseCourse}
+        open={true}
+        onOpenChange={vi.fn()}
+        onRemoveCourse={vi.fn()}
+      />
+    );
+
+    expect(screen.getByRole("button", { name: "Remove Course" })).toBeInTheDocument();
+  });
+
+  it("calls removal callback when remove button is clicked", () => {
+    const onRemoveCourse = vi.fn();
+
+    renderWithChakra(
+      <CourseDetailDrawer
+        course={baseCourse}
+        open={true}
+        onOpenChange={vi.fn()}
+        onRemoveCourse={onRemoveCourse}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Remove Course" }));
+    expect(onRemoveCourse).toHaveBeenCalled();
   });
 });

@@ -78,11 +78,11 @@ describe("ComparePlanPicker", () => {
     fireEvent.click(screen.getByRole("button", { name: /compare with my plan/i }));
 
     expect(screen.getByText("Choose a plan to compare")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /currently comparing/i })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: /continue comparing with my plan/i })).toHaveAttribute(
       "href",
       "/shared/plan/shared-1?foo=bar&myPlan=11"
     );
-    expect(screen.getByRole("link", { name: /stop comparing/i })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: /stop comparing plans/i })).toHaveAttribute(
       "href",
       "/shared/plan/shared-1?foo=bar"
     );
@@ -109,10 +109,10 @@ describe("ComparePlanPicker", () => {
     fireEvent.click(screen.getByRole("button", { name: /compare plans/i }));
 
     expect(screen.getByText("Program details unavailable")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /compare this plan/i })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: /compare with alternative plan/i })).toHaveAttribute(
       "href",
       "/shared/plan/custom-token?foo=bar&myPlan=21"
     );
-    expect(screen.queryByRole("link", { name: /stop comparing/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /stop comparing plans/i })).not.toBeInTheDocument();
   });
 });

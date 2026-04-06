@@ -516,6 +516,7 @@ export default function AIAdvisorPage() {
                   borderRadius="xl"
                   px="4"
                   flexShrink={0}
+                  aria-label="Send message to AI advisor"
                 >
                   <Icon boxSize="4">
                     <LuSend />

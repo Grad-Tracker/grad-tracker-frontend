@@ -445,6 +445,7 @@ export default function SettingsPage() {
                       <Switch.Root
                         colorPalette="blue"
                         checked={notifPrefs[opt.key]}
+                        aria-label={`Toggle ${opt.label}`}
                         onCheckedChange={({ checked }) =>
                           setNotifPrefs((prev) => ({ ...prev, [opt.key]: checked }))
                         }

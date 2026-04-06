@@ -97,8 +97,7 @@ describe("PlanCard", () => {
   it("calls onOpen(plan.id) when card body is clicked", () => {
     const plan = makePlan({ id: 42 });
     renderWithChakra(<PlanCard {...defaultProps} plan={plan} />);
-    // Click the outermost card element (role="group")
-    const card = screen.getByRole("group");
+    const card = screen.getByRole("button", { name: /open plan test plan/i });
     fireEvent.click(card);
     expect(defaultProps.onOpen).toHaveBeenCalledWith(42);
   });

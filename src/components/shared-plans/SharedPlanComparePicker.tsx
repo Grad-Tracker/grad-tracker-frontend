@@ -80,7 +80,7 @@ export default function SharedPlanComparePicker({
   return (
     <DialogRoot open={open} onOpenChange={(event) => setOpen(event.open)} size="cover">
       <DialogTrigger asChild>
-        <Button colorPalette="green" borderRadius="xl">
+        <Button colorPalette="blue" borderRadius="xl" aria-label="Open compare plans dialog">
           Compare Plans
         </Button>
       </DialogTrigger>
@@ -89,9 +89,13 @@ export default function SharedPlanComparePicker({
         backdrop
         bg="gray.950"
         borderWidth="1px"
-        borderColor="green.700"
+        borderColor="blue.700"
         boxShadow="2xl"
         backdropFilter="none"
+        maxH="calc(100vh - 2rem)"
+        overflow="hidden"
+        display="flex"
+        flexDirection="column"
       >
         <DialogHeader>
           <DialogTitle fontFamily="var(--font-outfit), sans-serif">
@@ -100,7 +104,7 @@ export default function SharedPlanComparePicker({
         </DialogHeader>
         <DialogCloseTrigger />
 
-        <DialogBody pb="6">
+        <DialogBody pb="6" overflowY="auto" minH={0}>
           <Stack gap="6">
             <Box>
               <Text fontSize="sm" color="fg.muted" mb="3">
@@ -113,17 +117,26 @@ export default function SharedPlanComparePicker({
                   return (
                     <Card.Root
                       key={plan.shareToken}
+                      role="button"
+                      tabIndex={0}
+                      aria-label={`Select shared plan ${plan.planName}`}
                       borderRadius="2xl"
                       borderWidth="1px"
-                      borderColor="green.700"
-                      bg={isSelected ? "green.900" : "gray.900"}
+                      borderColor="blue.700"
+                      bg={isSelected ? "blue.900" : "gray.900"}
                       cursor="pointer"
                       onClick={() => handleSharedPlanSelect(plan.shareToken)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          handleSharedPlanSelect(plan.shareToken);
+                        }
+                      }}
                     >
                       <Card.Body p="5">
                         <Stack gap="3">
                           <HStack gap="2" flexWrap="wrap">
-                            <Badge colorPalette={isSelected ? "green" : "gray"} variant="subtle">
+                            <Badge colorPalette={isSelected ? "blue" : "gray"} variant="subtle">
                               {plan.studentFirstName}'s shared plan
                             </Badge>
                             <Badge colorPalette="gray" variant="surface">
@@ -153,17 +166,26 @@ export default function SharedPlanComparePicker({
                   return (
                     <Card.Root
                       key={plan.planId}
+                      role="button"
+                      tabIndex={0}
+                      aria-label={`Select my plan ${plan.planName}`}
                       borderRadius="2xl"
                       borderWidth="1px"
-                      borderColor="green.700"
-                      bg={isSelected ? "green.900" : "gray.900"}
+                      borderColor="blue.700"
+                      bg={isSelected ? "blue.900" : "gray.900"}
                       cursor="pointer"
                       onClick={() => handleOwnPlanSelect(plan.planId)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          handleOwnPlanSelect(plan.planId);
+                        }
+                      }}
                     >
                       <Card.Body p="5">
                         <Stack gap="3">
                           <HStack gap="2" flexWrap="wrap">
-                            <Badge colorPalette={isSelected ? "green" : "gray"} variant="subtle">
+                            <Badge colorPalette={isSelected ? "blue" : "gray"} variant="subtle">
                               {plan.termCount} semester{plan.termCount === 1 ? "" : "s"}
                             </Badge>
                             <Badge colorPalette="gray" variant="surface">
@@ -191,7 +213,13 @@ export default function SharedPlanComparePicker({
                 ? `Comparing ${selectedSharedPlan.planName} with ${selectedOwnPlan.planName}`
                 : "Select one shared plan and one of your plans to continue."}
             </Text>
-            <Button colorPalette="green" borderRadius="xl" onClick={handleCompare} disabled={!canCompare}>
+            <Button
+              colorPalette="blue"
+              borderRadius="xl"
+              onClick={handleCompare}
+              disabled={!canCompare}
+              aria-label="Compare the selected shared plan with the selected personal plan"
+            >
               Compare Selected Plans
             </Button>
           </HStack>

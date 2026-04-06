@@ -27,6 +27,7 @@ const {
   mockFetchGenEdBucketsWithCourses,
   mockFetchBreadthPackageId,
   mockUpdateBreadthPackageId,
+  mockLogStudentActivity,
 
   // NEW: capture DnD handlers so tests can call them
   mockDndHandlers,
@@ -61,6 +62,7 @@ const {
     mockFetchGenEdBucketsWithCourses: vi.fn().mockResolvedValue([]),
     mockFetchBreadthPackageId: vi.fn().mockResolvedValue(null),
     mockUpdateBreadthPackageId: vi.fn().mockResolvedValue(undefined),
+    mockLogStudentActivity: vi.fn().mockResolvedValue(undefined),
 
     mockDndHandlers: {
       onDragStart: null as null | ((e: any) => void),
@@ -101,6 +103,10 @@ vi.mock("@/lib/supabase/queries/planner", () => ({
   movePlannedCourse: mockMovePlannedCourse,
   fetchBreadthPackageId: mockFetchBreadthPackageId,
   updateBreadthPackageId: mockUpdateBreadthPackageId,
+}));
+
+vi.mock("@/lib/supabase/queries/activity", () => ({
+  logStudentActivity: mockLogStudentActivity,
 }));
 
 // Mock all child components to avoid DnD and complex setup

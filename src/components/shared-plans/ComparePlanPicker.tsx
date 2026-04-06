@@ -56,7 +56,7 @@ export default function ComparePlanPicker({
     <HStack gap="3" flexWrap="wrap" justify={{ base: "stretch", lg: "end" }}>
       <DialogRoot size="xl">
         <DialogTrigger asChild>
-          <Button colorPalette="green" borderRadius="xl">
+          <Button colorPalette="blue" borderRadius="xl" aria-label={triggerLabel}>
             {triggerLabel}
           </Button>
         </DialogTrigger>
@@ -78,14 +78,14 @@ export default function ComparePlanPicker({
                     key={plan.planId}
                     borderRadius="2xl"
                     borderWidth="1px"
-                    borderColor={isSelected ? "green.300" : "border.subtle"}
-                    bg={isSelected ? "green.subtle" : "bg"}
+                    borderColor={isSelected ? "blue.300" : "border.subtle"}
+                    bg={isSelected ? "blue.subtle" : "bg"}
                   >
                     <Card.Body p="5">
                       <Stack gap="4">
                         <Stack gap="1.5">
                           <HStack gap="2" flexWrap="wrap">
-                            <Badge colorPalette={isSelected ? "green" : "gray"} variant="subtle">
+                            <Badge colorPalette={isSelected ? "blue" : "gray"} variant="subtle">
                               {plan.termCount} semester{plan.termCount === 1 ? "" : "s"}
                             </Badge>
                             <Badge colorPalette="gray" variant="surface">
@@ -100,7 +100,13 @@ export default function ComparePlanPicker({
                           </Text>
                         </Stack>
 
-                        <Button asChild colorPalette="green" borderRadius="xl" size="sm">
+                        <Button
+                          asChild
+                          colorPalette="blue"
+                          borderRadius="xl"
+                          size="sm"
+                          aria-label={`${isSelected ? "Continue comparing with" : "Compare with"} ${plan.planName}`}
+                        >
                           <Link href={buildHref(plan.planId)}>
                             {isSelected ? "Currently Comparing" : "Compare This Plan"}
                           </Link>
@@ -116,7 +122,7 @@ export default function ComparePlanPicker({
       </DialogRoot>
 
       {selectedPlanId ? (
-        <Button asChild variant="outline" borderRadius="xl">
+        <Button asChild variant="outline" borderRadius="xl" aria-label="Stop comparing plans">
           <Link href={buildHref(null)}>Stop Comparing</Link>
         </Button>
       ) : null}

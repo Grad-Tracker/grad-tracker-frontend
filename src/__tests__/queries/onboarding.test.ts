@@ -39,6 +39,10 @@ vi.mock("@/lib/supabase/client", () => ({
   createClient: vi.fn(),
 }));
 
+vi.mock("@/lib/supabase/queries/activity", () => ({
+  logStudentActivity: vi.fn().mockResolvedValue(undefined),
+}));
+
 import { createClient } from "@/lib/supabase/client";
 import {
   fetchPrograms,

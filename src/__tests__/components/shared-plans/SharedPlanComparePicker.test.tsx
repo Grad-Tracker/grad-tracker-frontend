@@ -106,15 +106,23 @@ describe("SharedPlanComparePicker", () => {
       />
     );
 
-    fireEvent.click(screen.getByRole("button", { name: /compare plans/i }));
-    fireEvent.click(screen.getByText("Accounting Major 4 Year Plan"));
-    fireEvent.click(screen.getByText("My Plan"));
+    fireEvent.click(screen.getByRole("button", { name: /open compare plans dialog/i }));
+    fireEvent.click(
+      screen.getByRole("button", { name: /select shared plan accounting major 4 year plan/i })
+    );
+    fireEvent.click(
+      screen.getByRole("button", { name: /select my plan my plan/i })
+    );
 
     expect(
       screen.getByText("Comparing Accounting Major 4 Year Plan with My Plan")
     ).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: /compare selected plans/i }));
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: /compare the selected shared plan with the selected personal plan/i,
+      })
+    );
 
     expect(router.push).toHaveBeenCalledWith("/shared/plan/shared-1?myPlan=9");
   });
@@ -148,24 +156,36 @@ describe("SharedPlanComparePicker", () => {
       />
     );
 
-    fireEvent.click(screen.getByRole("button", { name: /compare plans/i }));
-    fireEvent.click(screen.getByText("Computer Science Major 4 Year Plan"));
-    fireEvent.click(screen.getByText("My Plan"));
+    fireEvent.click(screen.getByRole("button", { name: /open compare plans dialog/i }));
+    fireEvent.click(
+      screen.getByRole("button", { name: /select shared plan computer science major 4 year plan/i })
+    );
+    fireEvent.click(
+      screen.getByRole("button", { name: /select my plan my plan/i })
+    );
 
     expect(
       screen.getByText(/Comparing Computer Science Major 4 Year Plan with My Plan/i)
     ).toBeInTheDocument();
 
-    fireEvent.click(screen.getByText("Computer Science Major 4 Year Plan"));
-    fireEvent.click(screen.getByText("My Plan"));
+    fireEvent.click(
+      screen.getByRole("button", { name: /select shared plan computer science major 4 year plan/i })
+    );
+    fireEvent.click(
+      screen.getByRole("button", { name: /select my plan my plan/i })
+    );
 
     expect(
       screen.getByText("Select one shared plan and one of your plans to continue.")
     ).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /compare selected plans/i })).toBeDisabled();
+    expect(
+      screen.getByRole("button", {
+        name: /compare the selected shared plan with the selected personal plan/i,
+      })
+    ).toBeDisabled();
 
     fireEvent.click(screen.getByRole("button", { name: /close dialog/i }));
-    fireEvent.click(screen.getByRole("button", { name: /compare plans/i }));
+    fireEvent.click(screen.getByRole("button", { name: /open compare plans dialog/i }));
 
     expect(
       screen.getByText("Select one shared plan and one of your plans to continue.")

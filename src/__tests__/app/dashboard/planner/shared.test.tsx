@@ -174,7 +174,7 @@ describe("shared planner views", () => {
     expect(screen.getByText("Accounting Major 4 Year Plan")).toBeInTheDocument();
     expect(screen.getByText("Program details unavailable")).toBeInTheDocument();
     expect(screen.getByText("SHARED PLAN COMPARE PICKER shared=2 own=1")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /back to planner/i })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: /return to the planner/i })).toHaveAttribute(
       "href",
       "/dashboard/planner"
     );
@@ -193,7 +193,7 @@ describe("shared planner views", () => {
     expect(screen.getByText("Shared read-only plan")).toBeInTheDocument();
     expect(screen.getByText("Back to Shared Plans")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /compare with my plan/i })).toBeDisabled();
-    expect(screen.getByRole("link", { name: /open in planner/i })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: /open planner/i })).toHaveAttribute(
       "href",
       "/dashboard/planner"
     );

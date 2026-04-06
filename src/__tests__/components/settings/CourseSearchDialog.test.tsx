@@ -73,7 +73,7 @@ describe("CourseSearchDialog", () => {
     ];
     vi.mocked(searchCourses).mockResolvedValue(mockResults);
 
-    const { getAllByText } = renderWithChakra(
+    renderWithChakra(
       <CourseSearchDialog open={true} onClose={onClose} onCourseSelected={onCourseSelected} />
     );
 
@@ -87,16 +87,10 @@ describe("CourseSearchDialog", () => {
       { timeout: 1000 }
     );
 
-    // Wait for results to render, then click the result containing "MATH 101"
-    await waitFor(() => {
-      expect(getAllByText(/MATH 101/).length).toBeGreaterThanOrEqual(1);
+    const resultButton = await screen.findByRole("button", {
+      name: /select course math 101 calculus i/i,
     });
-
-    // The HStack result row has the onClick handler — find and click it
-    const resultElements = getAllByText(/MATH 101/);
-    // Click the parent HStack (which has the onClick)
-    const clickTarget = resultElements[0].closest("[class*='stack']") ?? resultElements[0];
-    fireEvent.click(clickTarget);
+    fireEvent.click(resultButton);
 
     expect(onCourseSelected).toHaveBeenCalledWith(mockResults[0]);
     expect(onClose).toHaveBeenCalled();
@@ -107,12 +101,10 @@ describe("CourseSearchDialog", () => {
       <CourseSearchDialog open={true} onClose={onClose} onCourseSelected={onCourseSelected} />
     );
 
-    // Switch to manual form
     const manualLinks = getAllByText(/Add it manually/);
     fireEvent.click(manualLinks[0]);
     expect(getAllByText("Add Course Manually").length).toBeGreaterThanOrEqual(1);
 
-    // Switch back to search
     const backButtons = getAllByText("Back to search");
     fireEvent.click(backButtons[0]);
     expect(getAllByText("Search Courses").length).toBeGreaterThanOrEqual(1);
@@ -126,11 +118,9 @@ describe("CourseSearchDialog", () => {
       <CourseSearchDialog open={true} onClose={onClose} onCourseSelected={onCourseSelected} />
     );
 
-    // Switch to manual form
     const manualLinks = getAllByText(/Add it manually/);
     fireEvent.click(manualLinks[0]);
 
-    // Fill form fields by placeholder text
     fireEvent.change(screen.getByPlaceholderText("e.g. MATH"), { target: { value: "ART" } });
     fireEvent.change(screen.getByPlaceholderText("e.g. 101"), { target: { value: "200" } });
     fireEvent.change(screen.getByPlaceholderText("e.g. Calculus I"), { target: { value: "Drawing" } });
@@ -155,11 +145,9 @@ describe("CourseSearchDialog", () => {
     const input = screen.getByPlaceholderText(/Search/i);
     fireEvent.change(input, { target: { value: "a" } });
 
-    // Advance past the debounce timeout
     vi.advanceTimersByTime(500);
     await Promise.resolve();
 
-    // searchCourses should NOT have been called (query too short)
     expect(searchCourses).not.toHaveBeenCalled();
 
     vi.useRealTimers();
