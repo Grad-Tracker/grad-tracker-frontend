@@ -238,6 +238,7 @@ vi.mock("@dnd-kit/core", () => ({
   },
   DragOverlay: ({ children }: any) => <div>{children}</div>,
   PointerSensor: class {},
+  KeyboardSensor: class {},
   useSensor: vi.fn(),
   useSensors: vi.fn(() => []),
 }));
@@ -1004,7 +1005,7 @@ describe("PlannerPage", () => {
 
     await waitFor(() => {
       expect(mockToaster.create).toHaveBeenCalledWith(
-        expect.objectContaining({ title: "Error", type: "error" })
+        expect.objectContaining({ title: "Failed to move course", type: "error" })
       );
     });
   });
@@ -1061,8 +1062,7 @@ describe("PlannerPage", () => {
     await waitFor(() => {
       expect(mockToaster.create).toHaveBeenCalledWith(
         expect.objectContaining({
-          title: "Error",
-          description: "Failed to update plan",
+          title: "Failed to move course",
           type: "error",
         })
       );

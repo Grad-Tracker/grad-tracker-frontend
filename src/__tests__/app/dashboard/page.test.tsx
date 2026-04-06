@@ -338,6 +338,96 @@ describe("Dashboard", () => {
     expect(mockPush).toHaveBeenCalledWith("/dashboard/courses");
   });
 
+  it("renders waitlist and planned status badges for courses", async () => {
+    setupHappyPath({
+      plannedRows: [
+        {
+          student_id: 1,
+          course_id: 350,
+          status: "waitlist",
+          subject: "CS",
+          number: "350",
+          title: "Algorithms",
+          credits: 3,
+        },
+        {
+          student_id: 1,
+          course_id: 361,
+          status: "planned",
+          subject: "CS",
+          number: "361",
+          title: "Data Structures",
+          credits: 3,
+        },
+        {
+          student_id: 1,
+          course_id: 400,
+          status: "",
+          subject: "CS",
+          number: "400",
+          title: "Capstone",
+          credits: 3,
+        },
+      ],
+    });
+
+    await act(async () => {
+      renderWithChakra(<Dashboard />);
+    });
+
+    await waitFor(() => {
+      expect(screen.getAllByText("Waitlist").length).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByText("Planned").length).toBeGreaterThanOrEqual(1);
+    });
+  });
+
+  it("creates a new student profile when none exists", async () => {
+    mockGetUser.mockResolvedValue({
+      data: {
+        user: {
+          id: "auth-uuid",
+          email: "new@uwp.edu",
+          user_metadata: { first_name: "New", last_name: "User" },
+        },
+      },
+      error: null,
+    });
+    mockCheckOnboardingStatus.mockResolvedValue(false);
+    mockFetchStudentProfileByAuthUserId.mockResolvedValue(null);
+    mockGetOrCreateStudent.mockResolvedValue({ id: 99 });
+    mockFetchStudentMajorProgram.mockResolvedValue(null);
+    mockFetchStudentCourseProgress.mockResolvedValue([]);
+    mockFetchPrograms.mockResolvedValue([]);
+    mockFrom.mockImplementation(() => createChainMock([]));
+
+    await act(async () => {
+      renderWithChakra(<Dashboard />);
+    });
+
+    await waitFor(() => {
+      expect(mockGetOrCreateStudent).toHaveBeenCalledWith(
+        "auth-uuid",
+        "new@uwp.edu",
+        "New User"
+      );
+      expect(mockToasterCreate).toHaveBeenCalledWith(
+        expect.objectContaining({ title: "Profile restored" })
+      );
+    });
+  });
+
+  it("renders dashboard when major program is null", async () => {
+    setupHappyPath({ major: null });
+
+    await act(async () => {
+      renderWithChakra(<Dashboard />);
+    });
+
+    await waitFor(() => {
+      expect(screen.getAllByText("Unknown").length).toBeGreaterThanOrEqual(1);
+    });
+  });
+
   describe("Change Major", () => {
     it("shows Change Major card when majors are available", async () => {
       setupHappyPath({

@@ -22,9 +22,7 @@ import RequirementProgress from "./RequirementProgress";
 import GenEdProgress from "./GenEdProgress";
 import BreadthPackageSelector from "./BreadthPackageSelector";
 import GraduateTrackSelector from "./GraduateTrackSelector";
-
-const MIN_PANEL_WIDTH = 300;
-const MAX_PANEL_WIDTH = 550;
+import { MIN_PANEL_WIDTH, MAX_PANEL_WIDTH } from "@/constants/planner";
 
 interface CoursePanelProps {
   blocks: RequirementBlockWithCourses[];
@@ -63,6 +61,7 @@ export default function CoursePanel({
   const isResizing = useRef(false);
   const startX = useRef(0);
   const startWidth = useRef(MIN_PANEL_WIDTH);
+  const rafId = useRef<number | null>(null);
 
   const handleResizeStart = useCallback((e: React.PointerEvent) => {
     e.preventDefault();
@@ -74,13 +73,22 @@ export default function CoursePanel({
 
   const handleResizeMove = useCallback((e: React.PointerEvent) => {
     if (!isResizing.current) return;
-    const delta = e.clientX - startX.current;
-    const newWidth = Math.min(MAX_PANEL_WIDTH, Math.max(MIN_PANEL_WIDTH, startWidth.current + delta));
-    setPanelWidth(newWidth);
+    if (rafId.current !== null) return;
+    const clientX = e.clientX;
+    rafId.current = requestAnimationFrame(() => {
+      const delta = clientX - startX.current;
+      const newWidth = Math.min(MAX_PANEL_WIDTH, Math.max(MIN_PANEL_WIDTH, startWidth.current + delta));
+      setPanelWidth(newWidth);
+      rafId.current = null;
+    });
   }, []);
 
   const handleResizeEnd = useCallback(() => {
     isResizing.current = false;
+    if (rafId.current !== null) {
+      cancelAnimationFrame(rafId.current);
+      rafId.current = null;
+    }
   }, []);
   const query = search.toLowerCase().trim();
 

@@ -10,7 +10,7 @@ export default defineConfig({
     include: ["src/**/*.test.{ts,tsx}"],
     coverage: {
       provider: "v8",
-      reporter: ["text", "html", "lcov"],
+      reporter: ["text", "html", "lcov", "json"],
       reportsDirectory: "./coverage",
       // Measure coverage for all source files in src/.
       // Excludes: auto-generated Chakra UI wrappers, test files, config files.
