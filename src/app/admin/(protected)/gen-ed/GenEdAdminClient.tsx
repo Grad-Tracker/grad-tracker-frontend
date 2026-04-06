@@ -342,7 +342,7 @@ export default function GenEdAdminClient({
           <Text
             fontSize={{ base: "2xl", md: "3xl" }}
             fontWeight="700"
-            fontFamily="var(--font-outfit), sans-serif"
+            fontFamily="var(--font-dm-sans), sans-serif"
             letterSpacing="-0.02em"
           >
             Gen-Ed Buckets
@@ -350,7 +350,7 @@ export default function GenEdAdminClient({
           <Text color="fg.muted">{bucketCountText}</Text>
         </Box>
         <Button
-          colorPalette="green"
+          colorPalette="blue"
           borderRadius="lg"
           onClick={() => {
             setEditingBucket(null);
@@ -379,7 +379,7 @@ export default function GenEdAdminClient({
                   <Box>
                     <HStack gap="2" mb="2" wrap="wrap">
                       {bucket.code ? (
-                        <Badge colorPalette="green" variant="subtle">
+                        <Badge colorPalette="blue" variant="subtle">
                           {bucket.code}
                         </Badge>
                       ) : null}
@@ -550,7 +550,7 @@ export default function GenEdAdminClient({
                 >
                   Cancel
                 </Button>
-                <Button colorPalette="green" loading={loading} onClick={handleSaveBucket}>
+                <Button colorPalette="blue" loading={loading} onClick={handleSaveBucket}>
                   {editingBucket ? "Save Changes" : "Save Bucket"}
                 </Button>
               </Dialog.Footer>
@@ -596,7 +596,7 @@ export default function GenEdAdminClient({
                             key={course.id}
                             data-testid={`course-option-${course.id}`}
                             variant={selected ? "solid" : "outline"}
-                            colorPalette={selected ? "green" : "gray"}
+                            colorPalette={selected ? "blue" : "gray"}
                             justifyContent="space-between"
                             onClick={() =>
                               setSelectedCourseIds((prev) =>
@@ -625,7 +625,7 @@ export default function GenEdAdminClient({
                 >
                   Cancel
                 </Button>
-                <Button colorPalette="green" onClick={handleAddCourses}>
+                <Button colorPalette="blue" onClick={handleAddCourses}>
                   Add Selected
                 </Button>
               </Dialog.Footer>

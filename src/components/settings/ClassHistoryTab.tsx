@@ -192,7 +192,7 @@ export function ClassHistoryTab() {
   if (loading) {
     return (
       <Box p="8" display="flex" justifyContent="center">
-        <Spinner colorPalette="green" />
+        <Spinner colorPalette="blue" />
       </Box>
     );
   }

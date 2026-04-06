@@ -23,7 +23,7 @@ interface GenEdProgressProps {
   completedCourseIds: Set<number>;
 }
 
-const BUCKET_COLORS = ["teal", "cyan", "blue", "purple", "pink", "orange", "yellow", "green"];
+const BUCKET_COLORS = ["teal", "cyan", "blue", "purple", "pink", "orange", "yellow", "emerald"];
 
 interface BucketStat {
   id: number;

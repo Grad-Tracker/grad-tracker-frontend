@@ -25,12 +25,12 @@ interface RequirementProgressProps {
   isGraduatePlan?: boolean;
 }
 
-const BLOCK_COLORS = ["green", "blue", "purple", "orange", "teal", "cyan", "pink", "yellow"];
+const BLOCK_COLORS = ["blue", "purple", "orange", "teal", "cyan", "pink", "yellow", "emerald"];
 const GRADUATE_TOTAL_CREDITS = 30;
 
 function graduateBlockColor(name: string): string {
   const n = name.toLowerCase();
-  if (n.includes("core")) return "green";
+  if (n.includes("core")) return "blue";
   if (n === "electives") return "orange";
   return "purple";
 }
@@ -116,13 +116,13 @@ export default function RequirementProgress({
       borderColor="border.subtle"
     >
       <HStack mb="3" gap="2">
-        <Icon boxSize="4" color="green.fg">
+        <Icon boxSize="4" color="blue.fg">
           <LuTarget />
         </Icon>
         <Text fontSize="xs" fontWeight="600">
           Degree Progress
         </Text>
-        <Badge size="sm" variant="subtle" colorPalette="green">
+        <Badge size="sm" variant="subtle" colorPalette="blue">
           {totalCompleted + totalPlanned}/{totalRequired} cr
         </Badge>
       </HStack>

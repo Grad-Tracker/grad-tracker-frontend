@@ -219,7 +219,7 @@ export default function GenEdRequirements({ studentId }: { studentId: number }) 
           </Text>
           <Heading
             size="lg"
-            fontFamily="var(--font-outfit), sans-serif"
+            fontFamily="var(--font-dm-sans), sans-serif"
             fontWeight="400"
             letterSpacing="-0.02em"
           >
@@ -276,11 +276,11 @@ export default function GenEdRequirements({ studentId }: { studentId: number }) 
                           border={completed ? "1px solid" : undefined}
                           borderWidth="1px"
                           boxShadow={
-                            completed ? "0 0 0 1px rgba(34,197,94,0.25)" : undefined
+                            completed ? "0 0 0 1px color-mix(in srgb, var(--chakra-colors-blue-500) 25%, transparent)" : undefined
                           }
-                          bg={completed ? "green.700" : "bg.subtle"}
-                          borderColor={completed ? "green.500" : "border.subtle"}
-                          _hover={{ bg: completed ? "green.600" : "bg.subtle" }}
+                          bg={completed ? "blue.700" : "bg.subtle"}
+                          borderColor={completed ? "blue.500" : "border.subtle"}
+                          _hover={{ bg: completed ? "blue.600" : "bg.subtle" }}
                         >
                           <HStack gap="3">
                             <Box>
@@ -290,7 +290,7 @@ export default function GenEdRequirements({ studentId }: { studentId: number }) 
                                 color={completed ? "white" : undefined}
                               >
                                 {(course.subject ?? "").toString()} {(course.number ?? "").toString()}
-                                {course.credits != null ? ` � ${course.credits} cr` : ""}
+                                {course.credits != null ? ` · ${course.credits} cr` : ""}
                               </Text>
                               {course.title ? (
                                 <Text
@@ -304,7 +304,7 @@ export default function GenEdRequirements({ studentId }: { studentId: number }) 
                               ) : null}
                               {showPrereqWarning && prereq.summary.length > 0 ? (
                                 <Text fontSize="xs" color="orange.600" fontWeight="400">
-                                  {prereq.summary.join(" � ")}
+                                  {prereq.summary.join("  ")}
                                 </Text>
                               ) : null}
                             </Box>
@@ -323,67 +323,66 @@ export default function GenEdRequirements({ studentId }: { studentId: number }) 
 
                     return (
                       <>
-                        <Flex justify="space-between" align="start" gap="3">
-                          <Box>
-                            <HStack gap="2" wrap="wrap">
-                              <Heading size="md">{b.name}</Heading>
-                              <Badge colorPalette="green" variant="subtle">
-                                {b.code}
+                  <Flex justify="space-between" align="start" gap="3">
+                    <Box>
+                      <HStack gap="2" wrap="wrap">
+                        <Heading size="md">{b.name}</Heading>
+                        <Badge colorPalette="blue" variant="subtle">
+                          {b.code}
+                        </Badge>
+                      </HStack>
+                    </Box>
+
+                    <Badge colorPalette={b.remaining === 0 ? "blue" : "gray"} variant="surface">
+                      {b.remaining === 0 ? "Done" : "In progress"}
+                    </Badge>
+                  </Flex>
+
+                  <HStack gap="2" wrap="wrap">
+                    <Badge colorPalette="blue" variant="subtle">
+                      Completed ({completedCount}) â¢ {completedCredits} cr
+                    </Badge>
+                    <Badge colorPalette="orange" variant="subtle">
+                      In progress ({inProgressCount}) â¢ {inProgressCredits} cr
+                    </Badge>
+                    <Badge colorPalette="gray" variant="outline">
+                      Remaining ({remainingCount}) â¢ {remainingCredits} cr
+                    </Badge>
+                  </HStack>
+
+                  <Progress.Root value={b.pct} max={100} colorPalette="blue" size="sm">
+                    <Progress.Track borderRadius="md">
+                      <Progress.Range borderRadius="md" />
+                    </Progress.Track>
+                  </Progress.Root>
+
+                  <Separator />
+
+                  <Box>
+                    <Text fontSize="sm" fontWeight="600" color="fg.muted" mb="2">
+                      Courses in this bucket
+                    </Text>
+
+                    {b.detailed.length === 0 ? (
+                      <Text color="fg.muted" fontSize="sm">
+                        No courses found for this bucket.
+                      </Text>
+                    ) : (
+                      <VStack align="stretch" gap="1">
+                        {completedCourses.length > 0 ? (
+                          <>
+                            <Divider opacity={0.4} mt="3" mb="2" />
+                            <HStack justify="space-between" mt="3" mb="2">
+                              <Text fontSize="sm" fontWeight="600" color="fg.muted">
+                                Completed
+                              </Text>
+                              <Badge variant="subtle" colorPalette="blue">
+                                {completedCourses.length}
                               </Badge>
                             </HStack>
-                          </Box>
-
-                          <Badge colorPalette={b.remaining === 0 ? "green" : "gray"} variant="surface">
-                            {b.remaining === 0 ? "Done" : "In progress"}
-                          </Badge>
-                        </Flex>
-
-                        <HStack gap="2" wrap="wrap">
-                          <Badge colorPalette="green" variant="subtle">
-                            Completed ({completedCount}) � {completedCredits} cr
-                          </Badge>
-                          <Badge colorPalette="orange" variant="subtle">
-                            In progress ({inProgressCount}) � {inProgressCredits} cr
-                          </Badge>
-                          <Badge colorPalette="gray" variant="outline">
-                            Remaining ({remainingCount}) � {remainingCredits} cr
-                          </Badge>
-                        </HStack>
-
-                        <Progress.Root value={b.pct} max={100} colorPalette="green" size="sm">
-                          <Progress.Track borderRadius="md">
-                            <Progress.Range borderRadius="md" />
-                          </Progress.Track>
-                        </Progress.Root>
-
-                        <Separator />
-
-                        <Box>
-                          <Text fontSize="sm" fontWeight="600" color="fg.muted" mb="2">
-                            Courses in this bucket
-                          </Text>
-
-                          {b.detailed.length === 0 ? (
-                            <Text color="fg.muted" fontSize="sm">
-                              No courses found for this bucket.
-                            </Text>
-                          ) : (
-                            <VStack align="stretch" gap="1">
-                              {completedCourses.length > 0 ? (
-                                <>
-                                  <Divider opacity={0.4} mt="3" mb="2" />
-                                  <HStack justify="space-between" mt="3" mb="2">
-                                    <Text fontSize="sm" fontWeight="600" color="fg.muted">
-                                      Completed
-                                    </Text>
-                                    <Badge variant="subtle" colorPalette="green">
-                                      {completedCourses.length}
-                                    </Badge>
-                                  </HStack>
-                                  {completedCourses.map(renderCourseRow)}
-                                </>
-                              ) : null}
-
+                          {completedCourses.map(renderCourseRow)}
+                          </>
+                        ) : null}
                               {inProgressCourses.length > 0 ? (
                                 <>
                                   <Divider opacity={0.4} mt="3" mb="2" />

@@ -26,7 +26,7 @@ interface SemesterColumnProps {
 
 const SEASON_COLORS: Record<string, string> = {
   Fall: "orange",
-  Spring: "green",
+  Spring: "blue",
   Summer: "yellow",
 };
 
@@ -121,8 +121,8 @@ export default function SemesterColumn({
       w="full"
       overflow="hidden"
       borderWidth="1px"
-      borderColor={isOver ? "green.400" : "border.subtle"}
-      boxShadow={isOver ? "0 0 0 2px var(--chakra-colors-green-200)" : "none"}
+      borderColor={isOver ? "blue.400" : "border.subtle"}
+      boxShadow={isOver ? "0 0 0 2px var(--chakra-colors-blue-200)" : "none"}
       bg="bg"
       transition="all 0.2s"
     >
@@ -145,7 +145,7 @@ export default function SemesterColumn({
                   <Text
                     fontSize="sm"
                     fontWeight="500"
-                    fontFamily="var(--font-outfit), sans-serif"
+                    fontFamily="var(--font-dm-sans), sans-serif"
                     letterSpacing="-0.02em"
                   >
                     {term.season} {term.year}
@@ -210,9 +210,9 @@ export default function SemesterColumn({
                   py="3"
                   borderWidth="2px"
                   borderStyle="dashed"
-                  borderColor={isOver ? "green.300" : "border.subtle"}
+                  borderColor={isOver ? "blue.300" : "border.subtle"}
                   borderRadius="lg"
-                  bg={isOver ? "green.subtle" : "transparent"}
+                  bg={isOver ? "blue.subtle" : "transparent"}
                   transition="all 0.2s"
                 >
                   <Text fontSize="sm" color="fg.muted">

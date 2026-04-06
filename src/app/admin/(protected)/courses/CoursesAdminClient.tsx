@@ -40,6 +40,7 @@ import {
   LuSearch,
   LuX,
 } from "react-icons/lu";
+import { getSubjectColor } from "@/lib/subject-colors";
 import { Field } from "@/components/ui/field";
 import { toaster } from "@/components/ui/toaster";
 import {
@@ -66,16 +67,6 @@ function emptyForm(): CourseInput & { creditsStr: string } {
     description: null,
     prereq_text: null,
   };
-}
-
-function getSubjectColor(subject: string): string {
-  const map: Record<string, string> = {
-    CS: "green", CSCI: "green", MATH: "blue", ENGL: "purple",
-    COMM: "orange", PHIL: "teal", PSYC: "pink", BUSI: "cyan",
-    BIOL: "emerald", CHEM: "orange", PHYS: "blue", HIST: "yellow",
-    ECON: "cyan", ART: "red", MUSC: "purple", SOCI: "pink",
-  };
-  return map[subject] || "gray";
 }
 
 // ── types ─────────────────────────────────────────────────────────────────────
@@ -314,14 +305,14 @@ export default function CoursesAdminClient({
           </Text>
           <Heading
             size="lg"
-            fontFamily="var(--font-outfit), sans-serif"
+            fontFamily="var(--font-dm-sans), sans-serif"
             fontWeight="400"
             letterSpacing="-0.02em"
           >
             Course Catalog
           </Heading>
         </Box>
-        <Button colorPalette="green" size="sm" onClick={openAdd}>
+        <Button colorPalette="blue" size="sm" onClick={openAdd}>
           <Icon boxSize="4" mr="1"><LuPlus /></Icon>
           Add Course
         </Button>
@@ -491,7 +482,7 @@ export default function CoursesAdminClient({
                     </Table.Cell>
                     <Table.Cell textAlign="center">
                       <Badge
-                        colorPalette={course.is_active ? "green" : "gray"}
+                        colorPalette={course.is_active ? "blue" : "gray"}
                         variant="subtle"
                         size="sm"
                       >
@@ -521,7 +512,7 @@ export default function CoursesAdminClient({
                         <Button
                           size="xs"
                           variant="ghost"
-                          colorPalette={course.is_active ? "red" : "green"}
+                          colorPalette={course.is_active ? "red" : "blue"}
                           aria-label={course.is_active ? "Deactivate course" : "Reactivate course"}
                           title={course.is_active ? "Deactivate" : "Reactivate"}
                           loading={togglingId === course.id}
@@ -597,7 +588,7 @@ export default function CoursesAdminClient({
           <Dialog.Positioner>
             <Dialog.Content>
               <Dialog.Header borderBottomWidth="1px" borderColor="border.subtle">
-                <Dialog.Title fontFamily="var(--font-outfit), sans-serif" fontWeight="400">
+                <Dialog.Title fontFamily="var(--font-dm-sans), sans-serif" fontWeight="400">
                   {dialogMode === "add" ? "Add Course" : "Edit Course"}
                 </Dialog.Title>
                 <Dialog.CloseTrigger asChild>
@@ -721,7 +712,7 @@ export default function CoursesAdminClient({
                   Cancel
                 </Button>
                 <Button
-                  colorPalette="green"
+                  colorPalette="blue"
                   size="sm"
                   onClick={handleSave}
                   loading={saving}
@@ -764,7 +755,7 @@ export default function CoursesAdminClient({
                         )}
                       </HStack>
                       <Drawer.Title
-                        fontFamily="var(--font-outfit), sans-serif"
+                        fontFamily="var(--font-dm-sans), sans-serif"
                         fontWeight="400"
                         fontSize="xl"
                       >
@@ -795,7 +786,7 @@ export default function CoursesAdminClient({
                           <Text fontSize="xs" fontWeight="600" color="fg.muted" textTransform="uppercase" letterSpacing="wider">
                             Credits
                           </Text>
-                          <Text fontSize="xl" fontWeight="700" color="green.fg">
+                          <Text fontSize="xl" fontWeight="700" color="blue.fg">
                             {viewCourse.credits}
                           </Text>
                         </Box>

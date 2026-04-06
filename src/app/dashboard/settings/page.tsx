@@ -264,7 +264,7 @@ export default function SettingsPage() {
         </Heading>
       </Box>
 
-      <Tabs.Root defaultValue="profile" variant="enclosed" colorPalette="green">
+      <Tabs.Root defaultValue="profile" variant="enclosed" colorPalette="blue">
         <Tabs.List>
           <Tabs.Trigger value="profile">Profile</Tabs.Trigger>
           <Tabs.Trigger value="class-history">Class History</Tabs.Trigger>
@@ -303,7 +303,7 @@ export default function SettingsPage() {
                     </Field>
                   </Flex>
                   <Button
-                    colorPalette="green"
+                    colorPalette="blue"
                     onClick={handleSaveName}
                     loading={savingName}
                     alignSelf="flex-start"
@@ -337,7 +337,7 @@ export default function SettingsPage() {
                     />
                   </Field>
                   <Button
-                    colorPalette="green"
+                    colorPalette="blue"
                     onClick={handleSaveEmail}
                     loading={savingEmail}
                     disabled={!newEmail.trim() || newEmail.trim() === email}
@@ -354,7 +354,7 @@ export default function SettingsPage() {
             <Card.Root bg="bg" borderRadius="xl" borderWidth="1px" borderColor="border.subtle">
               <Card.Header p="5" pb="3">
                 <Flex align="center" gap="2">
-                  <Icon color="green.fg">
+                  <Icon color="blue.fg">
                     <LuCalendar />
                   </Icon>
                   <Heading size="md" fontWeight="600">
@@ -381,7 +381,7 @@ export default function SettingsPage() {
                         bg="bg"
                         fontSize="sm"
                         color="fg"
-                        _focus={{ outline: "2px solid", outlineColor: "green.fg", outlineOffset: "2px" }}
+                        _focus={{ outline: "2px solid", outlineColor: "blue.fg", outlineOffset: "2px" }}
                       >
                         <option value="">— Select —</option>
                         <option value="Spring">Spring</option>
@@ -403,7 +403,7 @@ export default function SettingsPage() {
                     </Field>
                   </Flex>
                   <Button
-                    colorPalette="green"
+                    colorPalette="blue"
                     onClick={handleSaveGrad}
                     loading={savingGrad}
                     alignSelf="flex-start"
@@ -419,7 +419,7 @@ export default function SettingsPage() {
             <Card.Root bg="bg" borderRadius="xl" borderWidth="1px" borderColor="border.subtle">
               <Card.Header p="5" pb="3">
                 <Flex align="center" gap="2">
-                  <Icon color="green.fg">
+                  <Icon color="blue.fg">
                     <LuBell />
                   </Icon>
                   <Heading size="md" fontWeight="600">
@@ -443,7 +443,7 @@ export default function SettingsPage() {
                         </Text>
                       </Box>
                       <Switch.Root
-                        colorPalette="green"
+                        colorPalette="blue"
                         checked={notifPrefs[opt.key]}
                         onCheckedChange={({ checked }) =>
                           setNotifPrefs((prev) => ({ ...prev, [opt.key]: checked }))
@@ -457,7 +457,7 @@ export default function SettingsPage() {
                     </HStack>
                   ))}
                   <Button
-                    colorPalette="green"
+                    colorPalette="blue"
                     onClick={handleSaveNotif}
                     loading={savingNotif}
                     alignSelf="flex-start"
@@ -482,7 +482,7 @@ export default function SettingsPage() {
               </Card.Header>
               <Card.Body p="5" pt="2">
                 <Link href="/reset-password">
-                  <Button colorPalette="green" alignSelf="flex-start" borderRadius="lg">
+                  <Button colorPalette="blue" alignSelf="flex-start" borderRadius="lg">
                     <Icon mr="2">
                       <LuLock />
                     </Icon>

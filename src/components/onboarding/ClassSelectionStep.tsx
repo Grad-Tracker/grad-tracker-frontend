@@ -62,7 +62,7 @@ export default function ClassSelectionStep({
             Current Courses
           </Badge>
           <Heading
-            fontFamily="var(--font-outfit), sans-serif"
+            fontFamily="var(--font-dm-sans), sans-serif"
             size="xl"
             fontWeight="400"
             letterSpacing="-0.01em"
@@ -98,14 +98,14 @@ export default function ClassSelectionStep({
       {/* Selected Count */}
       {selectedClasses.length > 0 && (
         <Box
-          bg="green.subtle"
+          bg="blue.subtle"
           borderRadius="lg"
           px="4"
           py="3"
           borderWidth="1px"
-          borderColor="green.muted"
+          borderColor="blue.muted"
         >
-          <Text fontSize="sm" fontWeight="600" color="green.fg">
+          <Text fontSize="sm" fontWeight="600" color="blue.fg">
             {selectedClasses.length} course{selectedClasses.length !== 1 ? "s" : ""}{" "}
             selected ({totalCredits} credits)
           </Text>
@@ -152,7 +152,7 @@ export default function ClassSelectionStep({
                           </Badge>
                         </Box>
                       }
-                      colorPalette="green"
+                      colorPalette="blue"
                       borderRadius="xl"
                     />
                   ))}

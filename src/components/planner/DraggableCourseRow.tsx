@@ -3,24 +3,8 @@
 import { useDraggable } from "@dnd-kit/core";
 import { Box, Table, Text } from "@chakra-ui/react";
 import { LuGripVertical } from "react-icons/lu";
+import { getSubjectColor } from "@/lib/subject-colors";
 import type { Course } from "@/types/course";
-
-const SUBJECT_COLORS: Record<string, string> = {
-  CS: "blue",
-  CSCI: "blue",
-  MATH: "purple",
-  ENGL: "orange",
-  PHYS: "teal",
-  BIOS: "green",
-  CHEM: "red",
-  HIST: "yellow",
-  PSYC: "pink",
-  COMM: "cyan",
-};
-
-function getSubjectColor(subject: string): string {
-  return SUBJECT_COLORS[subject] || "gray";
-}
 
 interface DraggableCourseRowProps {
   course: Course;
