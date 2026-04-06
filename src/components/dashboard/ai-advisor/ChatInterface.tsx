@@ -427,6 +427,7 @@ export function ChatInterface() {
           variant="ghost"
           ms="auto"
           onClick={() => {
+            stopGenerating();
             setMessages([{
               id: createId(),
               role: "assistant",

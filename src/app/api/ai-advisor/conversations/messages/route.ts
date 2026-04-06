@@ -32,7 +32,7 @@ export async function POST(request: Request) {
 
   // Get the student_id for the authenticated user
   const { data: studentData, error: studentError } = await supabase
-    .from("students")
+    .from(DB_TABLES.students)
     .select("id")
     .eq("auth_user_id", user.id)
     .single();
