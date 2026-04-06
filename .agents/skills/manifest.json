@@ -1,0 +1,11 @@
+{
+    "version":  1,
+    "targets":  [
+                    "claude"
+                ],
+    "skills":  [
+                   "coverage-report",
+                   "github-report",
+                   "create-feature-tests"
+               ]
+}

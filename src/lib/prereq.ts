@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/client";
+import { DB_VIEWS } from "@/lib/supabase/queries/schema";
 
 export type PrereqEvaluation = {
   unlocked: boolean;
@@ -119,23 +120,23 @@ function dedupeSummary(items: string[]): string[] {
 }
 
 async function fetchCompletedHistoryRows(supabase: ReturnType<typeof createClient>, studentId: number) {
-  const tryColumns = ["student", "student_id"] as const;
-  let lastError: unknown = null;
+  const res = await supabase
+    .from(DB_VIEWS.studentCourseProgress)
+    .select("student_id, course_id, grade, completed, progress_status")
+    .eq("student_id", studentId)
+    .eq("completed", true);
 
-  for (const studentCol of tryColumns) {
-    const res = await supabase
-      .from("student_course_history")
-      .select("*")
-      .eq(studentCol, studentId)
-      .eq("completed", true);
+  if (res.error) return { data: null, error: res.error };
 
-    if (!res.error) {
-      return res;
-    }
-    lastError = res.error;
-  }
-
-  return { data: null, error: lastError };
+  return {
+    data: (res.data ?? []).map((row: any) => ({
+      student_id: row.student_id,
+      course_id: row.course_id,
+      grade: row.grade,
+      completed: row.completed,
+    })),
+    error: null,
+  };
 }
 
 export async function evaluatePrereqsForCourses(

@@ -48,7 +48,7 @@ describe("DashboardSidebar", () => {
     expect(screen.getAllByText("Courses").length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText("Requirements").length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText("Planner").length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText("Reports").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("AI Advisor").length).toBeGreaterThanOrEqual(1);
   });
 
   it("renders the Settings link", () => {
@@ -69,6 +69,7 @@ describe("DashboardSidebar", () => {
     expect(hrefs).toContain("/dashboard/courses");
     expect(hrefs).toContain("/dashboard/requirements");
     expect(hrefs).toContain("/dashboard/planner");
+    expect(hrefs).toContain("/dashboard/ai-advisor");
   });
 
   it("calls signOut and redirects to signin on Sign Out click", async () => {
