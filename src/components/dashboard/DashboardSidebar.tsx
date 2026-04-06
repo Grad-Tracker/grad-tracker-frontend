@@ -10,11 +10,9 @@ import {
   LuBookOpen,
   LuTarget,
   LuCalendar,
-  // LuFileText,
   LuGraduationCap,
   LuSettings,
   LuLogOut,
-  LuSparkles,
 } from "react-icons/lu";
 
 const navItems = [
@@ -22,14 +20,11 @@ const navItems = [
   { icon: LuBookOpen, label: "Courses", href: "/dashboard/courses" },
   { icon: LuTarget, label: "Requirements", href: "/dashboard/requirements" },
   { icon: LuCalendar, label: "Planner", href: "/dashboard/planner" },
-  // { icon: LuFileText, label: "Reports", href: "/dashboard/reports" },
-  { icon: LuSparkles, label: "AI Advisor", href: "/dashboard/ai-advisor" },
 ];
 
 export default function DashboardSidebar() {
   const pathname = usePathname();
   const router = useRouter();
-
   async function handleSignOut() {
     const supabase = createClient();
     await supabase.auth.signOut();
@@ -63,7 +58,7 @@ export default function DashboardSidebar() {
         css={{ "&::-webkit-scrollbar": { display: "none" }, scrollbarWidth: "none" }}
       >
         {/* Logo icon */}
-        <Box p="1.5" bg="green.solid" borderRadius="md" flexShrink={0} mr="1">
+        <Box p="1.5" bg="blue.solid" borderRadius="md" flexShrink={0} mr="1">
           <Icon color="white" boxSize="4">
             <LuGraduationCap />
           </Icon>
@@ -79,11 +74,11 @@ export default function DashboardSidebar() {
                 px="2.5"
                 py="1"
                 borderRadius="md"
-                bg={active ? "green.subtle" : "transparent"}
-                color={active ? "green.fg" : "fg.muted"}
+                bg={active ? "blue.subtle" : "transparent"}
+                color={active ? "blue.fg" : "fg.muted"}
                 align="center"
                 transition="all 0.15s"
-                _hover={{ bg: active ? "green.subtle" : "bg.subtle", color: active ? "green.fg" : "fg" }}
+                _hover={{ bg: active ? "blue.subtle" : "bg.subtle", color: active ? "blue.fg" : "fg" }}
               >
                 <Icon boxSize="4">
                   <item.icon />
@@ -150,7 +145,7 @@ export default function DashboardSidebar() {
       >
       {/* Logo */}
       <HStack gap="3" px="6" py="5" borderBottomWidth="1px" borderColor="border.subtle">
-        <Box p="2" bg="green.solid" borderRadius="lg">
+        <Box p="2" bg="blue.solid" borderRadius="lg">
           <Icon color="white" boxSize="5">
             <LuGraduationCap />
           </Icon>
@@ -171,12 +166,12 @@ export default function DashboardSidebar() {
                 py="2.5"
                 borderRadius="lg"
                 cursor="pointer"
-                bg={active ? "green.subtle" : "transparent"}
-                color={active ? "green.fg" : "fg.muted"}
+                bg={active ? "blue.subtle" : "transparent"}
+                color={active ? "blue.fg" : "fg.muted"}
                 fontWeight={active ? "600" : "500"}
                 _hover={{
-                  bg: active ? "green.subtle" : "bg.subtle",
-                  color: active ? "green.fg" : "fg",
+                  bg: active ? "blue.subtle" : "bg.subtle",
+                  color: active ? "blue.fg" : "fg",
                 }}
                 transition="all 0.15s"
               >
@@ -188,6 +183,7 @@ export default function DashboardSidebar() {
             </Link>
           );
         })}
+
       </VStack>
 
       {/* Bottom section */}

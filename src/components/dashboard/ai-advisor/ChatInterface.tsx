@@ -8,7 +8,6 @@ import {
   Flex,
   HStack,
   Input,
-  Separator,
   Text,
   VStack,
 } from "@chakra-ui/react";
@@ -47,7 +46,7 @@ function AIMessage({ message }: { message: AdvisorMessage }) {
     <VStack align="stretch" gap="2">
       <HStack gap="2">
         <Badge colorPalette="purple" variant="subtle">
-          Sage
+          Atlas
         </Badge>
       </HStack>
       <Box
@@ -161,7 +160,7 @@ export function ChatInterface() {
     {
       id: createId(),
       role: "assistant",
-      text: "I'm Sage, your AI Academic Advisor. Ask about next-semester planning, prerequisites, remaining requirements, or graduation progress.",
+      text: "I'm Atlas, your AI Academic Advisor. Ask about next-semester planning, prerequisites, remaining requirements, or graduation progress.",
     },
   ]);
   const [draft, setDraft] = useState("");
@@ -264,10 +263,10 @@ export function ChatInterface() {
         const payload = (await response.json().catch(() => ({}))) as { error?: string };
         const fallbackError =
           response.status === 401
-            ? "You must sign in again to use Sage."
+            ? "You must sign in again to use Atlas."
             : response.status === 409
-              ? "Complete onboarding before using Sage."
-              : "Sage could not process your request.";
+              ? "Complete onboarding before using Atlas."
+              : "Atlas could not process your request.";
         throw new Error(payload.error || fallbackError);
       }
 
@@ -298,13 +297,8 @@ export function ChatInterface() {
           }
 
           if (event.type === "delta") {
-            setMessages((prev) =>
-              prev.map((m) =>
-                m.id === assistantId
-                  ? { ...m, text: m.text + event.text }
-                  : m
-              )
-            );
+            // Deltas contain raw JSON — suppress and show typing indicator instead.
+            // The final parsed answer arrives via the "done" event.
           } else if (event.type === "status") {
             setMessages((prev) =>
               prev.map((m) =>
@@ -357,7 +351,7 @@ export function ChatInterface() {
         );
       } else {
         const messageText =
-          error instanceof Error ? error.message : "Unexpected Sage error.";
+          error instanceof Error ? error.message : "Unexpected Atlas error.";
         setMessages((prev) =>
           prev.map((m) =>
             m.id === assistantId
@@ -377,36 +371,30 @@ export function ChatInterface() {
   }
 
   return (
-    <Box
-      bg="bg"
-      borderWidth="1px"
-      borderColor="border.subtle"
-      borderRadius="xl"
-      overflow="hidden"
-    >
+    <Flex direction="column" h="100%" overflow="hidden">
+      {/* Status bar */}
       <HStack
-        px="5"
-        py="3"
+        px="4"
+        py="2"
         borderBottomWidth="1px"
         borderColor="border.subtle"
         bg="bg.subtle"
         gap="2"
+        flexShrink={0}
       >
         <Box w="2" h="2" borderRadius="full" bg={loading ? "orange.500" : "green.500"} />
         <Text fontSize="xs" fontWeight="600" color="fg.muted">
-          {loading ? "Sage is thinking..." : "Sage is online"}
-        </Text>
-        <Text fontSize="2xs" color="fg.subtle" ms="auto">
-          Read-only mode
+          {loading ? "Atlas is thinking..." : "Atlas is online"}
         </Text>
         <Button
           size="xs"
           variant="ghost"
+          ms="auto"
           onClick={() => {
             setMessages([{
               id: createId(),
               role: "assistant",
-              text: "I'm Sage, your AI Academic Advisor. Ask about next-semester planning, prerequisites, remaining requirements, or graduation progress.",
+              text: "I'm Atlas, your AI Academic Advisor. Ask about next-semester planning, prerequisites, remaining requirements, or graduation progress.",
             }]);
             setConversationId(null);
           }}
@@ -415,7 +403,8 @@ export function ChatInterface() {
         </Button>
       </HStack>
 
-      <VStack align="stretch" gap="4" p="5" maxH="520px" overflowY="auto">
+      {/* Messages */}
+      <VStack align="stretch" gap="4" p="4" flex="1" overflowY="auto">
         {messages.map((message) =>
           message.role === "assistant" ? (
             <AIMessage key={message.id} message={message} />
@@ -426,9 +415,8 @@ export function ChatInterface() {
         <div ref={messagesEndRef} />
       </VStack>
 
-      <Separator />
-
-      <Box px="4" py="3.5">
+      {/* Input area */}
+      <Box px="4" py="3" borderTopWidth="1px" borderColor="border.subtle" flexShrink={0}>
         <Flex gap="2" wrap="wrap" mb="3">
           {promptChips.map((chip) => (
             <Button
@@ -454,7 +442,7 @@ export function ChatInterface() {
           gap="2"
         >
           <Input
-            placeholder="Ask about courses, requirements, or graduation progress..."
+            placeholder="Ask about courses, requirements, or graduation..."
             size="md"
             borderRadius="xl"
             value={draft}
@@ -489,6 +477,6 @@ export function ChatInterface() {
           )}
         </HStack>
       </Box>
-    </Box>
+    </Flex>
   );
 }

@@ -111,12 +111,17 @@ function gradeMeetsMinimum(studentGrade: unknown, minGrade: unknown): boolean {
   return GRADE_RANK[student] >= GRADE_RANK[min];
 }
 
-function formatCourseRequirement(requiredCourseId: number, minGrade: unknown): string {
+function formatCourseRequirement(
+  requiredCourseId: number,
+  minGrade: unknown,
+  courseCodeMap: Map<number, string>
+): string {
+  const code = courseCodeMap.get(requiredCourseId) ?? `course #${requiredCourseId}`;
   const min = normalizeGrade(minGrade);
   if (min) {
-    return `Requires course ${requiredCourseId} (${min} or better)`;
+    return `Requires ${code} (${min} or better)`;
   }
-  return `Requires course ${requiredCourseId}`;
+  return `Requires ${code}`;
 }
 
 function dedupeSummary(items: string[]): string[] {
@@ -203,6 +208,25 @@ export async function evaluatePrereqsForCourses(
   if (historyRes.error) throw historyRes.error;
   const historyRows = (historyRes.data ?? []) as StudentHistoryRow[];
 
+  // Build a courseId → "SUBJ NUM" map for all referenced prerequisite courses
+  const referencedCourseIds = new Set<number>();
+  for (const atom of reqAtoms) {
+    const id = num(atom.required_course_id ?? atom.course_id);
+    if (id != null) referencedCourseIds.add(id);
+  }
+  const courseCodeMap = new Map<number, string>();
+  if (referencedCourseIds.size > 0) {
+    const { data: courseRows } = await supabase
+      .from(DB_VIEWS.courseCatalog)
+      .select("course_id, subject, number")
+      .in("course_id", Array.from(referencedCourseIds));
+    for (const row of courseRows ?? []) {
+      const id = Number(row.course_id);
+      const code = `${String(row.subject ?? "").trim()} ${String(row.number ?? "").trim()}`.trim().toUpperCase();
+      if (code) courseCodeMap.set(id, code);
+    }
+  }
+
   const completedByCourse = new Map<number, StudentHistoryRow[]>();
   for (const row of historyRows) {
     const courseId = num(row.course ?? row.course_id);
@@ -246,7 +270,7 @@ export async function evaluatePrereqsForCourses(
       if (ok) return { ok: true, summary: [] };
       return {
         ok: false,
-        summary: [formatCourseRequirement(requiredCourseId, atom.min_grade)],
+        summary: [formatCourseRequirement(requiredCourseId, atom.min_grade, courseCodeMap)],
       };
     }
 

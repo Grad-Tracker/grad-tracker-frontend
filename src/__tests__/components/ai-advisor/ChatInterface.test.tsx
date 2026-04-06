@@ -17,9 +17,9 @@ function renderChat() {
 describe("ChatInterface", () => {
   beforeEach(() => vi.clearAllMocks());
 
-  it("renders the Sage welcome message", () => {
+  it("renders the Atlas welcome message", () => {
     renderChat();
-    const matches = screen.getAllByText(/Sage/i);
+    const matches = screen.getAllByText(/Atlas/i);
     expect(matches.length).toBeGreaterThan(0);
   });
 
