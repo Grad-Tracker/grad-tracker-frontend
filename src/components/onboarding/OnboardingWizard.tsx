@@ -246,7 +246,7 @@ export default function OnboardingWizard() {
     return (
       <Box minH="100vh" bg="bg" display="flex" alignItems="center" justifyContent="center">
         <VStack gap="4">
-          <Spinner size="xl" colorPalette="green" />
+          <Spinner size="xl" colorPalette="blue" />
           <Text color="fg.muted">Loading programs...</Text>
         </VStack>
       </Box>
@@ -265,7 +265,7 @@ export default function OnboardingWizard() {
           {/* Header */}
           <VStack gap="3" textAlign="center" className="animate-fade-up">
             <Badge
-              colorPalette="green"
+              colorPalette="blue"
               variant="surface"
               size="lg"
               px="4"
@@ -297,7 +297,7 @@ export default function OnboardingWizard() {
               step={state.currentStep}
               onStepChange={handleStepChange}
               count={steps.length}
-              colorPalette="green"
+              colorPalette="blue"
               size="sm"
             >
               <Steps.List mb="8">
@@ -338,7 +338,7 @@ export default function OnboardingWizard() {
               <Steps.Content index={1}>
                 {loadingRequirements ? (
                   <VStack py="12" gap="4">
-                    <Spinner size="lg" colorPalette="green" />
+                    <Spinner size="lg" colorPalette="blue" />
                     <Text color="fg.muted">Loading courses...</Text>
                   </VStack>
                 ) : (

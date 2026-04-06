@@ -4,6 +4,7 @@ import { useDraggable } from "@dnd-kit/core";
 import { Box, Badge, HStack, Text, VStack } from "@chakra-ui/react";
 import { LuGripVertical, LuCircleCheck } from "react-icons/lu";
 import { Tooltip } from "@/components/ui/tooltip";
+import { getSubjectColor } from "@/lib/subject-colors";
 import type { Course } from "@/types/course";
 
 interface DraggableCourseCardProps {
@@ -11,23 +12,7 @@ interface DraggableCourseCardProps {
   termId?: number;
   isCompleted?: boolean;
   isPlanned?: boolean;
-}
-
-const SUBJECT_COLORS: Record<string, string> = {
-  CS: "blue",
-  CSCI: "blue",
-  MATH: "purple",
-  ENGL: "orange",
-  PHYS: "teal",
-  BIOS: "green",
-  CHEM: "red",
-  HIST: "yellow",
-  PSYC: "pink",
-  COMM: "cyan",
-};
-
-function getSubjectColor(subject: string): string {
-  return SUBJECT_COLORS[subject] || "gray";
+  dragContextId?: string | number;
 }
 
 function CourseTooltipContent({ course }: { course: Course }) {
@@ -78,10 +63,12 @@ export default function DraggableCourseCard({
   termId,
   isCompleted = false,
   isPlanned = false,
+  dragContextId,
 }: DraggableCourseCardProps) {
+  const poolScope = dragContextId != null ? `panel-${dragContextId}` : "panel";
   const { attributes, listeners, setNodeRef, transform, isDragging } =
     useDraggable({
-      id: `course-${course.id}-term-${termId ?? "panel"}`,
+      id: `course-${course.id}-term-${termId ?? poolScope}`,
       data: { course, fromTermId: termId },
       disabled: isCompleted,
     });
@@ -103,7 +90,7 @@ export default function DraggableCourseCard({
       {...attributes}
       bg="bg"
       borderWidth="1px"
-      borderColor={isDragging ? "green.500" : "border.subtle"}
+      borderColor={isDragging ? "blue.500" : "border.subtle"}
       borderLeftWidth="3px"
       borderLeftColor={isCompleted ? "fg.subtle" : `${color}.500`}
       borderRadius="lg"
@@ -130,7 +117,7 @@ export default function DraggableCourseCard({
             </Box>
           )}
           {isCompleted && (
-            <Box color="green.500" flexShrink={0}>
+            <Box color="blue.500" flexShrink={0}>
               <LuCircleCheck size={14} />
             </Box>
           )}
@@ -163,7 +150,7 @@ export default function DraggableCourseCard({
         </Badge>
       </HStack>
       {isPlanned && !isCompleted && !termId && (
-        <Badge size="sm" variant="outline" colorPalette="green" mt="1">
+        <Badge size="sm" variant="outline" colorPalette="blue" mt="1">
           Planned
         </Badge>
       )}

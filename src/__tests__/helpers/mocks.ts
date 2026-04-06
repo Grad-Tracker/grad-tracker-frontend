@@ -32,6 +32,7 @@ export function createChainMock(overrides: Record<string, unknown> = {}) {
   chain.order = vi.fn().mockReturnValue(chain);
   chain.limit = vi.fn().mockReturnValue(chain);
   chain.range = vi.fn().mockReturnValue(chain);
+  chain.or = vi.fn().mockReturnValue(chain);
   chain.single = vi.fn().mockResolvedValue({ data: null, error: null });
   chain.maybeSingle = vi.fn().mockResolvedValue({ data: null, error: null });
   // Make chain itself thenable so `await supabase.from(...).select(...)` works

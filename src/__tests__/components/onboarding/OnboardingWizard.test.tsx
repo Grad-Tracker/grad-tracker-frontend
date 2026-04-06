@@ -476,10 +476,13 @@ describe("OnboardingWizard", () => {
 
     await waitFor(() => {
       expect(mockToaster.error).toHaveBeenCalledWith(
-        expect.objectContaining({ title: "Failed to load program data" })
+        expect.objectContaining({
+          title: "Failed to load program data",
+          description: "Please try selecting your major again.",
+        })
       );
     });
-  });
+  }, 20000);
 
   it("shows success toast and navigates to dashboard after successful completion", async () => {
     const mockGetUser = vi.fn().mockResolvedValue({

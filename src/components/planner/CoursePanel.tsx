@@ -15,9 +15,11 @@ import {
 } from "@chakra-ui/react";
 import { LuSearch, LuChevronDown, LuBookOpen, LuArrowDownToLine, LuGripVertical } from "react-icons/lu";
 import type { RequirementBlockWithCourses, PlannedCourseWithDetails, GraduateTrack } from "@/types/planner";
+import type { GenEdBucketWithCourses } from "@/types/auto-generate";
 import { isBreadthBlock } from "@/types/planner";
 import DraggableCourseCard from "./DraggableCourseCard";
 import RequirementProgress from "./RequirementProgress";
+import GenEdProgress from "./GenEdProgress";
 import BreadthPackageSelector from "./BreadthPackageSelector";
 import GraduateTrackSelector from "./GraduateTrackSelector";
 
@@ -37,6 +39,7 @@ interface CoursePanelProps {
   graduateTracks?: GraduateTrack[];
   selectedTrackId?: number | null;
   onTrackSelect?: (trackId: number) => void;
+  genEdBuckets?: GenEdBucketWithCourses[];
 }
 
 export default function CoursePanel({
@@ -52,6 +55,7 @@ export default function CoursePanel({
   graduateTracks = [],
   selectedTrackId = null,
   onTrackSelect,
+  genEdBuckets = [],
 }: CoursePanelProps) {
   const { isOver, setNodeRef } = useDroppable({ id: "course-panel" });
   const [search, setSearch] = useState("");
@@ -104,10 +108,9 @@ export default function CoursePanel({
 
   return (
     <Box
-      position={{ lg: "sticky" }}
-      top={{ lg: "73px" }}
       display="flex"
       flexShrink={0}
+      h={{ lg: "100%" }}
     >
     <Box
       ref={setNodeRef}
@@ -117,7 +120,7 @@ export default function CoursePanel({
       borderColor={isOver ? "orange.400" : "border.subtle"}
       bg={isOver ? "orange.subtle" : "bg"}
       overflowY="auto"
-      maxH={{ lg: "calc(100vh - 73px)" }}
+      h={{ lg: "100%" }}
       transition={isResizing.current ? "none" : "background 0.2s, border-color 0.2s"}
     >
       {/* Drop-to-remove indicator */}
@@ -144,18 +147,18 @@ export default function CoursePanel({
       {/* Panel Header */}
       <Box px="4" py="4" borderBottomWidth="1px" borderColor="border.subtle">
         <HStack mb="3" gap="2">
-          <Icon boxSize="5" color="green.fg">
+          <Icon boxSize="5" color="blue.fg">
             <LuBookOpen />
           </Icon>
           <Heading
             size="sm"
-            fontFamily="var(--font-outfit), sans-serif"
+            fontFamily="var(--font-dm-sans), sans-serif"
             fontWeight="400"
             letterSpacing="-0.02em"
           >
             Course Pool
           </Heading>
-          <Badge size="sm" variant="subtle" colorPalette="green">
+          <Badge size="sm" variant="subtle" colorPalette="blue">
             {totalAvailable} available
           </Badge>
         </HStack>
@@ -189,6 +192,15 @@ export default function CoursePanel({
         hasBreadthPackageSelected={!!selectedBreadthPackageId}
         isGraduatePlan={isGraduatePlan}
       />
+
+      {/* Gen Ed Progress */}
+      {!isGraduatePlan && (
+        <GenEdProgress
+          buckets={genEdBuckets}
+          plannedCourses={plannedCourses}
+          completedCourseIds={completedCourseIds}
+        />
+      )}
 
       {/* Graduate Track Selector */}
       {isGraduatePlan && graduateTracks.length >= 2 && onTrackSelect && (
@@ -255,18 +267,17 @@ export default function CoursePanel({
                     allBreadthCourses={allBreadthCourses}
                   />
                 )}
-                {(!isBreadth || selectedBreadthPackageId) && (
-                  <VStack align="stretch" gap="1.5" px="3" py="2">
-                    {block.courses.map((course) => (
-                      <DraggableCourseCard
-                        key={course.id}
-                        course={course}
-                        isCompleted={completedCourseIds.has(course.id)}
-                        isPlanned={plannedCourseIds.has(course.id)}
-                      />
-                    ))}
-                  </VStack>
-                )}
+                <VStack align="stretch" gap="1.5" px="3" py="2">
+                  {block.courses.map((course) => (
+                    <DraggableCourseCard
+                      key={course.id}
+                      course={course}
+                      isCompleted={completedCourseIds.has(course.id)}
+                      isPlanned={plannedCourseIds.has(course.id)}
+                      dragContextId={block.id}
+                    />
+                  ))}
+                </VStack>
               </Collapsible.Content>
             </Collapsible.Root>
           );
@@ -284,7 +295,7 @@ export default function CoursePanel({
       bg="transparent"
       borderRightWidth="1px"
       borderColor="border.subtle"
-      _hover={{ bg: "bg.subtle", borderColor: "green.300" }}
+      _hover={{ bg: "bg.subtle", borderColor: "blue.300" }}
       transition="all 0.15s"
       flexShrink={0}
       onPointerDown={handleResizeStart}

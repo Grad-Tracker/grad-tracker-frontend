@@ -10,7 +10,7 @@ vi.mock("@/lib/supabase/server", () => ({
 }));
 
 vi.mock("@/lib/supabase/queries/schema", () => ({
-  DB_TABLES: { programs: "programs" },
+  DB_VIEWS: { programCatalog: "v_program_catalog" },
 }));
 
 vi.mock("@/app/dashboard/requirements/ProgramsClient", () => ({
@@ -22,8 +22,8 @@ vi.mock("@/app/dashboard/requirements/ProgramsClient", () => ({
 import RequirementsPage from "@/app/dashboard/requirements/page";
 
 const mockPrograms = [
-  { id: "1", name: "Computer Science", catalog_year: 2024, program_type: "MAJOR" },
-  { id: "2", name: "Mathematics Minor", catalog_year: null, program_type: "MINOR" },
+  { program_id: "1", program_name: "Computer Science", catalog_year: "2024", program_type: "MAJOR" },
+  { program_id: "2", program_name: "Mathematics Minor", catalog_year: null, program_type: "MINOR" },
 ];
 
 describe("/dashboard/requirements page", () => {
@@ -55,7 +55,7 @@ describe("/dashboard/requirements page", () => {
     expect(screen.getByText("PROGRAMS CLIENT count=0")).toBeInTheDocument();
   });
 
-  it("queries the programs table with name ordering", async () => {
+  it("queries the program catalog view with name ordering", async () => {
     mockFrom.mockReturnValue(
       createChainMock({
         order: vi.fn().mockResolvedValue({ data: [], error: null }),
@@ -63,8 +63,8 @@ describe("/dashboard/requirements page", () => {
     );
 
     await RequirementsPage();
-    expect(mockFrom).toHaveBeenCalledWith("programs");
+    expect(mockFrom).toHaveBeenCalledWith("v_program_catalog");
     const chain = mockFrom.mock.results[0].value;
-    expect(chain.order).toHaveBeenCalledWith("name", { ascending: true });
+    expect(chain.order).toHaveBeenCalledWith("program_name", { ascending: true });
   });
 });

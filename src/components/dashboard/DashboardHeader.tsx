@@ -91,7 +91,7 @@ export default function DashboardHeader() {
     <Box
       as="header"
       position="sticky"
-      top="0"
+      top={{ base: "56px", lg: "0" }}
       bg="bg"
       borderBottomWidth="1px"
       borderColor="border.subtle"

@@ -19,9 +19,9 @@ vi.mock("@/lib/supabase/server", () => ({
 }));
 
 vi.mock("@/lib/supabase/queries/schema", () => ({
-  DB_TABLES: {
-    programs: "programs",
-    programRequirementBlocks: "program_requirement_blocks",
+  DB_VIEWS: {
+    programCatalog: "v_program_catalog",
+    programRequirementDetail: "v_program_requirement_detail",
   },
 }));
 
@@ -36,23 +36,54 @@ vi.mock("@/app/dashboard/requirements/[id]/ProgramDetailClient", () => ({
 import ProgramDetailPage from "@/app/dashboard/requirements/[id]/page";
 
 const mockProgram = {
-  id: "42",
-  name: "Computer Science",
-  catalog_year: 2024,
+  program_id: "42",
+  program_name: "Computer Science",
+  catalog_year: "2024",
   program_type: "MAJOR",
 };
 
-function makeClient(programResult: any, blocksResult: any = { data: [], error: null }) {
+const mockBlock = {
+  block_id: 10,
+  block_name: "Major Core",
+  rule: "ALL_OF",
+  n_required: null,
+  credits_required: null,
+  courses: [
+    {
+      course_id: 241,
+      subject: "CSCI",
+      number: "241",
+      title: "Software Engineering",
+      credits: 3,
+      description: "Course description",
+      prereq_text: "CSCI 240",
+    },
+  ],
+  cross_listings: [],
+  req_nodes: [],
+};
+
+function makeClient(
+  programResult: any,
+  overrides: {
+    blocksResult?: any;
+  } = {}
+) {
+  const { blocksResult = { data: [], error: null } } = overrides;
+
   mockFrom.mockImplementation((table: string) => {
-    if (table === "programs") {
+    if (table === "v_program_catalog") {
       return createChainMock({
-        single: vi.fn().mockResolvedValue(programResult),
+        maybeSingle: vi.fn().mockResolvedValue(programResult),
       });
     }
-    // program_requirement_blocks ends with .order(), others end with .in()
+    if (table === "v_program_requirement_detail") {
+      return createChainMock({
+        order: vi.fn().mockResolvedValue(blocksResult),
+      });
+    }
     return createChainMock({
-      order: vi.fn().mockResolvedValue(blocksResult),
-      in: vi.fn().mockResolvedValue(blocksResult),
+      order: vi.fn().mockResolvedValue({ data: [], error: null }),
     });
   });
 }
@@ -72,7 +103,7 @@ describe("/dashboard/requirements/[id] page", () => {
     expect(mockNotFound).toHaveBeenCalled();
   });
 
-  it("calls notFound when program query returns programError", async () => {
+  it("calls notFound when program query returns error", async () => {
     makeClient({ data: null, error: { code: "PGRST116" } });
 
     await expect(
@@ -91,13 +122,38 @@ describe("/dashboard/requirements/[id] page", () => {
     ).toBeInTheDocument();
   });
 
-  it("queries the programs table with the correct id", async () => {
+  it("queries the program catalog view with the correct id", async () => {
     makeClient({ data: mockProgram, error: null });
 
     await ProgramDetailPage({ params: Promise.resolve({ id: "42" }) });
 
-    expect(mockFrom).toHaveBeenCalledWith("programs");
+    expect(mockFrom).toHaveBeenCalledWith("v_program_catalog");
     const programsChain = mockFrom.mock.results[0].value;
-    expect(programsChain.eq).toHaveBeenCalledWith("id", "42");
+    expect(programsChain.eq).toHaveBeenCalledWith("program_id", "42");
+  });
+
+  it("throws when loading requirement blocks fails", async () => {
+    makeClient(
+      { data: mockProgram, error: null },
+      { blocksResult: { data: null, error: { message: "blocks failed" } } }
+    );
+
+    await expect(
+      ProgramDetailPage({ params: Promise.resolve({ id: "42" }) })
+    ).rejects.toThrow("Failed to load requirement blocks: blocks failed");
+  });
+
+  it("renders a populated block when requirement detail view succeeds", async () => {
+    makeClient(
+      { data: mockProgram, error: null },
+      { blocksResult: { data: [mockBlock], error: null } }
+    );
+
+    const el = await ProgramDetailPage({ params: Promise.resolve({ id: "42" }) });
+    render(el as React.ReactElement);
+
+    expect(
+      screen.getByText("DETAIL CLIENT program=Computer Science blocks=1")
+    ).toBeInTheDocument();
   });
 });

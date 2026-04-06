@@ -35,10 +35,10 @@ const promptChips = [
 ];
 
 const creditCategories = [
-  { label: "Major Core", completed: 30, required: 42, color: "blue" },
-  { label: "Major Electives", completed: 12, required: 18, color: "purple" },
-  { label: "General Education", completed: 28, required: 36, color: "green" },
-  { label: "Free Electives", completed: 8, required: 24, color: "orange" },
+  { label: "General Education", completed: 28, required: 36, color: "violet" },
+  { label: "Major Core", completed: 30, required: 42, color: "emerald" },
+  { label: "Major Electives", completed: 12, required: 18, color: "blue" },
+  { label: "Free Electives", completed: 8, required: 24, color: "amber" },
 ];
 
 const semesterStats = [
@@ -104,7 +104,7 @@ function UserMessage({ children, timestamp }: { children: ReactNode; timestamp: 
           </Text>
         </HStack>
         <Box
-          bg="green.500"
+          bg="blue.500"
           color="white"
           borderRadius="xl"
           borderTopRightRadius="sm"
@@ -114,7 +114,7 @@ function UserMessage({ children, timestamp }: { children: ReactNode; timestamp: 
           <Text fontSize="sm">{children}</Text>
         </Box>
       </Box>
-      <Avatar.Root size="sm" colorPalette="green" flexShrink={0} mt="0.5">
+      <Avatar.Root size="sm" colorPalette="blue" flexShrink={0} mt="0.5">
         <Avatar.Fallback name="Alex Johnson" />
       </Avatar.Root>
     </HStack>
@@ -251,7 +251,7 @@ export default function AIAdvisorPage() {
         </Box>
         <Box flex="1">
           <HStack gap="3" mb="0.5">
-            <Heading size="xl" fontFamily="var(--font-outfit), sans-serif">
+            <Heading size="xl" fontFamily="var(--font-dm-sans), sans-serif">
               AI Academic Advisor
             </Heading>
             <Badge colorPalette="purple" variant="subtle" size="sm">
@@ -287,7 +287,7 @@ export default function AIAdvisorPage() {
               bg="bg.subtle"
               gap="2"
             >
-              <Box w="2" h="2" borderRadius="full" bg="green.500" />
+              <Box w="2" h="2" borderRadius="full" bg="blue.500" />
               <Text fontSize="xs" fontWeight="600" color="fg.muted">
                 AI Advisor is online
               </Text>
@@ -337,7 +337,7 @@ export default function AIAdvisorPage() {
                         title="Data Structures & Algorithms"
                         credits={3}
                         note="Prereq: CSCI 240 ✓ — satisfies core requirement"
-                        iconColor="green.fg"
+                        iconColor="blue.fg"
                         IconComponent={LuCircleCheck}
                       />
                       <CourseChip
@@ -345,7 +345,7 @@ export default function AIAdvisorPage() {
                         title="Computer Organization"
                         credits={3}
                         note="Satisfies Architecture requirement"
-                        iconColor="green.fg"
+                        iconColor="blue.fg"
                         IconComponent={LuCircleCheck}
                       />
                       <CourseChip
@@ -353,7 +353,7 @@ export default function AIAdvisorPage() {
                         title="Discrete Mathematics"
                         credits={3}
                         note="Required before CSCI 450 and 460"
-                        iconColor="green.fg"
+                        iconColor="blue.fg"
                         IconComponent={LuCircleCheck}
                       />
                     </VStack>
@@ -384,8 +384,8 @@ export default function AIAdvisorPage() {
                     </VStack>
                   </Box>
 
-                  <Box px="3" py="2.5" bg="green.subtle" borderRadius="lg">
-                    <Text fontSize="xs" color="green.fg" fontWeight="600">
+                  <Box px="3" py="2.5" bg="blue.subtle" borderRadius="lg">
+                    <Text fontSize="xs" color="blue.fg" fontWeight="600">
                       ✓ This schedule (15 credits) keeps you on track to graduate May 2026
                     </Text>
                   </Box>
@@ -450,7 +450,7 @@ export default function AIAdvisorPage() {
                       borderColor="border.subtle"
                       gap="3"
                     >
-                      <Icon color="green.fg" boxSize="4">
+                      <Icon color="blue.fg" boxSize="4">
                         <LuCircleCheck />
                       </Icon>
                       <Text fontSize="xs">
@@ -576,7 +576,7 @@ export default function AIAdvisorPage() {
                 <Text fontSize="xs" color="fg.muted">
                   Expected Grad
                 </Text>
-                <Badge colorPalette="green" variant="subtle" fontSize="2xs">
+                <Badge colorPalette="blue" variant="subtle" fontSize="2xs">
                   May 2026
                 </Badge>
               </HStack>
@@ -592,7 +592,7 @@ export default function AIAdvisorPage() {
                 <Text fontSize="xs" color="fg.muted">
                   Standing
                 </Text>
-                <Badge colorPalette="green" variant="subtle" fontSize="2xs">
+                <Badge colorPalette="blue" variant="subtle" fontSize="2xs">
                   Good Standing
                 </Badge>
               </HStack>
@@ -617,7 +617,7 @@ export default function AIAdvisorPage() {
               65% complete toward degree
             </Text>
 
-            <Progress.Root value={65} colorPalette="green" mb="5" size="sm">
+            <Progress.Root value={65} colorPalette="blue" mb="5" size="sm">
               <Progress.Track borderRadius="full"><Progress.Range /></Progress.Track>
             </Progress.Root>
 
