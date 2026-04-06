@@ -41,18 +41,24 @@ const COURSE_ID = 101;
  *   2. course_req_nodes
  *   3. course_req_atoms  (Promise.all first branch)
  *   4. v_student_course_progress (Promise.all second branch)
+ *   5. v_course_catalog  (course code lookup for summary messages)
  */
 function setupMocks(
   reqSets: unknown[],
   reqNodes: unknown[],
   reqAtoms: unknown[],
-  historyRows: unknown[]
+  historyRows: unknown[],
+  catalogRows: unknown[] = [
+    { course_id: 50, subject: "CSCI", number: "240" },
+    { course_id: 60, subject: "MATH", number: "151" },
+  ]
 ) {
   mockFrom
     .mockReturnValueOnce(makeResolvingChain(reqSets))        // course_req_sets
     .mockReturnValueOnce(makeResolvingChain(reqNodes))       // course_req_nodes
     .mockReturnValueOnce(makeResolvingChain(reqAtoms))       // course_req_atoms
-    .mockReturnValueOnce(makeResolvingChain(historyRows));   // v_student_course_progress
+    .mockReturnValueOnce(makeResolvingChain(historyRows))    // v_student_course_progress
+    .mockReturnValueOnce(makeResolvingChain(catalogRows));   // v_course_catalog
 }
 
 // ---------------------------------------------------------------------------
@@ -62,6 +68,7 @@ function setupMocks(
 describe("evaluatePrereqsForCourses", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockFrom.mockReset();
   });
 
   // 1. Empty input
@@ -111,7 +118,7 @@ describe("evaluatePrereqsForCourses", () => {
     const evaluation = result.get(COURSE_ID);
 
     expect(evaluation?.unlocked).toBe(false);
-    expect(evaluation?.summary).toContain("Requires course 50");
+    expect(evaluation?.summary).toContain("Requires CSCI 240");
   });
 
   // 5. COURSE atom with min_grade="B", student grade="A" → unlocked (meets minimum)
@@ -141,7 +148,7 @@ describe("evaluatePrereqsForCourses", () => {
     const evaluation = result.get(COURSE_ID);
 
     expect(evaluation?.unlocked).toBe(false);
-    expect(evaluation?.summary).toContain("Requires course 50 (B or better)");
+    expect(evaluation?.summary).toContain("Requires CSCI 240 (B or better)");
   });
 
   // 7. CONSENT atom → locked, summary=["Instructor consent required"]
@@ -207,9 +214,9 @@ describe("evaluatePrereqsForCourses", () => {
     const evaluation = result.get(COURSE_ID);
 
     expect(evaluation?.unlocked).toBe(false);
-    expect(evaluation?.summary).toContain("Requires course 60");
+    expect(evaluation?.summary).toContain("Requires MATH 151");
     // course 50 was completed — should NOT appear in summary
-    expect(evaluation?.summary).not.toContain("Requires course 50");
+    expect(evaluation?.summary).not.toContain("Requires CSCI 240");
   });
 
   // 10. OR node with 2 children: one passes → unlocked=true
@@ -281,7 +288,10 @@ describe("evaluatePrereqsForCourses", () => {
       .mockReturnValueOnce(
         makeResolvingChain([{ id: 100, node_id: 10, atom_type: "COURSE", required_course_id: 50, min_grade: null }])
       )
-      .mockReturnValueOnce(makeResolvingChain([])); // no history
+      .mockReturnValueOnce(makeResolvingChain([])) // no history
+      .mockReturnValueOnce(
+        makeResolvingChain([{ course_id: 50, subject: "CSCI", number: "240" }])
+      );
 
     const result = await evaluatePrereqsForCourses([COURSE_ID, COURSE_ID_2], STUDENT_ID);
 
