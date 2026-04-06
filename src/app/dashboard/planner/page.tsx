@@ -18,6 +18,7 @@ import {
   DndContext,
   DragOverlay,
   PointerSensor,
+  KeyboardSensor,
   useSensor,
   useSensors,
   type DragStartEvent,
@@ -210,13 +211,17 @@ export default function PlannerPage() {
 
   // DnD sensors
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor)
   );
 
   // Derived data
   const activePlan = plans.find((p) => p.id === activePlanId) ?? null;
   const isGraduatePlan = activePlan?.has_graduate_program ?? false;
-  const plannedCourseIds = new Set(plannedCourses.map((pc) => pc.course_id));
+  const plannedCourseIds = useMemo(
+    () => new Set(plannedCourses.map((pc) => pc.course_id)),
+    [plannedCourses]
+  );
   const graduateTracks: GraduateTrack[] = useMemo(
     () => (isGraduatePlan ? getGraduateTracks(blocks) : []),
     [blocks, isGraduatePlan]
