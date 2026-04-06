@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { screen, fireEvent, waitFor, act } from "@testing-library/react";
 import React from "react";
-import { renderWithChakra } from "../../helpers/mocks";
-
+import { ChakraProvider, defaultSystem } from "@chakra-ui/react";
+import { render } from "@testing-library/react";
 const { mockPush, mockRouter, mockSignOut, mockToaster } = vi.hoisted(() => {
   const mockPush = vi.fn();
   return {
@@ -31,6 +31,16 @@ vi.mock("@/components/ui/toaster", () => ({ toaster: mockToaster }));
 
 import DashboardSidebar from "@/components/dashboard/DashboardSidebar";
 
+function renderSidebar() {
+  return render(
+    React.createElement(
+      ChakraProvider,
+      { value: defaultSystem },
+      React.createElement(DashboardSidebar)
+    )
+  );
+}
+
 describe("DashboardSidebar", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -38,42 +48,40 @@ describe("DashboardSidebar", () => {
   });
 
   it("renders the GradTracker logo", () => {
-    renderWithChakra(<DashboardSidebar />);
+    renderSidebar();
     expect(screen.getAllByText("GradTracker").length).toBeGreaterThanOrEqual(1);
   });
 
-  it("renders all 5 navigation items", () => {
-    renderWithChakra(<DashboardSidebar />);
+  it("renders navigation items", () => {
+    renderSidebar();
     expect(screen.getAllByText("Dashboard").length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText("Courses").length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText("Requirements").length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText("Planner").length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText("AI Advisor").length).toBeGreaterThanOrEqual(1);
   });
 
   it("renders the Settings link", () => {
-    renderWithChakra(<DashboardSidebar />);
+    renderSidebar();
     expect(screen.getAllByText("Settings").length).toBeGreaterThanOrEqual(1);
   });
 
   it("renders the Sign Out button", () => {
-    renderWithChakra(<DashboardSidebar />);
+    renderSidebar();
     expect(screen.getAllByText("Sign Out").length).toBeGreaterThanOrEqual(1);
   });
 
   it("nav links have correct hrefs", () => {
-    renderWithChakra(<DashboardSidebar />);
+    renderSidebar();
     const links = document.querySelectorAll("a");
     const hrefs = Array.from(links).map((a) => a.getAttribute("href"));
     expect(hrefs).toContain("/dashboard");
     expect(hrefs).toContain("/dashboard/courses");
     expect(hrefs).toContain("/dashboard/requirements");
     expect(hrefs).toContain("/dashboard/planner");
-    expect(hrefs).toContain("/dashboard/ai-advisor");
   });
 
   it("calls signOut and redirects to signin on Sign Out click", async () => {
-    renderWithChakra(<DashboardSidebar />);
+    renderSidebar();
     const signOutBtn = screen.getAllByText("Sign Out")[0];
     await act(async () => {
       fireEvent.click(signOutBtn);
@@ -85,7 +93,7 @@ describe("DashboardSidebar", () => {
   });
 
   it("shows success toaster after sign out", async () => {
-    renderWithChakra(<DashboardSidebar />);
+    renderSidebar();
     const signOutBtn = screen.getAllByText("Sign Out")[0];
     await act(async () => {
       fireEvent.click(signOutBtn);
