@@ -204,7 +204,7 @@ export default function SignupPage() {
   return (
     <Box
       minH="100vh"
-      fontFamily="var(--font-plus-jakarta), sans-serif"
+      fontFamily="var(--font-dm-sans), sans-serif"
       position="relative"
     >
       <Suspense fallback={null}>
@@ -230,7 +230,7 @@ export default function SignupPage() {
               <HStack gap="3" cursor="pointer">
                 <Box
                   p="2"
-                  bg="green.solid"
+                  bg="blue.solid"
                   borderRadius="lg"
                   className="animate-pulse-glow"
                 >
@@ -241,13 +241,13 @@ export default function SignupPage() {
                 <Text
                   fontWeight="700"
                   fontSize="xl"
-                  fontFamily="var(--font-outfit), sans-serif"
+                  fontFamily="var(--font-dm-sans), sans-serif"
                   letterSpacing="-0.02em"
                 >
                   GradTracker
                 </Text>
                 <Badge
-                  colorPalette="green"
+                  colorPalette="blue"
                   variant="surface"
                   size="sm"
                   fontWeight="500"
@@ -280,7 +280,7 @@ export default function SignupPage() {
           right="-10%"
           w="500px"
           h="500px"
-          bg="green.500"
+          bg="blue.500"
           opacity="0.05"
           borderRadius="full"
           filter="blur(100px)"
@@ -303,7 +303,7 @@ export default function SignupPage() {
             <Box
               position="absolute"
               inset="-4"
-              bg="green.500"
+              bg="blue.500"
               opacity="0.15"
               borderRadius="3xl"
               filter="blur(40px)"
@@ -328,7 +328,7 @@ export default function SignupPage() {
                 h="1px"
                 bgGradient="to-r"
                 gradientFrom="transparent"
-                gradientVia="green.500"
+                gradientVia="blue.500"
                 gradientTo="transparent"
               />
 
@@ -338,7 +338,7 @@ export default function SignupPage() {
                     <Text
                       fontWeight="700"
                       fontSize="2xl"
-                      fontFamily="var(--font-outfit), sans-serif"
+                      fontFamily="var(--font-dm-sans), sans-serif"
                       letterSpacing="-0.02em"
                     >
                       Create Student Account
@@ -405,7 +405,7 @@ export default function SignupPage() {
 
                   <Button
                     w="full"
-                    colorPalette="green"
+                    colorPalette="blue"
                     size="lg"
                     rounded="lg"
                     fontWeight="600"
@@ -439,7 +439,7 @@ export default function SignupPage() {
                     <Link href="/signin">
                       <Text
                         as="span"
-                        color="green.solid"
+                        color="blue.solid"
                         cursor="pointer"
                         fontWeight="600"
                         _hover={{ textDecoration: "underline" }}
@@ -450,25 +450,17 @@ export default function SignupPage() {
                   </Text>
 
                   <Text fontSize="sm" color="fg.muted" textAlign="center">
-                    Are you an advisor?{" "}
-                    <Button
-                      type="button"
-                      variant="plain"
-                      size="sm"
-                      minH="unset"
-                      h="auto"
-                      px="0"
-                      py="0"
-                      verticalAlign="baseline"
-                      color="green.solid"
-                      cursor="pointer"
-                      fontWeight="600"
-                      _hover={{ textDecoration: "underline" }}
-                      onClick={() => setAdvisorDialogOpen(true)}
-                    >
-                      Access code required &rarr;
-                    </Button>
+                    Are you an advisor?
                   </Text>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    color="blue.solid"
+                    fontWeight="600"
+                    onClick={() => setAdvisorDialogOpen(true)}
+                  >
+                    Access code required →
+                  </Button>
                 </VStack>
               </Card.Body>
             </Card.Root>

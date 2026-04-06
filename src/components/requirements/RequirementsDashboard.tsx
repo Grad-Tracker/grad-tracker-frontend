@@ -62,7 +62,7 @@ function statusMeta(status: "completed" | "inProgress" | "remaining") {
   if (status === "completed") {
     return {
       label: "Completed",
-      colorPalette: "green" as const,
+      colorPalette: "blue" as const,
       icon: LuCircleCheck,
     };
   }
@@ -318,24 +318,24 @@ export default function RequirementsDashboard({
         borderWidth="1px"
         boxShadow={
           status === "completed"
-            ? "0 0 0 1px rgba(34,197,94,0.25)"
+            ? "0 0 0 1px rgba(59,130,246,0.25)"
             : undefined
         }
         bg={
           status === "completed"
-            ? "green.700"
+            ? "blue.700"
             : status === "inProgress"
               ? "orange.subtle"
               : "bg.subtle"
         }
         borderColor={
           status === "completed"
-            ? "green.500"
+            ? "blue.500"
             : status === "inProgress"
               ? "orange.muted"
               : "border.subtle"
         }
-        _hover={status === "completed" ? { bg: "green.600" } : undefined}
+        _hover={status === "completed" ? { bg: "blue.600" } : undefined}
       >
         <HStack gap="3">
           <Box>
@@ -406,7 +406,7 @@ export default function RequirementsDashboard({
               </Box>
 
               <Badge
-                colorPalette={percentage === 100 ? "green" : "gray"}
+                colorPalette={percentage === 100 ? "blue" : "gray"}
                 variant="subtle"
               >
                 {percentage}% complete
@@ -414,7 +414,7 @@ export default function RequirementsDashboard({
             </Flex>
 
             <HStack gap="2" wrap="wrap">
-              <Badge colorPalette="green" variant="subtle">
+              <Badge colorPalette="blue" variant="subtle">
                 Completed ({completedCourses.length}) • {completed} cr
               </Badge>
               <Badge colorPalette="orange" variant="subtle">
@@ -425,7 +425,7 @@ export default function RequirementsDashboard({
               </Badge>
             </HStack>
 
-            <ProgressRoot value={percentage} colorPalette="green" size="sm">
+            <ProgressRoot value={percentage} colorPalette="blue" size="sm">
               <HStack justify="space-between" mb="2">
                 <ProgressLabel fontWeight="500" fontSize="sm">
                   Progress
@@ -453,7 +453,7 @@ export default function RequirementsDashboard({
                         <Text fontSize="sm" fontWeight="600" color="fg.muted">
                           Completed
                         </Text>
-                        <Badge variant="subtle" colorPalette="green">
+                        <Badge variant="subtle" colorPalette="blue">
                           {completedCourses.length}
                         </Badge>
                       </HStack>

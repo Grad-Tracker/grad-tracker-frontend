@@ -11,7 +11,7 @@ import AtlasFAB from "@/components/dashboard/AtlasFAB";
 export default function DashboardShell({ children }: { children: React.ReactNode }) {
   return (
     <AtlasPanelProvider>
-      <Box minH="100vh" bg="bg" fontFamily="var(--font-plus-jakarta), sans-serif">
+      <Box minH="100vh" bg="bg" fontFamily="var(--font-dm-sans), sans-serif">
         <Flex>
           <DashboardSidebar />
 

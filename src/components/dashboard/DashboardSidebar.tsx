@@ -150,7 +150,7 @@ export default function DashboardSidebar() {
             <LuGraduationCap />
           </Icon>
         </Box>
-        <Text fontWeight="700" fontSize="lg" fontFamily="var(--font-outfit), sans-serif">
+        <Text fontWeight="700" fontSize="lg" fontFamily="var(--font-dm-sans), sans-serif">
           GradTracker
         </Text>
       </HStack>

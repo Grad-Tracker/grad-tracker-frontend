@@ -31,7 +31,7 @@ export function GenEdChecklist({ buckets, completedCourseIds, onToggle }: GenEdC
                 <Heading size="sm" fontWeight="600">
                   {bucket.name}
                 </Heading>
-                <Badge colorPalette="green" variant="subtle">
+                <Badge colorPalette="blue" variant="subtle">
                   {completedCredits}/{bucket.credits_required} credits
                 </Badge>
               </HStack>
@@ -41,7 +41,7 @@ export function GenEdChecklist({ buckets, completedCourseIds, onToggle }: GenEdC
                 {bucket.courses.map((course) => (
                   <Checkbox
                     key={course.id}
-                    colorPalette="green"
+                    colorPalette="blue"
                     checked={completedCourseIds.has(course.id)}
                     onCheckedChange={(e) => onToggle(course.id, !!e.checked)}
                   >

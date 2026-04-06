@@ -46,6 +46,7 @@ import {
   LuChevronRight,
 } from "react-icons/lu";
 import type { Course, CourseFilters } from "@/types/course";
+import { getSubjectColor } from "@/lib/subject-colors";
 
 const PAGE_SIZE = 52;
 
@@ -56,28 +57,6 @@ const navItems = [
   { icon: LuCalendar, label: "Planner", href: "/dashboard/planner", active: false },
   { icon: LuFileText, label: "Reports", href: "/dashboard/reports", active: false },
 ];
-
-function getSubjectColor(subject: string): string {
-  const colorMap: Record<string, string> = {
-    CS: "green",
-    CSCI: "green",
-    MATH: "blue",
-    ENGL: "purple",
-    COMM: "orange",
-    PHIL: "teal",
-    PSYC: "pink",
-    BUSI: "cyan",
-    BIOL: "emerald",
-    CHEM: "orange",
-    PHYS: "blue",
-    HIST: "yellow",
-    ECON: "cyan",
-    ART: "red",
-    MUSC: "purple",
-    SOCI: "pink",
-  };
-  return colorMap[subject] || "gray";
-}
 
 interface CoursesClientProps {
   initialCourses: Course[];
@@ -165,7 +144,7 @@ export default function CoursesClient({
       </Text>
       <Heading
         size="lg"
-        fontFamily="var(--font-outfit), sans-serif"
+        fontFamily="var(--font-dm-sans), sans-serif"
         fontWeight="400"
         letterSpacing="-0.02em"
       >
@@ -181,7 +160,7 @@ export default function CoursesClient({
           value={courseLevel}
           onValueChange={(e) => setCourseLevel(e.value)}
           variant="enclosed"
-          colorPalette="green"
+          colorPalette="blue"
         >
           <Tabs.List bg="bg" borderRadius="lg" p="1">
             <Tabs.Trigger value="undergraduate" px="6">
@@ -191,7 +170,7 @@ export default function CoursesClient({
               Undergraduate
               <Badge
                 ml="2"
-                colorPalette={courseLevel === "undergraduate" ? "green" : "gray"}
+                colorPalette={courseLevel === "undergraduate" ? "blue" : "gray"}
                 variant="solid"
                 size="sm"
               >
@@ -205,7 +184,7 @@ export default function CoursesClient({
               Graduate
               <Badge
                 ml="2"
-                colorPalette={courseLevel === "graduate" ? "green" : "gray"}
+                colorPalette={courseLevel === "graduate" ? "blue" : "gray"}
                 variant="solid"
                 size="sm"
               >
@@ -433,7 +412,7 @@ export default function CoursesClient({
                 </Box>
                 <Heading
                   size="md"
-                  fontFamily="var(--font-outfit), sans-serif"
+                  fontFamily="var(--font-dm-sans), sans-serif"
                   fontWeight="400"
                 >
                   No courses found
@@ -484,7 +463,7 @@ export default function CoursesClient({
                         </Box>
                         <VStack align="start" gap="0">
                           <Drawer.Title
-                            fontFamily="var(--font-outfit), sans-serif"
+                            fontFamily="var(--font-dm-sans), sans-serif"
                             fontWeight="400"
                             fontSize="xl"
                           >
@@ -530,7 +509,7 @@ export default function CoursesClient({
                               Credits
                             </Text>
                           </HStack>
-                          <Text fontSize="2xl" fontWeight="700" color="green.fg">
+                          <Text fontSize="2xl" fontWeight="700" color="blue.fg">
                             {selectedCourse.credits}
                           </Text>
                         </Box>
