@@ -16,7 +16,7 @@ export default function AtlasFAB() {
       bottom="6"
       right="6"
       zIndex="overlay"
-      colorPalette="purple"
+      colorPalette="blue"
       size="xl"
       borderRadius="full"
       boxShadow="lg"

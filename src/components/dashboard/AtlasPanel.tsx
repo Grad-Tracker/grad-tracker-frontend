@@ -26,7 +26,7 @@ export default function AtlasPanel() {
           <Drawer.Content pointerEvents="auto">
             <Drawer.Header borderBottomWidth="1px" borderColor="border.subtle">
               <HStack gap="3" flex="1">
-                <Box p="1.5" bg="purple.solid" borderRadius="md">
+                <Box p="1.5" bg="blue.solid" borderRadius="md">
                   <Icon color="white" boxSize="4">
                     <LuSparkles />
                   </Icon>
@@ -34,7 +34,7 @@ export default function AtlasPanel() {
                 <Text fontWeight="700" fontSize="md">
                   Atlas
                 </Text>
-                <Badge colorPalette="purple" variant="subtle" size="sm">
+                <Badge colorPalette="blue" variant="subtle" size="sm">
                   Beta
                 </Badge>
               </HStack>

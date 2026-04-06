@@ -45,7 +45,7 @@ function AIMessage({ message }: { message: AdvisorMessage }) {
   return (
     <VStack align="stretch" gap="2">
       <HStack gap="2">
-        <Badge colorPalette="purple" variant="subtle">
+        <Badge colorPalette="blue" variant="subtle">
           Atlas
         </Badge>
       </HStack>
@@ -77,7 +77,7 @@ function AIMessage({ message }: { message: AdvisorMessage }) {
                     <Text fontSize="xs" fontWeight="700">
                       {item.courseCode}
                     </Text>
-                    <Badge size="sm" variant="subtle" colorPalette="green">
+                    <Badge size="sm" variant="subtle" colorPalette="emerald">
                       {item.confidence}
                     </Badge>
                   </HStack>
@@ -137,12 +137,12 @@ function AIMessage({ message }: { message: AdvisorMessage }) {
 function UserMessage({ message }: { message: AdvisorMessage }) {
   return (
     <VStack align="end" gap="1">
-      <Badge colorPalette="green" variant="subtle">
+      <Badge colorPalette="blue" variant="subtle">
         You
       </Badge>
       <Box
         maxW="80%"
-        bg="green.500"
+        bg="blue.500"
         color="white"
         borderRadius="xl"
         borderTopRightRadius="sm"
@@ -466,7 +466,7 @@ export function ChatInterface() {
           ) : (
             <Button
               type="submit"
-              colorPalette="purple"
+              colorPalette="blue"
               size="md"
               borderRadius="xl"
               px="4"
