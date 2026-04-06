@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import { useDroppable } from "@dnd-kit/core";
 import {
   Box,
@@ -94,26 +94,34 @@ export default function CoursePanel({
   }, []);
   const query = search.toLowerCase().trim();
 
-  const filteredBlocks = blocks
-    .map((block) => ({
-      ...block,
-      courses: block.courses.filter((c) => {
-        if (!query) return true;
-        return (
-          `${c.subject} ${c.number}`.toLowerCase().includes(query) ||
-          c.title.toLowerCase().includes(query)
-        );
-      }),
-    }))
-    .filter((block) => block.courses.length > 0);
+  const filteredBlocks = useMemo(
+    () =>
+      blocks
+        .map((block) => ({
+          ...block,
+          courses: block.courses.filter((c) => {
+            if (!query) return true;
+            return (
+              `${c.subject} ${c.number}`.toLowerCase().includes(query) ||
+              c.title.toLowerCase().includes(query)
+            );
+          }),
+        }))
+        .filter((block) => block.courses.length > 0),
+    [blocks, query]
+  );
 
-  const totalAvailable = blocks.reduce(
-    (sum, b) =>
-      sum +
-      b.courses.filter(
-        (c) => !completedCourseIds.has(c.id) && !plannedCourseIds.has(c.id)
-      ).length,
-    0
+  const totalAvailable = useMemo(
+    () =>
+      blocks.reduce(
+        (sum, b) =>
+          sum +
+          b.courses.filter(
+            (c) => !completedCourseIds.has(c.id) && !plannedCourseIds.has(c.id)
+          ).length,
+        0
+      ),
+    [blocks, completedCourseIds, plannedCourseIds]
   );
 
   return (
