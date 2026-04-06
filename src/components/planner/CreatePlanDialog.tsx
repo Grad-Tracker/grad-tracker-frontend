@@ -23,7 +23,9 @@ import {
   LuBookOpen,
   LuAward,
   LuCheck,
+  LuSparkles,
 } from "react-icons/lu";
+import { Switch } from "@/components/ui/switch";
 import { fetchPrograms } from "@/lib/supabase/queries/onboarding";
 import type { Program } from "@/types/onboarding";
 
@@ -33,7 +35,8 @@ interface CreatePlanDialogProps {
   onCreatePlan: (
     name: string,
     description: string | null,
-    programIds: number[]
+    programIds: number[],
+    autoGenerate: boolean
   ) => Promise<void>;
   existingPlanCount: number;
 }
@@ -44,8 +47,8 @@ const TYPE_META: Record<
   Program["program_type"],
   { label: string; color: string; icon: typeof LuGraduationCap }
 > = {
-  MAJOR: { label: "Majors", color: "green", icon: LuGraduationCap },
-  MINOR: { label: "Minors", color: "blue", icon: LuBookOpen },
+  MAJOR: { label: "Majors", color: "blue", icon: LuGraduationCap },
+  MINOR: { label: "Minors", color: "purple", icon: LuBookOpen },
   CERTIFICATE: { label: "Certificates", color: "orange", icon: LuAward },
   GRADUATE: { label: "Graduate Programs", color: "purple", icon: LuGraduationCap },
 };
@@ -62,6 +65,7 @@ export default function CreatePlanDialog({
     new Set()
   );
   const [search, setSearch] = useState("");
+  const [autoGenerate, setAutoGenerate] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const [allPrograms, setAllPrograms] = useState<Program[]>([]);
@@ -72,6 +76,7 @@ export default function CreatePlanDialog({
     setName(`Plan ${existingPlanCount + 1}`);
     setDescription("");
     setSelectedProgramIds(new Set());
+    setAutoGenerate(false);
     setSearch("");
 
     if (allPrograms.length === 0) {
@@ -123,7 +128,8 @@ export default function CreatePlanDialog({
       await onCreatePlan(
         name.trim(),
         description.trim() || null,
-        Array.from(selectedProgramIds)
+        Array.from(selectedProgramIds),
+        autoGenerate
       );
       onOpenChange(false);
     } finally {
@@ -144,7 +150,7 @@ export default function CreatePlanDialog({
           <Dialog.Content borderRadius="xl" maxH="85vh" overflow="hidden">
             <Dialog.Header>
               <Dialog.Title
-                fontFamily="var(--font-outfit), sans-serif"
+                fontFamily="var(--font-dm-sans), sans-serif"
                 fontWeight="400"
                 letterSpacing="-0.02em"
               >
@@ -304,6 +310,32 @@ export default function CreatePlanDialog({
                       : "Select at least one program to create a plan."}
                   </Text>
                 </Box>
+
+                <Separator />
+
+                {/* Auto-generate option */}
+                <Box>
+                  <HStack justify="space-between">
+                    <HStack gap="2">
+                      <Icon boxSize="4" color="purple.fg">
+                        <LuSparkles />
+                      </Icon>
+                      <Box>
+                        <Text fontSize="sm" fontWeight="600">
+                          Auto-fill courses
+                        </Text>
+                        <Text fontSize="xs" color="fg.muted">
+                          Automatically schedule courses across semesters
+                        </Text>
+                      </Box>
+                    </HStack>
+                    <Switch
+                      checked={autoGenerate}
+                      onCheckedChange={(e) => setAutoGenerate(e.checked)}
+                      colorPalette="purple"
+                    />
+                  </HStack>
+                </Box>
               </VStack>
             </Dialog.Body>
 
@@ -314,13 +346,14 @@ export default function CreatePlanDialog({
                 </Button>
               </Dialog.ActionTrigger>
               <Button
-                colorPalette="green"
+                colorPalette={autoGenerate ? "purple" : "blue"}
                 borderRadius="lg"
                 onClick={handleCreate}
                 disabled={!name.trim() || selectedProgramIds.size === 0}
                 loading={loading}
               >
-                Create Plan
+                {autoGenerate && <LuSparkles size={14} />}
+                {autoGenerate ? "Create & Auto-Fill" : "Create Plan"}
               </Button>
             </Dialog.Footer>
             <Dialog.CloseTrigger asChild>

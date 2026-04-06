@@ -1,0 +1,84 @@
+import { render, cleanup } from "@testing-library/react";
+import { ChakraProvider, defaultSystem } from "@chakra-ui/react";
+import { describe, it, expect, afterEach, vi } from "vitest";
+import CourseDetailDrawer from "@/components/planner/CourseDetailDrawer";
+
+afterEach(() => cleanup());
+
+vi.mock("@/components/ui/close-button", () => ({
+  CloseButton: (props: any) => <button data-testid="close-button" {...props} />,
+}));
+
+function renderWithChakra(ui: React.ReactElement) {
+  return render(<ChakraProvider value={defaultSystem}>{ui}</ChakraProvider>);
+}
+
+const baseCourse = {
+  id: 1,
+  subject: "CS",
+  number: "201",
+  title: "Data Structures",
+  credits: 3,
+  description: "Intro to DS",
+  prereq_text: null,
+};
+
+describe("CourseDetailDrawer", () => {
+  it("renders course details when open with a course", () => {
+    const { getAllByText } = renderWithChakra(
+      <CourseDetailDrawer
+        course={baseCourse}
+        open={true}
+        onOpenChange={vi.fn()}
+      />
+    );
+
+    expect(getAllByText("CS 201").length).toBeGreaterThanOrEqual(1);
+    expect(getAllByText("Data Structures").length).toBeGreaterThanOrEqual(1);
+    expect(getAllByText("3").length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("shows description fallback when description is null", () => {
+    const course = { ...baseCourse, description: null };
+
+    const { getAllByText } = renderWithChakra(
+      <CourseDetailDrawer
+        course={course}
+        open={true}
+        onOpenChange={vi.fn()}
+      />
+    );
+
+    expect(
+      getAllByText("No description available.").length
+    ).toBeGreaterThanOrEqual(1);
+  });
+
+  it("shows prerequisites when prereq_text exists", () => {
+    const course = { ...baseCourse, prereq_text: "CS 101 required" };
+
+    const { getAllByText } = renderWithChakra(
+      <CourseDetailDrawer
+        course={course}
+        open={true}
+        onOpenChange={vi.fn()}
+      />
+    );
+
+    expect(getAllByText("Prerequisites").length).toBeGreaterThanOrEqual(1);
+    expect(getAllByText("CS 101 required").length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("renders empty when course is null", () => {
+    const { queryAllByText } = renderWithChakra(
+      <CourseDetailDrawer
+        course={null}
+        open={true}
+        onOpenChange={vi.fn()}
+      />
+    );
+
+    expect(queryAllByText("CS 201")).toHaveLength(0);
+    expect(queryAllByText("Data Structures")).toHaveLength(0);
+  });
+});

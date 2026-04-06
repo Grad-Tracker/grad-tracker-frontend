@@ -25,12 +25,14 @@ import { createClient } from "@/lib/supabase/client";
 import {
   checkOnboardingStatus,
   fetchPrograms,
+  fetchStudentMajorProgram,
+  fetchStudentProfileByAuthUserId,
   getOrCreateStudent,
 } from "@/lib/supabase/queries/onboarding";
+import { fetchStudentCourseProgress } from "@/lib/supabase/queries/planner";
 import {
-  DB_TABLES,
-  PROGRAM_TYPES,
-  STUDENT_COLUMNS,
+  DB_VIEWS,
+  DB_TABLES
 } from "@/lib/supabase/queries/schema";
 import { toaster } from "@/components/ui/toaster";
 import {
@@ -48,17 +50,11 @@ import {
   LuChevronRight,
   LuSparkles,
   LuPlus,
-  LuTrendingUp,
   LuClock,
   LuCircleCheck,
   LuCircleAlert,
   LuArrowRight,
-  LuFileText,
-  LuCalendar,
-  LuTarget,
-  LuTrash2,
   LuGraduationCap,
-  LuTriangleAlert,
 } from "react-icons/lu";
 import type { Program } from "@/types/onboarding";
 import DashboardSkeleton from "@/components/dashboard/DashboardSkeleton";
@@ -83,7 +79,7 @@ const mockRecentActivity = [
 ];
 
 function getStatusBadgeProps(status: string): { color: string; label: string } {
-  if (status === "enrolled") return { color: "green", label: "Enrolled" };
+  if (status === "enrolled") return { color: "emerald", label: "Enrolled" };
   if (status === "waitlist") return { color: "orange", label: "Waitlist" };
   return { color: "gray", label: "Planned" };
 }
@@ -94,31 +90,15 @@ function getStatusBadgeProps(status: string): { color: string; label: string } {
  */
 async function resolveMajorAndBlocks(
   supabase: ReturnType<typeof createClient>,
-  programsPromise: PromiseLike<{ data: any; error: any }>
+  studentId: number
 ) {
   let majorName = "Unknown";
   let majorProgramId: number | null = null;
 
-  const { data: studentPrograms, error: spErr } = await programsPromise;
-
-  if (!spErr && studentPrograms?.length) {
-    const programIds = (studentPrograms as any[])
-      .map((sp) => sp?.program_id)
-      .filter((x) => x !== null && x !== undefined);
-
-    if (programIds.length) {
-      const { data: majorProgram, error: majorProgramErr } = await supabase
-        .from(DB_TABLES.programs)
-        .select("id,name")
-        .in("id", programIds)
-        .eq("program_type", PROGRAM_TYPES.major)
-        .maybeSingle();
-
-      if (!majorProgramErr && majorProgram?.name) {
-        majorName = majorProgram.name;
-        majorProgramId = majorProgram.id;
-      }
-    }
+  const majorProgram = await fetchStudentMajorProgram(studentId);
+  if (majorProgram) {
+    majorName = majorProgram.program_name;
+    majorProgramId = Number(majorProgram.program_id);
   }
 
   if (!majorProgramId) {
@@ -131,18 +111,8 @@ async function resolveMajorAndBlocks(
   }
 
   const blocksRes = await supabase
-    .from(DB_TABLES.programRequirementBlocks)
-    .select(
-      `
-        id,
-        name,
-        credits_required,
-        program_requirement_courses (
-          course_id,
-          courses:course_id ( credits )
-        )
-      `
-    )
+    .from(DB_VIEWS.programBlockCourses)
+    .select("block_id, block_name, credits_required, courses")
     .eq("program_id", majorProgramId);
 
   return { ...blocksRes, majorName, majorProgramId };
@@ -150,7 +120,6 @@ async function resolveMajorAndBlocks(
 
 export default function Dashboard() {
   const router = useRouter();
-  const [hasCompletedOnboarding, setHasCompletedOnboarding] = useState(true);
 
   useEffect(() => {
     async function checkStatus() {
@@ -160,26 +129,13 @@ export default function Dashboard() {
           data: { user },
         } = await supabase.auth.getUser();
         if (!user) return;
-        const completed = await checkOnboardingStatus(user.id);
-        setHasCompletedOnboarding(completed);
+        await checkOnboardingStatus(user.id);
       } catch {
         // Default to hiding banner on error
       }
     }
     checkStatus();
   }, []);
-
-  type StudentRow = {
-    id: number;
-    name?: string | null;
-    first_name: string | null;
-    last_name: string | null;
-    email: string | null;
-    has_completed_onboarding: boolean | null;
-    expected_graduation_semester: string | null;
-    expected_graduation_term?: string | null;
-    expected_graduation_year: number | null;
-  };
 
   type DashboardStudent = {
     id: number;
@@ -218,14 +174,14 @@ export default function Dashboard() {
     completed: number;
     total: number;
     percentage: number;
-    color: "green" | "blue" | "purple" | "orange";
+    color: "violet" | "emerald" | "blue" | "amber";
   };
 
   const DEFAULT_REQUIREMENTS: RequirementBar[] = [
-    { name: "General Education", completed: 0, total: 0, percentage: 0, color: "green" },
-    { name: "Major Core", completed: 0, total: 0, percentage: 0, color: "blue" },
-    { name: "Major Electives", completed: 0, total: 0, percentage: 0, color: "purple" },
-    { name: "Free Electives", completed: 0, total: 0, percentage: 0, color: "orange" },
+    { name: "General Education", completed: 0, total: 0, percentage: 0, color: "violet" },
+    { name: "Major Core", completed: 0, total: 0, percentage: 0, color: "emerald" },
+    { name: "Major Electives", completed: 0, total: 0, percentage: 0, color: "blue" },
+    { name: "Free Electives", completed: 0, total: 0, percentage: 0, color: "amber" },
   ];
 
   const [requirements, setRequirements] = React.useState<RequirementBar[]>(DEFAULT_REQUIREMENTS);
@@ -246,10 +202,7 @@ export default function Dashboard() {
   const [currentMajorProgramId, setCurrentMajorProgramId] = React.useState<number | null>(null);
   const [changingMajor, setChangingMajor] = React.useState(false);
 
-  const [resetConfirming, setResetConfirming] = React.useState(false);
-  const [resetting, setResetting] = React.useState(false);
   const [studentIdForReset, setStudentIdForReset] = React.useState<number | null>(null);
-  const [refreshKey, setRefreshKey] = React.useState(0);
 
   React.useEffect(() => {
     const loadStudent = async () => {
@@ -264,60 +217,8 @@ export default function Dashboard() {
           return;
         }
 
-        // 2) Student row via auth_user_id (new schema first, then legacy fallback)
-        const { data: studentRowNew, error: studentErrNew } = await supabase
-          .from(DB_TABLES.students)
-          .select(
-            "id,first_name,last_name,email,has_completed_onboarding,expected_graduation_semester,expected_graduation_year"
-          )
-          .eq(STUDENT_COLUMNS.authUserId, userData.user.id)
-          .maybeSingle<StudentRow>();
-
-        let studentRow = studentRowNew;
-        let studentErr = studentErrNew;
-
-        if (studentErrNew && String(studentErrNew.message ?? "").includes("column")) {
-          const { data: studentRowLegacy, error: studentErrLegacy } = await supabase
-            .from(DB_TABLES.students)
-            .select("id,name,email,has_completed_onboarding,expected_graduation_term,expected_graduation_year")
-            .eq(STUDENT_COLUMNS.authUserId, userData.user.id)
-            .maybeSingle<{
-              id: number;
-              name: string | null;
-              email: string | null;
-              has_completed_onboarding: boolean | null;
-              expected_graduation_term: string | null;
-              expected_graduation_year: number | null;
-            }>();
-
-          studentErr = studentErrLegacy;
-          studentRow = studentRowLegacy
-            ? {
-                id: studentRowLegacy.id,
-                name: studentRowLegacy.name,
-                first_name: null,
-                last_name: null,
-                email: studentRowLegacy.email,
-                has_completed_onboarding: studentRowLegacy.has_completed_onboarding,
-                expected_graduation_semester: studentRowLegacy.expected_graduation_term,
-                expected_graduation_term: studentRowLegacy.expected_graduation_term,
-                expected_graduation_year: studentRowLegacy.expected_graduation_year,
-              }
-            : null;
-        }
-
-        if (studentErr) {
-          toaster.create({
-            title: "Profile not found",
-            description: studentErr.message ?? "We couldn't load your student profile.",
-            type: "error",
-          });
-          await supabase.auth.signOut();
-          router.push("/signin");
-          return;
-        }
-
-        let resolvedStudentRow = studentRow;
+        // 2) Student profile via view by auth user id
+        let resolvedStudentRow = await fetchStudentProfileByAuthUserId(userData.user.id);
         if (!resolvedStudentRow) {
           const displayName =
             userData.user.user_metadata?.first_name
@@ -331,13 +232,16 @@ export default function Dashboard() {
           );
 
           resolvedStudentRow = {
-            id: created.id,
+            student_id: created.id,
             first_name: userData.user.user_metadata?.first_name ?? null,
             last_name: userData.user.user_metadata?.last_name ?? null,
             email: userData.user.email ?? null,
             has_completed_onboarding: false,
             expected_graduation_semester: null,
             expected_graduation_year: null,
+            auth_user_id: userData.user.id,
+            full_name: displayName,
+            breadth_package_id: null,
           };
 
           toaster.create({
@@ -353,26 +257,15 @@ export default function Dashboard() {
         setLoadingCourses(true);
         setLoadingProgress(true);
 
-        const studentId = resolvedStudentRow.id;
+        const studentId = resolvedStudentRow.student_id;
         setStudentIdForReset(studentId);
 
-        const programsPromise = supabase
-          .from(DB_TABLES.studentPrograms)
-          .select("program_id")
-          .eq("student_id", studentId);
-
-        const completedPromise = supabase
-          .from(DB_TABLES.studentCourseHistory)
-          .select(`course_id, courses:course_id(credits)`)
-          .eq("student_id", studentId);
-
+        const completedPromise = fetchStudentCourseProgress(studentId);
         const plannedPromise = supabase
-          .from(DB_TABLES.studentPlannedCourses)
-          .select(`status, courses:course_id(subject, number, title, credits)`)
+          .from(DB_VIEWS.planCourses)
+          .select("status, subject, number, title, credits")
           .eq("student_id", studentId);
-
-        // blocksPromise depends on majorProgramId, which depends on student_programs -> programs.
-        const blocksPromise = resolveMajorAndBlocks(supabase, programsPromise);
+        const blocksPromise = resolveMajorAndBlocks(supabase, studentId);
 
         const [completedResult, blocksResult, plannedResult] = await Promise.all([
           completedPromise,
@@ -388,18 +281,17 @@ export default function Dashboard() {
         // Reuse completedResult for BOTH:
         //  - requirement-block matching
         //  - credit summary (completed credits)
-        const completedCourseRows = (completedResult as any)?.data ?? [];
+        const completedCourseRows = (completedResult ?? []) as any[];
         const completedCourseIds = new Set<number>(
           (completedCourseRows ?? [])
+            .filter(
+              (r: any) =>
+                r?.completed === true ||
+                String(r?.progress_status ?? "").toUpperCase() === "COMPLETED"
+            )
             .map((r: any) => Number(r?.course_id))
             .filter((x: number) => !Number.isNaN(x))
         );
-
-        const completedCredits =
-          (completedCourseRows ?? []).reduce((sum: number, r: any) => {
-            const credits = Number(r?.courses?.credits ?? 0);
-            return sum + credits;
-          }, 0);
 
         // Reuse plannedResult for BOTH:
         //  - course cards
@@ -409,9 +301,6 @@ export default function Dashboard() {
         const mapped: PlannedCourseCard[] =
           (plannedRows ?? [])
             .map((r: any) => {
-              const c = r.courses;
-              if (!c) return null;
-
               const rawStatus = String(r.status ?? "").toLowerCase();
               const status: PlannedCourseCard["status"] =
                 rawStatus === "enrolled"
@@ -423,9 +312,9 @@ export default function Dashboard() {
                       : "unknown";
 
               return {
-                code: `${c.subject} ${c.number}`.trim(),
-                name: c.title ?? "Untitled course",
-                credits: Number(c.credits ?? 0),
+                code: `${r.subject ?? ""} ${r.number ?? ""}`.trim(),
+                name: r.title ?? "Untitled course",
+                credits: Number(r.credits ?? 0),
                 status,
               };
             })
@@ -438,7 +327,7 @@ export default function Dashboard() {
           (plannedRows ?? []).reduce((sum: number, r: any) => {
             const s = String(r?.status ?? "").toLowerCase();
             if (s !== "enrolled" && s !== "waitlist") return sum;
-            return sum + Number(r?.courses?.credits ?? 0);
+            return sum + Number(r?.credits ?? 0);
           }, 0);
 
         // Requirements (uses blocksResult + completedCourseIds)
@@ -450,36 +339,36 @@ export default function Dashboard() {
 
           const categorize = (blockName: string) => {
             const n = blockName.toLowerCase();
-            if (n.includes("general")) return { key: "General Education", color: "green" as const };
-            if (n.includes("core")) return { key: "Major Core", color: "blue" as const };
-            if (n.includes("elective")) return { key: "Major Electives", color: "purple" as const };
-            return { key: "Free Electives", color: "orange" as const };
+            if (n.includes("general")) return { key: "General Education", color: "violet" as const };
+            if (n.includes("core")) return { key: "Major Core", color: "emerald" as const };
+            if (n.includes("elective")) return { key: "Major Electives", color: "blue" as const };
+            return { key: "Free Electives", color: "amber" as const };
           };
 
           const agg: Record<
             string,
             { completed: number; total: number; color: RequirementBar["color"] }
           > = {
-            "General Education": { completed: 0, total: 0, color: "green" },
-            "Major Core": { completed: 0, total: 0, color: "blue" },
-            "Major Electives": { completed: 0, total: 0, color: "purple" },
-            "Free Electives": { completed: 0, total: 0, color: "orange" },
+            "General Education": { completed: 0, total: 0, color: "violet" },
+            "Major Core": { completed: 0, total: 0, color: "emerald" },
+            "Major Electives": { completed: 0, total: 0, color: "blue" },
+            "Free Electives": { completed: 0, total: 0, color: "amber" },
           };
 
           for (const b of blocks) {
-            const { key, color } = categorize(String(b?.name ?? ""));
-            const blockCourseRows = b?.program_requirement_courses ?? [];
+            const { key, color } = categorize(String(b?.block_name ?? ""));
+            const blockCourseRows = b?.courses ?? [];
 
             const fallbackTotal = blockCourseRows.reduce((sum: number, r: any) => {
-              return sum + Number(r?.courses?.credits ?? 0);
+              return sum + Number(r?.credits ?? 0);
             }, 0);
 
             const total = Number(b?.credits_required ?? fallbackTotal ?? 0);
 
             const completed = blockCourseRows.reduce((sum: number, r: any) => {
-              const cid = Number(r?.course_id);
+              const cid = Number(r?.course_id ?? r?.id);
               if (!completedCourseIds.has(cid)) return sum;
-              return sum + Number(r?.courses?.credits ?? 0);
+              return sum + Number(r?.credits ?? 0);
             }, 0);
 
             agg[key].total += total;
@@ -497,6 +386,27 @@ export default function Dashboard() {
           setRequirements(bars);
           setLoadingRequirements(false);
         }
+
+        const courseCreditsById = new Map<number, number>();
+        for (const b of ((blocksResult as any)?.data ?? [])) {
+          for (const c of (b?.courses ?? [])) {
+            const courseId = Number(c?.course_id ?? c?.id);
+            if (Number.isNaN(courseId)) continue;
+            if (!courseCreditsById.has(courseId)) {
+              courseCreditsById.set(courseId, Number(c?.credits ?? 0));
+            }
+          }
+        }
+        for (const r of plannedRows ?? []) {
+          const cid = Number(r?.course_id);
+          if (!Number.isNaN(cid) && !courseCreditsById.has(cid)) {
+            courseCreditsById.set(cid, Number(r?.credits ?? 0));
+          }
+        }
+        const completedCredits = Array.from(completedCourseIds).reduce(
+          (sum, cid) => sum + Number(courseCreditsById.get(cid) ?? 0),
+          0
+        );
 
         // Progress summary (reused completedCredits + inProgressCredits)
         const totalCredits = TOTAL_REQUIRED_CREDITS;
@@ -521,10 +431,10 @@ export default function Dashboard() {
           [resolvedStudentRow.first_name, resolvedStudentRow.last_name]
             .filter(Boolean)
             .join(" ")
-            .trim() || resolvedStudentRow.name || "";
+            .trim() || resolvedStudentRow.full_name || "";
 
         setStudent({
-          id: resolvedStudentRow.id,
+          id: resolvedStudentRow.student_id,
           name: fullName || "Student",
           email: resolvedStudentRow.email ?? "",
           major: majorName,
@@ -556,7 +466,7 @@ export default function Dashboard() {
     };
 
     loadStudent();
-  }, [router, refreshKey]);
+  }, [router]);
 
   const handleChangeMajor = async () => {
     if (!selectedMajorId || !studentIdForReset || selectedMajorId === currentMajorProgramId) return;
@@ -595,37 +505,6 @@ export default function Dashboard() {
     }
   };
 
-  const handleResetProgress = async () => {
-    if (!studentIdForReset) return;
-    setResetting(true);
-    try {
-      const supabase = createClient();
-
-      const [historyResult, plannedResult, programsResult] = await Promise.all([
-        supabase.from(DB_TABLES.studentCourseHistory).delete().eq("student_id", studentIdForReset),
-        supabase.from(DB_TABLES.studentPlannedCourses).delete().eq("student_id", studentIdForReset),
-        supabase.from(DB_TABLES.studentPrograms).delete().eq("student_id", studentIdForReset),
-      ]);
-
-      if (historyResult.error) throw historyResult.error;
-      if (plannedResult.error) throw plannedResult.error;
-      if (programsResult.error) throw programsResult.error;
-
-      await supabase
-        .from(DB_TABLES.students)
-        .update({ has_completed_onboarding: false })
-        .eq(STUDENT_COLUMNS.id, studentIdForReset);
-
-      toaster.create({ title: "Progress reset", description: "Your progress has been cleared. Use the setup wizard to start fresh.", type: "success" });
-      setRefreshKey((k) => k + 1);
-    } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : "Unknown error";
-      toaster.create({ title: "Failed to reset progress", description: msg, type: "error" });
-    } finally {
-      setResetting(false);
-      setResetConfirming(false);
-    }
-  };
 
   if (loadingStudent) {
     return <DashboardSkeleton />;
@@ -655,9 +534,9 @@ export default function Dashboard() {
           overflow="hidden"
           position="relative"
           bgGradient="to-br"
-          gradientFrom="green.600"
-          gradientVia="green.500"
-          gradientTo="teal.500"
+          gradientFrom="blue.600"
+          gradientVia="blue.500"
+          gradientTo="blue.400"
         >
           <Box
             position="absolute"
@@ -712,7 +591,7 @@ export default function Dashboard() {
               <Link href="/dashboard/onboarding">
                 <Button
                   bg="white"
-                  color="green.700"
+                  color="blue.700"
                   size="lg"
                   rounded="full"
                   px="6"
@@ -746,14 +625,11 @@ export default function Dashboard() {
                     {loadingProgress ? <Skeleton height="8" width="50px" display="inline-block" /> : `${progress.overall}%`}
                   </Text>
                 </Box>
-                <ProgressCircleRoot value={progress.overall} size="md" colorPalette="green">
+                <ProgressCircleRoot value={progress.overall} size="md" colorPalette="blue">
                   <ProgressCircleRing cap="round" css={{ "--thickness": "4px" }} />
                 </ProgressCircleRoot>
               </HStack>
               <HStack gap="1" fontSize="xs" color="fg.muted">
-                <Icon color="green.fg">
-                  <LuTrendingUp />
-                </Icon>
                 <Text>On track to graduate</Text>
               </HStack>
             </Card.Body>
@@ -919,13 +795,13 @@ export default function Dashboard() {
                         <Box
                           w="10"
                           h="10"
-                          bg="green.subtle"
+                          bg="blue.subtle"
                           borderRadius="lg"
                           display="flex"
                           alignItems="center"
                           justifyContent="center"
                         >
-                          <Icon color="green.fg" boxSize="5">
+                          <Icon color="blue.fg" boxSize="5">
                             <LuBookOpen />
                           </Icon>
                         </Box>
@@ -970,7 +846,7 @@ export default function Dashboard() {
           <Card.Root bg="bg" borderRadius="xl" borderWidth="1px" borderColor="border.subtle" className="animate-fade-up-delay-2">
             <Card.Body p="5">
               <VStack align="center" gap="4">
-                <Avatar.Root size="xl" colorPalette="green">
+                <Avatar.Root size="xl" colorPalette="blue">
                   <Avatar.Fallback name={student.name} />
                 </Avatar.Root>
 
@@ -997,7 +873,7 @@ export default function Dashboard() {
                     <Text fontSize="sm" color="fg.muted">
                       Expected Graduation
                     </Text>
-                    <Badge colorPalette="green" variant="subtle" size="sm">
+                    <Badge colorPalette="blue" variant="subtle" size="sm">
                       {student.expectedGraduation}
                     </Badge>
                   </HStack>
@@ -1011,7 +887,7 @@ export default function Dashboard() {
             <Card.Root bg="bg" borderRadius="xl" borderWidth="1px" borderColor="border.subtle">
               <Card.Header p="5" pb="3">
                 <Flex align="center" gap="2">
-                  <Icon color="green.fg">
+                  <Icon color="blue.fg">
                     <LuGraduationCap />
                   </Icon>
                   <Heading size="sm" fontWeight="600">
@@ -1035,7 +911,7 @@ export default function Dashboard() {
                     bg="bg"
                     fontSize="sm"
                     color="fg"
-                    _focus={{ outline: "2px solid", outlineColor: "green.fg", outlineOffset: "2px" }}
+                    _focus={{ outline: "2px solid", outlineColor: "blue.fg", outlineOffset: "2px" }}
                     cursor="pointer"
                   >
                     {majors.map((m) => (
@@ -1045,7 +921,7 @@ export default function Dashboard() {
                     ))}
                   </chakra.select>
                   <Button
-                    colorPalette="green"
+                    colorPalette="blue"
                     size="sm"
                     borderRadius="lg"
                     loading={changingMajor}
@@ -1078,7 +954,7 @@ export default function Dashboard() {
                         activity.type === "alert"
                           ? "orange.subtle"
                           : activity.type === "requirement_met"
-                            ? "green.subtle"
+                            ? "emerald.subtle"
                             : "blue.subtle"
                       }
                       borderRadius="full"
@@ -1090,7 +966,7 @@ export default function Dashboard() {
                           activity.type === "alert"
                             ? "orange.fg"
                             : activity.type === "requirement_met"
-                              ? "green.fg"
+                              ? "emerald.fg"
                               : "blue.fg"
                         }
                       >
@@ -1127,74 +1003,14 @@ export default function Dashboard() {
             <Card.Body p="5">
               <Stack gap="2">
                 <Button variant="outline" justifyContent="start" size="sm" fontWeight="500">
-                  <Icon mr="2">
-                    <LuFileText />
-                  </Icon>
                   Generate Progress Report
                 </Button>
                 <Button variant="outline" justifyContent="start" size="sm" fontWeight="500">
-                  <Icon mr="2">
-                    <LuCalendar />
-                  </Icon>
                   Plan Next Semester
                 </Button>
                 <Button variant="outline" justifyContent="start" size="sm" fontWeight="500">
-                  <Icon mr="2">
-                    <LuTarget />
-                  </Icon>
                   Review Requirements
                 </Button>
-
-                {/* Reset All Progress — only shown after onboarding is complete */}
-                {student.hasCompletedOnboarding && (
-                  !resetConfirming ? (
-                    <Button
-                      variant="outline"
-                      colorPalette="red"
-                      justifyContent="start"
-                      size="sm"
-                      fontWeight="500"
-                      onClick={() => setResetConfirming(true)}
-                    >
-                      <Icon mr="2">
-                        <LuTrash2 />
-                      </Icon>
-                      Reset All Progress
-                    </Button>
-                  ) : (
-                    <Stack gap="2" p="3" bg="red.subtle" borderWidth="1px" borderColor="red.muted" borderRadius="lg">
-                      <HStack gap="2">
-                        <Icon color="red.fg" flexShrink={0}>
-                          <LuTriangleAlert />
-                        </Icon>
-                        <Text fontSize="xs" fontWeight="500" color="red.fg">
-                          This will delete all your progress. Are you sure?
-                        </Text>
-                      </HStack>
-                      <HStack gap="2">
-                        <Button
-                          size="xs"
-                          colorPalette="red"
-                          loading={resetting}
-                          onClick={handleResetProgress}
-                          borderRadius="md"
-                          flex="1"
-                        >
-                          Yes, Reset
-                        </Button>
-                        <Button
-                          size="xs"
-                          variant="ghost"
-                          onClick={() => setResetConfirming(false)}
-                          borderRadius="md"
-                          flex="1"
-                        >
-                          Cancel
-                        </Button>
-                      </HStack>
-                    </Stack>
-                  )
-                )}
               </Stack>
             </Card.Body>
           </Card.Root>

@@ -46,11 +46,11 @@ export default function ReviewStep({
     <VStack gap="6" align="stretch">
       {/* Header */}
       <Box textAlign="center" mb="2">
-        <Icon color="green.fg" boxSize="12" mb="3">
+        <Icon color="blue.fg" boxSize="12" mb="3">
           <LuCircleCheck />
         </Icon>
         <Heading
-          fontFamily="var(--font-outfit), sans-serif"
+          fontFamily="var(--font-dm-sans), sans-serif"
           size="xl"
           fontWeight="400"
           letterSpacing="-0.01em"
@@ -73,7 +73,7 @@ export default function ReviewStep({
           <Card.Body p="5">
             <HStack justify="space-between" mb="4">
               <HStack gap="2">
-                <Icon color="green.fg" boxSize="5">
+                <Icon color="blue.fg" boxSize="5">
                   <LuGraduationCap />
                 </Icon>
                 <Text fontWeight="600" fontSize="sm" color="fg.muted">
@@ -83,7 +83,7 @@ export default function ReviewStep({
               <Button
                 size="xs"
                 variant="ghost"
-                colorPalette="green"
+                colorPalette="blue"
                 onClick={() => onEditStep(0)}
               >
                 <LuPencil />
@@ -93,7 +93,7 @@ export default function ReviewStep({
             {major ? (
               <Box>
                 <Text
-                  fontFamily="var(--font-outfit), sans-serif"
+                  fontFamily="var(--font-dm-sans), sans-serif"
                   fontSize="xl"
                   fontWeight="400"
                 >
@@ -131,7 +131,7 @@ export default function ReviewStep({
               <Button
                 size="xs"
                 variant="ghost"
-                colorPalette="green"
+                colorPalette="blue"
                 onClick={() => onEditStep(0)}
               >
                 <LuPencil />
@@ -192,7 +192,7 @@ export default function ReviewStep({
             <Button
               size="xs"
               variant="ghost"
-              colorPalette="green"
+              colorPalette="blue"
               onClick={() => onEditStep(1)}
             >
               <LuPencil />
@@ -246,7 +246,7 @@ export default function ReviewStep({
             <Button
               size="xs"
               variant="ghost"
-              colorPalette="green"
+              colorPalette="blue"
               onClick={() => onEditStep(0)}
             >
               <LuPencil />
@@ -255,7 +255,7 @@ export default function ReviewStep({
           </HStack>
           {expectedGradSemester && expectedGradYear ? (
             <Text
-              fontFamily="var(--font-outfit), sans-serif"
+              fontFamily="var(--font-dm-sans), sans-serif"
               fontSize="xl"
               fontWeight="400"
             >
@@ -271,19 +271,19 @@ export default function ReviewStep({
 
       {/* Summary */}
       <Card.Root
-        bg="green.subtle"
+        bg="blue.subtle"
         borderRadius="xl"
         borderWidth="1px"
-        borderColor="green.muted"
+        borderColor="blue.muted"
       >
         <Card.Body p="5">
           <HStack justify="center" gap="8" flexWrap="wrap">
             <VStack gap="0">
               <Text
-                fontFamily="var(--font-outfit), sans-serif"
+                fontFamily="var(--font-dm-sans), sans-serif"
                 fontSize="2xl"
                 fontWeight="400"
-                color="green.fg"
+                color="blue.fg"
               >
                 {certificates.length + (major ? 1 : 0)}
               </Text>
@@ -294,10 +294,10 @@ export default function ReviewStep({
             <Separator orientation="vertical" h="10" />
             <VStack gap="0">
               <Text
-                fontFamily="var(--font-outfit), sans-serif"
+                fontFamily="var(--font-dm-sans), sans-serif"
                 fontSize="2xl"
                 fontWeight="400"
-                color="green.fg"
+                color="blue.fg"
               >
                 {classes.length}
               </Text>
@@ -308,10 +308,10 @@ export default function ReviewStep({
             <Separator orientation="vertical" h="10" />
             <VStack gap="0">
               <Text
-                fontFamily="var(--font-outfit), sans-serif"
+                fontFamily="var(--font-dm-sans), sans-serif"
                 fontSize="2xl"
                 fontWeight="400"
-                color="green.fg"
+                color="blue.fg"
               >
                 {totalClassCredits}
               </Text>
