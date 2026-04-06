@@ -288,7 +288,7 @@ export function shortenBlockName(name: string): string {
     return "Concentration";
 
   const stripped = name
-    .replace(/^Required Major Courses\s*-?\s*/i, "")
+    .replace(/^Required Major Courses[\s-]*/i, "")
     .replace(/^Required Program\s*/i, "")
     .replace(/^Required\s+/i, "")
     .replace(/\s+Courses?$/i, "")
