@@ -442,10 +442,15 @@ export default function Dashboard() {
           hasCompletedOnboarding: !!resolvedStudentRow.has_completed_onboarding,
         });
 
-        const idToSet = resolvedStudentRow.student_id ?? resolvedStudentRow.id;
-        if (idToSet) setStudentIdForReset(idToSet);
+        setStudentIdForReset(resolvedStudentRow.student_id);
         setCurrentMajorProgramId(majorProgramId);
         setSelectedMajorId(majorProgramId);
+        try {
+          const allMajors = await fetchPrograms("MAJOR");
+          setMajors(allMajors);
+        } catch {
+          // Non-critical – skip if it fails
+        }
 
         setLoadingStudent(false);
 

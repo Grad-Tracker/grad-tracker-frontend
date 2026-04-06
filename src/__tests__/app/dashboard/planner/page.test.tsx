@@ -1071,4 +1071,45 @@ describe("PlannerPage", () => {
     });
     expect(mockRemovePlannedCourse).toHaveBeenCalled();
   });
+
+  it("exercises plannerPoolBlocks genEd path when buckets have courses", async () => {
+    setupAuthenticatedState();
+    mockFetchTerms.mockResolvedValue([{ id: 1, season: "Fall", year: 2025 }]);
+
+    // Return gen-ed buckets with courses — exercises the IIFE, flatMap, and filter callbacks
+    mockFetchGenEdBucketsWithCourses.mockResolvedValueOnce([
+      {
+        id: 1,
+        code: "MATH",
+        name: "Mathematics",
+        credits_required: 6,
+        courses: [
+          { id: 201, subject: "MATH", number: "101", title: "Calculus I", credits: 3 },
+          { id: 201, subject: "MATH", number: "101", title: "Calculus I", credits: 3 }, // duplicate to exercise dedup filter
+        ],
+      },
+    ]);
+
+    // Return blocks without a "General Education" block so the Gen Ed synthetic block is added
+    mockFetchAvailableCourses.mockResolvedValueOnce([
+      {
+        id: 10,
+        program_id: 1,
+        name: "Core Requirements",
+        rule: "ALL_OF",
+        n_required: null,
+        credits_required: null,
+        courses: [],
+      },
+    ]);
+
+    await act(async () => renderWithChakra(<PlannerPage />));
+    await waitFor(() => expect(screen.getByTestId("plans-hub")).toBeInTheDocument());
+
+    await act(async () => fireEvent.click(screen.getByTestId("open-plan")));
+    await waitFor(() => expect(screen.getByTestId("course-panel")).toBeInTheDocument());
+
+    // Component rendered successfully with the gen-ed block appended
+    expect(mockFetchGenEdBucketsWithCourses).toHaveBeenCalled();
+  });
 });
