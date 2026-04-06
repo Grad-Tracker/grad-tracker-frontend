@@ -18,6 +18,7 @@ import {
   DndContext,
   DragOverlay,
   PointerSensor,
+  KeyboardSensor,
   useSensor,
   useSensors,
   type DragStartEvent,
@@ -188,6 +189,9 @@ export default function PlannerPage() {
   // View state: hub (plan cards) or workspace (planner grid)
   const [view, setView] = useState<"hub" | "workspace">("hub");
 
+  // Mobile panel toggle (below lg breakpoint)
+  const [mobileTab, setMobileTab] = useState<"courses" | "grid">("grid");
+
   // UI state
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [createPlanDialogOpen, setCreatePlanDialogOpen] = useState(false);
@@ -207,13 +211,17 @@ export default function PlannerPage() {
 
   // DnD sensors
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor)
   );
 
   // Derived data
   const activePlan = plans.find((p) => p.id === activePlanId) ?? null;
   const isGraduatePlan = activePlan?.has_graduate_program ?? false;
-  const plannedCourseIds = new Set(plannedCourses.map((pc) => pc.course_id));
+  const plannedCourseIds = useMemo(
+    () => new Set(plannedCourses.map((pc) => pc.course_id)),
+    [plannedCourses]
+  );
   const graduateTracks: GraduateTrack[] = useMemo(
     () => (isGraduatePlan ? getGraduateTracks(blocks) : []),
     [blocks, isGraduatePlan]
@@ -661,13 +669,26 @@ export default function PlannerPage() {
 
     const overId = String(over.id);
 
+    // Snapshot for rollback
+    const prevPlannedCourses = plannedCourses;
+    const prevPlans = plans;
+
     if (overId.startsWith("term-")) {
       const toTermId = over.data.current?.term?.id as number | undefined;
       if (!toTermId) return;
       if (fromTermId === toTermId) return;
 
-      try {
-        if (fromTermId) {
+      if (fromTermId) {
+        // MOVE: optimistic update
+        setPlannedCourses((prev) =>
+          prev.map((pc) =>
+            pc.course_id === course.id && pc.term_id === fromTermId
+              ? { ...pc, term_id: toTermId }
+              : pc
+          )
+        );
+
+        try {
           await movePlannedCourse(
             studentId,
             course.id,
@@ -675,72 +696,83 @@ export default function PlannerPage() {
             toTermId,
             activePlanId
           );
-          setPlannedCourses((prev) =>
-            prev.map((pc) =>
-              pc.course_id === course.id && pc.term_id === fromTermId
-                ? { ...pc, term_id: toTermId }
-                : pc
-            )
-          );
-        } else {
-          if (plannedCourseIds.has(course.id)) return;
-          await addPlannedCourse(studentId, toTermId, course.id, activePlanId);
-          setPlannedCourses((prev) => [
-            ...prev,
-            {
-              student_id: studentId,
-              term_id: toTermId,
-              course_id: course.id,
-              status: PLANNED_COURSE_STATUS.planned,
-              plan_id: activePlanId,
-              course,
-            },
-          ]);
-          setPlans((prev) =>
-            prev.map((p) =>
-              p.id === activePlanId
-                ? {
-                    ...p,
-                    course_count: p.course_count + 1,
-                    total_credits: p.total_credits + (course.credits ?? 0),
-                  }
-                : p
-            )
-          );
+        } catch (err: any) {
+          setPlannedCourses(prevPlannedCourses);
+          toaster.create({
+            title: "Failed to move course",
+            description: err?.message || "The change was reverted. Please try again.",
+            type: "error",
+          });
         }
-      } catch (err: any) {
-        toaster.create({
-          title: "Error",
-          description: err?.message || "Failed to update plan",
-          type: "error",
-        });
-      }
-      return;
-    }
+      } else {
+        // ADD: optimistic update
+        if (plannedCourseIds.has(course.id)) return;
 
-    if (fromTermId && (overId === "course-panel" || !overId.startsWith("term-"))) {
-      try {
-        await removePlannedCourse(studentId, fromTermId, course.id, activePlanId);
-        setPlannedCourses((prev) =>
-          prev.filter(
-            (pc) => !(pc.course_id === course.id && pc.term_id === fromTermId)
-          )
-        );
+        setPlannedCourses((prev) => [
+          ...prev,
+          {
+            student_id: studentId,
+            term_id: toTermId,
+            course_id: course.id,
+            status: PLANNED_COURSE_STATUS.planned,
+            plan_id: activePlanId,
+            course,
+          },
+        ]);
         setPlans((prev) =>
           prev.map((p) =>
             p.id === activePlanId
               ? {
                   ...p,
-                  course_count: Math.max(0, p.course_count - 1),
-                  total_credits: Math.max(0, p.total_credits - (course.credits ?? 0)),
+                  course_count: p.course_count + 1,
+                  total_credits: p.total_credits + (course.credits ?? 0),
                 }
               : p
           )
         );
+
+        try {
+          await addPlannedCourse(studentId, toTermId, course.id, activePlanId);
+        } catch (err: any) {
+          setPlannedCourses(prevPlannedCourses);
+          setPlans(prevPlans);
+          toaster.create({
+            title: "Failed to add course",
+            description: err?.message || "The change was reverted. Please try again.",
+            type: "error",
+          });
+        }
+      }
+      return;
+    }
+
+    if (fromTermId && (overId === "course-panel" || !overId.startsWith("term-"))) {
+      // REMOVE: optimistic update
+      setPlannedCourses((prev) =>
+        prev.filter(
+          (pc) => !(pc.course_id === course.id && pc.term_id === fromTermId)
+        )
+      );
+      setPlans((prev) =>
+        prev.map((p) =>
+          p.id === activePlanId
+            ? {
+                ...p,
+                course_count: Math.max(0, p.course_count - 1),
+                total_credits: Math.max(0, p.total_credits - (course.credits ?? 0)),
+              }
+            : p
+        )
+      );
+
+      try {
+        await removePlannedCourse(studentId, fromTermId, course.id, activePlanId);
       } catch (err: any) {
+        setPlannedCourses(prevPlannedCourses);
+        setPlans(prevPlans);
         toaster.create({
-          title: "Error",
-          description: err?.message || "Failed to remove course",
+          title: "Failed to remove course",
+          description: err?.message || "The change was reverted. Please try again.",
           type: "error",
         });
       }
@@ -877,24 +909,63 @@ export default function PlannerPage() {
             </Flex>
           ) : (
             <>
+              {/* Mobile tab toggle */}
+              <HStack
+                display={{ base: "flex", lg: "none" }}
+                gap="0"
+                bg="bg.subtle"
+                borderRadius="lg"
+                p="0.5"
+                mx="4"
+                mt="2"
+              >
+                <Button
+                  size="sm"
+                  variant={mobileTab === "courses" ? "solid" : "ghost"}
+                  colorPalette={mobileTab === "courses" ? "blue" : "gray"}
+                  borderRadius="md"
+                  flex="1"
+                  onClick={() => setMobileTab("courses")}
+                >
+                  Courses
+                </Button>
+                <Button
+                  size="sm"
+                  variant={mobileTab === "grid" ? "solid" : "ghost"}
+                  colorPalette={mobileTab === "grid" ? "blue" : "gray"}
+                  borderRadius="md"
+                  flex="1"
+                  onClick={() => setMobileTab("grid")}
+                >
+                  Schedule
+                </Button>
+              </HStack>
+
               <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
                 <Flex flex="1" overflow="hidden" minH="0" className="animate-fade-up">
-                  <CoursePanel
-                    blocks={displayBlocks}
-                    allDedupedBlocks={allDedupedBlocks}
-                    completedCourseIds={completedIds}
-                    plannedCourseIds={plannedCourseIds}
-                    plannedCourses={plannedCourses}
-                    isDragActive={!!activeDrag}
-                    selectedBreadthPackageId={selectedBreadthPackageId}
-                    onBreadthPackageSelect={handleBreadthPackageSelect}
-                    isGraduatePlan={isGraduatePlan}
-                    graduateTracks={graduateTracks}
-                    selectedTrackId={selectedTrackId}
-                    onTrackSelect={handleTrackSelect}
-                    genEdBuckets={genEdBuckets}
-                  />
+                  <Box display={{ base: mobileTab === "courses" ? "block" : "none", lg: "block" }}>
+                    <CoursePanel
+                      blocks={displayBlocks}
+                      allDedupedBlocks={allDedupedBlocks}
+                      completedCourseIds={completedIds}
+                      plannedCourseIds={plannedCourseIds}
+                      plannedCourses={plannedCourses}
+                      isDragActive={!!activeDrag}
+                      selectedBreadthPackageId={selectedBreadthPackageId}
+                      onBreadthPackageSelect={handleBreadthPackageSelect}
+                      isGraduatePlan={isGraduatePlan}
+                      graduateTracks={graduateTracks}
+                      selectedTrackId={selectedTrackId}
+                      onTrackSelect={handleTrackSelect}
+                      genEdBuckets={genEdBuckets}
+                    />
+                  </Box>
 
+                  <Box
+                    display={{ base: mobileTab === "grid" ? "flex" : "none", lg: "flex" }}
+                    flex="1"
+                    minH="0"
+                  >
                   {terms.length === 0 ? (
                     <Flex
                       flex="1"
@@ -962,6 +1033,7 @@ export default function PlannerPage() {
                       isGraduatePlan={isGraduatePlan}
                     />
                   )}
+                  </Box>
                 </Flex>
 
                 <DragOverlay>
