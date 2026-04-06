@@ -22,9 +22,7 @@ import RequirementProgress from "./RequirementProgress";
 import GenEdProgress from "./GenEdProgress";
 import BreadthPackageSelector from "./BreadthPackageSelector";
 import GraduateTrackSelector from "./GraduateTrackSelector";
-
-const MIN_PANEL_WIDTH = 300;
-const MAX_PANEL_WIDTH = 550;
+import { MIN_PANEL_WIDTH, MAX_PANEL_WIDTH } from "@/constants/planner";
 
 interface CoursePanelProps {
   blocks: RequirementBlockWithCourses[];
