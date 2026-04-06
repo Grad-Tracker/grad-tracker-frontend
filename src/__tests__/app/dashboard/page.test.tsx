@@ -401,11 +401,13 @@ describe("Dashboard", () => {
         fireEvent.change(select, { target: { value: "20" } });
       });
 
-      const saveMajorBtn = screen.getByText("Save Major");
-      expect(saveMajorBtn).not.toBeDisabled();
+      // Wait for the select state update to enable the Save button
+      await waitFor(() => {
+        expect(screen.getByText("Save Major")).not.toBeDisabled();
+      });
 
       await act(async () => {
-        fireEvent.click(saveMajorBtn);
+        fireEvent.click(screen.getByText("Save Major"));
       });
 
       await waitFor(() => {
