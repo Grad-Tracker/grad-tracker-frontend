@@ -999,7 +999,7 @@ describe("PlannerPage", () => {
 
     await waitFor(() => {
       expect(mockToaster.create).toHaveBeenCalledWith(
-        expect.objectContaining({ title: "Error", type: "error" })
+        expect.objectContaining({ title: "Failed to move course", type: "error" })
       );
     });
   });
@@ -1056,8 +1056,7 @@ describe("PlannerPage", () => {
     await waitFor(() => {
       expect(mockToaster.create).toHaveBeenCalledWith(
         expect.objectContaining({
-          title: "Error",
-          description: "Failed to update plan",
+          title: "Failed to move course",
           type: "error",
         })
       );
