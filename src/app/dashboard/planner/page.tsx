@@ -18,6 +18,7 @@ import {
   DndContext,
   DragOverlay,
   PointerSensor,
+  KeyboardSensor,
   useSensor,
   useSensors,
   type DragStartEvent,
@@ -188,6 +189,9 @@ export default function PlannerPage() {
   // View state: hub (plan cards) or workspace (planner grid)
   const [view, setView] = useState<"hub" | "workspace">("hub");
 
+  // Mobile panel toggle (below lg breakpoint)
+  const [mobileTab, setMobileTab] = useState<"courses" | "grid">("grid");
+
   // UI state
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [createPlanDialogOpen, setCreatePlanDialogOpen] = useState(false);
@@ -207,13 +211,17 @@ export default function PlannerPage() {
 
   // DnD sensors
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor)
   );
 
   // Derived data
   const activePlan = plans.find((p) => p.id === activePlanId) ?? null;
   const isGraduatePlan = activePlan?.has_graduate_program ?? false;
-  const plannedCourseIds = new Set(plannedCourses.map((pc) => pc.course_id));
+  const plannedCourseIds = useMemo(
+    () => new Set(plannedCourses.map((pc) => pc.course_id)),
+    [plannedCourses]
+  );
   const graduateTracks: GraduateTrack[] = useMemo(
     () => (isGraduatePlan ? getGraduateTracks(blocks) : []),
     [blocks, isGraduatePlan]
@@ -891,24 +899,63 @@ export default function PlannerPage() {
             </Flex>
           ) : (
             <>
+              {/* Mobile tab toggle */}
+              <HStack
+                display={{ base: "flex", lg: "none" }}
+                gap="0"
+                bg="bg.subtle"
+                borderRadius="lg"
+                p="0.5"
+                mx="4"
+                mt="2"
+              >
+                <Button
+                  size="sm"
+                  variant={mobileTab === "courses" ? "solid" : "ghost"}
+                  colorPalette={mobileTab === "courses" ? "blue" : "gray"}
+                  borderRadius="md"
+                  flex="1"
+                  onClick={() => setMobileTab("courses")}
+                >
+                  Courses
+                </Button>
+                <Button
+                  size="sm"
+                  variant={mobileTab === "grid" ? "solid" : "ghost"}
+                  colorPalette={mobileTab === "grid" ? "blue" : "gray"}
+                  borderRadius="md"
+                  flex="1"
+                  onClick={() => setMobileTab("grid")}
+                >
+                  Schedule
+                </Button>
+              </HStack>
+
               <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
                 <Flex flex="1" overflow="hidden" minH="0" className="animate-fade-up">
-                  <CoursePanel
-                    blocks={displayBlocks}
-                    allDedupedBlocks={allDedupedBlocks}
-                    completedCourseIds={completedIds}
-                    plannedCourseIds={plannedCourseIds}
-                    plannedCourses={plannedCourses}
-                    isDragActive={!!activeDrag}
-                    selectedBreadthPackageId={selectedBreadthPackageId}
-                    onBreadthPackageSelect={handleBreadthPackageSelect}
-                    isGraduatePlan={isGraduatePlan}
-                    graduateTracks={graduateTracks}
-                    selectedTrackId={selectedTrackId}
-                    onTrackSelect={handleTrackSelect}
-                    genEdBuckets={genEdBuckets}
-                  />
+                  <Box display={{ base: mobileTab === "courses" ? "block" : "none", lg: "block" }}>
+                    <CoursePanel
+                      blocks={displayBlocks}
+                      allDedupedBlocks={allDedupedBlocks}
+                      completedCourseIds={completedIds}
+                      plannedCourseIds={plannedCourseIds}
+                      plannedCourses={plannedCourses}
+                      isDragActive={!!activeDrag}
+                      selectedBreadthPackageId={selectedBreadthPackageId}
+                      onBreadthPackageSelect={handleBreadthPackageSelect}
+                      isGraduatePlan={isGraduatePlan}
+                      graduateTracks={graduateTracks}
+                      selectedTrackId={selectedTrackId}
+                      onTrackSelect={handleTrackSelect}
+                      genEdBuckets={genEdBuckets}
+                    />
+                  </Box>
 
+                  <Box
+                    display={{ base: mobileTab === "grid" ? "flex" : "none", lg: "flex" }}
+                    flex="1"
+                    minH="0"
+                  >
                   {terms.length === 0 ? (
                     <Flex
                       flex="1"
@@ -976,6 +1023,7 @@ export default function PlannerPage() {
                       isGraduatePlan={isGraduatePlan}
                     />
                   )}
+                  </Box>
                 </Flex>
 
                 <DragOverlay>
