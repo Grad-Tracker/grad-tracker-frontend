@@ -23,4 +23,21 @@ describe("AI advisor prompt", () => {
     expect(prompt).toContain("Alex Johnson");
     expect(prompt).toContain("B.S. Computer Science");
   });
+
+  it("falls back to unknown when context fields are null", () => {
+    const prompt = buildSystemPrompt({
+      promptVersion: PROMPT_VERSION,
+      studentName: null,
+      primaryProgram: null,
+      catalogYear: null,
+      expectedGraduation: null,
+      hasCompletedOnboarding: false,
+    });
+
+    expect(prompt).toContain("Student: unknown");
+    expect(prompt).toContain("Primary program: unknown");
+    expect(prompt).toContain("Catalog year: unknown");
+    expect(prompt).toContain("Expected graduation: unknown");
+    expect(prompt).toContain("Onboarding: not completed");
+  });
 });

@@ -141,4 +141,71 @@ describe("AI advisor tools orchestration", () => {
     expect(response.answer.toLowerCase()).toContain("not certain");
     expect(response.recommendations).toEqual([]);
   });
+
+  it("returns degree progress for graduation questions", async () => {
+    const response = await generateAdvisorResponse({
+      message: "Am I on track to graduate?",
+      history: [],
+      activePlanId: 7,
+      profile: makeProfile(),
+      dependencies: makeDependencies(),
+    });
+
+    expect(response.answer).toContain("75%");
+    expect(response.citations).toContain("tool:get_degree_progress");
+  });
+
+  it("asks for course code when prereq message has no codes", async () => {
+    const response = await generateAdvisorResponse({
+      message: "Can I take that class?",
+      history: [],
+      activePlanId: 7,
+      profile: makeProfile(),
+      dependencies: makeDependencies(),
+    });
+
+    expect(response.answer.toLowerCase()).toContain("course code");
+  });
+
+  it("handles progress tool failure gracefully", async () => {
+    const deps = makeDependencies();
+    deps.getDegreeProgress = vi.fn().mockRejectedValue(new Error("DB down"));
+    const response = await generateAdvisorResponse({
+      message: "How many credits do I have left?",
+      history: [],
+      activePlanId: null,
+      profile: makeProfile(),
+      dependencies: deps,
+    });
+
+    expect(response.answer.toLowerCase()).toContain("could not");
+  });
+
+  it("handles remaining requirements tool failure gracefully", async () => {
+    const deps = makeDependencies();
+    deps.getRemainingRequirements = vi.fn().mockRejectedValue(new Error("DB down"));
+    const response = await generateAdvisorResponse({
+      message: "Show my remaining requirements",
+      history: [],
+      activePlanId: null,
+      profile: makeProfile(),
+      dependencies: deps,
+    });
+
+    expect(response.answer.toLowerCase()).toContain("could not");
+  });
+
+  it("handles recommend tool failure gracefully", async () => {
+    const deps = makeDependencies();
+    deps.getRemainingRequirements = vi.fn().mockRejectedValue(new Error("DB down"));
+    const response = await generateAdvisorResponse({
+      message: "What should I take next semester?",
+      history: [],
+      activePlanId: null,
+      profile: makeProfile(),
+      dependencies: deps,
+    });
+
+    expect(response.answer.toLowerCase()).toContain("could not");
+  });
 });
