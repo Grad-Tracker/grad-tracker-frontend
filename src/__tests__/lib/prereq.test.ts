@@ -40,19 +40,25 @@ const COURSE_ID = 101;
  *   1. course_req_sets
  *   2. course_req_nodes
  *   3. course_req_atoms  (Promise.all first branch)
- *   4. student_course_history via "student" column (Promise.all second branch)
+ *   4. v_student_course_progress (Promise.all second branch)
+ *   5. v_course_catalog  (course code lookup for summary messages)
  */
 function setupMocks(
   reqSets: unknown[],
   reqNodes: unknown[],
   reqAtoms: unknown[],
-  historyRows: unknown[]
+  historyRows: unknown[],
+  catalogRows: unknown[] = [
+    { course_id: 50, subject: "CSCI", number: "240" },
+    { course_id: 60, subject: "MATH", number: "151" },
+  ]
 ) {
   mockFrom
     .mockReturnValueOnce(makeResolvingChain(reqSets))        // course_req_sets
     .mockReturnValueOnce(makeResolvingChain(reqNodes))       // course_req_nodes
     .mockReturnValueOnce(makeResolvingChain(reqAtoms))       // course_req_atoms
-    .mockReturnValueOnce(makeResolvingChain(historyRows));   // student_course_history (student col)
+    .mockReturnValueOnce(makeResolvingChain(historyRows))    // v_student_course_progress
+    .mockReturnValueOnce(makeResolvingChain(catalogRows));   // v_course_catalog
 }
 
 // ---------------------------------------------------------------------------
@@ -62,6 +68,7 @@ function setupMocks(
 describe("evaluatePrereqsForCourses", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockFrom.mockReset();
   });
 
   // 1. Empty input
@@ -111,7 +118,7 @@ describe("evaluatePrereqsForCourses", () => {
     const evaluation = result.get(COURSE_ID);
 
     expect(evaluation?.unlocked).toBe(false);
-    expect(evaluation?.summary).toContain("Requires course 50");
+    expect(evaluation?.summary).toContain("Requires CSCI 240");
   });
 
   // 5. COURSE atom with min_grade="B", student grade="A" → unlocked (meets minimum)
@@ -141,7 +148,7 @@ describe("evaluatePrereqsForCourses", () => {
     const evaluation = result.get(COURSE_ID);
 
     expect(evaluation?.unlocked).toBe(false);
-    expect(evaluation?.summary).toContain("Requires course 50 (B or better)");
+    expect(evaluation?.summary).toContain("Requires CSCI 240 (B or better)");
   });
 
   // 7. CONSENT atom → locked, summary=["Instructor consent required"]
@@ -207,9 +214,9 @@ describe("evaluatePrereqsForCourses", () => {
     const evaluation = result.get(COURSE_ID);
 
     expect(evaluation?.unlocked).toBe(false);
-    expect(evaluation?.summary).toContain("Requires course 60");
+    expect(evaluation?.summary).toContain("Requires MATH 151");
     // course 50 was completed — should NOT appear in summary
-    expect(evaluation?.summary).not.toContain("Requires course 50");
+    expect(evaluation?.summary).not.toContain("Requires CSCI 240");
   });
 
   // 10. OR node with 2 children: one passes → unlocked=true
@@ -281,7 +288,10 @@ describe("evaluatePrereqsForCourses", () => {
       .mockReturnValueOnce(
         makeResolvingChain([{ id: 100, node_id: 10, atom_type: "COURSE", required_course_id: 50, min_grade: null }])
       )
-      .mockReturnValueOnce(makeResolvingChain([])); // no history
+      .mockReturnValueOnce(makeResolvingChain([])) // no history
+      .mockReturnValueOnce(
+        makeResolvingChain([{ course_id: 50, subject: "CSCI", number: "240" }])
+      );
 
     const result = await evaluatePrereqsForCourses([COURSE_ID, COURSE_ID_2], STUDENT_ID);
 
@@ -291,23 +301,18 @@ describe("evaluatePrereqsForCourses", () => {
     expect(result.get(COURSE_ID_2)).toEqual({ unlocked: true, summary: [] });
   });
 
-  // Bonus: student history fallback to "student_id" column
-  it("falls back to student_id column when 'student' column query errors", async () => {
+  // Bonus: student progress query errors are surfaced
+  it("throws when student course progress query returns an error", async () => {
     const columnError = { message: "column does not exist", code: "42703" };
 
     mockFrom
       .mockReturnValueOnce(makeResolvingChain([{ id: 1, course_id: COURSE_ID, set_type: "PREREQ" }]))
       .mockReturnValueOnce(makeResolvingChain([{ id: 10, req_set_id: 1, node_type: "ATOM", parent_id: null }]))
       .mockReturnValueOnce(makeResolvingChain([{ id: 100, node_id: 10, atom_type: "COURSE", required_course_id: 50, min_grade: null }]))
-      // student_course_history with "student" col → error
-      .mockReturnValueOnce(makeResolvingChain(null, columnError))
-      // student_course_history with "student_id" col → success
-      .mockReturnValueOnce(makeResolvingChain([{ course_id: 50, grade: "A", completed: true }]));
+      // v_student_course_progress returns an error
+      .mockReturnValueOnce(makeResolvingChain(null, columnError));
 
-    const result = await evaluatePrereqsForCourses([COURSE_ID], STUDENT_ID);
-
-    // Should have succeeded using the fallback column
-    expect(result.get(COURSE_ID)).toEqual({ unlocked: true, summary: [] });
+    await expect(evaluatePrereqsForCourses([COURSE_ID], STUDENT_ID)).rejects.toEqual(columnError);
   });
 
   // Bonus: duplicate course IDs in input are deduplicated

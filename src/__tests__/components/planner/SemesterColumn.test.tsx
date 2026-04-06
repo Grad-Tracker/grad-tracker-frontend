@@ -11,12 +11,12 @@ vi.mock("@dnd-kit/core", () => ({
   useDroppable: vi.fn(() => ({ isOver: false, setNodeRef: vi.fn() })),
 }));
 
-vi.mock("@/components/planner/DraggableCourseCard", () => ({
+vi.mock("@/components/planner/DraggableCourseRow", () => ({
   default: ({ course }: any) =>
     React.createElement(
-      "div",
+      "tr",
       { "data-testid": `course-${course.id}` },
-      `${course.subject} ${course.number}`
+      React.createElement("td", null, `${course.subject} ${course.number}`)
     ),
 }));
 
@@ -61,7 +61,7 @@ describe("SemesterColumn", () => {
   it("renders term season and year in header", () => {
     const term = makeTerm({ season: "Fall", year: 2025 });
     renderWithChakra(
-      <SemesterColumn term={term} courses={[]} onRemoveTerm={vi.fn()} />
+      <SemesterColumn term={term} courses={[]} onRemoveTerm={vi.fn()} onCourseClick={vi.fn()} />
     );
 
     expect(
@@ -76,7 +76,7 @@ describe("SemesterColumn", () => {
     const courses = [makePlannedCourse(c1, term.id), makePlannedCourse(c2, term.id)];
 
     renderWithChakra(
-      <SemesterColumn term={term} courses={courses} onRemoveTerm={vi.fn()} />
+      <SemesterColumn term={term} courses={courses} onRemoveTerm={vi.fn()} onCourseClick={vi.fn()} />
     );
 
     // Header badge shows "7 cr"
@@ -88,7 +88,7 @@ describe("SemesterColumn", () => {
   it("renders placeholder text when no courses", () => {
     const term = makeTerm();
     renderWithChakra(
-      <SemesterColumn term={term} courses={[]} onRemoveTerm={vi.fn()} />
+      <SemesterColumn term={term} courses={[]} onRemoveTerm={vi.fn()} onCourseClick={vi.fn()} />
     );
 
     expect(
@@ -108,7 +108,7 @@ describe("SemesterColumn", () => {
     ];
 
     renderWithChakra(
-      <SemesterColumn term={term} courses={courses} onRemoveTerm={vi.fn()} />
+      <SemesterColumn term={term} courses={courses} onRemoveTerm={vi.fn()} onCourseClick={vi.fn()} />
     );
 
     expect(screen.getByTestId("course-10")).toBeTruthy();
@@ -127,7 +127,7 @@ describe("SemesterColumn", () => {
     );
 
     renderWithChakra(
-      <SemesterColumn term={term} courses={courses} onRemoveTerm={vi.fn()} />
+      <SemesterColumn term={term} courses={courses} onRemoveTerm={vi.fn()} onCourseClick={vi.fn()} />
     );
 
     expect(
@@ -146,7 +146,7 @@ describe("SemesterColumn", () => {
     );
 
     renderWithChakra(
-      <SemesterColumn term={term} courses={courses} onRemoveTerm={vi.fn()} />
+      <SemesterColumn term={term} courses={courses} onRemoveTerm={vi.fn()} onCourseClick={vi.fn()} />
     );
 
     expect(
@@ -161,7 +161,7 @@ describe("SemesterColumn", () => {
     const courses = [makePlannedCourse(c1, term.id)];
 
     renderWithChakra(
-      <SemesterColumn term={term} courses={courses} onRemoveTerm={vi.fn()} />
+      <SemesterColumn term={term} courses={courses} onRemoveTerm={vi.fn()} onCourseClick={vi.fn()} />
     );
 
     expect(
@@ -174,7 +174,7 @@ describe("SemesterColumn", () => {
     const onRemoveTerm = vi.fn();
 
     renderWithChakra(
-      <SemesterColumn term={term} courses={[]} onRemoveTerm={onRemoveTerm} />
+      <SemesterColumn term={term} courses={[]} onRemoveTerm={onRemoveTerm} onCourseClick={vi.fn()} />
     );
 
     const removeBtn = screen.getByLabelText("Remove semester");
@@ -192,6 +192,7 @@ describe("SemesterColumn", () => {
         onRemoveTerm={vi.fn()}
         isCollapsed={true}
         onToggleCollapse={vi.fn()}
+        onCourseClick={vi.fn()}
       />
     );
     expect(screen.getAllByText(/Summer 2025/).length).toBeGreaterThanOrEqual(1);
@@ -209,6 +210,7 @@ describe("SemesterColumn", () => {
         onRemoveTerm={vi.fn()}
         isCollapsed={true}
         onToggleCollapse={vi.fn()}
+        onCourseClick={vi.fn()}
       />
     );
     expect(screen.getAllByText(/1 courses · 3 cr/).length).toBeGreaterThanOrEqual(1);
@@ -224,6 +226,7 @@ describe("SemesterColumn", () => {
         onRemoveTerm={vi.fn()}
         isCollapsed={true}
         onToggleCollapse={onToggleCollapse}
+        onCourseClick={vi.fn()}
       />
     );
     fireEvent.click(screen.getAllByText("Click to expand")[0]);
@@ -240,6 +243,7 @@ describe("SemesterColumn", () => {
         onRemoveTerm={vi.fn()}
         isCollapsed={false}
         onToggleCollapse={onToggleCollapse}
+        onCourseClick={vi.fn()}
       />
     );
     const collapseBtn = screen.getByLabelText("Collapse summer");
@@ -255,6 +259,7 @@ describe("SemesterColumn", () => {
         courses={[]}
         onRemoveTerm={vi.fn()}
         onToggleCollapse={vi.fn()}
+        onCourseClick={vi.fn()}
       />
     );
     expect(screen.queryByLabelText("Collapse summer")).toBeNull();
@@ -266,7 +271,7 @@ describe("SemesterColumn", () => {
     const c2 = makeCourse({ id: 2, subject: "MATH", number: "200", credits: 3 });
     const courses = [makePlannedCourse(c1, term.id), makePlannedCourse(c2, term.id)];
     renderWithChakra(
-      <SemesterColumn term={term} courses={courses} onRemoveTerm={vi.fn()} />
+      <SemesterColumn term={term} courses={courses} onRemoveTerm={vi.fn()} onCourseClick={vi.fn()} />
     );
     expect(screen.getAllByText("2 courses").length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText("6 credits").length).toBeGreaterThanOrEqual(1);
@@ -277,7 +282,7 @@ describe("SemesterColumn", () => {
     const c1 = makeCourse({ id: 1, credits: 3 });
     const courses = [makePlannedCourse(c1, term.id)];
     renderWithChakra(
-      <SemesterColumn term={term} courses={courses} onRemoveTerm={vi.fn()} />
+      <SemesterColumn term={term} courses={courses} onRemoveTerm={vi.fn()} onCourseClick={vi.fn()} />
     );
     expect(screen.getAllByText("1 course").length).toBeGreaterThanOrEqual(1);
   });
@@ -289,7 +294,7 @@ describe("SemesterColumn", () => {
     });
     const term = makeTerm();
     renderWithChakra(
-      <SemesterColumn term={term} courses={[]} onRemoveTerm={vi.fn()} />
+      <SemesterColumn term={term} courses={[]} onRemoveTerm={vi.fn()} onCourseClick={vi.fn()} />
     );
     expect(screen.getAllByText("Drop here!").length).toBeGreaterThanOrEqual(1);
   });

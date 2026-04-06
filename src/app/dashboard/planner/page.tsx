@@ -751,7 +751,14 @@ export default function PlannerPage() {
 
   // ── Loading state ───────────────────────────────────────
   if (loading) {
-    return <PlannerPageSkeleton />;
+    return (
+      <Flex align="center" justify="center" minH="60vh">
+        <VStack gap="4">
+          <Spinner size="xl" color="blue.500" />
+          <Text color="fg.muted">Loading your planner...</Text>
+        </VStack>
+      </Flex>
+    );
   }
 
   // ── Render ──────────────────────────────────────────────
@@ -862,7 +869,14 @@ export default function PlannerPage() {
 
           {/* Plan data loading */}
           {planDataLoading ? (
-            <PlannerSkeleton />
+            <Flex flex="1" align="center" justify="center">
+              <VStack gap="3">
+                <Spinner size="lg" color="blue.500" />
+                <Text fontSize="sm" color="fg.muted">
+                  Loading plan...
+                </Text>
+              </VStack>
+            </Flex>
           ) : (
             <>
               {/* Mobile tab toggle */}
@@ -899,23 +913,21 @@ export default function PlannerPage() {
 
               <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
                 <Flex flex="1" overflow="hidden" minH="0" className="animate-fade-up">
-                  <Box display={{ base: mobileTab === "courses" ? "block" : "none", lg: "block" }}>
-                    <CoursePanel
-                      blocks={displayBlocks}
-                      allDedupedBlocks={allDedupedBlocks}
-                      completedCourseIds={completedIds}
-                      plannedCourseIds={plannedCourseIds}
-                      plannedCourses={plannedCourses}
-                      isDragActive={!!activeDrag}
-                      selectedBreadthPackageId={selectedBreadthPackageId}
-                      onBreadthPackageSelect={handleBreadthPackageSelect}
-                      isGraduatePlan={isGraduatePlan}
-                      graduateTracks={graduateTracks}
-                      selectedTrackId={selectedTrackId}
-                      onTrackSelect={handleTrackSelect}
-                      genEdBuckets={genEdBuckets}
-                    />
-                  </Box>
+                  <CoursePanel
+                    blocks={displayBlocks}
+                    allDedupedBlocks={allDedupedBlocks}
+                    completedCourseIds={completedIds}
+                    plannedCourseIds={plannedCourseIds}
+                    plannedCourses={plannedCourses}
+                    isDragActive={!!activeDrag}
+                    selectedBreadthPackageId={selectedBreadthPackageId}
+                    onBreadthPackageSelect={handleBreadthPackageSelect}
+                    isGraduatePlan={isGraduatePlan}
+                    graduateTracks={graduateTracks}
+                    selectedTrackId={selectedTrackId}
+                    onTrackSelect={handleTrackSelect}
+                    genEdBuckets={genEdBuckets}
+                  />
 
                   <Box
                     display={{ base: mobileTab === "grid" ? "flex" : "none", lg: "flex" }}

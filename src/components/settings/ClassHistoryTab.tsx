@@ -1,8 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { Box, Stack, Heading } from "@chakra-ui/react";
-import { ClassHistorySkeleton } from "@/components/settings/SettingsSkeleton";
+import { Box, Spinner, Stack, Heading } from "@chakra-ui/react";
 import { toaster } from "@/components/ui/toaster";
 import { createClient } from "@/lib/supabase/client";
 import { DB_VIEWS } from "@/lib/supabase/queries/schema";
@@ -191,7 +190,11 @@ export function ClassHistoryTab() {
   );
 
   if (loading) {
-    return <ClassHistorySkeleton />;
+    return (
+      <Box p="8" display="flex" justifyContent="center">
+        <Spinner colorPalette="blue" />
+      </Box>
+    );
   }
 
   return (

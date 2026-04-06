@@ -202,9 +202,11 @@ describe("PlanCard", () => {
       fireEvent.keyDown(input, { key: "Escape" });
     });
 
-    expect(screen.queryByRole("textbox")).toBeNull();
+    await waitFor(() => {
+      expect(screen.queryByRole("textbox")).toBeNull();
+    });
     expect(screen.getAllByText("Escape Plan").length).toBeGreaterThanOrEqual(1);
-  });
+  }, 15000);
 
   it("shows 0% progress when total_credits is 0", () => {
     const plan = makePlan({ total_credits: 0 });

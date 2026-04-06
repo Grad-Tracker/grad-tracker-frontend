@@ -211,7 +211,7 @@ describe("Dashboard", () => {
     setupHappyPath();
   });
 
-  it("shows skeleton loading state initially", () => {
+  it("shows loading state initially", () => {
     mockGetUser.mockReturnValue(new Promise(() => {}));
     renderWithChakra(<Dashboard />);
     expect(screen.getByTestId("dashboard-skeleton")).toBeInTheDocument();

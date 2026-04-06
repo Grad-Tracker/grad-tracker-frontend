@@ -1,36 +1,28 @@
-import { createClient } from "@/app/utils/supabase/server";
-import RequirementsDashboard from "@/components/requirements/RequirementsDashboard";
-import { DB_TABLES, STUDENT_COLUMNS } from "@/lib/supabase/queries/schema";
+import { createClient } from "@/lib/supabase/server";
+import { DB_VIEWS } from "@/lib/supabase/queries/schema";
+import ProgramsClient, { type Program } from "./ProgramsClient";
+import type { ViewProgramCatalogRow } from "@/lib/supabase/queries/view-types";
 
 export default async function RequirementsPage() {
   const supabase = await createClient();
 
-  // 1) Get logged-in user
-  const {
-    data: { user },
-    error: userErr,
-  } = await supabase.auth.getUser();
+  const { data: programs, error } = await supabase
+    .from(DB_VIEWS.programCatalog)
+    .select("program_id, program_name, catalog_year, program_type")
+    .order("program_name", { ascending: true });
 
-  if (userErr || !user) {
-    // middleware likely redirects already, but safe fallback
-    return null;
+  if (error) {
+    console.error("Error fetching programs:", error);
   }
 
-  // 2) Find matching student row
-  const { data: student, error: studentErr } = await supabase
-    .from(DB_TABLES.students)
-    .select("id")
-    .eq(STUDENT_COLUMNS.authUserId, user.id)
-    .single();
+  const mappedPrograms: Program[] = ((programs as ViewProgramCatalogRow[] | null) ?? []).map(
+    (program) => ({
+      id: String(program.program_id),
+      name: program.program_name,
+      catalog_year: program.catalog_year ? Number(program.catalog_year) || null : null,
+      program_type: String(program.program_type ?? ""),
+    })
+  );
 
-  if (studentErr || !student) {
-    return (
-      <div style={{ padding: 24 }}>
-        No student profile found for this account.
-      </div>
-    );
-  }
-
-  // 3) Pass the correct studentId to the client component
-return <RequirementsDashboard studentId={student.id} />;
+  return <ProgramsClient programs={mappedPrograms} />;
 }

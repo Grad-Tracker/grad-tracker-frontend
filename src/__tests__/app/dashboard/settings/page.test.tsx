@@ -5,11 +5,16 @@ import { ChakraProvider, defaultSystem } from "@chakra-ui/react";
 
 /* ---------------- HOISTED MOCKS ---------------- */
 
-const { mockGetUser, mockUpdateUser, mockFrom, mockToasterCreate } = vi.hoisted(() => ({
+const { mockGetUser, mockUpdateUser, mockFrom, mockToasterCreate, mockPush } = vi.hoisted(() => ({
   mockGetUser: vi.fn(),
   mockUpdateUser: vi.fn(),
   mockFrom: vi.fn(),
   mockToasterCreate: vi.fn(),
+  mockPush: vi.fn(),
+}));
+
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: mockPush, replace: vi.fn(), refresh: vi.fn() }),
 }));
 
 vi.mock("@/lib/supabase/client", () => ({

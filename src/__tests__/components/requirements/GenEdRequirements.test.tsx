@@ -63,7 +63,7 @@ describe("GenEdRequirements", () => {
     setupDefaultData();
   });
 
-  it("shows skeleton loading state", () => {
+  it("shows loading state", () => {
     mockFetchGenEdBucketsWithCourses.mockReturnValue(new Promise(() => {}) as any);
 
     renderWithChakra(<GenEdRequirements studentId={1} />);
