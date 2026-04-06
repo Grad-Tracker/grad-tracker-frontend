@@ -35,7 +35,7 @@ export default function GlobalError({
         right="-10%"
         w="500px"
         h="500px"
-        bg="red.500"
+        bg="red.subtle"
         opacity="0.05"
         borderRadius="full"
         filter="blur(100px)"

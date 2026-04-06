@@ -68,20 +68,21 @@ export default function DashboardError({
             </Icon>
             Try Again
           </Button>
-          <Link href="/dashboard" style={{ width: "100%" }}>
-            <Button
-              w="full"
-              variant="outline"
-              size="lg"
-              rounded="lg"
-              fontWeight="600"
-            >
+          <Button
+            asChild
+            w="full"
+            variant="outline"
+            size="lg"
+            rounded="lg"
+            fontWeight="600"
+          >
+            <Link href="/dashboard">
               <Icon mr="2">
                 <LuLayoutDashboard />
               </Icon>
               Dashboard Overview
-            </Button>
-          </Link>
+            </Link>
+          </Button>
         </VStack>
       </VStack>
     </Box>

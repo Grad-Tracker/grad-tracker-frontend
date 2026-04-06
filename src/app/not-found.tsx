@@ -27,7 +27,7 @@ export default function NotFound() {
         left="-10%"
         w="400px"
         h="400px"
-        bg="green.500"
+        bg="green.subtle"
         opacity="0.05"
         borderRadius="full"
         filter="blur(80px)"
@@ -67,36 +67,38 @@ export default function NotFound() {
           </VStack>
 
           <VStack gap="3" w="full" maxW="xs">
-            <Link href="/" style={{ width: "100%" }}>
-              <Button
-                w="full"
-                colorPalette="green"
-                size="lg"
-                rounded="lg"
-                fontWeight="600"
-                _hover={{ transform: "translateY(-2px)", boxShadow: "lg" }}
-                transition="all 0.2s"
-              >
+            <Button
+              asChild
+              w="full"
+              colorPalette="green"
+              size="lg"
+              rounded="lg"
+              fontWeight="600"
+              _hover={{ transform: "translateY(-2px)", boxShadow: "lg" }}
+              transition="all 0.2s"
+            >
+              <Link href="/">
                 <Icon mr="2">
                   <LuHouse />
                 </Icon>
                 Back to Home
-              </Button>
-            </Link>
-            <Link href="/dashboard" style={{ width: "100%" }}>
-              <Button
-                w="full"
-                variant="outline"
-                size="lg"
-                rounded="lg"
-                fontWeight="600"
-              >
+              </Link>
+            </Button>
+            <Button
+              asChild
+              w="full"
+              variant="outline"
+              size="lg"
+              rounded="lg"
+              fontWeight="600"
+            >
+              <Link href="/dashboard">
                 <Icon mr="2">
                   <LuArrowLeft />
                 </Icon>
                 Go to Dashboard
-              </Button>
-            </Link>
+              </Link>
+            </Button>
           </VStack>
         </VStack>
       </Container>
