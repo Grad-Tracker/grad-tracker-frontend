@@ -21,7 +21,7 @@ import type {
   AdvisorRecommendation,
 } from "@/types/ai-advisor";
 
-const TOOL_NAMES = {
+export const TOOL_NAMES = {
   getStudentProfile: "get_student_profile",
   getPlanSnapshot: "get_plan_snapshot",
   getDegreeProgress: "get_degree_progress",
@@ -336,15 +336,21 @@ export function createAdvisorTools(deps: AdvisorToolDependencies): AdvisorToolse
         if (code) idToCode.set(id, code);
       });
 
-      const results = candidateIds.map((courseId) => {
-        const prereq = prereqMap.get(courseId) ?? { unlocked: true, summary: [] };
-        return {
-          courseId,
-          courseCode: idToCode.get(courseId) ?? `COURSE ${courseId}`,
-          unlocked: prereq.unlocked,
-          summary: prereq.summary,
-        };
-      });
+      const results = candidateIds
+        .map((courseId) => {
+          const courseCode = idToCode.get(courseId);
+          if (!courseCode) {
+            return null; // Skip courses without resolved codes
+          }
+          const prereq = prereqMap.get(courseId) ?? { unlocked: true, summary: [] };
+          return {
+            courseId,
+            courseCode,
+            unlocked: prereq.unlocked,
+            summary: prereq.summary,
+          };
+        })
+        .filter((result): result is NonNullable<typeof result> => result !== null);
 
       return {
         results,
@@ -353,7 +359,10 @@ export function createAdvisorTools(deps: AdvisorToolDependencies): AdvisorToolse
     },
 
     async recommend_next_semester(input?: RecommendNextSemesterInput) {
-      const targetCredits = Math.max(3, Math.min(Number(input?.targetCredits ?? 15), 21));
+      const rawCredits = Number(input?.targetCredits ?? 15);
+      const targetCredits = Number.isFinite(rawCredits) && !isNaN(rawCredits)
+        ? Math.max(3, Math.min(rawCredits, 21))
+        : 15;
       const remaining = await deps.getRemainingRequirements(input?.planId ?? null, 200);
 
       const candidates = remaining.blocks.flatMap((block) =>
@@ -486,6 +495,7 @@ async function runClaudeToolCalling(args: {
   message: string;
   history: AdvisorChatHistoryItem[];
   profile: AdvisorStudentProfile;
+  activePlanId?: number | null;
   executeTool: (name: AdvisorToolName, toolArgs: Record<string, unknown>) => Promise<ToolExecutionResult>;
 }): Promise<AdvisorChatResponse | null> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
@@ -541,10 +551,22 @@ async function runClaudeToolCalling(args: {
 
     const toolResults: Anthropic.Messages.ToolResultBlockParam[] = [];
     for (const toolUse of toolUseBlocks) {
-      const toolResult = await args.executeTool(
-        toolUse.name as AdvisorToolName,
-        (toolUse.input as Record<string, unknown>) ?? {}
-      );
+      const toolInput = (toolUse.input as Record<string, unknown>) ?? {};
+
+      // Inject activePlanId for tools that support planId parameter
+      const toolName = toolUse.name as AdvisorToolName;
+      if (
+        args.activePlanId !== undefined &&
+        (toolName === TOOL_NAMES.getPlanSnapshot ||
+          toolName === TOOL_NAMES.getDegreeProgress ||
+          toolName === TOOL_NAMES.getRemainingRequirements ||
+          toolName === TOOL_NAMES.recommendNextSemester) &&
+        !toolInput.planId
+      ) {
+        toolInput.planId = args.activePlanId;
+      }
+
+      const toolResult = await args.executeTool(toolName, toolInput);
       toolResults.push({
         type: "tool_result",
         tool_use_id: toolUse.id,
@@ -777,6 +799,7 @@ export async function generateAdvisorResponse(
       message: input.message,
       history: input.history,
       profile: input.profile,
+      activePlanId: input.activePlanId ?? null,
       executeTool,
     });
   } catch (error) {

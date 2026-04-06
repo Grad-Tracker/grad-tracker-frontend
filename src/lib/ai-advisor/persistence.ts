@@ -12,7 +12,9 @@ export async function createConversation(
     .insert({ student_id: studentId, title: title ?? null })
     .select("id")
     .single();
-  if (error) throw error;
+  if (error || !data) {
+    throw new Error(error?.message || "Failed to create conversation: no data returned");
+  }
   return Number(data.id);
 }
 
@@ -28,7 +30,9 @@ export async function saveMessage(
     .insert({ conversation_id: conversationId, role, content, metadata })
     .select("id")
     .single();
-  if (error) throw error;
+  if (error || !data) {
+    throw new Error(error?.message || "Failed to save message: no data returned");
+  }
 
   // Touch updated_at on conversation
   await supabase
@@ -37,6 +41,15 @@ export async function saveMessage(
     .eq("id", conversationId);
 
   return Number(data.id);
+}
+
+interface MessageRow {
+  id: number | string;
+  conversation_id: number | string;
+  role: string;
+  content: string;
+  metadata: Record<string, unknown> | null;
+  created_at: string;
 }
 
 export async function loadMessages(
@@ -49,7 +62,7 @@ export async function loadMessages(
     .eq("conversation_id", conversationId)
     .order("created_at", { ascending: true });
   if (error) throw error;
-  return (data ?? []).map((row: any) => ({
+  return (data ?? []).map((row: MessageRow) => ({
     id: Number(row.id),
     conversationId: Number(row.conversation_id),
     role: row.role as "user" | "assistant",
@@ -57,6 +70,14 @@ export async function loadMessages(
     metadata: (row.metadata ?? {}) as Record<string, unknown>,
     createdAt: String(row.created_at),
   }));
+}
+
+interface ConversationRow {
+  id: number | string;
+  student_id: number | string;
+  title: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 export async function listConversations(
@@ -70,7 +91,7 @@ export async function listConversations(
     .order("updated_at", { ascending: false })
     .limit(50);
   if (error) throw error;
-  return (data ?? []).map((row: any) => ({
+  return (data ?? []).map((row: ConversationRow) => ({
     id: Number(row.id),
     studentId: Number(row.student_id),
     title: row.title ? String(row.title) : null,

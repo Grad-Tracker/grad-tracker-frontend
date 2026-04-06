@@ -11,10 +11,19 @@ export async function POST(request: Request) {
   const profile = await resolveStudentProfile(supabase, user.id);
   if (!profile) return NextResponse.json({ error: "Profile not found" }, { status: 404 });
 
-  const body = await request.json();
-  const title = typeof body.title === "string" ? body.title.slice(0, 100) : null;
-  const id = await createConversation(supabase, profile.studentId, title);
-  return NextResponse.json({ id });
+  try {
+    const body = await request.json();
+    const title = typeof body.title === "string" ? body.title.slice(0, 100) : null;
+    const id = await createConversation(supabase, profile.studentId, title);
+    return NextResponse.json({ id });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    console.error("Failed to create conversation:", error);
+    return NextResponse.json(
+      { error: "Failed to create conversation", details: message },
+      { status: 500 }
+    );
+  }
 }
 
 export async function GET() {
@@ -25,6 +34,15 @@ export async function GET() {
   const profile = await resolveStudentProfile(supabase, user.id);
   if (!profile) return NextResponse.json({ error: "Profile not found" }, { status: 404 });
 
-  const conversations = await listConversations(supabase, profile.studentId);
-  return NextResponse.json({ conversations });
+  try {
+    const conversations = await listConversations(supabase, profile.studentId);
+    return NextResponse.json({ conversations });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    console.error("Failed to list conversations:", error);
+    return NextResponse.json(
+      { error: "Failed to list conversations", details: message },
+      { status: 500 }
+    );
+  }
 }

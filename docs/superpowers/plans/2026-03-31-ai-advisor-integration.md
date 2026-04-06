@@ -15,6 +15,7 @@
 ## File Structure
 
 ### New Files
+
 | File | Responsibility |
 |------|---------------|
 | `src/__tests__/mocks/server-only.ts` | Empty mock for `server-only` package in test env |
@@ -29,6 +30,7 @@
 | `src/__tests__/lib/ai-advisor/persistence.test.ts` | Persistence query tests |
 
 ### Modified Files
+
 | File | Changes |
 |------|---------|
 | `vitest.config.ts` | Add `server-only` alias |

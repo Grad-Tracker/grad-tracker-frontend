@@ -13,9 +13,7 @@ import type {
   ViewPlanCourseRow,
 } from "@/lib/supabase/queries/view-types";
 
-export interface SupabaseTableClient {
-  from: (table: string) => any;
-}
+export type SupabaseTableClient = any;
 
 export interface AdvisorProgramInfo {
   id: number;
@@ -162,12 +160,18 @@ export async function resolveStudentProfile(
   if (programsError) throw programsError;
 
   const programs: AdvisorProgramInfo[] = ((programRows ?? []) as ViewStudentMajorProgramRow[]).map(
-    (p) => ({
-      id: Number(p.program_id),
-      name: String(p.program_name ?? ""),
-      catalogYear: p.catalog_year ? String(p.catalog_year) : null,
-      programType: String(p.program_type ?? ""),
-    })
+    (p) => {
+      const programId = Number(p.program_id);
+      if (!Number.isFinite(programId)) {
+        throw new Error(`Invalid program_id: ${p.program_id}`);
+      }
+      return {
+        id: programId,
+        name: String(p.program_name ?? ""),
+        catalogYear: p.catalog_year ? String(p.catalog_year) : null,
+        programType: String(p.program_type ?? ""),
+      };
+    }
   );
 
   const primaryProgram =
@@ -214,7 +218,18 @@ async function resolvePlanMeta(
 
   const rows = plans as ViewPlanMetaRow[];
   if (planId) {
-    return rows.find((p) => Number(p.plan_id) === Number(planId)) ?? rows[0];
+    const numericPlanId = Number(planId);
+    if (!Number.isFinite(numericPlanId)) {
+      throw new Error(`Invalid planId: ${planId}`);
+    }
+    const found = rows.find((p) => {
+      const rowPlanId = Number(p.plan_id);
+      return Number.isFinite(rowPlanId) && rowPlanId === numericPlanId;
+    });
+    if (!found) {
+      return null; // Plan not found - don't fall back to rows[0]
+    }
+    return found;
   }
   return rows[0];
 }
@@ -282,7 +297,7 @@ async function fetchCourseProgressSets(
 
   for (const raw of (data ?? []) as ViewStudentCourseProgressRow[]) {
     const courseId = Number(raw.course_id);
-    if (!Number.isFinite(courseId)) continue;
+    if (!Number.isFinite(courseId) || isNaN(courseId)) continue;
 
     if (raw.progress_status === "COMPLETED") {
       completedIds.add(courseId);
@@ -327,7 +342,7 @@ export async function getPlanSnapshot(
       .eq("plan_id", activePlanId),
     supabase
       .from(DB_VIEWS.planCourses)
-      .select("student_id, plan_id, term_id, course_id, status, subject, number, title, credits")
+      .select("student_id, plan_id, term_id, course_id, subject, number, title, credits")
       .eq("student_id", studentId)
       .eq("plan_id", activePlanId),
   ]);
@@ -353,7 +368,7 @@ export async function getPlanSnapshot(
       ),
       title: String(row.title ?? "Untitled course"),
       credits: Number(row.credits ?? 0),
-      status: String(row.status ?? "PLANNED"),
+      status: "PLANNED", // Status field not in view, default to PLANNED
       termId: row.term_id == null ? null : Number(row.term_id),
     }))
     .filter((course: AdvisorPlannedCourseSnapshot) => Number.isFinite(course.courseId));
@@ -393,7 +408,9 @@ export async function getDegreeProgress(
       .select("program_id")
       .eq("student_id", studentId);
     if (majorError) throw majorError;
-    resolvedProgramIds = (majorRows ?? []).map((r: any) => Number(r.program_id));
+    resolvedProgramIds = (majorRows ?? [])
+      .map((r: any) => Number(r.program_id))
+      .filter((id: number) => Number.isFinite(id) && !isNaN(id));
   }
 
   const [blocks, { completedIds, inProgressIds }] = await Promise.all([
@@ -495,7 +512,9 @@ export async function getRemainingRequirements(
       .select("program_id")
       .eq("student_id", studentId);
     if (majorError) throw majorError;
-    resolvedProgramIds = (majorRows ?? []).map((r: any) => Number(r.program_id));
+    resolvedProgramIds = (majorRows ?? [])
+      .map((r: any) => Number(r.program_id))
+      .filter((id: number) => Number.isFinite(id) && !isNaN(id));
   }
 
   const [blocks, { completedIds, inProgressIds }] = await Promise.all([

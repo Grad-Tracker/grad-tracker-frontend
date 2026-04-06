@@ -11,6 +11,7 @@ import {
   tryParseJson,
   makeFallbackResponse,
   CLAUDE_TOOL_DEFINITIONS,
+  TOOL_NAMES,
 } from "@/lib/ai-advisor/tools";
 import type { AdvisorToolName } from "@/lib/ai-advisor/tools";
 import type {
@@ -151,6 +152,7 @@ export async function POST(request: Request) {
         });
         const toolset = createAdvisorTools(dependencies);
         const usedCitations = new Set<string>();
+        const missingData: string[] = [];
 
         const messages: Anthropic.Messages.MessageParam[] = [
           ...requestBody.history.slice(-8).map((item) => ({
@@ -164,12 +166,18 @@ export async function POST(request: Request) {
         let completedWithResponse = false;
 
         for (let turn = 0; turn < maxTurns; turn++) {
+          // Check if request was aborted
+          if (request.signal.aborted) {
+            break;
+          }
+
           const messageStream = client.messages.stream({
             model,
             max_tokens: 1024,
             system: systemPromptWithJsonInstruction,
             tools: CLAUDE_TOOL_DEFINITIONS,
             messages,
+            signal: request.signal,
           });
 
           let turnHasToolUse = false;
@@ -198,6 +206,7 @@ export async function POST(request: Request) {
             const parsed = normalizeAdvisorResponse(tryParseJson(textContent));
             const response = parsed ?? makeFallbackResponse(textContent || "I could not parse a response.");
             response.citations = Array.from(new Set([...response.citations, ...usedCitations]));
+            response.missingData = Array.from(new Set([...response.missingData, ...missingData]));
             send({ type: "done", response });
             completedWithResponse = true;
             break;
@@ -208,13 +217,30 @@ export async function POST(request: Request) {
           const toolResults: Anthropic.Messages.ToolResultBlockParam[] = [];
 
           for (const toolUse of toolUseBlocks) {
+            // Short-circuit if aborted
+            if (request.signal.aborted) {
+              break;
+            }
+
             send({ type: "status", text: `Looking up ${toolUse.name.replace(/_/g, " ")}...` });
             try {
-              const data = await executeToolByName(
-                toolset,
-                toolUse.name as AdvisorToolName,
-                (toolUse.input ?? {}) as Record<string, unknown>
-              );
+              const toolInput = (toolUse.input ?? {}) as Record<string, unknown>;
+              const toolName = toolUse.name as AdvisorToolName;
+
+              // Inject activePlanId for tools that support planId parameter
+              if (
+                requestBody.activePlanId !== undefined &&
+                requestBody.activePlanId !== null &&
+                (toolName === TOOL_NAMES.getPlanSnapshot ||
+                  toolName === TOOL_NAMES.getDegreeProgress ||
+                  toolName === TOOL_NAMES.getRemainingRequirements ||
+                  toolName === TOOL_NAMES.recommendNextSemester) &&
+                !toolInput.planId
+              ) {
+                toolInput.planId = requestBody.activePlanId;
+              }
+
+              const data = await executeToolByName(toolset, toolName, toolInput);
               usedCitations.add(`tool:${toolUse.name}`);
               toolResults.push({
                 type: "tool_result",
@@ -222,12 +248,14 @@ export async function POST(request: Request) {
                 content: JSON.stringify({ ok: true, data }),
               });
             } catch (err) {
+              const errorMessage = err instanceof Error ? err.message : "Tool failed";
+              missingData.push(`${toolUse.name}: ${errorMessage}`);
               toolResults.push({
                 type: "tool_result",
                 tool_use_id: toolUse.id,
                 content: JSON.stringify({
                   ok: false,
-                  error: err instanceof Error ? err.message : "Tool failed",
+                  error: errorMessage,
                 }),
               });
             }
@@ -241,6 +269,7 @@ export async function POST(request: Request) {
             "I could not complete tool execution safely in time. Please try again."
           );
           fallback.citations = Array.from(usedCitations);
+          fallback.missingData = Array.from(new Set(missingData));
           send({ type: "done", response: fallback });
         }
       } catch (error) {

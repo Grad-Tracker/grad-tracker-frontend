@@ -166,12 +166,22 @@ export function ChatInterface() {
   const [draft, setDraft] = useState("");
   const [loading, setLoading] = useState(false);
   const [conversationId, setConversationId] = useState<number | null>(null);
-  const abortRef = useRef<AbortController | null>(null);
+  const abortRef = useRef<{ controller: AbortController; owner: string } | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const conversationCreatePromiseRef = useRef<Promise<number> | null>(null);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  useEffect(() => {
+    return () => {
+      // Cleanup: abort any in-flight requests when component unmounts
+      if (abortRef.current) {
+        abortRef.current.controller.abort();
+      }
+    };
+  }, []);
 
   const history = useMemo<AdvisorChatHistoryItem[]>(
     () =>
@@ -185,8 +195,10 @@ export function ChatInterface() {
   );
 
   function stopGenerating() {
-    abortRef.current?.abort();
-    abortRef.current = null;
+    if (abortRef.current) {
+      abortRef.current.controller.abort();
+      abortRef.current = null;
+    }
     setLoading(false);
   }
 
@@ -197,17 +209,36 @@ export function ChatInterface() {
   ) {
     try {
       let convId = conversationId;
+
+      // Check if conversation already exists
       if (!convId) {
-        const res = await fetch("/api/ai-advisor/conversations", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ title: userText.slice(0, 100) }),
-        });
-        if (!res.ok) return;
-        const data = await res.json();
-        convId = data.id;
-        setConversationId(convId);
+        // Check if there's an in-flight conversation creation
+        if (conversationCreatePromiseRef.current) {
+          convId = await conversationCreatePromiseRef.current;
+        } else {
+          // Create new conversation
+          const createPromise = (async () => {
+            const res = await fetch("/api/ai-advisor/conversations", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ title: userText.slice(0, 100) }),
+            });
+            if (!res.ok) throw new Error("Failed to create conversation");
+            const data = await res.json();
+            return data.id as number;
+          })();
+
+          conversationCreatePromiseRef.current = createPromise;
+
+          try {
+            convId = await createPromise;
+            setConversationId(convId);
+          } finally {
+            conversationCreatePromiseRef.current = null;
+          }
+        }
       }
+
       await fetch("/api/ai-advisor/conversations/messages", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -218,8 +249,9 @@ export function ChatInterface() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ conversationId: convId, role: "assistant", content: assistantText, metadata }),
       });
-    } catch {
+    } catch (error) {
       // Silent fail — persistence is best-effort
+      console.error("Failed to persist messages:", error);
     }
   }
 
@@ -245,7 +277,8 @@ export function ChatInterface() {
     setLoading(true);
 
     const controller = new AbortController();
-    abortRef.current = controller;
+    const owner = createId();
+    abortRef.current = { controller, owner };
 
     try {
       const response = await fetch("/api/ai-advisor/chat/stream", {
@@ -253,7 +286,7 @@ export function ChatInterface() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           message,
-          history: [...history, { role: "user", text: message }],
+          history,
           activePlanId: null,
         }),
         signal: controller.signal,
@@ -365,8 +398,11 @@ export function ChatInterface() {
         );
       }
     } finally {
-      abortRef.current = null;
-      setLoading(false);
+      // Only clear if this request still owns the abort ref
+      if (abortRef.current?.owner === owner) {
+        abortRef.current = null;
+        setLoading(false);
+      }
     }
   }
 
@@ -448,6 +484,7 @@ export function ChatInterface() {
             value={draft}
             onChange={(event) => setDraft(event.target.value)}
             disabled={loading}
+            aria-label="Message input"
           />
           {loading ? (
             <Button
@@ -471,6 +508,7 @@ export function ChatInterface() {
               borderRadius="xl"
               px="4"
               flexShrink={0}
+              aria-label="Send message"
             >
               <LuSend />
             </Button>
