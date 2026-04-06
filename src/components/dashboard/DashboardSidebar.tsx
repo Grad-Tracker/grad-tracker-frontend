@@ -10,11 +10,9 @@ import {
   LuBookOpen,
   LuTarget,
   LuCalendar,
-  // LuFileText,
   LuGraduationCap,
   LuSettings,
   LuLogOut,
-  LuSparkles,
 } from "react-icons/lu";
 
 const navItems = [
@@ -22,14 +20,11 @@ const navItems = [
   { icon: LuBookOpen, label: "Courses", href: "/dashboard/courses" },
   { icon: LuTarget, label: "Requirements", href: "/dashboard/requirements" },
   { icon: LuCalendar, label: "Planner", href: "/dashboard/planner" },
-  // { icon: LuFileText, label: "Reports", href: "/dashboard/reports" },
-  { icon: LuSparkles, label: "AI Advisor", href: "/dashboard/ai-advisor" },
 ];
 
 export default function DashboardSidebar() {
   const pathname = usePathname();
   const router = useRouter();
-
   async function handleSignOut() {
     const supabase = createClient();
     await supabase.auth.signOut();
@@ -188,6 +183,7 @@ export default function DashboardSidebar() {
             </Link>
           );
         })}
+
       </VStack>
 
       {/* Bottom section */}
