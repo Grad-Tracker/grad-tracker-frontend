@@ -128,7 +128,7 @@ function dedupeSummary(items: string[]): string[] {
   return Array.from(new Set(items.map((s) => s.trim()).filter(Boolean)));
 }
 
-async function fetchCompletedHistoryRows(supabase: ReturnType<typeof createClient>, studentId: number) {
+async function fetchCompletedHistoryRows(supabase: SupabasePrereqClient, studentId: number) {
   const res = await supabase
     .from(DB_VIEWS.studentCourseProgress)
     .select("student_id, course_id, grade, completed, progress_status")
