@@ -81,6 +81,14 @@ vi.mock("@/components/ui/progress-circle", () => ({
   ProgressCircleRoot: (p: any) => <div>{p.children}</div>,
   ProgressCircleValueText: () => null,
 }));
+vi.mock("@/components/dashboard/DashboardSkeleton", () => ({
+  default: () => <div data-testid="dashboard-skeleton">Loading skeleton</div>,
+}));
+vi.mock("@/components/ui/skeleton", () => ({
+  Skeleton: (p: any) => <div data-testid="skeleton" {...p} />,
+  SkeletonCircle: (p: any) => <div data-testid="skeleton-circle" {...p} />,
+  SkeletonText: (p: any) => <div data-testid="skeleton-text" {...p} />,
+}));
 
 import Dashboard from "@/app/dashboard/page";
 
@@ -235,7 +243,7 @@ describe("Dashboard", () => {
   it("shows loading state initially", () => {
     mockGetUser.mockReturnValue(new Promise(() => {}));
     renderWithChakra(<Dashboard />);
-    expect(screen.getAllByText("Loading...").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByTestId("dashboard-skeleton")).toBeInTheDocument();
   });
 
   it("redirects to /signin when no user", async () => {
@@ -436,11 +444,13 @@ describe("Dashboard", () => {
         fireEvent.change(select, { target: { value: "20" } });
       });
 
-      const saveMajorBtn = screen.getByText("Save Major");
-      expect(saveMajorBtn).not.toBeDisabled();
+      // Wait for the select state update to enable the Save button
+      await waitFor(() => {
+        expect(screen.getByText("Save Major")).not.toBeDisabled();
+      });
 
       await act(async () => {
-        fireEvent.click(saveMajorBtn);
+        fireEvent.click(screen.getByText("Save Major"));
       });
 
       await waitFor(() => {

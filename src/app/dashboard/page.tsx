@@ -62,6 +62,8 @@ import {
   LuGraduationCap,
 } from "react-icons/lu";
 import type { Program } from "@/types/onboarding";
+import DashboardSkeleton from "@/components/dashboard/DashboardSkeleton";
+import { Skeleton } from "@/components/ui/skeleton";
 
 function getStatusBadgeProps(status: string): { color: string; label: string } {
   if (status === "enrolled") return { color: "emerald", label: "Enrolled" };
@@ -487,6 +489,16 @@ export default function Dashboard() {
           hasCompletedOnboarding: !!resolvedStudentRow.has_completed_onboarding,
         });
 
+        setStudentIdForReset(resolvedStudentRow.student_id);
+        setCurrentMajorProgramId(majorProgramId);
+        setSelectedMajorId(majorProgramId);
+        try {
+          const allMajors = await fetchPrograms("MAJOR");
+          setMajors(allMajors);
+        } catch {
+          // Non-critical – skip if it fails
+        }
+
         setLoadingStudent(false);
 
         // Load majors for Change Major card (only if onboarded)
@@ -577,7 +589,7 @@ export default function Dashboard() {
 
 
   if (loadingStudent) {
-    return <Box p="8">Loading...</Box>;
+    return <DashboardSkeleton />;
   }
 
   if (!student) {
@@ -692,7 +704,7 @@ export default function Dashboard() {
                     Overall Progress
                   </Text>
                   <Text fontSize="2xl" fontWeight="700">
-                    {loadingProgress ? "—" : `${progress.overall}%`}
+                    {loadingProgress ? <Skeleton height="8" width="50px" display="inline-block" /> : `${progress.overall}%`}
                   </Text>
                 </Box>
                 <ProgressCircleRoot value={progress.overall} size="md" colorPalette="blue">
@@ -793,7 +805,7 @@ export default function Dashboard() {
                         </ProgressLabel>
                         <HStack gap="2">
                           <Text fontSize="xs" color="fg.muted">
-                            {loadingRequirements ? "Loading..." : `${req.completed}/${req.total} credits`}
+                            {loadingRequirements ? <Skeleton height="3" width="70px" /> : `${req.completed}/${req.total} credits`}
                           </Text>
                           <ProgressValueText fontWeight="600" fontSize="sm" />
                         </HStack>
@@ -825,11 +837,20 @@ export default function Dashboard() {
             <Card.Body p="5">
               <Stack gap="3">
                 {loadingCourses ? (
-                  <Box p="4" bg="bg.subtle" borderRadius="lg">
-                    <Text fontSize="sm" color="fg.muted">
-                      Loading current semester courses...
-                    </Text>
-                  </Box>
+                  <Stack gap="3">
+                    {[1, 2, 3].map((i) => (
+                      <HStack key={i} p="3" bg="bg.subtle" borderRadius="lg" justify="space-between">
+                        <HStack gap="3">
+                          <Skeleton height="10" width="10" borderRadius="lg" />
+                          <Box>
+                            <Skeleton height="4" width="80px" mb="1" />
+                            <Skeleton height="3" width="140px" />
+                          </Box>
+                        </HStack>
+                        <Skeleton height="6" width="60px" borderRadius="full" />
+                      </HStack>
+                    ))}
+                  </Stack>
                 ) : currentCourses.length === 0 ? (
                   <Box p="4" bg="bg.subtle" borderRadius="lg">
                     <Text fontWeight="600" fontSize="sm" mb="1">
