@@ -104,10 +104,10 @@ describe("SettingsPage", () => {
 
   /* ---- Loading ---- */
 
-  it("shows loading state initially", () => {
+  it("shows skeleton loading state initially", () => {
     mockGetUser.mockReturnValue(new Promise(() => {})); // never resolves
     renderSettings();
-    expect(screen.getByText(/Loading\.\.\./i)).toBeInTheDocument();
+    expect(screen.getByTestId("settings-skeleton")).toBeInTheDocument();
   });
 
   /* ---- Profile section ---- */

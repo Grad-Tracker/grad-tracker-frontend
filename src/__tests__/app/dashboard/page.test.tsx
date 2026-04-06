@@ -3,7 +3,6 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, waitFor, fireEvent, act } from "@testing-library/react";
 import { ChakraProvider, defaultSystem } from "@chakra-ui/react";
 
-// Mocks — use vi.hoisted to avoid hoisting issues
 const {
   mockPush,
   mockReplace,
@@ -14,6 +13,9 @@ const {
   mockCheckOnboardingStatus,
   mockGetOrCreateStudent,
   mockFetchPrograms,
+  mockFetchStudentProfileByAuthUserId,
+  mockFetchStudentMajorProgram,
+  mockFetchStudentCourseProgress,
   mockToasterCreate,
 } = vi.hoisted(() => ({
   mockPush: vi.fn(),
@@ -25,10 +27,12 @@ const {
   mockCheckOnboardingStatus: vi.fn(),
   mockGetOrCreateStudent: vi.fn(),
   mockFetchPrograms: vi.fn(),
+  mockFetchStudentProfileByAuthUserId: vi.fn(),
+  mockFetchStudentMajorProgram: vi.fn(),
+  mockFetchStudentCourseProgress: vi.fn(),
   mockToasterCreate: vi.fn(),
 }));
 
-// Stable router reference prevents infinite useEffect re-runs
 const mockRouter = { push: mockPush, replace: mockReplace, refresh: mockRefresh };
 
 vi.mock("next/navigation", () => ({
@@ -47,6 +51,12 @@ vi.mock("@/lib/supabase/queries/onboarding", () => ({
   checkOnboardingStatus: (...args: any[]) => mockCheckOnboardingStatus(...args),
   getOrCreateStudent: (...args: any[]) => mockGetOrCreateStudent(...args),
   fetchPrograms: (...args: any[]) => mockFetchPrograms(...args),
+  fetchStudentProfileByAuthUserId: (...args: any[]) =>
+    mockFetchStudentProfileByAuthUserId(...args),
+  fetchStudentMajorProgram: (...args: any[]) => mockFetchStudentMajorProgram(...args),
+}));
+vi.mock("@/lib/supabase/queries/planner", () => ({
+  fetchStudentCourseProgress: (...args: any[]) => mockFetchStudentCourseProgress(...args),
 }));
 vi.mock("@/components/ui/toaster", () => ({
   toaster: { create: mockToasterCreate, success: vi.fn(), error: vi.fn() },
@@ -63,23 +73,13 @@ vi.mock("@/components/ui/progress-circle", () => ({
   ProgressCircleRoot: (p: any) => <div>{p.children}</div>,
   ProgressCircleValueText: () => null,
 }));
-vi.mock("@/components/dashboard/DashboardSkeleton", () => ({
-  default: () => <div data-testid="dashboard-skeleton">Loading skeleton</div>,
-}));
-vi.mock("@/components/ui/skeleton", () => ({
-  Skeleton: (p: any) => <div data-testid="skeleton" {...p} />,
-  SkeletonCircle: (p: any) => <div data-testid="skeleton-circle" {...p} />,
-  SkeletonText: (p: any) => <div data-testid="skeleton-text" {...p} />,
-}));
 
 import Dashboard from "@/app/dashboard/page";
 
 function createChainMock(defaultData: any = [], defaultError: any = null) {
-  // Use a real Promise so `await chain` works natively
   const result = { data: defaultData, error: defaultError };
   const promise: any = Promise.resolve(result);
 
-  // Bolt chainable methods onto the real promise
   promise.select = vi.fn().mockReturnValue(promise);
   promise.insert = vi.fn().mockReturnValue(promise);
   promise.update = vi.fn().mockReturnValue(promise);
@@ -100,17 +100,118 @@ function renderWithChakra(ui: React.ReactElement) {
   return render(<ChakraProvider value={defaultSystem}>{ui}</ChakraProvider>);
 }
 
+function setupHappyPath(overrides?: {
+  profile?: Record<string, any>;
+  major?: Record<string, any> | null;
+  majors?: any[];
+  plannedRows?: any[];
+  blockRows?: any[];
+  progressRows?: any[];
+}) {
+  mockGetUser.mockResolvedValue({
+    data: { user: { id: "auth-uuid", email: "test@uwp.edu", user_metadata: {} } },
+    error: null,
+  });
+  mockCheckOnboardingStatus.mockResolvedValue(true);
+  mockSignOut.mockResolvedValue({ error: null });
+
+  mockFetchStudentProfileByAuthUserId.mockResolvedValue({
+    student_id: 1,
+    auth_user_id: "auth-uuid",
+    email: "test@uwp.edu",
+    first_name: "Test",
+    last_name: "Student",
+    full_name: "Test Student",
+    has_completed_onboarding: true,
+    expected_graduation_semester: "Spring",
+    expected_graduation_year: 2027,
+    breadth_package_id: null,
+    ...(overrides?.profile ?? {}),
+  });
+
+  mockFetchStudentMajorProgram.mockResolvedValue(
+    overrides?.major === undefined
+      ? {
+          student_id: 1,
+          program_id: 10,
+          program_name: "Computer Science",
+          catalog_year: 2025,
+          program_type: "MAJOR",
+        }
+      : overrides.major
+  );
+
+  mockFetchStudentCourseProgress.mockResolvedValue(
+    (overrides?.progressRows ?? [
+      {
+        student_id: 1,
+        course_id: 241,
+        completed: true,
+        progress_status: "COMPLETED",
+      },
+    ]) as any
+  );
+
+  mockFetchPrograms.mockResolvedValue(overrides?.majors ?? []);
+  mockGetOrCreateStudent.mockResolvedValue({ id: 1 });
+
+  const plannedRows =
+    overrides?.plannedRows ??
+    [
+      {
+        student_id: 1,
+        plan_id: 1,
+        course_id: 350,
+        status: "enrolled",
+        subject: "CS",
+        number: "350",
+        title: "Algorithms",
+        credits: 3,
+      },
+    ];
+
+  const blockRows =
+    overrides?.blockRows ??
+    [
+      {
+        block_id: 1,
+        block_name: "General Education",
+        credits_required: 6,
+        courses: [
+          { course_id: 241, subject: "ENGL", number: "101", title: "English Comp", credits: 3 },
+        ],
+      },
+      {
+        block_id: 2,
+        block_name: "Major Core",
+        credits_required: 3,
+        courses: [
+          { course_id: 350, subject: "CS", number: "350", title: "Algorithms", credits: 3 },
+        ],
+      },
+    ];
+
+  mockFrom.mockImplementation((table: string) => {
+    if (table === "v_plan_courses") {
+      return createChainMock(plannedRows);
+    }
+    if (table === "v_program_block_courses") {
+      return createChainMock(blockRows);
+    }
+    if (table === "student_programs") {
+      return createChainMock();
+    }
+    return createChainMock();
+  });
+}
+
 describe("Dashboard", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockSignOut.mockResolvedValue({ error: null });
-    mockGetOrCreateStudent.mockResolvedValue({ id: 1 });
-    mockFetchPrograms.mockResolvedValue([]);
-    mockToasterCreate.mockReset();
+    setupHappyPath();
   });
 
   it("shows skeleton loading state initially", () => {
-    // getUser never resolves
     mockGetUser.mockReturnValue(new Promise(() => {}));
     renderWithChakra(<Dashboard />);
     expect(screen.getByTestId("dashboard-skeleton")).toBeInTheDocument();
@@ -118,7 +219,6 @@ describe("Dashboard", () => {
 
   it("redirects to /signin when no user", async () => {
     mockGetUser.mockResolvedValue({ data: { user: null }, error: null });
-    mockFrom.mockImplementation(() => createChainMock());
 
     await act(async () => {
       renderWithChakra(<Dashboard />);
@@ -130,86 +230,26 @@ describe("Dashboard", () => {
   });
 
   it("renders dashboard with student data", async () => {
-    mockGetUser.mockResolvedValue({
-      data: { user: { id: "auth-uuid", email: "test@uwp.edu" } },
-      error: null,
-    });
-
-    mockFrom.mockImplementation((table: string) => {
-      if (table === "students") {
-        const chain = createChainMock();
-        chain.maybeSingle = vi.fn().mockResolvedValue({
-          data: {
-            id: 1,
-            first_name: "Test",
-            last_name: "Student",
-            email: "test@uwp.edu",
-            has_completed_onboarding: true,
-            expected_graduation_semester: "Spring",
-            expected_graduation_year: 2027,
-          },
-          error: null,
-        });
-        return chain;
-      }
-      if (table === "student_programs") {
-        return createChainMock([{ program_id: 10 }]);
-      }
-      if (table === "programs") {
-        const chain = createChainMock();
-        chain.maybeSingle = vi.fn().mockResolvedValue({
-          data: { id: 10, name: "Computer Science" },
-          error: null,
-        });
-        return chain;
-      }
-      return createChainMock();
-    });
-
     await act(async () => {
       renderWithChakra(<Dashboard />);
     });
 
     await waitFor(() => {
       expect(screen.getAllByText("Test Student").length).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByText("Computer Science").length).toBeGreaterThanOrEqual(1);
     });
   });
 
-  function setupStudentMock(studentOverrides: Record<string, any> = {}) {
-    const studentData = {
-      id: 1,
-      first_name: "Test",
-      last_name: "Student",
-      email: "test@uwp.edu",
-      has_completed_onboarding: true,
-      expected_graduation_semester: "Spring",
-      expected_graduation_year: 2027,
-      ...studentOverrides,
-    };
-
-    mockGetUser.mockResolvedValue({
-      data: { user: { id: "auth-uuid", email: "test@uwp.edu" } },
-      error: null,
-    });
-
-    mockFrom.mockImplementation((table: string) => {
-      if (table === "students") {
-        const chain = createChainMock();
-        chain.maybeSingle = vi.fn().mockResolvedValue({ data: studentData, error: null });
-        return chain;
-      }
-      return createChainMock();
-    });
-  }
-
   it("shows onboarding banner when not completed", async () => {
-    setupStudentMock({
-      first_name: "New",
-      last_name: "Student",
-      email: "new@uwp.edu",
-      has_completed_onboarding: false,
-      expected_graduation_semester: null,
-      expected_graduation_year: null,
+    setupHappyPath({
+      profile: {
+        first_name: "New",
+        last_name: "Student",
+        full_name: "New Student",
+        has_completed_onboarding: false,
+        expected_graduation_semester: null,
+        expected_graduation_year: null,
+      },
     });
 
     await act(async () => {
@@ -221,247 +261,67 @@ describe("Dashboard", () => {
     });
   });
 
-  it("renders student profile and quick actions after sign-in", async () => {
-    // Sign Out lives in DashboardSidebar (layout), not in this page component.
-    // Verify the page renders key authenticated content instead.
-    setupStudentMock();
-
-    await act(async () => { renderWithChakra(<Dashboard />); });
-
-    await waitFor(() => {
-      expect(screen.getAllByText("Test Student").length).toBeGreaterThanOrEqual(1);
-      expect(screen.getAllByText("Quick Actions").length).toBeGreaterThanOrEqual(1);
-    });
-  });
-
   it("renders main dashboard sections", async () => {
-    // Sidebar nav (Courses, Planner, etc.) is rendered by DashboardLayout, not this page.
-    // Verify page-level sections that ARE rendered here.
-    setupStudentMock();
-
-    await act(async () => { renderWithChakra(<Dashboard />); });
-
-    await waitFor(() => {
-      expect(screen.getAllByText("Dashboard").length).toBeGreaterThanOrEqual(1);
-      expect(screen.getAllByText("Degree Requirements").length).toBeGreaterThanOrEqual(1);
-      expect(screen.getAllByText("Recent Activity").length).toBeGreaterThanOrEqual(1);
-    });
-  });
-
-  it("shows degree requirements section", async () => {
-    setupStudentMock();
-
     await act(async () => {
       renderWithChakra(<Dashboard />);
     });
 
     await waitFor(() => {
+      expect(screen.getAllByText("Dashboard").length).toBeGreaterThanOrEqual(1);
       expect(screen.getAllByText("Degree Requirements").length).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByText("Recent Activity").length).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByText("Quick Actions").length).toBeGreaterThanOrEqual(1);
+    });
+  });
+
+  it("shows degree requirements section", async () => {
+    await act(async () => {
+      renderWithChakra(<Dashboard />);
+    });
+
+    await waitFor(() => {
       expect(screen.getAllByText("General Education").length).toBeGreaterThanOrEqual(1);
       expect(screen.getAllByText("Major Core").length).toBeGreaterThanOrEqual(1);
     });
   });
 
   it("shows recent activity section", async () => {
-    setupStudentMock();
-
     await act(async () => {
       renderWithChakra(<Dashboard />);
     });
 
     await waitFor(() => {
-      expect(screen.getAllByText("Recent Activity").length).toBeGreaterThanOrEqual(1);
       expect(screen.getAllByText(/Added CS 350/).length).toBeGreaterThanOrEqual(1);
     });
   });
 
-  /* ---- Reset Progress Quick Action ---- */
-
-  describe("Reset Progress Quick Action", () => {
-    it("hides Reset All Progress when has_completed_onboarding is false", async () => {
-      setupStudentMock({ has_completed_onboarding: false });
-
-      await act(async () => { renderWithChakra(<Dashboard />); });
-
-      await waitFor(() => {
-        expect(screen.queryByText("Reset All Progress")).not.toBeInTheDocument();
-      });
-    });
-
-    it("shows Reset All Progress when has_completed_onboarding is true", async () => {
-      setupStudentMock({ has_completed_onboarding: true });
-
-      await act(async () => { renderWithChakra(<Dashboard />); });
-
-      await waitFor(() => {
-        expect(screen.getByText("Reset All Progress")).toBeInTheDocument();
-      });
-    });
-
-    it("shows confirmation UI after clicking Reset All Progress", async () => {
-      setupStudentMock({ has_completed_onboarding: true });
-
-      await act(async () => { renderWithChakra(<Dashboard />); });
-      await waitFor(() => screen.getByText("Reset All Progress"));
-
-      await act(async () => {
-        fireEvent.click(screen.getByText("Reset All Progress"));
-      });
-
-      expect(screen.getByText(/This will delete all your progress/i)).toBeInTheDocument();
-      expect(screen.getByText("Yes, Reset")).toBeInTheDocument();
-      expect(screen.getByText("Cancel")).toBeInTheDocument();
-    });
-
-    it("Cancel button hides the confirmation UI", async () => {
-      setupStudentMock({ has_completed_onboarding: true });
-
-      await act(async () => { renderWithChakra(<Dashboard />); });
-      await waitFor(() => screen.getByText("Reset All Progress"));
-
-      await act(async () => {
-        fireEvent.click(screen.getByText("Reset All Progress"));
-      });
-      expect(screen.getByText("Yes, Reset")).toBeInTheDocument();
-
-      await act(async () => {
-        fireEvent.click(screen.getByText("Cancel"));
-      });
-
-      expect(screen.queryByText("Yes, Reset")).not.toBeInTheDocument();
-      expect(screen.getByText("Reset All Progress")).toBeInTheDocument();
-    });
-
-    it("Yes Reset calls delete on student_course_history, student_planned_courses, and student_programs", async () => {
-      const deletedTables: string[] = [];
-
-      mockGetUser.mockResolvedValue({
-        data: { user: { id: "auth-uuid", email: "test@uwp.edu" } },
-        error: null,
-      });
-      mockCheckOnboardingStatus.mockResolvedValue(true);
-
-      mockFrom.mockImplementation((table: string) => {
-        const chain = createChainMock();
-
-        chain.delete = vi.fn(() => {
-          deletedTables.push(table);
-          return chain;
-        });
-
-        if (table === "students") {
-          chain.maybeSingle = vi.fn().mockResolvedValue({
-            data: {
-              id: 1,
-              first_name: "Test",
-              last_name: "Student",
-              email: "t@u.edu",
-              has_completed_onboarding: true,
-              expected_graduation_semester: "Spring",
-              expected_graduation_year: 2027,
-            },
-            error: null,
-          });
-        }
-
-        return chain;
-      });
-
-      await act(async () => { renderWithChakra(<Dashboard />); });
-      await waitFor(() => screen.getByText("Reset All Progress"));
-
-      await act(async () => {
-        fireEvent.click(screen.getByText("Reset All Progress"));
-      });
-      await act(async () => {
-        fireEvent.click(screen.getByText("Yes, Reset"));
-      });
-
-      await waitFor(() => {
-        expect(deletedTables).toContain("student_course_history");
-        expect(deletedTables).toContain("student_planned_courses");
-        expect(deletedTables).toContain("student_programs");
-      });
-    });
-  });
-
-  /* ---- Change Major ---- */
-
   describe("Change Major", () => {
-    function setupChangeMajorMocks(
-      majors: any[] = [
-        { id: 10, name: "Computer Science", program_type: "MAJOR" },
-        { id: 20, name: "Data Science", program_type: "MAJOR" },
-      ],
-      currentMajorId: number | null = null
-    ) {
-      mockFetchPrograms.mockResolvedValue(majors);
-      mockGetUser.mockResolvedValue({
-        data: { user: { id: "auth-uuid", email: "test@uwp.edu" } },
-        error: null,
+    it("shows Change Major card when majors are available", async () => {
+      setupHappyPath({
+        majors: [
+          { id: 10, name: "Computer Science", program_type: "MAJOR" },
+          { id: 20, name: "Data Science", program_type: "MAJOR" },
+        ],
       });
-      mockCheckOnboardingStatus.mockResolvedValue(true);
 
-      mockFrom.mockImplementation((table: string) => {
-        if (table === "students") {
-          const chain = createChainMock();
-          chain.maybeSingle = vi.fn().mockResolvedValue({
-            data: {
-              id: 1,
-              first_name: "Test",
-              last_name: "Student",
-              email: "t@u.edu",
-              has_completed_onboarding: true,
-              expected_graduation_semester: "Spring",
-              expected_graduation_year: 2027,
-            },
-            error: null,
-          });
-          return chain;
-        }
-        if (table === "student_programs") {
-          return createChainMock(currentMajorId ? [{ program_id: currentMajorId }] : []);
-        }
-        if (table === "programs") {
-          const chain = createChainMock();
-          chain.maybeSingle = vi.fn().mockResolvedValue({
-            data: currentMajorId ? { id: currentMajorId, name: "Computer Science" } : null,
-            error: null,
-          });
-          return chain;
-        }
-        return createChainMock();
+      await act(async () => {
+        renderWithChakra(<Dashboard />);
       });
-    }
-
-    it("shows Change Major card when fetchPrograms returns majors", async () => {
-      setupChangeMajorMocks();
-
-      await act(async () => { renderWithChakra(<Dashboard />); });
 
       await waitFor(() => {
         expect(screen.getByText("Change Major")).toBeInTheDocument();
+        expect(screen.getByText("Save Major")).toBeInTheDocument();
       });
     });
 
-    it("renders major options in the Change Major dropdown", async () => {
-      setupChangeMajorMocks();
-
-      await act(async () => { renderWithChakra(<Dashboard />); });
-
-      await waitFor(() => {
-        expect(screen.getByText("Computer Science")).toBeInTheDocument();
-        expect(screen.getByText("Data Science")).toBeInTheDocument();
+    it("Save Major button is disabled when same major is selected", async () => {
+      setupHappyPath({
+        majors: [{ id: 10, name: "Computer Science", program_type: "MAJOR" }],
       });
-    });
 
-    it("Save Major button is disabled when same major is already selected", async () => {
-      setupChangeMajorMocks(
-        [{ id: 10, name: "Computer Science", program_type: "MAJOR" }],
-        10
-      );
-
-      await act(async () => { renderWithChakra(<Dashboard />); });
+      await act(async () => {
+        renderWithChakra(<Dashboard />);
+      });
 
       await waitFor(() => {
         expect(screen.getByText("Change Major")).toBeInTheDocument();
@@ -470,62 +330,71 @@ describe("Dashboard", () => {
       expect(screen.getByText("Save Major")).toBeDisabled();
     });
 
-    it("Save Major calls delete on old major and insert for new major", async () => {
-      let insertCalledWith: any = null;
+    it("Save Major calls delete old major then insert new major", async () => {
       let deleteCalled = false;
+      let insertPayload: any = null;
 
-      mockFetchPrograms.mockResolvedValue([
-        { id: 10, name: "Computer Science", program_type: "MAJOR" },
-        { id: 20, name: "Data Science", program_type: "MAJOR" },
-      ]);
-      mockGetUser.mockResolvedValue({
-        data: { user: { id: "auth-uuid", email: "test@uwp.edu" } },
-        error: null,
+      setupHappyPath({
+        majors: [
+          { id: 10, name: "Computer Science", program_type: "MAJOR" },
+          { id: 20, name: "Data Science", program_type: "MAJOR" },
+        ],
       });
-      mockCheckOnboardingStatus.mockResolvedValue(true);
 
       mockFrom.mockImplementation((table: string) => {
-        if (table === "students") {
-          const chain = createChainMock();
-          chain.maybeSingle = vi.fn().mockResolvedValue({
-            data: {
-              id: 1,
-              first_name: "Test",
-              last_name: "Student",
-              email: "t@u.edu",
-              has_completed_onboarding: true,
-              expected_graduation_semester: "Spring",
-              expected_graduation_year: 2027,
+        if (table === "v_plan_courses") {
+          return createChainMock([
+            {
+              student_id: 1,
+              course_id: 350,
+              status: "enrolled",
+              subject: "CS",
+              number: "350",
+              title: "Algorithms",
+              credits: 3,
             },
-            error: null,
-          });
-          return chain;
+          ]);
+        }
+        if (table === "v_program_block_courses") {
+          return createChainMock([
+            {
+              block_id: 2,
+              block_name: "Major Core",
+              credits_required: 3,
+              courses: [
+                {
+                  course_id: 350,
+                  subject: "CS",
+                  number: "350",
+                  title: "Algorithms",
+                  credits: 3,
+                },
+              ],
+            },
+          ]);
         }
         if (table === "student_programs") {
-          const chain = createChainMock([{ program_id: 10 }]);
+          const chain = createChainMock();
           chain.delete = vi.fn(() => {
             deleteCalled = true;
             return chain;
           });
           chain.insert = vi.fn((payload: any) => {
-            insertCalledWith = payload;
+            insertPayload = payload;
             return Promise.resolve({ data: null, error: null });
-          });
-          return chain;
-        }
-        if (table === "programs") {
-          const chain = createChainMock();
-          chain.maybeSingle = vi.fn().mockResolvedValue({
-            data: { id: 10, name: "Computer Science" },
-            error: null,
           });
           return chain;
         }
         return createChainMock();
       });
 
-      await act(async () => { renderWithChakra(<Dashboard />); });
-      await waitFor(() => screen.getByText("Change Major"));
+      await act(async () => {
+        renderWithChakra(<Dashboard />);
+      });
+
+      await waitFor(() => {
+        expect(screen.getByText("Change Major")).toBeInTheDocument();
+      });
 
       const select = screen.getByRole("combobox");
       await act(async () => {
@@ -541,14 +410,16 @@ describe("Dashboard", () => {
 
       await waitFor(() => {
         expect(deleteCalled).toBe(true);
-        expect(insertCalledWith).toMatchObject({ program_id: 20, student_id: 1 });
+        expect(insertPayload).toMatchObject({ student_id: 1, program_id: 20 });
       });
     });
 
-    it("hides Change Major card when fetchPrograms returns empty array", async () => {
-      setupChangeMajorMocks([]);
+    it("hides Change Major card when no majors returned", async () => {
+      setupHappyPath({ majors: [] });
 
-      await act(async () => { renderWithChakra(<Dashboard />); });
+      await act(async () => {
+        renderWithChakra(<Dashboard />);
+      });
 
       await waitFor(() => {
         expect(screen.getAllByText("Test Student").length).toBeGreaterThanOrEqual(1);

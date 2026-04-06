@@ -305,10 +305,10 @@ describe("PlannerPage", () => {
     localStorage.clear();
   });
 
-  it("shows loading spinner initially", () => {
+  it("shows skeleton loading state initially", () => {
     mockGetUser.mockReturnValue(new Promise(() => {}));
     renderWithChakra(<PlannerPage />);
-    expect(screen.getAllByText(/loading/i).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByTestId("planner-page-skeleton")).toBeInTheDocument();
   });
 
   it("redirects to signin when no user", async () => {
@@ -574,7 +574,7 @@ describe("PlannerPage", () => {
     });
   });
 
-  it("shows plan data loading spinner", async () => {
+  it("shows plan data skeleton while plan is loading", async () => {
     setupAuthenticatedState();
     mockFetchTerms.mockReturnValue(new Promise(() => {}));
 
@@ -584,7 +584,7 @@ describe("PlannerPage", () => {
     await act(async () => fireEvent.click(screen.getByTestId("open-plan")));
 
     await waitFor(() => {
-      expect(screen.getAllByText(/Loading plan/i).length).toBeGreaterThanOrEqual(1);
+      expect(screen.getByTestId("planner-skeleton")).toBeInTheDocument();
     });
   });
 
