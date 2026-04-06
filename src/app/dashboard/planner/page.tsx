@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import {
   Box,
   Button,
@@ -282,8 +282,16 @@ export default function PlannerPage() {
   );
 
   // ── Load plan-specific data ────────────────────────────
+  const loadAbortRef = useRef<AbortController | null>(null);
+
   const loadPlanData = useCallback(
     async (sid: number, planId: number, graduate = false) => {
+      // Cancel any in-flight load
+      loadAbortRef.current?.abort();
+      const controller = new AbortController();
+      loadAbortRef.current = controller;
+      const { signal } = controller;
+
       setPlanDataLoading(true);
       try {
         if (graduate) {
@@ -298,13 +306,15 @@ export default function PlannerPage() {
 
         const [termsData, coursesData, blocksData, completedData, genEdData, breadthPackageId] =
           await Promise.all([
-            fetchStudentTerms(sid, planId),
-            fetchPlannedCourses(sid, planId),
-            fetchAvailableCourses(sid, planId),
-            fetchCompletedCourseIds(sid),
+            fetchStudentTerms(sid, planId, signal),
+            fetchPlannedCourses(sid, planId, signal),
+            fetchAvailableCourses(sid, planId, signal),
+            fetchCompletedCourseIds(sid, signal),
             fetchGenEdBucketsWithCourses(),
             graduate ? Promise.resolve<string | null>(null) : fetchBreadthPackageId(sid),
           ]);
+
+        if (signal.aborted) return;
 
         setTerms(termsData);
         setPlannedCourses(coursesData);
@@ -317,6 +327,7 @@ export default function PlannerPage() {
           );
         }
       } catch (err) {
+        if (signal.aborted) return;
         console.error("Failed to load plan data:", err);
         toaster.create({
           title: "Failed to load plan",
@@ -330,7 +341,9 @@ export default function PlannerPage() {
         setCompletedIds(new Set());
         setGenEdBuckets([]);
       } finally {
-        setPlanDataLoading(false);
+        if (!signal.aborted) {
+          setPlanDataLoading(false);
+        }
       }
     },
     []
@@ -450,6 +463,7 @@ export default function PlannerPage() {
 
     return () => {
       alive = false;
+      loadAbortRef.current?.abort();
     };
   }, [router]);
 
