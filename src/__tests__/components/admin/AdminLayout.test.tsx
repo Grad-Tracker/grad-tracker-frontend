@@ -30,6 +30,18 @@ vi.mock("@/lib/supabase/client", () => ({
       signOut: mockSignOut,
       getUser: mockGetUser,
     },
+    from: vi.fn(() => ({
+      select: vi.fn(() => ({
+        eq: vi.fn(() => ({
+          maybeSingle: vi.fn().mockResolvedValue({ data: null }),
+        })),
+      })),
+    })),
+    storage: {
+      from: vi.fn(() => ({
+        createSignedUrl: vi.fn(),
+      })),
+    },
   }),
 }));
 
