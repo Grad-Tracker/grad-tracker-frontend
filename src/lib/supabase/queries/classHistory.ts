@@ -1,14 +1,13 @@
 import { createClient } from "@/lib/supabase/client";
 import { DB_TABLES, DB_VIEWS } from "./schema";
-import { logStudentActivity } from "./activity";
 import type {
   ViewCourseCatalogRow,
-  ViewProgramBlockCourseItem,
   ViewProgramBlockCoursesRow,
   ViewStudentCourseHistoryDetailRow,
   ViewStudentPrimaryMajorProgramRow,
 } from "./view-types";
 import type { CourseRow } from "@/types/onboarding";
+import { viewItemToCourse, safeLogActivity, formatActivityCourseLabel } from "./helpers";
 
 // --- Types ---
 
@@ -28,33 +27,7 @@ export interface MajorWithRequirements {
   }[];
 }
 
-function toCourseRow(course: ViewProgramBlockCourseItem): CourseRow {
-  return {
-    id: Number(course.course_id),
-    subject: String(course.subject ?? ""),
-    number: String(course.number ?? ""),
-    title: String(course.title ?? ""),
-    credits: Number(course.credits ?? 0),
-  };
-}
-
-async function safeLogActivity(
-  studentId: number,
-  activityType: Parameters<typeof logStudentActivity>[1],
-  message: string,
-  metadata: Record<string, unknown>
-) {
-  try {
-    await logStudentActivity(studentId, activityType, message, metadata);
-  } catch (error) {
-    console.error("Failed to log student activity:", error);
-  }
-}
-
-function formatActivityCourseLabel(courseLabel?: string): string {
-  const normalized = courseLabel?.trim();
-  return normalized && normalized.length > 0 ? normalized : "a course";
-}
+const toCourseRow = viewItemToCourse;
 
 // --- Queries ---
 

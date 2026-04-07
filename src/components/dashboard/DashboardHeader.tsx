@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAtlasPanel } from "@/contexts/AtlasPanelContext";
 import { createClient } from "@/lib/supabase/client";
-import { toaster } from "@/components/ui/toaster";
+import { signOutAndRedirect } from "@/lib/auth-helpers";
 import { DB_TABLES, STUDENT_COLUMNS } from "@/lib/supabase/queries/schema";
 import {
   MenuContent,
@@ -100,16 +100,7 @@ export default function DashboardHeader() {
     loadUser();
   }, []);
 
-  async function handleSignOut() {
-    const supabase = createClient();
-    await supabase.auth.signOut();
-    toaster.create({
-      title: "Signed out",
-      description: "You've been signed out successfully.",
-      type: "success",
-    });
-    router.push("/signin");
-  }
+  const handleSignOut = () => signOutAndRedirect(router.push);
 
   return (
     <Box

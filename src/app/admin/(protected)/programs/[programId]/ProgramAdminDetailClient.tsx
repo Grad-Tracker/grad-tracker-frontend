@@ -25,6 +25,7 @@ import { NativeSelectField, NativeSelectRoot } from "@/components/ui/native-sele
 import { toaster } from "@/components/ui/toaster";
 import { createClient } from "@/lib/supabase/client";
 import { DB_TABLES } from "@/lib/supabase/queries/schema";
+import { getProgramColor } from "@/lib/program-colors";
 
 type Program = {
   id: number;
@@ -73,15 +74,6 @@ function emptyBlockForm(): BlockFormState {
   };
 }
 
-function getProgramColor(type: string) {
-  const colorMap: Record<string, string> = {
-    MAJOR: "blue",
-    MINOR: "purple",
-    GRADUATE: "teal",
-    CERTIFICATE: "orange",
-  };
-  return colorMap[type] || "gray";
-}
 
 function formatCourse(course: Course) {
   return `${course.subject ?? ""} ${course.number ?? ""}`.trim();

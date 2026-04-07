@@ -1,15 +1,14 @@
 import { createClient } from "@/lib/supabase/client";
 import type { Program, RequirementBlock, CourseRow } from "@/types/onboarding";
 import { DB_TABLES, DB_VIEWS, PROGRAM_TYPES, STUDENT_COLUMNS } from "./schema";
-import { logStudentActivity } from "./activity";
 import type {
   ViewCourseCatalogRow,
-  ViewProgramBlockCourseItem,
   ViewProgramBlockCoursesRow,
   ViewProgramCatalogRow,
   ViewStudentMajorProgramRow,
   ViewStudentProfileRow,
 } from "./view-types";
+import { viewItemToCourse, safeLogActivity } from "./helpers";
 
 function splitFullName(fullName: string): { firstName: string; lastName: string } {
   const trimmed = fullName.trim();
@@ -26,28 +25,7 @@ function isMissingColumnError(error: unknown, columnName: string): boolean {
   return message.includes(columnName) && message.includes("column");
 }
 
-function toCourseRowFromView(item: ViewProgramBlockCourseItem): CourseRow {
-  return {
-    id: Number(item.course_id),
-    subject: String(item.subject ?? ""),
-    number: String(item.number ?? ""),
-    title: String(item.title ?? ""),
-    credits: Number(item.credits ?? 0),
-  };
-}
-
-async function safeLogActivity(
-  studentId: number,
-  activityType: Parameters<typeof logStudentActivity>[1],
-  message: string,
-  metadata: Record<string, unknown>
-) {
-  try {
-    await logStudentActivity(studentId, activityType, message, metadata);
-  } catch (error) {
-    console.error("Failed to log student activity:", error);
-  }
-}
+const toCourseRowFromView = viewItemToCourse;
 
 export async function fetchStudentProfileByAuthUserId(
   authUserId: string

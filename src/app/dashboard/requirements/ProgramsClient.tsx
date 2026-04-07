@@ -22,6 +22,7 @@ import {
   LuSearch,
   LuTarget,
 } from "react-icons/lu";
+import { getProgramColor, getProgramTypeLabel } from "@/lib/program-colors";
 
 export interface Program {
   id: string;
@@ -42,25 +43,6 @@ const TAB_TYPES: Record<TabValue, string[]> = {
   certificates: ["CERTIFICATE"],
 };
 
-function getProgramColor(type: string): string {
-  const colorMap: Record<string, string> = {
-    MAJOR: "blue",
-    MINOR: "purple",
-    GRADUATE: "green",
-    CERTIFICATE: "orange",
-  };
-  return colorMap[type] || "gray";
-}
-
-function getProgramTypeLabel(type: string): string {
-  const labelMap: Record<string, string> = {
-    MAJOR: "Major",
-    MINOR: "Minor",
-    GRADUATE: "Graduate",
-    CERTIFICATE: "Certificate",
-  };
-  return labelMap[type] || type;
-}
 
 function ProgramCard({ program, index }: Readonly<{ program: Program; index: number }>) {
   const colorPalette = getProgramColor(program.program_type);

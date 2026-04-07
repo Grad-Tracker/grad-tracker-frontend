@@ -10,7 +10,7 @@ import type {
 import type { Course } from "@/types/course";
 import type { GenEdBucketWithCourses, ScheduledSemester } from "@/types/auto-generate";
 import { DB_TABLES, DB_VIEWS, PLANNED_COURSE_STATUS, STUDENT_COLUMNS } from "./schema";
-import { logStudentActivity } from "./activity";
+import { viewItemToCourse, safeLogActivity, formatActivityCourseLabel } from "./helpers";
 import type {
   ViewGenEdBucketCourseItem,
   ViewGenEdBucketCoursesRow,
@@ -22,43 +22,8 @@ import type {
   ViewStudentCourseProgressRow,
 } from "./view-types";
 
-function toCourseFromBlockItem(item: ViewProgramBlockCourseItem): Course {
-  return {
-    id: Number(item.course_id),
-    subject: String(item.subject ?? ""),
-    number: String(item.number ?? ""),
-    title: String(item.title ?? ""),
-    credits: Number(item.credits ?? 0),
-  };
-}
-
-function toCourseFromGenEdItem(item: ViewGenEdBucketCourseItem): Course {
-  return {
-    id: Number(item.course_id),
-    subject: String(item.subject ?? ""),
-    number: String(item.number ?? ""),
-    title: String(item.title ?? ""),
-    credits: Number(item.credits ?? 0),
-  };
-}
-
-async function safeLogActivity(
-  studentId: number,
-  activityType: Parameters<typeof logStudentActivity>[1],
-  message: string,
-  metadata: Record<string, unknown>
-) {
-  try {
-    await logStudentActivity(studentId, activityType, message, metadata);
-  } catch (error) {
-    console.error("Failed to log student activity:", error);
-  }
-}
-
-function formatActivityCourseLabel(courseLabel?: string): string {
-  const normalized = courseLabel?.trim();
-  return normalized && normalized.length > 0 ? normalized : "a course";
-}
+const toCourseFromBlockItem = viewItemToCourse;
+const toCourseFromGenEdItem = viewItemToCourse;
 
 // ── Plan CRUD ────────────────────────────────────────────
 

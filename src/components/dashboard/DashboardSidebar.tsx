@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Avatar, Box, HStack, Icon, Text, VStack } from "@chakra-ui/react";
 import { createClient } from "@/lib/supabase/client";
-import { toaster } from "@/components/ui/toaster";
+import { signOutAndRedirect } from "@/lib/auth-helpers";
 import { DB_TABLES, STUDENT_COLUMNS } from "@/lib/supabase/queries/schema";
 import {
   MenuContent,
@@ -105,16 +105,7 @@ export default function DashboardSidebar() {
     loadUser();
   }, []);
 
-  async function handleSignOut() {
-    const supabase = createClient();
-    await supabase.auth.signOut();
-    toaster.create({
-      title: "Signed out",
-      description: "You've been signed out successfully.",
-      type: "success",
-    });
-    router.push("/signin");
-  }
+  const handleSignOut = () => signOutAndRedirect(router.push);
 
   const accountMenu = (
     <MenuRoot positioning={{ placement: "top-start" }}>

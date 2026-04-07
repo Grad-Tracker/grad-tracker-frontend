@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { Box, HStack, Icon, Text, VStack } from "@chakra-ui/react";
 import { createClient } from "@/lib/supabase/client";
-import { toaster } from "@/components/ui/toaster";
+import { signOutAndRedirect } from "@/lib/auth-helpers";
 import {
   LuBookMarked,
   LuBlocks,
@@ -30,16 +30,7 @@ export default function AdminSidebar() {
     return pathname.startsWith(href);
   }
 
-  async function handleSignOut() {
-    const supabase = createClient();
-    await supabase.auth.signOut();
-    toaster.create({
-      title: "Signed out",
-      description: "You have been signed out successfully.",
-      type: "success",
-    });
-    router.push("/signin");
-  }
+  const handleSignOut = () => signOutAndRedirect(router.push);
 
   return (
     <>

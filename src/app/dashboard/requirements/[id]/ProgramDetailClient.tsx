@@ -26,6 +26,7 @@ import {
 } from "react-icons/lu";
 import type { Course } from "@/types/course";
 import { BREADTH_PACKAGES, getPackageCourseKeys, courseKey } from "@/types/planner";
+import { getProgramColor, getProgramTypeLabel } from "@/lib/program-colors";
 
 interface Program {
   id: string;
@@ -50,25 +51,6 @@ interface ProgramDetailClientProps {
   blocks: Block[];
 }
 
-function getProgramColor(type: string): string {
-  const colorMap: Record<string, string> = {
-    MAJOR: "blue",
-    MINOR: "purple",
-    GRADUATE: "green",
-    CERTIFICATE: "orange",
-  };
-  return colorMap[type] || "gray";
-}
-
-function getProgramTypeLabel(type: string): string {
-  const labelMap: Record<string, string> = {
-    MAJOR: "Major",
-    MINOR: "Minor",
-    GRADUATE: "Graduate",
-    CERTIFICATE: "Certificate",
-  };
-  return labelMap[type] || type;
-}
 
 function getSubjectColor(subject: string): string {
   const colorMap: Record<string, string> = {
