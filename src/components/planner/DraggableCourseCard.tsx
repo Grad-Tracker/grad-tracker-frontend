@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import { useDraggable } from "@dnd-kit/core";
 import { Box, Badge, HStack, Text, VStack } from "@chakra-ui/react";
 import { LuGripVertical, LuCircleCheck } from "react-icons/lu";
@@ -58,7 +59,7 @@ function CourseTooltipContent({ course }: { course: Course }) {
   );
 }
 
-export default function DraggableCourseCard({
+function DraggableCourseCard({
   course,
   termId,
   isCompleted = false,
@@ -97,7 +98,7 @@ export default function DraggableCourseCard({
       px="3"
       py="2"
       cursor={isCompleted ? "not-allowed" : "grab"}
-      opacity={isCompleted ? 0.5 : isDragging ? 0.8 : 1}
+      opacity={isCompleted ? 0.5 : isDragging ? 0.01 : 1}
       _hover={
         isCompleted
           ? {}
@@ -106,7 +107,7 @@ export default function DraggableCourseCard({
               boxShadow: "sm",
             }
       }
-      transition="all 0.15s"
+      transition={isDragging ? "none" : "all 0.15s"}
       position={isDragging ? "relative" : "static"}
     >
       <HStack justify="space-between" gap="2">
@@ -171,3 +172,5 @@ export default function DraggableCourseCard({
     </Tooltip>
   );
 }
+
+export default memo(DraggableCourseCard);

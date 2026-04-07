@@ -1,16 +1,15 @@
 "use client";
 
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useRef, useMemo } from "react";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import { useDroppable } from "@dnd-kit/core";
 import {
   Box,
-  Collapsible,
   Heading,
   HStack,
   Icon,
   Input,
   Text,
-  VStack,
   Badge,
 } from "@chakra-ui/react";
 import { LuSearch, LuChevronDown, LuBookOpen, LuArrowDownToLine, LuGripVertical } from "react-icons/lu";
@@ -94,7 +93,7 @@ export default function CoursePanel({
   }, []);
   const query = search.toLowerCase().trim();
 
-  const filteredBlocks = blocks
+  const filteredBlocks = useMemo(() => blocks
     .map((block) => ({
       ...block,
       courses: block.courses.filter((c) => {
@@ -105,7 +104,57 @@ export default function CoursePanel({
         );
       }),
     }))
-    .filter((block) => block.courses.length > 0);
+    .filter((block) => block.courses.length > 0),
+  [blocks, query]);
+
+  // Track which blocks are collapsed (all open by default)
+  const [collapsedBlocks, setCollapsedBlocks] = useState<Set<number>>(() => new Set());
+  const toggleBlock = useCallback((blockId: number) => {
+    setCollapsedBlocks((prev) => {
+      const next = new Set(prev);
+      if (next.has(blockId)) next.delete(blockId);
+      else next.add(blockId);
+      return next;
+    });
+  }, []);
+
+  // Flatten blocks + courses into a single list for the virtualizer
+  type VRow =
+    | { kind: "header"; block: (typeof filteredBlocks)[0] }
+    | { kind: "course"; course: (typeof filteredBlocks)[0]["courses"][0]; blockId: number }
+    | { kind: "breadth"; block: (typeof filteredBlocks)[0]; allBreadthCourses: (typeof filteredBlocks)[0]["courses"] };
+
+  const rows = useMemo<VRow[]>(() => {
+    const result: VRow[] = [];
+    for (const block of filteredBlocks) {
+      result.push({ kind: "header", block });
+      if (!collapsedBlocks.has(block.id)) {
+        const isBreadth = !isGraduatePlan && isBreadthBlock(block);
+        if (isBreadth) {
+          const allBreadthCourses = allDedupedBlocks.find(isBreadthBlock)?.courses ?? [];
+          result.push({ kind: "breadth", block, allBreadthCourses });
+        }
+        for (const course of block.courses) {
+          result.push({ kind: "course", course, blockId: block.id });
+        }
+      }
+    }
+    return result;
+  }, [filteredBlocks, collapsedBlocks, isGraduatePlan, allDedupedBlocks]);
+
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const virtualizer = useVirtualizer({
+    count: rows.length,
+    getScrollElement: () => scrollRef.current,
+    // Fixed sizes — no measureElement, prevents layout thrash on scroll
+    estimateSize: (i) => {
+      const row = rows[i];
+      if (row.kind === "header") return 40;
+      if (row.kind === "breadth") return 120;
+      return 60;
+    },
+    overscan: 10,
+  });
 
   const totalAvailable = blocks.reduce(
     (sum, b) =>
@@ -122,6 +171,7 @@ export default function CoursePanel({
       flexShrink={0}
       h={{ lg: "100%" }}
     >
+    {/* Outer box: droppable target — never scrolls, no ref conflict with virtualizer */}
     <Box
       ref={setNodeRef}
       w={{ base: "full", lg: `${panelWidth}px` }}
@@ -129,9 +179,17 @@ export default function CoursePanel({
       maxW={{ lg: `${MAX_PANEL_WIDTH}px` }}
       borderColor={isOver ? "orange.400" : "border.subtle"}
       bg={isOver ? "orange.subtle" : "bg"}
-      overflowY="auto"
       h={{ lg: "100%" }}
+      display="flex"
+      flexDirection="column"
       transition={isResizing.current ? "none" : "background 0.2s, border-color 0.2s"}
+    >
+    {/* Inner box: scroll container for virtualizer */}
+    <Box
+      ref={scrollRef}
+      overflowY="auto"
+      flex="1"
+      minH="0"
     >
       {/* Drop-to-remove indicator */}
       {isOver && (
@@ -221,79 +279,85 @@ export default function CoursePanel({
         />
       )}
 
-      {/* Course Blocks */}
-      <VStack align="stretch" gap="0" pb="4">
-        {filteredBlocks.length === 0 && (
-          <Box px="4" py="8" textAlign="center">
-            <Text fontSize="sm" color="fg.muted">
-              {query
-                ? "No courses match your search."
-                : "No requirement courses found."}
-            </Text>
-          </Box>
-        )}
-
-        {filteredBlocks.map((block) => {
-          const isBreadth = !isGraduatePlan && isBreadthBlock(block);
-          const allBreadthCourses = isBreadth
-            ? (allDedupedBlocks.find(isBreadthBlock)?.courses ?? [])
-            : [];
-
-          return (
-            <Collapsible.Root key={block.id} defaultOpen>
-              <Collapsible.Trigger
-                px="4"
-                py="2.5"
-                display="flex"
-                alignItems="center"
-                gap="2"
-                w="full"
-                cursor="pointer"
-                borderBottomWidth="1px"
-                borderColor="border.subtle"
-                _hover={{ bg: "bg.subtle" }}
-                transition="all 0.15s"
+      {/* Course Blocks — virtualized */}
+      {filteredBlocks.length === 0 ? (
+        <Box px="4" py="8" textAlign="center">
+          <Text fontSize="sm" color="fg.muted">
+            {query ? "No courses match your search." : "No requirement courses found."}
+          </Text>
+        </Box>
+      ) : (
+        <Box
+          style={{ height: `${virtualizer.getTotalSize()}px`, position: "relative" }}
+        >
+          {virtualizer.getVirtualItems().map((vItem) => {
+            const row = rows[vItem.index];
+            return (
+              <Box
+                key={vItem.key}
+                style={{
+                  position: "absolute",
+                  top: 0,
+                  left: 0,
+                  width: "100%",
+                  transform: `translateY(${vItem.start}px)`,
+                }}
               >
-                <Collapsible.Indicator
-                  transition="transform 0.2s"
-                  _open={{ transform: "rotate(180deg)" }}
-                >
-                  <LuChevronDown size={14} />
-                </Collapsible.Indicator>
-                <Text fontSize="xs" fontWeight="600" flex="1" textAlign="left" truncate>
-                  {block.name}
-                </Text>
-                <Badge size="sm" variant="plain" color="fg.muted">
-                  {block.courses.length}
-                </Badge>
-              </Collapsible.Trigger>
-              <Collapsible.Content>
-                {isBreadth && (
+                {row.kind === "header" && (
+                  <HStack
+                    px="4"
+                    py="2.5"
+                    gap="2"
+                    cursor="pointer"
+                    borderBottomWidth="1px"
+                    borderColor="border.subtle"
+                    _hover={{ bg: "bg.subtle" }}
+                    onClick={() => toggleBlock(row.block.id)}
+                    userSelect="none"
+                  >
+                    <Icon
+                      color="fg.subtle"
+                      style={{
+                        transition: "transform 0.2s",
+                        transform: collapsedBlocks.has(row.block.id) ? "rotate(-90deg)" : "rotate(0deg)",
+                      }}
+                    >
+                      <LuChevronDown size={14} />
+                    </Icon>
+                    <Text fontSize="xs" fontWeight="600" flex="1" textAlign="left" truncate>
+                      {row.block.name}
+                    </Text>
+                    <Badge size="sm" variant="plain" color="fg.muted">
+                      {row.block.courses.length}
+                    </Badge>
+                  </HStack>
+                )}
+                {row.kind === "breadth" && (
                   <BreadthPackageSelector
                     selectedPackageId={selectedBreadthPackageId}
                     onSelect={onBreadthPackageSelect}
                     completedCourseIds={completedCourseIds}
                     plannedCourseIds={plannedCourseIds}
-                    allBreadthCourses={allBreadthCourses}
+                    allBreadthCourses={row.allBreadthCourses}
                   />
                 )}
-                <VStack align="stretch" gap="1.5" px="3" py="2">
-                  {block.courses.map((course) => (
+                {row.kind === "course" && (
+                  <Box px="3" py="0.75">
                     <DraggableCourseCard
-                      key={course.id}
-                      course={course}
-                      isCompleted={completedCourseIds.has(course.id)}
-                      isPlanned={plannedCourseIds.has(course.id)}
-                      dragContextId={block.id}
+                      course={row.course}
+                      isCompleted={completedCourseIds.has(row.course.id)}
+                      isPlanned={plannedCourseIds.has(row.course.id)}
+                      dragContextId={row.blockId}
                     />
-                  ))}
-                </VStack>
-              </Collapsible.Content>
-            </Collapsible.Root>
-          );
-        })}
-      </VStack>
+                  </Box>
+                )}
+              </Box>
+            );
+          })}
+        </Box>
+      )}
     </Box>
+    </Box>{/* end inner scroll box */}
 
     {/* Resize handle */}
     <Box

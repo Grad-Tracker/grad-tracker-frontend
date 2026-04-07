@@ -7,6 +7,24 @@ import CoursePanel from "@/components/planner/CoursePanel";
 import type { RequirementBlockWithCourses, GraduateTrack } from "@/types/planner";
 import type { Course } from "@/types/course";
 
+// ── Mock virtualizer — renders all items in test (no real scroll container) ──
+vi.mock("@tanstack/react-virtual", () => ({
+  useVirtualizer: ({ count, estimateSize }: { count: number; estimateSize: (i: number) => number }) => {
+    let offset = 0;
+    const items = Array.from({ length: count }, (_, i) => {
+      const size = estimateSize(i);
+      const item = { index: i, key: i, start: offset, size, end: offset + size };
+      offset += size;
+      return item;
+    });
+    return {
+      getVirtualItems: () => items,
+      getTotalSize: () => offset,
+      measureElement: () => undefined,
+    };
+  },
+}));
+
 // ── Mock child components & dnd-kit ─────────────────────────────────
 
 vi.mock("@dnd-kit/core", () => ({
