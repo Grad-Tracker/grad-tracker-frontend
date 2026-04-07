@@ -12,6 +12,8 @@ interface SemesterGridProps {
   terms: Term[];
   plannedCourses: PlannedCourseWithDetails[];
   onRemoveTerm: (termId: number) => void;
+  onRemoveCourse?: (course: Course, termId: number) => void | Promise<void>;
+  isRemovingCourse?: boolean;
   isGraduatePlan?: boolean;
 }
 
@@ -33,17 +35,22 @@ export default function SemesterGrid({
   terms,
   plannedCourses,
   onRemoveTerm,
+  onRemoveCourse,
+  isRemovingCourse = false,
   isGraduatePlan = false,
 }: SemesterGridProps) {
   const [collapsedSummers, setCollapsedSummers] = useState<Set<number>>(
     () => new Set(terms.filter((t) => t.season === "Summer").map((t) => t.id))
   );
 
-  const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
+  const [selectedCourse, setSelectedCourse] = useState<{
+    course: Course;
+    termId: number;
+  } | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
 
-  function handleCourseClick(course: Course) {
-    setSelectedCourse(course);
+  function handleCourseClick(course: Course, termId: number) {
+    setSelectedCourse({ course, termId });
     setDrawerOpen(true);
   }
 
@@ -211,9 +218,19 @@ export default function SemesterGrid({
         ))}
       </VStack>
       <CourseDetailDrawer
-        course={selectedCourse}
+        course={selectedCourse?.course ?? null}
         open={drawerOpen}
         onOpenChange={setDrawerOpen}
+        onRemoveCourse={
+          selectedCourse && onRemoveCourse
+            ? async () => {
+                await onRemoveCourse(selectedCourse.course, selectedCourse.termId);
+                setDrawerOpen(false);
+                setSelectedCourse(null);
+              }
+            : undefined
+        }
+        isRemovingCourse={isRemovingCourse}
       />
     </Box>
   );

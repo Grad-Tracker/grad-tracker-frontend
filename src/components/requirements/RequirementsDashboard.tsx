@@ -16,6 +16,7 @@ import {
 import { LuCircleCheck, LuClock, LuMinus } from "react-icons/lu";
 
 import GenEdRequirements from "@/components/requirements/GenEdRequirements";
+import { RequirementsSkeleton } from "@/components/requirements/RequirementsSkeleton";
 import { evaluatePrereqsForCourses, type PrereqEvaluationMap } from "@/lib/prereq";
 import {
   ProgressBar,
@@ -564,7 +565,7 @@ export default function RequirementsDashboard({
 </Card.Root>
 
         {loading ? (
-          <Text color="fg.muted">Loading degree blocks...</Text>
+          <RequirementsSkeleton />
         ) : errorMsg ? (
           <Text color="red.500">{errorMsg}</Text>
         ) : (

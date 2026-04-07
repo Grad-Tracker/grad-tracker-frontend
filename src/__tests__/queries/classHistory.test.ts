@@ -38,7 +38,12 @@ vi.mock("@/lib/supabase/client", () => ({
   createClient: vi.fn(),
 }));
 
+vi.mock("@/lib/supabase/queries/activity", () => ({
+  logStudentActivity: vi.fn().mockResolvedValue(undefined),
+}));
+
 import { createClient } from "@/lib/supabase/client";
+import { logStudentActivity } from "@/lib/supabase/queries/activity";
 import {
   fetchDefaultTermId,
   fetchMajorRequirementCourses,
@@ -239,7 +244,7 @@ describe("classHistory queries", () => {
       const mockFrom = vi.fn().mockReturnValue(chain);
       vi.mocked(createClient).mockReturnValue({ from: mockFrom } as never);
 
-      await insertCourseHistory(1, 100, 5);
+      await insertCourseHistory(1, 100, 5, "CSCI 410");
 
       expect(mockFrom).toHaveBeenCalledWith("student_course_history");
       expect(chain.insert).toHaveBeenCalledWith({
@@ -248,6 +253,16 @@ describe("classHistory queries", () => {
         term_id: 5,
         completed: true,
       });
+      expect(logStudentActivity).toHaveBeenCalledWith(
+        1,
+        "course_added",
+        "Added CSCI 410 to completed history",
+        expect.objectContaining({
+          course_id: 100,
+          term_id: 5,
+          course_label: "CSCI 410",
+        })
+      );
     });
 
     it("silently ignores duplicate insert (error code 23505)", async () => {
@@ -285,13 +300,23 @@ describe("classHistory queries", () => {
       const mockFrom = vi.fn().mockReturnValue(chain);
       vi.mocked(createClient).mockReturnValue({ from: mockFrom } as never);
 
-      await deleteCourseHistory(1, 100, 5);
+      await deleteCourseHistory(1, 100, 5, "CSCI 410");
 
       expect(mockFrom).toHaveBeenCalledWith("student_course_history");
       expect(chain.delete).toHaveBeenCalled();
       expect(chain.eq).toHaveBeenCalledWith("student_id", 1);
       expect(chain.eq).toHaveBeenCalledWith("course_id", 100);
       expect(chain.eq).toHaveBeenCalledWith("term_id", 5);
+      expect(logStudentActivity).toHaveBeenCalledWith(
+        1,
+        "course_removed",
+        "Removed CSCI 410 from completed history",
+        expect.objectContaining({
+          course_id: 100,
+          term_id: 5,
+          course_label: "CSCI 410",
+        })
+      );
     });
 
     it("throws on error", async () => {

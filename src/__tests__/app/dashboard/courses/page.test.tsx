@@ -16,6 +16,7 @@ vi.mock("@/lib/supabase/queries/schema", () => ({
 vi.mock("@/app/dashboard/courses/CoursesClient", () => ({
   default: (props: any) => (
     <div>
+      <div data-testid="subjects">{props.subjects.join(",")}</div>
       {props.initialCourses.map((c: any) => (
         <div key={c.id}>
           {c.subject} {c.number} prereq={String(c.prereq_text)}
@@ -102,5 +103,63 @@ describe("CoursesPage server component", () => {
     const el = await CoursesPage();
     render(el as React.ReactElement);
     expect(screen.getByText("MATH 221 prereq=null")).toBeInTheDocument();
+  });
+
+  it("passes unique sorted subjects to the client", async () => {
+    mockFrom.mockReturnValue(
+      createChainMock({
+        then: vi.fn().mockImplementation((resolve: any) =>
+          resolve({
+            data: [
+              { ...rawCourseWithPrereq, subject: "CS" },
+              { ...rawCourseNoPrereq, subject: "CS" },
+              { ...rawCourseNullReqSets, subject: "MATH" },
+            ],
+            error: null,
+          })
+        ),
+      })
+    );
+
+    const el = await CoursesPage();
+    render(el as React.ReactElement);
+
+    expect(screen.getByTestId("subjects")).toHaveTextContent("CS,MATH");
+  });
+
+  it("passes an empty course list when the query returns null rows", async () => {
+    mockFrom.mockReturnValue(
+      createChainMock({
+        then: vi.fn().mockImplementation((resolve: any) =>
+          resolve({ data: null, error: null })
+        ),
+      })
+    );
+
+    const el = await CoursesPage();
+    render(el as React.ReactElement);
+
+    expect(screen.getByTestId("subjects")).toHaveTextContent("");
+    expect(screen.queryByText(/prereq=/)).not.toBeInTheDocument();
+  });
+
+  it("handles query errors gracefully and still renders the client", async () => {
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+
+    mockFrom.mockReturnValue(
+      createChainMock({
+        then: vi.fn().mockImplementation((resolve: any) =>
+          resolve({ data: null, error: { message: "DB error" } })
+        ),
+      })
+    );
+
+    const el = await CoursesPage();
+    render(el as React.ReactElement);
+
+    expect(errorSpy).toHaveBeenCalledWith("Error fetching courses:", { message: "DB error" });
+    expect(screen.getByTestId("subjects")).toHaveTextContent("");
+
+    errorSpy.mockRestore();
   });
 });

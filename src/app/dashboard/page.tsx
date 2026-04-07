@@ -29,6 +29,11 @@ import {
   fetchStudentProfileByAuthUserId,
   getOrCreateStudent,
 } from "@/lib/supabase/queries/onboarding";
+import {
+  fetchRecentStudentActivity,
+  logStudentActivity,
+  type StudentActivityRow,
+} from "@/lib/supabase/queries/activity";
 import { fetchStudentCourseProgress } from "@/lib/supabase/queries/planner";
 import {
   DB_VIEWS,
@@ -60,28 +65,66 @@ import type { Program } from "@/types/onboarding";
 import DashboardSkeleton from "@/components/dashboard/DashboardSkeleton";
 import { Skeleton } from "@/components/ui/skeleton";
 
-const mockRecentActivity = [
-  {
-    type: "course_added",
-    message: "Added CS 350 to current semester",
-    time: "2 hours ago",
-  },
-  {
-    type: "requirement_met",
-    message: "Completed General Education requirements",
-    time: "1 day ago",
-  },
-  {
-    type: "alert",
-    message: "CS 361 has a prerequisite you haven't completed",
-    time: "2 days ago",
-  },
-];
-
 function getStatusBadgeProps(status: string): { color: string; label: string } {
   if (status === "enrolled") return { color: "emerald", label: "Enrolled" };
   if (status === "waitlist") return { color: "orange", label: "Waitlist" };
   return { color: "gray", label: "Planned" };
+}
+
+function getActivityVisualType(activityType: string): "course_added" | "requirement_met" | "alert" {
+  if (activityType === "major_changed" || activityType === "onboarding_completed") {
+    return "requirement_met";
+  }
+  if (activityType === "plan_updated") {
+    return "alert";
+  }
+  return "course_added";
+}
+
+function formatRelativeTime(timestamp: string): string {
+  if (!timestamp) return "Just now";
+
+  const date = new Date(timestamp);
+  if (Number.isNaN(date.getTime())) return "Just now";
+
+  const diffMs = date.getTime() - Date.now();
+  const diffMinutes = Math.round(diffMs / 60000);
+  const rtf = new Intl.RelativeTimeFormat("en", { numeric: "auto" });
+
+  if (Math.abs(diffMinutes) < 60) {
+    return rtf.format(diffMinutes, "minute");
+  }
+
+  const diffHours = Math.round(diffMinutes / 60);
+  if (Math.abs(diffHours) < 24) {
+    return rtf.format(diffHours, "hour");
+  }
+
+  const diffDays = Math.round(diffHours / 24);
+  if (Math.abs(diffDays) < 30) {
+    return rtf.format(diffDays, "day");
+  }
+
+  const diffMonths = Math.round(diffDays / 30);
+  if (Math.abs(diffMonths) < 12) {
+    return rtf.format(diffMonths, "month");
+  }
+
+  const diffYears = Math.round(diffDays / 365);
+  return rtf.format(diffYears, "year");
+}
+
+async function safeLogActivity(
+  studentId: number,
+  activityType: Parameters<typeof logStudentActivity>[1],
+  message: string,
+  metadata: Record<string, unknown>
+) {
+  try {
+    await logStudentActivity(studentId, activityType, message, metadata);
+  } catch (error) {
+    console.error("Failed to log student activity:", error);
+  }
 }
 
 /**
@@ -196,6 +239,7 @@ export default function Dashboard() {
 
   const [currentCourses, setCurrentCourses] = React.useState<PlannedCourseCard[]>([]);
   const [loadingCourses, setLoadingCourses] = React.useState(true);
+  const [recentActivity, setRecentActivity] = React.useState<StudentActivityRow[]>([]);
 
   const [majors, setMajors] = React.useState<Program[]>([]);
   const [selectedMajorId, setSelectedMajorId] = React.useState<number | null>(null);
@@ -261,17 +305,20 @@ export default function Dashboard() {
         setStudentIdForReset(studentId);
 
         const completedPromise = fetchStudentCourseProgress(studentId);
+        const activityPromise = fetchRecentStudentActivity(studentId).catch(() => [] as StudentActivityRow[]);
         const plannedPromise = supabase
           .from(DB_VIEWS.planCourses)
           .select("status, subject, number, title, credits")
           .eq("student_id", studentId);
         const blocksPromise = resolveMajorAndBlocks(supabase, studentId);
 
-        const [completedResult, blocksResult, plannedResult] = await Promise.all([
+        const [completedResult, blocksResult, plannedResult, activityResult] = await Promise.all([
           completedPromise,
           blocksPromise,
           plannedPromise,
+          activityPromise,
         ]);
+        setRecentActivity(activityResult);
 
         const majorName = (blocksResult as any).majorName ?? "Unknown";
         const majorProgramId = (blocksResult as any).majorProgramId as number | null;
@@ -503,8 +550,29 @@ export default function Dashboard() {
 
       setCurrentMajorProgramId(selectedMajorId);
       const newMajor = majors.find((m) => m.id === selectedMajorId);
+      const previousMajor = majors.find((m) => m.id === currentMajorProgramId)?.name ?? student?.major ?? "previous major";
       if (newMajor && student) {
         setStudent({ ...student, major: newMajor.name });
+      }
+      if (newMajor) {
+        await safeLogActivity(studentIdForReset, "major_changed", `Changed major from ${previousMajor} to ${newMajor.name}`, {
+          previous_program_id: currentMajorProgramId,
+          new_program_id: selectedMajorId,
+        });
+        setRecentActivity((prev) => [
+          {
+            id: Date.now(),
+            student_id: studentIdForReset,
+            activity_type: "major_changed" as const,
+            message: `Changed major from ${previousMajor} to ${newMajor.name}`,
+            metadata: {
+              previous_program_id: currentMajorProgramId,
+              new_program_id: selectedMajorId,
+            },
+            created_at: new Date().toISOString(),
+          },
+          ...prev,
+        ].slice(0, 5));
       }
       toaster.create({ title: "Major updated", type: "success" });
     } catch (e: unknown) {
@@ -513,6 +581,10 @@ export default function Dashboard() {
     } finally {
       setChangingMajor(false);
     }
+  };
+
+  const handleAddCourse = () => {
+    router.push("/dashboard/courses");
   };
 
 
@@ -733,7 +805,7 @@ export default function Dashboard() {
                         </ProgressLabel>
                         <HStack gap="2">
                           <Text fontSize="xs" color="fg.muted">
-                            {loadingRequirements ? <Skeleton height="3" width="70px" /> : `${req.completed}/${req.total} credits`}
+                            {loadingRequirements ? <Skeleton height="3" width="70px" display="inline-block" /> : `${req.completed}/${req.total} credits`}
                           </Text>
                           <ProgressValueText fontWeight="600" fontSize="sm" />
                         </HStack>
@@ -841,7 +913,14 @@ export default function Dashboard() {
                   ))
                 )}
 
-                <Button variant="outline" size="sm" w="full" mt="2" borderStyle="dashed">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  w="full"
+                  mt="2"
+                  borderStyle="dashed"
+                  onClick={handleAddCourse}
+                >
                   <Icon mr="2">
                     <LuPlus />
                   </Icon>
@@ -912,6 +991,7 @@ export default function Dashboard() {
                     onChange={(e) =>
                       setSelectedMajorId(Number(e.target.value))
                     }
+                    aria-label="Select major"
                     w="full"
                     px="3"
                     py="2"
@@ -953,53 +1033,62 @@ export default function Dashboard() {
             </Card.Header>
             <Card.Body p="5">
               <Stack gap="4">
-                {mockRecentActivity.map((activity, index) => (
-                  <HStack key={index} gap="3" align="start">
-                    <Flex
-                      align="center"
-                      justify="center"
-                      w="8"
-                      h="8"
-                      bg={
-                        activity.type === "alert"
-                          ? "orange.subtle"
-                          : activity.type === "requirement_met"
-                            ? "emerald.subtle"
-                            : "blue.subtle"
-                      }
-                      borderRadius="full"
-                      flexShrink={0}
-                    >
-                      <Icon
-                        boxSize="4"
-                        color={
-                          activity.type === "alert"
-                            ? "orange.fg"
-                            : activity.type === "requirement_met"
-                              ? "emerald.fg"
-                              : "blue.fg"
+                {recentActivity.length === 0 ? (
+                  <Box p="4" bg="bg.subtle" borderRadius="lg">
+                    <Text fontSize="sm" color="fg.muted">
+                      No recent activity yet. Your actions will appear here once you start using Grad Tracker.
+                    </Text>
+                  </Box>
+                ) : recentActivity.map((activity) => {
+                  const visualType = getActivityVisualType(activity.activity_type);
+                  return (
+                    <HStack key={activity.id} gap="3" align="start">
+                      <Flex
+                        align="center"
+                        justify="center"
+                        w="8"
+                        h="8"
+                        bg={
+                          visualType === "alert"
+                            ? "orange.subtle"
+                            : visualType === "requirement_met"
+                              ? "emerald.subtle"
+                              : "blue.subtle"
                         }
+                        borderRadius="full"
+                        flexShrink={0}
                       >
-                        {activity.type === "alert" ? (
-                          <LuCircleAlert />
-                        ) : activity.type === "requirement_met" ? (
-                          <LuCircleCheck />
-                        ) : (
-                          <LuPlus />
-                        )}
-                      </Icon>
-                    </Flex>
+                        <Icon
+                          boxSize="4"
+                          color={
+                            visualType === "alert"
+                              ? "orange.fg"
+                              : visualType === "requirement_met"
+                                ? "emerald.fg"
+                                : "blue.fg"
+                          }
+                        >
+                          {visualType === "alert" ? (
+                            <LuCircleAlert />
+                          ) : visualType === "requirement_met" ? (
+                            <LuCircleCheck />
+                          ) : (
+                            <LuPlus />
+                          )}
+                        </Icon>
+                      </Flex>
 
-                    <Box flex="1">
-                      <Text fontSize="sm" fontWeight="500" lineHeight="short">
-                        {activity.message}
-                      </Text>
-                      <Text fontSize="xs" color="fg.muted" mt="0.5">
-                        {activity.time}
-                      </Text>
-                    </Box>
-                  </HStack>
-                ))}
+                      <Box flex="1">
+                        <Text fontSize="sm" fontWeight="500" lineHeight="short">
+                          {activity.message}
+                        </Text>
+                        <Text fontSize="xs" color="fg.muted" mt="0.5">
+                          {formatRelativeTime(activity.created_at)}
+                        </Text>
+                      </Box>
+                    </HStack>
+                  );
+                })}
               </Stack>
             </Card.Body>
           </Card.Root>

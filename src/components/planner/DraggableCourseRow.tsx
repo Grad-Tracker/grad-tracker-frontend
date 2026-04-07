@@ -9,7 +9,7 @@ import type { Course } from "@/types/course";
 interface DraggableCourseRowProps {
   course: Course;
   termId: number;
-  onCourseClick: (course: Course) => void;
+  onCourseClick: (course: Course, termId: number) => void;
 }
 
 export default function DraggableCourseRow({
@@ -39,7 +39,7 @@ export default function DraggableCourseRow({
       opacity={isDragging ? 0.5 : 1}
       cursor="pointer"
       onClick={() => {
-        if (!isDragging) onCourseClick(course);
+        if (!isDragging) onCourseClick(course, termId);
       }}
       _hover={{ bg: "bg.subtle" }}
       transition="background 0.15s"

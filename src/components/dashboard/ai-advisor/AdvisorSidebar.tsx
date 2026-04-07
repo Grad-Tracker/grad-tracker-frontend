@@ -152,7 +152,7 @@ export function AdvisorSidebar() {
             )}
             {data.expectedGraduation && (
               <Box mt="1">
-                <Badge colorPalette="green" variant="subtle" size="sm">
+                <Badge colorPalette="blue" variant="subtle" size="sm">
                   Grad: {data.expectedGraduation}
                 </Badge>
               </Box>

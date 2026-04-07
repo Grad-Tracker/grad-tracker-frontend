@@ -1,18 +1,25 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import {
+  Badge,
   Box,
+  Button,
+  Card,
   Flex,
   Grid,
   Heading,
   HStack,
   Icon,
+  SimpleGrid,
+  Stack,
   Text,
   VStack,
-  Button,
 } from "@chakra-ui/react";
-import { LuPlus, LuLayoutGrid } from "react-icons/lu";
+import Link from "next/link";
+import { LuArrowRight, LuPlus, LuSparkles, LuLayoutGrid, LuShare2 } from "react-icons/lu";
 import type { PlanWithMeta } from "@/types/planner";
+import type { SharedPlanSummary } from "@/types/shared-plan";
 import PlanCard from "./PlanCard";
 
 interface PlansHubProps {
@@ -32,6 +39,35 @@ export default function PlansHub({
 }: PlansHubProps) {
   const totalCredits = plans.reduce((s, p) => s + p.total_credits, 0);
   const totalCourses = plans.reduce((s, p) => s + p.course_count, 0);
+  const [sharedPlans, setSharedPlans] = useState<SharedPlanSummary[]>([]);
+
+  useEffect(() => {
+    let alive = true;
+
+    async function loadSharedPlans() {
+      try {
+        const response = await fetch("/api/shared-plans?limit=3", { cache: "no-store" });
+        if (!response.ok) {
+          return;
+        }
+
+        const data = (await response.json()) as { plans?: SharedPlanSummary[] };
+        if (alive) {
+          setSharedPlans(data.plans ?? []);
+        }
+      } catch {
+        if (alive) {
+          setSharedPlans([]);
+        }
+      }
+    }
+
+    loadSharedPlans();
+
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   return (
     <Box
@@ -66,7 +102,7 @@ export default function PlansHub({
             </Box>
             <Heading
               size="2xl"
-              fontFamily="var(--font-dm-sans), sans-serif"
+              fontFamily="var(--font-outfit), sans-serif"
               fontWeight="400"
               letterSpacing="-0.03em"
             >
@@ -80,6 +116,7 @@ export default function PlansHub({
         </Box>
 
         <Button
+          aria-label="Create a new plan"
           colorPalette="blue"
           borderRadius="xl"
           size="lg"
@@ -153,12 +190,12 @@ export default function PlansHub({
             justifyContent="center"
             mb="6"
           >
-            <LuLayoutGrid size={40} color="var(--chakra-colors-blue-fg)" />
+            <LuSparkles size={40} color="var(--chakra-colors-blue-fg)" />
           </Box>
           <Heading
             size="lg"
             mb="3"
-            fontFamily="var(--font-dm-sans), sans-serif"
+            fontFamily="var(--font-outfit), sans-serif"
             fontWeight="400"
             letterSpacing="-0.02em"
           >
@@ -168,6 +205,7 @@ export default function PlansHub({
             Create your first graduation plan to start mapping out your semesters and courses.
           </Text>
           <Button
+            aria-label="Create your first plan"
             colorPalette="blue"
             borderRadius="xl"
             size="lg"
@@ -200,6 +238,9 @@ export default function PlansHub({
 
           {/* New Plan card */}
           <Box
+            role="button"
+            tabIndex={0}
+            aria-label="Create a new plan"
             borderRadius="2xl"
             borderWidth="2px"
             borderStyle="dashed"
@@ -217,6 +258,12 @@ export default function PlansHub({
               transform: "translateY(-2px)",
             }}
             onClick={onCreatePlan}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                onCreatePlan();
+              }
+            }}
             className="plan-card-enter"
             style={{ animationDelay: `${plans.length * 80}ms` }}
           >
@@ -243,6 +290,153 @@ export default function PlansHub({
           </Box>
         </Grid>
       )}
+
+      <Flex
+        justify="space-between"
+        align="start"
+        mt={{ base: "10", md: "14" }}
+        mb={{ base: "6", md: "8" }}
+        flexWrap="wrap"
+        gap="4"
+        className="plan-card-enter"
+        style={{ animationDelay: "120ms" }}
+      >
+        <Box>
+          <HStack gap="3" mb="2">
+            <Box
+              w="10"
+              h="10"
+              borderRadius="xl"
+              bg="blue.subtle"
+              display="flex"
+              alignItems="center"
+              justifyContent="center"
+            >
+              <Icon color="blue.fg" boxSize="5">
+                <LuShare2 />
+              </Icon>
+            </Box>
+            <Heading
+              size="2xl"
+              fontFamily="var(--font-outfit), sans-serif"
+              fontWeight="400"
+              letterSpacing="-0.03em"
+            >
+              Shared Plans
+            </Heading>
+          </HStack>
+          <Text color="fg.muted" fontSize="sm" maxW="560px">
+            Browse public degree plans shared by students and advisors. Open a read-only version
+            to compare semester pacing, course sequencing, and overall progress.
+          </Text>
+        </Box>
+
+        <Button asChild colorPalette="blue" borderRadius="xl" size="lg" aria-label="Browse shared plans">
+          <Link href="/shared/plans">
+            <LuShare2 size={18} />
+            View Shared Plans
+          </Link>
+        </Button>
+      </Flex>
+
+      {sharedPlans.length > 0 ? (
+        <SimpleGrid columns={{ base: 1, md: 2, xl: 3 }} gap="5">
+          {sharedPlans.map((plan, index) => (
+            <Card.Root
+              key={plan.shareToken}
+              borderRadius="2xl"
+              borderWidth="1px"
+              borderColor="border.subtle"
+              bg="bg"
+              overflow="hidden"
+              transition="all 0.3s cubic-bezier(0.4, 0, 0.2, 1)"
+              _hover={{
+                borderColor: "blue.300",
+                boxShadow: "0 8px 30px rgba(0, 0, 0, 0.08)",
+                transform: "translateY(-4px)",
+              }}
+              className="plan-card-enter"
+              style={{ animationDelay: `${index * 80}ms` }}
+            >
+              <Box h="3px" bg="blue.500" />
+              <Card.Body p="5">
+                <VStack align="start" gap="4">
+                  <Stack gap="1.5">
+                    <HStack gap="2" flexWrap="wrap">
+                      <Badge colorPalette="blue" variant="subtle">
+                        {plan.studentFirstName}'s plan
+                      </Badge>
+                      <Badge colorPalette="gray" variant="surface">
+                        {plan.termCount} semester{plan.termCount === 1 ? "" : "s"}
+                      </Badge>
+                    </HStack>
+                    <Heading
+                      size="md"
+                      fontFamily="var(--font-outfit), sans-serif"
+                      fontWeight="400"
+                      letterSpacing="-0.02em"
+                    >
+                      {plan.planName}
+                    </Heading>
+                    <Text fontSize="sm" color="fg.muted" lineClamp="2">
+                      {plan.programNames.length > 0
+                        ? plan.programNames.join(" / ")
+                        : "Program details unavailable"}
+                    </Text>
+                  </Stack>
+
+                  <HStack gap="4">
+                    <Box>
+                      <Text fontSize="lg" fontWeight="700" lineHeight="1">
+                        {plan.totalPlannedCredits}
+                      </Text>
+                      <Text fontSize="2xs" color="fg.muted">
+                        credits
+                      </Text>
+                    </Box>
+                    <Box w="1px" h="8" bg="border.subtle" />
+                    <Box>
+                      <Text fontSize="lg" fontWeight="700" lineHeight="1">
+                        {plan.termCount}
+                      </Text>
+                      <Text fontSize="2xs" color="fg.muted">
+                        semesters
+                      </Text>
+                    </Box>
+                  </HStack>
+                </VStack>
+              </Card.Body>
+
+              <Flex
+                px="5"
+                py="3"
+                borderTopWidth="1px"
+                borderColor="border.subtle"
+                bg="bg.subtle"
+                align="center"
+                justify="space-between"
+              >
+                <Text fontSize="xs" color="fg.muted">
+                  Recommended shared plan
+                </Text>
+                <Button
+                  asChild
+                  size="sm"
+                  variant="ghost"
+                  colorPalette="blue"
+                  borderRadius="lg"
+                  aria-label={`Open shared plan ${plan.planName}`}
+                >
+                  <Link href={`/shared/plan/${plan.shareToken}`}>
+                    Open
+                    <LuArrowRight size={14} />
+                  </Link>
+                </Button>
+              </Flex>
+            </Card.Root>
+          ))}
+        </SimpleGrid>
+      ) : null}
     </Box>
   );
 }

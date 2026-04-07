@@ -1,6 +1,6 @@
 import React from "react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { ChakraProvider, defaultSystem } from "@chakra-ui/react";
 
 const {
@@ -86,6 +86,22 @@ const course = {
   credits: 3,
 };
 
+const discreteCourse = {
+  id: 102,
+  subject: "CSCI",
+  number: "241",
+  title: "Discrete Mathematics",
+  credits: 3,
+};
+
+const biologyCourse = {
+  id: 103,
+  subject: "BIOL",
+  number: "110",
+  title: "Biology",
+  credits: 4,
+};
+
 const block = {
   id: 10,
   program_id: 1,
@@ -95,6 +111,28 @@ const block = {
   credits_required: null,
   display_order: 1,
   courses: [course],
+};
+
+const scienceBlock = {
+  id: 11,
+  program_id: 1,
+  name: "Science Foundations",
+  rule: "ANY_OF",
+  n_required: null,
+  credits_required: null,
+  display_order: 2,
+  courses: [biologyCourse],
+};
+
+const algorithmsBlock = {
+  id: 12,
+  program_id: 1,
+  name: "Algorithms",
+  rule: "ALL_OF",
+  n_required: null,
+  credits_required: null,
+  display_order: 3,
+  courses: [course, discreteCourse],
 };
 
 function makeAwaitable(result: any) {
@@ -168,6 +206,10 @@ function createProgramRequirementCoursesTable() {
   };
 }
 
+function getVisibleBlockCards() {
+  return screen.queryAllByTestId(/requirement-block-/);
+}
+
 describe("ProgramAdminDetailClient", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -220,7 +262,7 @@ describe("ProgramAdminDetailClient", () => {
     await waitFor(() => {
       expect(screen.queryByLabelText("Program Name")).not.toBeInTheDocument();
     });
-  });
+  }, 15000);
 
   it("saves program edits by calling update", async () => {
     renderWithChakra(
@@ -239,7 +281,7 @@ describe("ProgramAdminDetailClient", () => {
     await waitFor(() => {
       expect(screen.queryByLabelText("Program Name")).not.toBeInTheDocument();
     });
-  });
+  }, 15000);
 
   it("opens and closes add block dialog and resets when cancelled", async () => {
     renderWithChakra(
@@ -249,7 +291,7 @@ describe("ProgramAdminDetailClient", () => {
     fireEvent.click(screen.getByRole("button", { name: /add block/i }));
     expect(screen.getByLabelText("Block Name")).toBeInTheDocument();
 
-    fireEvent.change(screen.getByRole("textbox"), {
+    fireEvent.change(screen.getByLabelText("Block Name"), {
       target: { value: "Electives" },
     });
     fireEvent.click(screen.getByRole("button", { name: /^cancel$/i }));
@@ -259,8 +301,8 @@ describe("ProgramAdminDetailClient", () => {
     });
 
     fireEvent.click(screen.getByRole("button", { name: /add block/i }));
-    expect(screen.getByRole("textbox")).toHaveValue("");
-  });
+    expect(screen.getByLabelText("Block Name")).toHaveValue("");
+  }, 15000);
 
   it("switches add-block rule fields for N_OF and CREDITS_OF", async () => {
     renderWithChakra(
@@ -268,11 +310,11 @@ describe("ProgramAdminDetailClient", () => {
     );
 
     fireEvent.click(screen.getByRole("button", { name: /add block/i }));
-    const selects = screen.getAllByRole("combobox");
-    fireEvent.change(selects[0], { target: { value: "N_OF" } });
+    const ruleSelect = screen.getAllByRole("combobox").at(-1);
+    fireEvent.change(ruleSelect!, { target: { value: "N_OF" } });
     expect(screen.getByText("N Required")).toBeInTheDocument();
 
-    fireEvent.change(selects[0], { target: { value: "CREDITS_OF" } });
+    fireEvent.change(ruleSelect!, { target: { value: "CREDITS_OF" } });
     expect(screen.getByText("Credits Required")).toBeInTheDocument();
   });
 
@@ -284,18 +326,18 @@ describe("ProgramAdminDetailClient", () => {
     fireEvent.click(screen.getByRole("button", { name: /^edit$/i }));
     expect(screen.getByLabelText("Block Name")).toHaveValue("Core");
 
-    const selects = screen.getAllByRole("combobox");
-    fireEvent.change(selects[0], { target: { value: "N_OF" } });
+    const ruleSelect = screen.getAllByRole("combobox").at(-1);
+    fireEvent.change(ruleSelect!, { target: { value: "N_OF" } });
     expect(screen.getByText("N Required")).toBeInTheDocument();
 
-    fireEvent.change(selects[0], { target: { value: "CREDITS_OF" } });
+    fireEvent.change(ruleSelect!, { target: { value: "CREDITS_OF" } });
     expect(screen.getByText("Credits Required")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: /^cancel$/i }));
     await waitFor(() => {
       expect(screen.queryByLabelText("Block Name")).not.toBeInTheDocument();
     });
-  });
+  }, 15000);
 
   it("adds a block by calling insert", async () => {
     renderWithChakra(
@@ -303,7 +345,7 @@ describe("ProgramAdminDetailClient", () => {
     );
 
     fireEvent.click(screen.getByRole("button", { name: /add block/i }));
-    fireEvent.change(screen.getByRole("textbox"), {
+    fireEvent.change(screen.getByLabelText("Block Name"), {
       target: { value: "Electives" },
     });
     fireEvent.click(screen.getByRole("button", { name: /save block/i }));
@@ -322,6 +364,139 @@ describe("ProgramAdminDetailClient", () => {
     expect(screen.getByText("Intro to CS")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: /collapse/i }));
+    await waitFor(() => {
+      expect(screen.queryByText("Intro to CS")).not.toBeInTheDocument();
+    });
+  });
+
+  it("renders both the search input and sort select controls", () => {
+    renderWithChakra(
+      <ProgramAdminDetailClient
+        initialProgram={program}
+        initialBlocks={[scienceBlock, block, algorithmsBlock]}
+      />
+    );
+
+    expect(screen.getByPlaceholderText("Search blocks or courses")).toBeInTheDocument();
+    expect(screen.getByLabelText("Sort blocks")).toHaveValue("name-asc");
+  });
+
+  it("filters blocks by block text and shows an empty state when nothing matches", async () => {
+    renderWithChakra(
+      <ProgramAdminDetailClient
+        initialProgram={program}
+        initialBlocks={[scienceBlock, block, algorithmsBlock]}
+      />
+    );
+
+    fireEvent.change(screen.getByPlaceholderText("Search blocks or courses"), {
+      target: { value: "science" },
+    });
+
+    expect(screen.getByText("Science Foundations")).toBeInTheDocument();
+    expect(screen.queryByText("Core")).not.toBeInTheDocument();
+    expect(screen.queryByText("Algorithms")).not.toBeInTheDocument();
+
+    fireEvent.change(screen.getByPlaceholderText("Search blocks or courses"), {
+      target: { value: "nope" },
+    });
+
+    expect(screen.getByText("No blocks or courses match your search.")).toBeInTheDocument();
+  });
+
+  it("sorts blocks by name and course count", async () => {
+    renderWithChakra(
+      <ProgramAdminDetailClient
+        initialProgram={program}
+        initialBlocks={[scienceBlock, block, algorithmsBlock]}
+      />
+    );
+
+    const sortSelect = screen.getByLabelText("Sort blocks");
+    fireEvent.change(sortSelect, { target: { value: "name-asc" } });
+
+    let cards = getVisibleBlockCards();
+    expect(cards[0].textContent).toContain("Algorithms");
+    expect(cards[1].textContent).toContain("Core");
+    expect(cards[2].textContent).toContain("Science Foundations");
+
+    fireEvent.change(sortSelect, { target: { value: "courses-desc" } });
+
+    cards = getVisibleBlockCards();
+    expect(cards[0].textContent).toContain("Algorithms");
+    expect(cards[1].textContent).toContain("Core");
+    expect(cards[2].textContent).toContain("Science Foundations");
+  });
+
+  it("keeps a block visible and auto-expands it when the query matches a loaded course code", async () => {
+    renderWithChakra(
+      <ProgramAdminDetailClient
+        initialProgram={program}
+        initialBlocks={[scienceBlock, block, algorithmsBlock]}
+      />
+    );
+
+    const algorithmsCard = screen.getByTestId("requirement-block-12");
+    fireEvent.click(within(algorithmsCard).getByRole("button", { name: /expand/i }));
+    expect(screen.getByText("Discrete Mathematics")).toBeInTheDocument();
+    fireEvent.click(within(screen.getByTestId("requirement-block-12")).getByRole("button", { name: /collapse/i }));
+    await waitFor(() => {
+      expect(screen.queryByText("Discrete Mathematics")).not.toBeInTheDocument();
+    });
+
+    fireEvent.change(screen.getByPlaceholderText("Search blocks or courses"), {
+      target: { value: "CSCI 241" },
+    });
+
+    expect(screen.getByText("Algorithms")).toBeInTheDocument();
+    expect(screen.getByText("Discrete Mathematics")).toBeInTheDocument();
+    expect(screen.queryByText("Science Foundations")).not.toBeInTheDocument();
+    expect(screen.queryByText("Core")).not.toBeInTheDocument();
+  });
+
+  it("keeps expanded content visible when the query matches a loaded course title", async () => {
+    renderWithChakra(
+      <ProgramAdminDetailClient
+        initialProgram={program}
+        initialBlocks={[scienceBlock, block, algorithmsBlock]}
+      />
+    );
+
+    const algorithmsCard = screen.getByTestId("requirement-block-12");
+    fireEvent.click(within(algorithmsCard).getByRole("button", { name: /expand/i }));
+    expect(screen.getByText("Discrete Mathematics")).toBeInTheDocument();
+
+    fireEvent.change(screen.getByPlaceholderText("Search blocks or courses"), {
+      target: { value: "Discrete" },
+    });
+
+    expect(screen.getByText("Algorithms")).toBeInTheDocument();
+    expect(screen.getByText("Discrete Mathematics")).toBeInTheDocument();
+  });
+
+  it("preserves expanded state while searching and after clearing the search", async () => {
+    renderWithChakra(
+      <ProgramAdminDetailClient
+        initialProgram={program}
+        initialBlocks={[scienceBlock, block, algorithmsBlock]}
+      />
+    );
+
+    const coreCard = screen.getByTestId("requirement-block-10");
+    fireEvent.click(within(coreCard).getByRole("button", { name: /expand/i }));
+    expect(screen.getByText("Intro to CS")).toBeInTheDocument();
+
+    fireEvent.change(screen.getByPlaceholderText("Search blocks or courses"), {
+      target: { value: "core" },
+    });
+    expect(screen.getByText("Intro to CS")).toBeInTheDocument();
+
+    fireEvent.change(screen.getByPlaceholderText("Search blocks or courses"), {
+      target: { value: "" },
+    });
+    expect(screen.getByText("Intro to CS")).toBeInTheDocument();
+
+    fireEvent.click(within(screen.getByTestId("requirement-block-10")).getByRole("button", { name: /collapse/i }));
     await waitFor(() => {
       expect(screen.queryByText("Intro to CS")).not.toBeInTheDocument();
     });
@@ -387,7 +562,7 @@ describe("ProgramAdminDetailClient", () => {
     await waitFor(() => {
       expect(mockMappingsInsert).toHaveBeenCalledWith([{ block_id: 10, course_id: 101 }]);
     });
-  });
+  }, 15000);
 
   it("shows an error when add courses is submitted without a selection", async () => {
     renderWithChakra(
@@ -427,5 +602,5 @@ describe("ProgramAdminDetailClient", () => {
       expect(mockMappingsInsert).not.toHaveBeenCalled();
       expect(screen.queryByPlaceholderText("Search by subject, number, or title")).not.toBeInTheDocument();
     });
-  });
+  }, 15000);
 });

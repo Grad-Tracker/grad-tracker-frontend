@@ -507,7 +507,7 @@ export default function SignupPage() {
             >
               Cancel
             </Button>
-            <Button colorPalette="green" onClick={handleAdvisorAccessContinue}>
+            <Button colorPalette="blue" onClick={handleAdvisorAccessContinue}>
               Continue
             </Button>
           </DialogFooter>

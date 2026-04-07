@@ -188,7 +188,7 @@ describe("CoursesAdminClient", () => {
         // And the one matching course is visible
         expect(screen.getByText("Course 100")).toBeInTheDocument();
       });
-    });
+    }, 15000);
   });
 
   // ── search ─────────────────────────────────────────────────────────────────

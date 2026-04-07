@@ -28,7 +28,7 @@ const DecrementTrigger = React.forwardRef<
 >(function DecrementTrigger(props, ref) {
   return (
     <NumberInput.DecrementTrigger {...props} asChild ref={ref}>
-      <IconButton variant="outline" size="sm">
+      <IconButton variant="outline" size="sm" aria-label="Decrease value">
         <LuMinus />
       </IconButton>
     </NumberInput.DecrementTrigger>
@@ -41,7 +41,7 @@ const IncrementTrigger = React.forwardRef<
 >(function IncrementTrigger(props, ref) {
   return (
     <NumberInput.IncrementTrigger {...props} asChild ref={ref}>
-      <IconButton variant="outline" size="sm">
+      <IconButton variant="outline" size="sm" aria-label="Increase value">
         <LuPlus />
       </IconButton>
     </NumberInput.IncrementTrigger>
