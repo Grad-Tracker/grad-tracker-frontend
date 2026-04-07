@@ -5,7 +5,12 @@ vi.mock("@/lib/supabase/client", () => ({
   createClient: vi.fn(),
 }));
 
+vi.mock("@/lib/supabase/queries/activity", () => ({
+  logStudentActivity: vi.fn().mockResolvedValue(undefined),
+}));
+
 import { createClient } from "@/lib/supabase/client";
+import { logStudentActivity } from "@/lib/supabase/queries/activity";
 import {
   fetchPlans,
   createPlan,
@@ -23,6 +28,13 @@ import {
   removePlannedCourse,
   movePlannedCourse,
   fetchCompletedCourseIds,
+  fetchBreadthPackageId,
+  updateBreadthPackageId,
+  fetchStudentCourseProgress,
+  fetchCourseOfferings,
+  fetchCrossListings,
+  fetchGenEdBucketsWithCourses,
+  batchSavePlanCourses,
 } from "@/lib/supabase/queries/planner";
 
 /**
@@ -49,56 +61,50 @@ describe("planner queries", () => {
   // fetchPlans
   // ─────────────────────────────────────────────────────────────────────────
   describe("fetchPlans", () => {
-    it("returns [] when plans query returns empty array", async () => {
+    it("returns [] when plan meta query returns empty array", async () => {
       mockFrom.mockReturnValueOnce(mockChain([]));
 
       const result = await fetchPlans(1);
       expect(result).toEqual([]);
     });
 
-    it("returns [] when plans query returns null", async () => {
+    it("returns [] when plan meta query returns null", async () => {
       mockFrom.mockReturnValueOnce(mockChain(null));
 
       const result = await fetchPlans(1);
       expect(result).toEqual([]);
     });
 
-    it("throws when plans query errors", async () => {
+    it("throws when plan meta query errors", async () => {
       const err = { message: "DB error" };
       mockFrom.mockReturnValueOnce(mockChain(null, err));
 
       await expect(fetchPlans(1)).rejects.toEqual(err);
     });
 
-    it("returns mapped PlanWithMeta objects with computed fields", async () => {
+    it("returns mapped PlanWithMeta rows from v_plan_meta", async () => {
       const plans = [
         {
-          id: 1,
+          plan_id: 1,
           student_id: 1,
           name: "Plan A",
           description: null,
           created_at: "2024-01-01",
           updated_at: "2024-01-01",
+          program_ids: [10],
+          term_count: 2,
+          course_count: 2,
+          total_credits: 7,
+          has_graduate_program: false,
         },
       ];
-      const planPrograms = [
-        { plan_id: 1, program_id: 10, programs: { program_type: "MAJOR" } },
-      ];
-      const termPlans = [{ plan_id: 1 }, { plan_id: 1 }];
-      const plannedCourses = [
-        { plan_id: 1, courses: { credits: 3 } },
-        { plan_id: 1, courses: { credits: 4 } },
-      ];
 
-      mockFrom
-        .mockReturnValueOnce(mockChain(plans))
-        .mockReturnValueOnce(mockChain(planPrograms))
-        .mockReturnValueOnce(mockChain(termPlans))
-        .mockReturnValueOnce(mockChain(plannedCourses));
+      mockFrom.mockReturnValueOnce(mockChain(plans));
 
       const result = await fetchPlans(1);
 
       expect(result).toHaveLength(1);
+      expect(result[0].id).toBe(1);
       expect(result[0].program_ids).toEqual([10]);
       expect(result[0].term_count).toBe(2);
       expect(result[0].course_count).toBe(2);
@@ -106,118 +112,33 @@ describe("planner queries", () => {
       expect(result[0].has_graduate_program).toBe(false);
     });
 
-    it("sets has_graduate_program: true when a program_type is GRADUATE", async () => {
+    it("normalizes numeric fields from string-like values", async () => {
       const plans = [
         {
-          id: 1,
-          student_id: 1,
-          name: "Grad Plan",
-          description: null,
-          created_at: "2024-01-01",
-          updated_at: "2024-01-01",
-        },
-      ];
-      const planPrograms = [
-        { plan_id: 1, program_id: 20, programs: { program_type: "GRADUATE" } },
-      ];
-
-      mockFrom
-        .mockReturnValueOnce(mockChain(plans))
-        .mockReturnValueOnce(mockChain(planPrograms))
-        .mockReturnValueOnce(mockChain([]))
-        .mockReturnValueOnce(mockChain([]));
-
-      const result = await fetchPlans(1);
-
-      expect(result[0].has_graduate_program).toBe(true);
-    });
-
-    it("filters plan_programs, terms, and courses by plan_id", async () => {
-      const plans = [
-        {
-          id: 1,
-          student_id: 1,
-          name: "Plan A",
-          description: null,
-          created_at: "2024-01-01",
-          updated_at: "2024-01-01",
-        },
-        {
-          id: 2,
-          student_id: 1,
+          plan_id: "2",
+          student_id: "1",
           name: "Plan B",
           description: null,
-          created_at: "2024-01-02",
-          updated_at: "2024-01-02",
-        },
-      ];
-      const planPrograms = [
-        { plan_id: 1, program_id: 10, programs: { program_type: "MAJOR" } },
-        { plan_id: 2, program_id: 11, programs: { program_type: "MINOR" } },
-      ];
-      const termPlans = [{ plan_id: 1 }, { plan_id: 2 }, { plan_id: 2 }];
-      const plannedCourses = [
-        { plan_id: 1, courses: { credits: 3 } },
-        { plan_id: 2, courses: { credits: 4 } },
-        { plan_id: 2, courses: { credits: 2 } },
-      ];
-
-      mockFrom
-        .mockReturnValueOnce(mockChain(plans))
-        .mockReturnValueOnce(mockChain(planPrograms))
-        .mockReturnValueOnce(mockChain(termPlans))
-        .mockReturnValueOnce(mockChain(plannedCourses));
-
-      const result = await fetchPlans(1);
-
-      expect(result).toHaveLength(2);
-      // Plan A
-      expect(result[0].term_count).toBe(1);
-      expect(result[0].course_count).toBe(1);
-      expect(result[0].total_credits).toBe(3);
-      // Plan B
-      expect(result[1].term_count).toBe(2);
-      expect(result[1].course_count).toBe(2);
-      expect(result[1].total_credits).toBe(6);
-    });
-
-    it("throws when programsRes errors", async () => {
-      const plans = [{ id: 1, student_id: 1, name: "P", description: null, created_at: "", updated_at: "" }];
-      const err = { message: "programs error" };
-
-      mockFrom
-        .mockReturnValueOnce(mockChain(plans))
-        .mockReturnValueOnce(mockChain(null, err))
-        .mockReturnValueOnce(mockChain([]))
-        .mockReturnValueOnce(mockChain([]));
-
-      await expect(fetchPlans(1)).rejects.toEqual(err);
-    });
-
-    it("handles courses with missing credits gracefully", async () => {
-      const plans = [
-        {
-          id: 1,
-          student_id: 1,
-          name: "Plan A",
-          description: null,
           created_at: "2024-01-01",
           updated_at: "2024-01-01",
+          program_ids: ["11", "12"],
+          term_count: "3",
+          course_count: "5",
+          total_credits: "15",
+          has_graduate_program: true,
         },
       ];
-      const plannedCourses = [
-        { plan_id: 1, courses: null },
-        { plan_id: 1, courses: { credits: undefined } },
-      ];
 
-      mockFrom
-        .mockReturnValueOnce(mockChain(plans))
-        .mockReturnValueOnce(mockChain([]))
-        .mockReturnValueOnce(mockChain([]))
-        .mockReturnValueOnce(mockChain(plannedCourses));
-
+      mockFrom.mockReturnValueOnce(mockChain(plans));
       const result = await fetchPlans(1);
-      expect(result[0].total_credits).toBe(0);
+
+      expect(result[0].id).toBe(2);
+      expect(result[0].student_id).toBe(1);
+      expect(result[0].program_ids).toEqual([11, 12]);
+      expect(result[0].term_count).toBe(3);
+      expect(result[0].course_count).toBe(5);
+      expect(result[0].total_credits).toBe(15);
+      expect(result[0].has_graduate_program).toBe(true);
     });
   });
 
@@ -590,39 +511,33 @@ describe("planner queries", () => {
   // fetchAvailableCourses
   // ─────────────────────────────────────────────────────────────────────────
   describe("fetchAvailableCourses", () => {
-    it("returns [] when no plan programs", async () => {
-      mockFrom.mockReturnValueOnce(mockChain([]));
-
-      const result = await fetchAvailableCourses(1, 1);
-      expect(result).toEqual([]);
-    });
-
-    it("returns [] when plan programs data is null", async () => {
-      mockFrom.mockReturnValueOnce(mockChain(null));
+    it("returns [] when plan meta has no program_ids", async () => {
+      mockFrom.mockReturnValueOnce(mockChain({ program_ids: [] }));
 
       const result = await fetchAvailableCourses(1, 1);
       expect(result).toEqual([]);
     });
 
     it("returns blocks with mapped courses", async () => {
-      const planProgs = [{ program_id: 1 }];
+      const planMeta = { program_ids: [1] };
       const blocks = [
-        { id: 10, program_id: 1, name: "Core", rule: "ALL_OF", n_required: null, credits_required: null },
-      ];
-      const mappings = [
-        { block_id: 10, course_id: 100 },
-        { block_id: 10, course_id: 101 },
-      ];
-      const courses = [
-        { id: 100, subject: "CS", number: "101", title: "Intro CS", credits: 3 },
-        { id: 101, subject: "CS", number: "201", title: "Data Structures", credits: 3 },
+        {
+          block_id: 10,
+          program_id: 1,
+          block_name: "Core",
+          rule: "ALL_OF",
+          n_required: null,
+          credits_required: null,
+          courses: [
+            { course_id: 100, subject: "CS", number: "101", title: "Intro CS", credits: 3 },
+            { course_id: 101, subject: "CS", number: "201", title: "Data Structures", credits: 3 },
+          ],
+        },
       ];
 
       mockFrom
-        .mockReturnValueOnce(mockChain(planProgs))        // plan_programs
-        .mockReturnValueOnce(mockChain(blocks))           // program_requirement_blocks
-        .mockReturnValueOnce(mockChain(mappings))         // program_requirement_courses
-        .mockReturnValueOnce(mockChain(courses));         // courses
+        .mockReturnValueOnce(mockChain(planMeta))
+        .mockReturnValueOnce(mockChain(blocks));
 
       const result = await fetchAvailableCourses(1, 1);
 
@@ -632,43 +547,22 @@ describe("planner queries", () => {
       expect(result[0].courses[0].subject).toBe("CS");
     });
 
-    it("returns blocks with empty courses when no mappings", async () => {
-      const planProgs = [{ program_id: 1 }];
-      const blocks = [
-        { id: 10, program_id: 1, name: "Core", rule: "ALL_OF", n_required: null, credits_required: null },
-      ];
-
-      mockFrom
-        .mockReturnValueOnce(mockChain(planProgs))
-        .mockReturnValueOnce(mockChain(blocks))
-        .mockReturnValueOnce(mockChain([]));  // no mappings → returns early with empty courses
-
-      const result = await fetchAvailableCourses(1, 1);
-
-      expect(result).toHaveLength(1);
-      expect(result[0].courses).toEqual([]);
-    });
-
-    it("throws on plan_programs error", async () => {
-      const err = { message: "plan programs error" };
+    it("throws on v_plan_meta error", async () => {
+      const err = { message: "plan meta error" };
       mockFrom.mockReturnValueOnce(mockChain(null, err));
 
       await expect(fetchAvailableCourses(1, 1)).rejects.toEqual(err);
     });
 
-    it("throws on blocks error", async () => {
+    it("throws on v_program_block_courses error", async () => {
       const err = { message: "blocks error" };
       mockFrom
-        .mockReturnValueOnce(mockChain([{ program_id: 1 }]))
+        .mockReturnValueOnce(mockChain({ program_ids: [1] }))
         .mockReturnValueOnce(mockChain(null, err));
 
       await expect(fetchAvailableCourses(1, 1)).rejects.toEqual(err);
     });
   });
-
-  // ─────────────────────────────────────────────────────────────────────────
-  // getOrCreateTerm
-  // ─────────────────────────────────────────────────────────────────────────
   describe("getOrCreateTerm", () => {
     it("returns existing term when maybeSingle returns data", async () => {
       const termData = { id: 5, season: "Fall", year: 2024 };
@@ -818,7 +712,7 @@ describe("planner queries", () => {
       });
       mockFrom.mockReturnValueOnce(chain);
 
-      await addPlannedCourse(1, 10, 100, 5);
+      await addPlannedCourse(1, 10, 100, 5, "CSCI 410");
 
       expect(mockFrom).toHaveBeenCalledWith("student_planned_courses");
       expect(chain.insert).toHaveBeenCalledWith({
@@ -828,6 +722,17 @@ describe("planner queries", () => {
         plan_id: 5,
         status: "PLANNED",
       });
+      expect(logStudentActivity).toHaveBeenCalledWith(
+        1,
+        "course_added",
+        "Added CSCI 410 to a semester plan",
+        expect.objectContaining({
+          course_id: 100,
+          term_id: 10,
+          plan_id: 5,
+          course_label: "CSCI 410",
+        })
+      );
     });
 
     it("throws on error", async () => {
@@ -851,7 +756,7 @@ describe("planner queries", () => {
       });
       mockFrom.mockReturnValueOnce(chain);
 
-      await removePlannedCourse(1, 10, 100, 5);
+      await removePlannedCourse(1, 10, 100, 5, "CSCI 410");
 
       expect(mockFrom).toHaveBeenCalledWith("student_planned_courses");
       expect(chain.delete).toHaveBeenCalled();
@@ -859,6 +764,17 @@ describe("planner queries", () => {
       expect(chain.eq).toHaveBeenCalledWith("term_id", 10);
       expect(chain.eq).toHaveBeenCalledWith("course_id", 100);
       expect(chain.eq).toHaveBeenCalledWith("plan_id", 5);
+      expect(logStudentActivity).toHaveBeenCalledWith(
+        1,
+        "course_removed",
+        "Removed CSCI 410 from a semester plan",
+        expect.objectContaining({
+          course_id: 100,
+          term_id: 10,
+          plan_id: 5,
+          course_label: "CSCI 410",
+        })
+      );
     });
 
     it("throws on error", async () => {
@@ -888,7 +804,7 @@ describe("planner queries", () => {
         .mockReturnValueOnce(delChain)
         .mockReturnValueOnce(insChain);
 
-      await movePlannedCourse(1, 100, 10, 20, 5);
+      await movePlannedCourse(1, 100, 10, 20, 5, "CSCI 410");
 
       expect(mockFrom).toHaveBeenCalledTimes(2);
       expect(mockFrom).toHaveBeenNthCalledWith(1, "student_planned_courses");
@@ -902,6 +818,18 @@ describe("planner queries", () => {
         plan_id: 5,
         status: "PLANNED",
       });
+      expect(logStudentActivity).toHaveBeenCalledWith(
+        1,
+        "plan_updated",
+        "Moved CSCI 410 to a different semester",
+        expect.objectContaining({
+          course_id: 100,
+          from_term_id: 10,
+          to_term_id: 20,
+          plan_id: 5,
+          course_label: "CSCI 410",
+        })
+      );
     });
 
     it("throws on delete error", async () => {
@@ -984,4 +912,339 @@ describe("planner queries", () => {
       expect(result.has(200)).toBe(true);
     });
   });
+
+  describe("breadth package persistence", () => {
+    it("fetchBreadthPackageId returns string value", async () => {
+      mockFrom.mockReturnValueOnce(mockChain({ breadth_package_id: "math" }));
+      await expect(fetchBreadthPackageId(1)).resolves.toBe("math");
+    });
+
+    it("fetchBreadthPackageId returns null when row value is null", async () => {
+      mockFrom.mockReturnValueOnce(mockChain({ breadth_package_id: null }));
+      await expect(fetchBreadthPackageId(1)).resolves.toBeNull();
+    });
+
+    it("fetchBreadthPackageId throws on error", async () => {
+      const err = { message: "fetch breadth error" };
+      mockFrom.mockReturnValueOnce(mockChain(null, err));
+      await expect(fetchBreadthPackageId(1)).rejects.toEqual(err);
+    });
+
+    it("updateBreadthPackageId updates students row", async () => {
+      const chain = createChainMock({
+        then: (resolve: (v: unknown) => void) => resolve({ data: null, error: null }),
+      });
+      mockFrom.mockReturnValueOnce(chain);
+
+      await updateBreadthPackageId(1, "business");
+
+      expect(mockFrom).toHaveBeenCalledWith("students");
+      expect(chain.update).toHaveBeenCalledWith({ breadth_package_id: "business" });
+      expect(chain.eq).toHaveBeenCalledWith("id", 1);
+    });
+
+    it("updateBreadthPackageId throws on error", async () => {
+      const err = { message: "update breadth error" };
+      const chain = createChainMock({
+        then: (resolve: (v: unknown) => void) => resolve({ data: null, error: err }),
+      });
+      mockFrom.mockReturnValueOnce(chain);
+
+      await expect(updateBreadthPackageId(1, "business")).rejects.toEqual(err);
+    });
+  });
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // fetchStudentCourseProgress
+  // ─────────────────────────────────────────────────────────────────────────
+  describe("fetchStudentCourseProgress", () => {
+    it("returns progress rows for a student", async () => {
+      const data = [
+        { student_id: 1, course_id: 100, plan_id: 1, term_id: 10, completed: true, grade: "A", progress_status: "completed" },
+      ];
+      mockFrom.mockReturnValueOnce(mockChain(data));
+
+      const result = await fetchStudentCourseProgress(1);
+
+      expect(result).toHaveLength(1);
+      expect(result[0].student_id).toBe(1);
+      expect(result[0].course_id).toBe(100);
+    });
+
+    it("returns empty array when no data", async () => {
+      mockFrom.mockReturnValueOnce(mockChain(null));
+
+      const result = await fetchStudentCourseProgress(1);
+      expect(result).toEqual([]);
+    });
+
+    it("throws on error", async () => {
+      const err = { message: "progress error" };
+      mockFrom.mockReturnValueOnce(mockChain(null, err));
+
+      await expect(fetchStudentCourseProgress(1)).rejects.toEqual(err);
+    });
+  });
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // fetchCourseOfferings
+  // ─────────────────────────────────────────────────────────────────────────
+  describe("fetchCourseOfferings", () => {
+    it("returns empty array when courseIds is empty without calling supabase", async () => {
+      const result = await fetchCourseOfferings([]);
+      expect(result).toEqual([]);
+      expect(mockFrom).not.toHaveBeenCalled();
+    });
+
+    it("returns offerings for given course IDs", async () => {
+      const data = [{ course_id: 100, term_code: "FA25" }, { course_id: 200, term_code: "SP26" }];
+      mockFrom.mockReturnValueOnce(mockChain(data));
+
+      const result = await fetchCourseOfferings([100, 200]);
+
+      expect(result).toHaveLength(2);
+      expect(result[0].term_code).toBe("FA25");
+      expect(result[1].course_id).toBe(200);
+    });
+
+    it("returns empty array when data is null", async () => {
+      mockFrom.mockReturnValueOnce(mockChain(null));
+
+      const result = await fetchCourseOfferings([100]);
+      expect(result).toEqual([]);
+    });
+
+    it("throws on error", async () => {
+      const err = { message: "offerings error" };
+      mockFrom.mockReturnValueOnce(mockChain(null, err));
+
+      await expect(fetchCourseOfferings([100])).rejects.toEqual(err);
+    });
+  });
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // fetchCrossListings
+  // ─────────────────────────────────────────────────────────────────────────
+  describe("fetchCrossListings", () => {
+    it("returns empty map when courseIds is empty without calling supabase", async () => {
+      const result = await fetchCrossListings([]);
+      expect(result.size).toBe(0);
+      expect(mockFrom).not.toHaveBeenCalled();
+    });
+
+    it("returns empty map when no cross-listings found", async () => {
+      mockFrom.mockReturnValueOnce(mockChain([]));
+
+      const result = await fetchCrossListings([100]);
+      expect(result.size).toBe(0);
+    });
+
+    it("builds equivalence map from cross-listing data", async () => {
+      const crossData = [{ course_id: 100, cross_subject: "MATH", cross_number: "201" }];
+      const coursesData = [{ id: 200, subject: "MATH", number: "201" }];
+
+      mockFrom
+        .mockReturnValueOnce(mockChain(crossData))
+        .mockReturnValueOnce(mockChain(coursesData));
+
+      const result = await fetchCrossListings([100]);
+
+      expect(result.has(100)).toBe(true);
+      expect(result.get(100)?.has(200)).toBe(true);
+      expect(result.has(200)).toBe(true);
+      expect(result.get(200)?.has(100)).toBe(true);
+    });
+
+    it("skips cross-listed course when ID is not found in courses table", async () => {
+      const crossData = [{ course_id: 100, cross_subject: "MATH", cross_number: "999" }];
+      const coursesData: unknown[] = []; // no matching course found
+
+      mockFrom
+        .mockReturnValueOnce(mockChain(crossData))
+        .mockReturnValueOnce(mockChain(coursesData));
+
+      const result = await fetchCrossListings([100]);
+      expect(result.size).toBe(0);
+    });
+
+    it("throws on cross-listings query error", async () => {
+      const err = { message: "cross error" };
+      mockFrom.mockReturnValueOnce(mockChain(null, err));
+
+      await expect(fetchCrossListings([100])).rejects.toEqual(err);
+    });
+
+    it("throws on courses query error", async () => {
+      const crossData = [{ course_id: 100, cross_subject: "MATH", cross_number: "201" }];
+      const err = { message: "courses error" };
+
+      mockFrom
+        .mockReturnValueOnce(mockChain(crossData))
+        .mockReturnValueOnce(mockChain(null, err));
+
+      await expect(fetchCrossListings([100])).rejects.toEqual(err);
+    });
+  });
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // fetchGenEdBucketsWithCourses
+  // ─────────────────────────────────────────────────────────────────────────
+  describe("fetchGenEdBucketsWithCourses", () => {
+    it("returns mapped buckets with courses", async () => {
+      const data = [
+        {
+          bucket_id: 1,
+          bucket_code: "MATH",
+          bucket_name: "Mathematics",
+          bucket_credits_required: "6",
+          courses: [
+            { course_id: 100, subject: "MATH", number: "101", title: "Calculus I", credits: 3 },
+          ],
+        },
+      ];
+      mockFrom.mockReturnValueOnce(mockChain(data));
+
+      const result = await fetchGenEdBucketsWithCourses();
+
+      expect(result).toHaveLength(1);
+      expect(result[0].id).toBe(1);
+      expect(result[0].code).toBe("MATH");
+      expect(result[0].name).toBe("Mathematics");
+      expect(result[0].credits_required).toBe(6);
+      expect(result[0].courses).toHaveLength(1);
+      expect(result[0].courses[0].subject).toBe("MATH");
+      expect(result[0].courses[0].id).toBe(100);
+    });
+
+    it("returns empty array when data is null", async () => {
+      mockFrom.mockReturnValueOnce(mockChain(null));
+
+      const result = await fetchGenEdBucketsWithCourses();
+      expect(result).toEqual([]);
+    });
+
+    it("returns empty array when data is empty array", async () => {
+      mockFrom.mockReturnValueOnce(mockChain([]));
+
+      const result = await fetchGenEdBucketsWithCourses();
+      expect(result).toEqual([]);
+    });
+
+    it("throws on error", async () => {
+      const err = { message: "gen-ed error" };
+      mockFrom.mockReturnValueOnce(mockChain(null, err));
+
+      await expect(fetchGenEdBucketsWithCourses()).rejects.toEqual(err);
+    });
+  });
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // batchSavePlanCourses
+  // ─────────────────────────────────────────────────────────────────────────
+  describe("batchSavePlanCourses", () => {
+    it("completes without inserts when semesters list is empty", async () => {
+      // Still queries for existing term plans and planned courses
+      mockFrom
+        .mockReturnValueOnce(mockChain([]))  // fetch existing term plans
+        .mockReturnValueOnce(mockChain([])); // fetch existing planned courses
+
+      await batchSavePlanCourses(1, 1, []);
+
+      expect(mockFrom).toHaveBeenCalledTimes(2);
+    });
+
+    it("inserts term plan and course rows for a new semester", async () => {
+      const term = { id: 5, season: "Fall", year: 2025 };
+      const semesters = [
+        {
+          season: "Fall" as const,
+          year: 2025,
+          courses: [{ id: 100, subject: "CS", number: "101", title: "Intro CS", credits: 3 }],
+        },
+      ];
+
+      // getOrCreateTerm: find existing term
+      const findTermChain = createChainMock({
+        maybeSingle: vi.fn().mockResolvedValue({ data: term, error: null }),
+      });
+
+      // insert term plan
+      const insertTermPlanChain = createChainMock({
+        then: (resolve: (v: unknown) => void) => resolve({ data: null, error: null }),
+      });
+
+      // insert planned courses
+      const insertCoursesChain = createChainMock({
+        then: (resolve: (v: unknown) => void) => resolve({ data: null, error: null }),
+      });
+
+      mockFrom
+        .mockReturnValueOnce(findTermChain)         // getOrCreateTerm: find
+        .mockReturnValueOnce(mockChain([]))         // fetch existing term plans (none)
+        .mockReturnValueOnce(insertTermPlanChain)   // insert term plan
+        .mockReturnValueOnce(mockChain([]))         // fetch existing planned courses (none)
+        .mockReturnValueOnce(insertCoursesChain);   // insert planned courses
+
+      await batchSavePlanCourses(1, 1, semesters);
+
+      expect(insertTermPlanChain.insert).toHaveBeenCalledWith([
+        { student_id: 1, term_id: 5, plan_id: 1 },
+      ]);
+      expect(insertCoursesChain.insert).toHaveBeenCalledWith([
+        { student_id: 1, term_id: 5, course_id: 100, plan_id: 1, status: "PLANNED" },
+      ]);
+    });
+
+    it("skips existing terms and courses to avoid duplicates", async () => {
+      const term = { id: 5, season: "Fall", year: 2025 };
+      const semesters = [
+        {
+          season: "Fall" as const,
+          year: 2025,
+          courses: [{ id: 100, subject: "CS", number: "101", title: "Intro CS", credits: 3 }],
+        },
+      ];
+
+      const findTermChain = createChainMock({
+        maybeSingle: vi.fn().mockResolvedValue({ data: term, error: null }),
+      });
+
+      mockFrom
+        .mockReturnValueOnce(findTermChain)
+        .mockReturnValueOnce(mockChain([{ term_id: 5 }]))      // term plan already exists
+        .mockReturnValueOnce(mockChain([{ course_id: 100 }])); // planned course already exists
+
+      await batchSavePlanCourses(1, 1, semesters);
+
+      // Only 3 from() calls: getOrCreateTerm + 2 select queries; no inserts
+      expect(mockFrom).toHaveBeenCalledTimes(3);
+    });
+
+    it("throws when term plan insert fails", async () => {
+      const term = { id: 5, season: "Fall", year: 2025 };
+      const semesters = [
+        {
+          season: "Fall" as const,
+          year: 2025,
+          courses: [{ id: 100, subject: "CS", number: "101", title: "Intro CS", credits: 3 }],
+        },
+      ];
+      const err = { message: "insert term plan error" };
+
+      const findTermChain = createChainMock({
+        maybeSingle: vi.fn().mockResolvedValue({ data: term, error: null }),
+      });
+      const failChain = createChainMock({
+        then: (resolve: (v: unknown) => void) => resolve({ data: null, error: err }),
+      });
+
+      mockFrom
+        .mockReturnValueOnce(findTermChain)
+        .mockReturnValueOnce(mockChain([]))   // no existing term plans
+        .mockReturnValueOnce(failChain);      // insert fails
+
+      await expect(batchSavePlanCourses(1, 1, semesters)).rejects.toEqual(err);
+    });
+  });
 });
+

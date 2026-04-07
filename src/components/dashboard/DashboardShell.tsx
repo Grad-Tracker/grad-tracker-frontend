@@ -1,29 +1,21 @@
 "use client";
 
 import React from "react";
-import { Box, Flex } from "@chakra-ui/react";
 import DashboardSidebar from "@/components/dashboard/DashboardSidebar";
-import DashboardHeader from "@/components/dashboard/DashboardHeader";
+import { AtlasPanelProvider } from "@/contexts/AtlasPanelContext";
+import AtlasPanel from "@/components/dashboard/AtlasPanel";
+import AtlasFAB from "@/components/dashboard/AtlasFAB";
+import LayoutShell from "@/components/shared/LayoutShell";
 
 export default function DashboardShell({ children }: { children: React.ReactNode }) {
   return (
-    <Box minH="100vh" bg="bg" fontFamily="var(--font-plus-jakarta), sans-serif">
-      <Flex>
-        <DashboardSidebar />
+    <AtlasPanelProvider>
+      <LayoutShell sidebar={<DashboardSidebar />}>
+        {children}
+      </LayoutShell>
 
-        <Box
-          flex="1"
-          ml={{ base: "0", lg: "260px" }}
-          minH="100vh"
-          position="relative"
-          className="mesh-gradient-subtle"
-        >
-          <DashboardHeader />
-          <Box px={{ base: "4", md: "8" }} py="6" position="relative" zIndex="1">
-            {children}
-          </Box>
-        </Box>
-      </Flex>
-    </Box>
+      <AtlasPanel />
+      <AtlasFAB />
+    </AtlasPanelProvider>
   );
 }

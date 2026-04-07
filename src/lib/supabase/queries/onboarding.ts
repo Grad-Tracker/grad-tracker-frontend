@@ -1,6 +1,14 @@
 import { createClient } from "@/lib/supabase/client";
 import type { Program, RequirementBlock, CourseRow } from "@/types/onboarding";
-import { DB_TABLES, PROGRAM_TYPES, STUDENT_COLUMNS } from "./schema";
+import { DB_TABLES, DB_VIEWS, PROGRAM_TYPES, STUDENT_COLUMNS } from "./schema";
+import type {
+  ViewCourseCatalogRow,
+  ViewProgramBlockCoursesRow,
+  ViewProgramCatalogRow,
+  ViewStudentMajorProgramRow,
+  ViewStudentProfileRow,
+} from "./view-types";
+import { mapViewBlockToCourseBlock, safeLogActivity } from "./helpers";
 
 function splitFullName(fullName: string): { firstName: string; lastName: string } {
   const trimmed = fullName.trim();
@@ -17,6 +25,36 @@ function isMissingColumnError(error: unknown, columnName: string): boolean {
   return message.includes(columnName) && message.includes("column");
 }
 
+export async function fetchStudentProfileByAuthUserId(
+  authUserId: string
+): Promise<ViewStudentProfileRow | null> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from(DB_VIEWS.studentProfile)
+    .select(
+      "student_id, auth_user_id, email, first_name, last_name, full_name, has_completed_onboarding, expected_graduation_semester, expected_graduation_year, breadth_package_id"
+    )
+    .eq("auth_user_id", authUserId)
+    .maybeSingle();
+
+  if (error) throw error;
+  return (data as ViewStudentProfileRow | null) ?? null;
+}
+
+export async function fetchStudentMajorProgram(
+  studentId: number
+): Promise<ViewStudentMajorProgramRow | null> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from(DB_VIEWS.studentMajorProgram)
+    .select("student_id, program_id, program_name, catalog_year, program_type")
+    .eq("student_id", studentId)
+    .maybeSingle();
+
+  if (error) throw error;
+  return (data as ViewStudentMajorProgramRow | null) ?? null;
+}
+
 /**
  * Fetch programs by type (MAJOR, CERTIFICATE, MINOR).
  */
@@ -25,13 +63,18 @@ export async function fetchPrograms(
 ): Promise<Program[]> {
   const supabase = createClient();
   const { data, error } = await supabase
-    .from(DB_TABLES.programs)
-    .select("id, name, catalog_year, program_type")
+    .from(DB_VIEWS.programCatalog)
+    .select("program_id, program_name, catalog_year, program_type")
     .eq("program_type", type)
-    .order("name");
+    .order("program_name");
 
   if (error) throw error;
-  return data as Program[];
+  return ((data as ViewProgramCatalogRow[] | null) ?? []).map((row) => ({
+    id: Number(row.program_id),
+    name: row.program_name,
+    catalog_year: row.catalog_year ?? "",
+    program_type: row.program_type ?? type,
+  }));
 }
 
 /**
@@ -43,59 +86,18 @@ export async function fetchProgramRequirements(
 ): Promise<RequirementBlock[]> {
   const supabase = createClient();
 
-  // Fetch blocks for the program
-  const { data: blocks, error: blocksError } = await supabase
-    .from(DB_TABLES.programRequirementBlocks)
-    .select("id, program_id, name, rule, n_required, credits_required")
+  const { data, error } = await supabase
+    .from(DB_VIEWS.programBlockCourses)
+    .select(
+      "block_id, program_id, block_name, rule, n_required, credits_required, courses"
+    )
     .eq("program_id", programId)
-    .order("name");
+    .order("block_name");
 
-  if (blocksError) throw blocksError;
-  if (!blocks || blocks.length === 0) return [];
+  if (error) throw error;
+  if (!data?.length) return [];
 
-  const blockIds = blocks.map((b) => b.id);
-
-  // Fetch course mappings for all blocks
-  const { data: mappings, error: mappingsError } = await supabase
-    .from(DB_TABLES.programRequirementCourses)
-    .select("block_id, course_id")
-    .in("block_id", blockIds);
-
-  if (mappingsError) throw mappingsError;
-
-  const courseIds = [...new Set((mappings ?? []).map((m) => m.course_id))];
-
-  if (courseIds.length === 0) {
-    return blocks.map((b) => ({ ...b, courses: [] } as RequirementBlock));
-  }
-
-  // Fetch course details
-  const { data: courses, error: coursesError } = await supabase
-    .from(DB_TABLES.courses)
-    .select("id, subject, number, title, credits")
-    .in("id", courseIds)
-    .order("subject")
-    .order("number");
-
-  if (coursesError) throw coursesError;
-
-  const courseMap = new Map<number, CourseRow>();
-  for (const c of courses ?? []) {
-    courseMap.set(c.id, c as CourseRow);
-  }
-
-  // Assemble blocks with their courses
-  return blocks.map((block) => {
-    const blockCourseIds = (mappings ?? [])
-      .filter((m) => m.block_id === block.id)
-      .map((m) => m.course_id);
-
-    const blockCourses = blockCourseIds
-      .map((id) => courseMap.get(id))
-      .filter((c: CourseRow | undefined): c is CourseRow => c !== undefined);
-
-    return { ...block, courses: blockCourses } as RequirementBlock;
-  });
+  return (data as ViewProgramBlockCoursesRow[]).map(mapViewBlockToCourseBlock);
 }
 
 /**
@@ -179,13 +181,18 @@ export async function fetchCertificatesForMajor(
 
   const certIds = mappings.map((m) => m.certificate_id);
   const { data, error } = await supabase
-    .from(DB_TABLES.programs)
-    .select("id, name, catalog_year, program_type")
-    .in("id", certIds)
-    .order("name");
+    .from(DB_VIEWS.programCatalog)
+    .select("program_id, program_name, catalog_year, program_type")
+    .in("program_id", certIds)
+    .order("program_name");
 
   if (error) throw error;
-  return data as Program[];
+  return ((data as ViewProgramCatalogRow[] | null) ?? []).map((row) => ({
+    id: Number(row.program_id),
+    name: row.program_name,
+    catalog_year: row.catalog_year ?? "",
+    program_type: row.program_type ?? PROGRAM_TYPES.certificate,
+  }));
 }
 
 /**
@@ -277,8 +284,16 @@ export async function saveOnboardingSelections(
       .eq(STUDENT_COLUMNS.id, studentId);
 
     if (updateError) throw updateError;
+
+    await safeLogActivity(studentId, "onboarding_completed", "Completed onboarding setup", {
+      major_id: majorId,
+      certificate_ids: certificateIds,
+      course_ids: courseIds,
+      expected_graduation_semester: expectedGradSemester ?? null,
+      expected_graduation_year: expectedGradYear ?? null,
+    });
   } catch (err) {
-    // Best-effort rollback: remove partial rows so we don’t leave inconsistent state
+    // Best-effort rollback: remove partial rows so we don't leave inconsistent state
     try {
       await cleanupSelections();
     } catch (cleanupErr) {
@@ -294,17 +309,8 @@ export async function saveOnboardingSelections(
 export async function checkOnboardingStatus(
   authUserId: string
 ): Promise<boolean> {
-  const supabase = createClient();
-
-  const { data, error } = await supabase
-    .from(DB_TABLES.students)
-    .select("has_completed_onboarding")
-    .eq(STUDENT_COLUMNS.authUserId, authUserId)
-    .maybeSingle();
-
-  if (error) throw error;
-  if (!data) return false;
-  return data.has_completed_onboarding ?? false;
+  const profile = await fetchStudentProfileByAuthUserId(authUserId);
+  return profile?.has_completed_onboarding ?? false;
 }
 
 /**
@@ -317,12 +323,18 @@ export async function fetchCoursesByIds(
 
   const supabase = createClient();
   const { data, error } = await supabase
-    .from(DB_TABLES.courses)
-    .select("id, subject, number, title, credits")
-    .in("id", courseIds)
+    .from(DB_VIEWS.courseCatalog)
+    .select("course_id, subject, number, title, credits")
+    .in("course_id", courseIds)
     .order("subject")
     .order("number");
 
   if (error) throw error;
-  return data as CourseRow[];
+  return ((data as ViewCourseCatalogRow[] | null) ?? []).map((row) => ({
+    id: Number(row.course_id),
+    subject: row.subject,
+    number: row.number,
+    title: row.title,
+    credits: Number(row.credits ?? 0),
+  }));
 }

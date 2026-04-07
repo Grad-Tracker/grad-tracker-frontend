@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import {
   Badge,
   Box,
@@ -14,22 +14,106 @@ import {
   VStack,
 } from "@chakra-ui/react";
 import { ColorModeButton } from "@/components/ui/color-mode";
+import {
+  DialogBody,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogRoot,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Field } from "@/components/ui/field";
 import { PasswordInput } from "@/components/ui/password-input";
 import { toaster } from "@/components/ui/toaster";
 import { LuGraduationCap, LuArrowRight, LuLoader } from "react-icons/lu";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { validateEmailDomain, normalizeEmail } from "@/lib/email-validation";
+
+function AdvisorAccessQuerySync({
+  onOpen,
+  onConsumeAdvisorParam,
+}: {
+  onOpen: () => void;
+  onConsumeAdvisorParam: () => void;
+}) {
+  const searchParams = useSearchParams();
+  const openedRef = useRef(false);
+
+  useEffect(() => {
+    if (searchParams.get("advisor") === "1" && !openedRef.current) {
+      openedRef.current = true;
+      onOpen();
+      onConsumeAdvisorParam();
+    }
+  }, [onConsumeAdvisorParam, onOpen, searchParams]);
+
+  return null;
+}
 
 export default function SignupPage() {
   const router = useRouter();
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
+  const [advisorAccessCode, setAdvisorAccessCode] = useState("");
+  const [advisorDialogOpen, setAdvisorDialogOpen] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
+
+  async function handleAdvisorAccessContinue() {
+    try {
+      const response = await fetch("/api/advisor/verify-signup-code", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ code: advisorAccessCode }),
+      });
+
+      let payload: { ok?: boolean; message?: string } | null = null;
+
+      try {
+        payload = await response.json();
+      } catch {
+        payload = null;
+      }
+
+      if (payload?.ok) {
+        setAdvisorDialogOpen(false);
+        setAdvisorAccessCode("");
+        router.push("/admin/signup");
+        return;
+      }
+
+      if (response.status >= 500) {
+        throw new Error("verification failed");
+      }
+
+      if (payload?.message) {
+        toaster.create({
+          title: payload.message,
+          type: "error",
+        });
+        return;
+      }
+
+      toaster.create({
+        title: "Invalid access code",
+        type: "error",
+      });
+      return;
+    } catch {
+      // Fall through to generic verification failure handling below.
+    }
+
+    toaster.create({
+      title: "Verification failed",
+      type: "error",
+    });
+  }
 
   async function handleSignup() {
     if (!firstName || !lastName || !email || !password) {
@@ -59,11 +143,23 @@ export default function SignupPage() {
       return;
     }
 
+    const normalizedEmail = normalizeEmail(email);
+    const validation = validateEmailDomain("student", normalizedEmail);
+
+    if (!validation.isValid) {
+      toaster.create({
+        title: validation.errorTitle!,
+        description: validation.errorDescription!,
+        type: "error",
+      });
+      return;
+    }
+
     setLoading(true);
 
     const supabase = createClient();
     const { data, error } = await supabase.auth.signUp({
-      email,
+      email: normalizedEmail,
       password,
       options: {
         data: {
@@ -110,9 +206,16 @@ export default function SignupPage() {
   return (
     <Box
       minH="100vh"
-      fontFamily="var(--font-plus-jakarta), sans-serif"
+      fontFamily="var(--font-dm-sans), sans-serif"
       position="relative"
     >
+      <Suspense fallback={null}>
+        <AdvisorAccessQuerySync
+          onOpen={() => setAdvisorDialogOpen(true)}
+          onConsumeAdvisorParam={() => router.replace("/signup")}
+        />
+      </Suspense>
+
       {/* Navigation Header */}
       <Box
         as="header"
@@ -129,7 +232,7 @@ export default function SignupPage() {
               <HStack gap="3" cursor="pointer">
                 <Box
                   p="2"
-                  bg="green.solid"
+                  bg="blue.solid"
                   borderRadius="lg"
                   className="animate-pulse-glow"
                 >
@@ -140,13 +243,13 @@ export default function SignupPage() {
                 <Text
                   fontWeight="700"
                   fontSize="xl"
-                  fontFamily="var(--font-outfit), sans-serif"
+                  fontFamily="var(--font-dm-sans), sans-serif"
                   letterSpacing="-0.02em"
                 >
                   GradTracker
                 </Text>
                 <Badge
-                  colorPalette="green"
+                  colorPalette="blue"
                   variant="surface"
                   size="sm"
                   fontWeight="500"
@@ -179,7 +282,7 @@ export default function SignupPage() {
           right="-10%"
           w="500px"
           h="500px"
-          bg="green.500"
+          bg="blue.500"
           opacity="0.05"
           borderRadius="full"
           filter="blur(100px)"
@@ -202,7 +305,7 @@ export default function SignupPage() {
             <Box
               position="absolute"
               inset="-4"
-              bg="green.500"
+              bg="blue.500"
               opacity="0.15"
               borderRadius="3xl"
               filter="blur(40px)"
@@ -227,7 +330,7 @@ export default function SignupPage() {
                 h="1px"
                 bgGradient="to-r"
                 gradientFrom="transparent"
-                gradientVia="green.500"
+                gradientVia="blue.500"
                 gradientTo="transparent"
               />
 
@@ -237,14 +340,14 @@ export default function SignupPage() {
                     <Text
                       fontWeight="700"
                       fontSize="2xl"
-                      fontFamily="var(--font-outfit), sans-serif"
+                      fontFamily="var(--font-dm-sans), sans-serif"
                       letterSpacing="-0.02em"
                     >
-                      Create Your Account
+                      Create Student Account
                     </Text>
                     <Text color="fg.muted" fontSize="sm">
                       Join fellow Rangers and start tracking your path to
-                      graduation
+                      graduation with your student tools.
                     </Text>
                   </VStack>
 
@@ -272,7 +375,7 @@ export default function SignupPage() {
 
                     <Field label="Email">
                       <Input
-                        placeholder="your.name@uwp.edu"
+                        placeholder="your.name@rangers.uwp.edu"
                         type="email"
                         rounded="lg"
                         size="lg"
@@ -304,7 +407,7 @@ export default function SignupPage() {
 
                   <Button
                     w="full"
-                    colorPalette="green"
+                    colorPalette="blue"
                     size="lg"
                     rounded="lg"
                     fontWeight="600"
@@ -338,7 +441,7 @@ export default function SignupPage() {
                     <Link href="/signin">
                       <Text
                         as="span"
-                        color="green.solid"
+                        color="blue.solid"
                         cursor="pointer"
                         fontWeight="600"
                         _hover={{ textDecoration: "underline" }}
@@ -347,12 +450,71 @@ export default function SignupPage() {
                       </Text>
                     </Link>
                   </Text>
+
+                  <Text fontSize="sm" color="fg.muted" textAlign="center">
+                    Are you an advisor?
+                  </Text>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    color="blue.solid"
+                    fontWeight="600"
+                    onClick={() => setAdvisorDialogOpen(true)}
+                  >
+                    Access code required →
+                  </Button>
                 </VStack>
               </Card.Body>
             </Card.Root>
           </Box>
         </Container>
       </Box>
+
+      <DialogRoot
+        open={advisorDialogOpen}
+        onOpenChange={(event) => {
+          setAdvisorDialogOpen(event.open);
+          if (!event.open) {
+            setAdvisorAccessCode("");
+          }
+        }}
+      >
+        <DialogContent maxW="sm">
+          <DialogHeader>
+            <DialogTitle>Advisor Access</DialogTitle>
+          </DialogHeader>
+          <DialogBody pb="6">
+            <VStack gap="4" align="stretch">
+              <Text fontSize="sm" color="fg.muted">
+                Enter the access code provided by the department.
+              </Text>
+              <Field label="Advisor Access Code">
+                <Input
+                  type="password"
+                  placeholder="Advisor Access Code"
+                  rounded="lg"
+                  value={advisorAccessCode}
+                  onChange={(e) => setAdvisorAccessCode(e.target.value)}
+                />
+              </Field>
+            </VStack>
+          </DialogBody>
+          <DialogFooter>
+            <Button
+              variant="ghost"
+              onClick={() => {
+                setAdvisorDialogOpen(false);
+                setAdvisorAccessCode("");
+              }}
+            >
+              Cancel
+            </Button>
+            <Button colorPalette="blue" onClick={handleAdvisorAccessContinue}>
+              Continue
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </DialogRoot>
     </Box>
   );
 }

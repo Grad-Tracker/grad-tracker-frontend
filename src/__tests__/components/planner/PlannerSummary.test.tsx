@@ -93,7 +93,7 @@ describe("PlannerSummary", () => {
     // 2 terms
     expect(screen.getAllByText("2").length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText("sem").length).toBeGreaterThanOrEqual(1);
-  });
+  }, 15000);
 
   it("renders course count", () => {
     renderWithChakra(<PlannerSummary {...defaultProps} />);

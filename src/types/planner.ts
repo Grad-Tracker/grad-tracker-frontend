@@ -39,6 +39,7 @@ export interface PlannedCourse {
 
 export interface PlannedCourseWithDetails extends PlannedCourse {
   course: Course;
+  requirementLabel?: string | null;
 }
 
 export interface RequirementBlockWithCourses {
@@ -193,7 +194,7 @@ export function getPackageCourseKeys(pkg: BreadthPackage): Set<string> {
 
 /** Check whether a requirement block is a breadth block */
 export function isBreadthBlock(block: RequirementBlockWithCourses): boolean {
-  return block.name === "Breadth Requirements";
+  return block.name.toLowerCase().includes("breadth requirement");
 }
 
 /** Build a course key (subject + number) for matching against package definitions */
@@ -288,7 +289,7 @@ export function shortenBlockName(name: string): string {
     return "Concentration";
 
   const stripped = name
-    .replace(/^Required Major Courses\s*-?\s*/i, "")
+    .replace(/^Required Major Courses[\s-]*/i, "")
     .replace(/^Required Program\s*/i, "")
     .replace(/^Required\s+/i, "")
     .replace(/\s+Courses?$/i, "")

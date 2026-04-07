@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import { useDroppable } from "@dnd-kit/core";
 import {
   Box,
@@ -15,14 +15,14 @@ import {
 } from "@chakra-ui/react";
 import { LuSearch, LuChevronDown, LuBookOpen, LuArrowDownToLine, LuGripVertical } from "react-icons/lu";
 import type { RequirementBlockWithCourses, PlannedCourseWithDetails, GraduateTrack } from "@/types/planner";
+import type { GenEdBucketWithCourses } from "@/types/auto-generate";
 import { isBreadthBlock } from "@/types/planner";
 import DraggableCourseCard from "./DraggableCourseCard";
 import RequirementProgress from "./RequirementProgress";
+import GenEdProgress from "./GenEdProgress";
 import BreadthPackageSelector from "./BreadthPackageSelector";
 import GraduateTrackSelector from "./GraduateTrackSelector";
-
-const MIN_PANEL_WIDTH = 300;
-const MAX_PANEL_WIDTH = 550;
+import { MIN_PANEL_WIDTH, MAX_PANEL_WIDTH } from "@/constants/planner";
 
 interface CoursePanelProps {
   blocks: RequirementBlockWithCourses[];
@@ -37,6 +37,7 @@ interface CoursePanelProps {
   graduateTracks?: GraduateTrack[];
   selectedTrackId?: number | null;
   onTrackSelect?: (trackId: number) => void;
+  genEdBuckets?: GenEdBucketWithCourses[];
 }
 
 export default function CoursePanel({
@@ -52,6 +53,7 @@ export default function CoursePanel({
   graduateTracks = [],
   selectedTrackId = null,
   onTrackSelect,
+  genEdBuckets = [],
 }: CoursePanelProps) {
   const { isOver, setNodeRef } = useDroppable({ id: "course-panel" });
   const [search, setSearch] = useState("");
@@ -59,6 +61,7 @@ export default function CoursePanel({
   const isResizing = useRef(false);
   const startX = useRef(0);
   const startWidth = useRef(MIN_PANEL_WIDTH);
+  const rafId = useRef<number | null>(null);
 
   const handleResizeStart = useCallback((e: React.PointerEvent) => {
     e.preventDefault();
@@ -70,44 +73,60 @@ export default function CoursePanel({
 
   const handleResizeMove = useCallback((e: React.PointerEvent) => {
     if (!isResizing.current) return;
-    const delta = e.clientX - startX.current;
-    const newWidth = Math.min(MAX_PANEL_WIDTH, Math.max(MIN_PANEL_WIDTH, startWidth.current + delta));
-    setPanelWidth(newWidth);
+    if (rafId.current !== null) return;
+    const clientX = e.clientX;
+    rafId.current = requestAnimationFrame(() => {
+      const delta = clientX - startX.current;
+      const newWidth = Math.min(MAX_PANEL_WIDTH, Math.max(MIN_PANEL_WIDTH, startWidth.current + delta));
+      setPanelWidth(newWidth);
+      rafId.current = null;
+    });
   }, []);
 
   const handleResizeEnd = useCallback(() => {
     isResizing.current = false;
+    if (rafId.current !== null) {
+      cancelAnimationFrame(rafId.current);
+      rafId.current = null;
+    }
   }, []);
   const query = search.toLowerCase().trim();
 
-  const filteredBlocks = blocks
-    .map((block) => ({
-      ...block,
-      courses: block.courses.filter((c) => {
-        if (!query) return true;
-        return (
-          `${c.subject} ${c.number}`.toLowerCase().includes(query) ||
-          c.title.toLowerCase().includes(query)
-        );
-      }),
-    }))
-    .filter((block) => block.courses.length > 0);
+  const filteredBlocks = useMemo(
+    () =>
+      blocks
+        .map((block) => ({
+          ...block,
+          courses: block.courses.filter((c) => {
+            if (!query) return true;
+            return (
+              `${c.subject} ${c.number}`.toLowerCase().includes(query) ||
+              c.title.toLowerCase().includes(query)
+            );
+          }),
+        }))
+        .filter((block) => block.courses.length > 0),
+    [blocks, query]
+  );
 
-  const totalAvailable = blocks.reduce(
-    (sum, b) =>
-      sum +
-      b.courses.filter(
-        (c) => !completedCourseIds.has(c.id) && !plannedCourseIds.has(c.id)
-      ).length,
-    0
+  const totalAvailable = useMemo(
+    () =>
+      blocks.reduce(
+        (sum, b) =>
+          sum +
+          b.courses.filter(
+            (c) => !completedCourseIds.has(c.id) && !plannedCourseIds.has(c.id)
+          ).length,
+        0
+      ),
+    [blocks, completedCourseIds, plannedCourseIds]
   );
 
   return (
     <Box
-      position={{ lg: "sticky" }}
-      top={{ lg: "73px" }}
       display="flex"
       flexShrink={0}
+      h={{ lg: "100%" }}
     >
     <Box
       ref={setNodeRef}
@@ -117,7 +136,7 @@ export default function CoursePanel({
       borderColor={isOver ? "orange.400" : "border.subtle"}
       bg={isOver ? "orange.subtle" : "bg"}
       overflowY="auto"
-      maxH={{ lg: "calc(100vh - 73px)" }}
+      h={{ lg: "100%" }}
       transition={isResizing.current ? "none" : "background 0.2s, border-color 0.2s"}
     >
       {/* Drop-to-remove indicator */}
@@ -144,18 +163,18 @@ export default function CoursePanel({
       {/* Panel Header */}
       <Box px="4" py="4" borderBottomWidth="1px" borderColor="border.subtle">
         <HStack mb="3" gap="2">
-          <Icon boxSize="5" color="green.fg">
+          <Icon boxSize="5" color="blue.fg">
             <LuBookOpen />
           </Icon>
           <Heading
             size="sm"
-            fontFamily="var(--font-outfit), sans-serif"
+            fontFamily="var(--font-dm-sans), sans-serif"
             fontWeight="400"
             letterSpacing="-0.02em"
           >
             Course Pool
           </Heading>
-          <Badge size="sm" variant="subtle" colorPalette="green">
+          <Badge size="sm" variant="subtle" colorPalette="blue">
             {totalAvailable} available
           </Badge>
         </HStack>
@@ -189,6 +208,15 @@ export default function CoursePanel({
         hasBreadthPackageSelected={!!selectedBreadthPackageId}
         isGraduatePlan={isGraduatePlan}
       />
+
+      {/* Gen Ed Progress */}
+      {!isGraduatePlan && (
+        <GenEdProgress
+          buckets={genEdBuckets}
+          plannedCourses={plannedCourses}
+          completedCourseIds={completedCourseIds}
+        />
+      )}
 
       {/* Graduate Track Selector */}
       {isGraduatePlan && graduateTracks.length >= 2 && onTrackSelect && (
@@ -255,18 +283,17 @@ export default function CoursePanel({
                     allBreadthCourses={allBreadthCourses}
                   />
                 )}
-                {(!isBreadth || selectedBreadthPackageId) && (
-                  <VStack align="stretch" gap="1.5" px="3" py="2">
-                    {block.courses.map((course) => (
-                      <DraggableCourseCard
-                        key={course.id}
-                        course={course}
-                        isCompleted={completedCourseIds.has(course.id)}
-                        isPlanned={plannedCourseIds.has(course.id)}
-                      />
-                    ))}
-                  </VStack>
-                )}
+                <VStack align="stretch" gap="1.5" px="3" py="2">
+                  {block.courses.map((course) => (
+                    <DraggableCourseCard
+                      key={course.id}
+                      course={course}
+                      isCompleted={completedCourseIds.has(course.id)}
+                      isPlanned={plannedCourseIds.has(course.id)}
+                      dragContextId={block.id}
+                    />
+                  ))}
+                </VStack>
               </Collapsible.Content>
             </Collapsible.Root>
           );
@@ -284,7 +311,7 @@ export default function CoursePanel({
       bg="transparent"
       borderRightWidth="1px"
       borderColor="border.subtle"
-      _hover={{ bg: "bg.subtle", borderColor: "green.300" }}
+      _hover={{ bg: "bg.subtle", borderColor: "blue.300" }}
       transition="all 0.15s"
       flexShrink={0}
       onPointerDown={handleResizeStart}

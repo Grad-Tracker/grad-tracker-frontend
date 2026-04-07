@@ -11,19 +11,15 @@ import {
   Progress,
   Separator,
   Separator as Divider,
-  Spinner,
   Text,
   VStack,
 } from "@chakra-ui/react";
-import { createClient } from "@/app/utils/supabase/client";
+import { GenEdSkeleton } from "@/components/requirements/RequirementsSkeleton";
 import { evaluatePrereqsForCourses, type PrereqEvaluationMap } from "@/lib/prereq";
-import { DB_TABLES } from "@/lib/supabase/queries/schema";
-type Bucket = {
-  id: number;
-  code: string;
-  name: string;
-  credits_required: number;
-};
+import {
+  fetchGenEdBucketsWithCourses,
+  fetchStudentCourseProgress,
+} from "@/lib/supabase/queries/planner";
 
 type Course = {
   id: number;
@@ -33,16 +29,33 @@ type Course = {
   credits: number | null;
 };
 
-type BucketCourseRow = {
-  bucket_id: number;
-  course_id: number;
+type Bucket = {
+  id: number;
+  code: string;
+  name: string;
+  credits_required: number;
+  courses: Course[];
 };
 
-type HistoryRow = {
-  course_id: number;              // <-- matches table column name: "course"
-  grade: string | null;
-  completed: boolean | null;
-};
+function normalizeBucketCourse(c: { id: number | string; subject: string | null; number: string | null; title: string | null; credits: number | string | null }): Course {
+  return {
+    id: Number(c.id),
+    subject: c.subject ?? null,
+    number: c.number ?? null,
+    title: c.title ?? null,
+    credits: c.credits == null ? null : Number(c.credits),
+  };
+}
+
+function collectAllCourseIds(buckets: Bucket[]): number[] {
+  const ids = new Set<number>();
+  for (const b of buckets) {
+    for (const c of b.courses) {
+      ids.add(c.id);
+    }
+  }
+  return Array.from(ids);
+}
 
 function sortByCode(a: Course, b: Course) {
   const aSubject = (a.subject ?? "").toString();
@@ -54,15 +67,11 @@ function sortByCode(a: Course, b: Course) {
 }
 
 export default function GenEdRequirements({ studentId }: { studentId: number }) {
-  const supabase = useMemo(() => createClient(), []);
-
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const [buckets, setBuckets] = useState<Bucket[]>([]);
-  const [bucketCourses, setBucketCourses] = useState<BucketCourseRow[]>([]);
-  const [history, setHistory] = useState<HistoryRow[]>([]);
-  const [coursesById, setCoursesById] = useState<Map<number, Course>>(new Map());
+  const [completedCourseIds, setCompletedCourseIds] = useState<Set<number>>(new Set());
   const [prereqByCourse, setPrereqByCourse] = useState<PrereqEvaluationMap>(new Map());
   const [showRemaining, setShowRemaining] = useState<Record<string, boolean>>({});
 
@@ -74,70 +83,36 @@ export default function GenEdRequirements({ studentId }: { studentId: number }) 
       setError(null);
 
       try {
-        // 1) Buckets
-        const { data: bucketsData, error: bucketsErr } = await supabase
-          .from(DB_TABLES.genEdBuckets)
-          .select("id, code, name, credits_required")
-          .order("id", { ascending: true });
+        const [bucketRows, progressRows] = await Promise.all([
+          fetchGenEdBucketsWithCourses(),
+          fetchStudentCourseProgress(studentId),
+        ]);
 
-        if (bucketsErr) throw new Error(`Error loading buckets: ${bucketsErr.message}`);
         if (cancelled) return;
 
-        const bucketList = (bucketsData ?? []) as Bucket[];
-        setBuckets(bucketList);
+        const normalizedBuckets: Bucket[] = bucketRows.map((b) => ({
+          id: Number(b.id),
+          code: String(b.code),
+          name: String(b.name),
+          credits_required: Number(b.credits_required ?? 0),
+          courses: (b.courses ?? []).map(normalizeBucketCourse),
+        }));
 
-        // 2) Bucket -> course mappings
-        const { data: mapData, error: mapErr } = await supabase
-          .from(DB_TABLES.genEdBucketCourses)
-          .select("bucket_id, course_id");
+        setBuckets(normalizedBuckets);
 
-        if (mapErr) throw new Error(`Error loading bucket courses: ${mapErr.message}`);
-        if (cancelled) return;
-
-        const mappings = (mapData ?? []) as BucketCourseRow[];
-        setBucketCourses(mappings);
-
-        const allCourseIds = Array.from(
-          new Set(mappings.map((m) => Number(m.course_id)).filter((n) => Number.isFinite(n)))
+        const completed = new Set<number>(
+          progressRows
+            .filter(
+              (r) =>
+                r.completed === true ||
+                String(r.progress_status ?? "").toUpperCase() === "COMPLETED"
+            )
+            .map((r) => Number(r.course_id))
+            .filter((id) => Number.isFinite(id))
         );
+        setCompletedCourseIds(completed);
 
-        // 3) Student history (IMPORTANT: column is "course", not "course_id")
-        const { data: historyData, error: historyErr } = await supabase
-          .from(DB_TABLES.studentCourseHistory)
-          .select("course_id, grade, completed")
-          .eq("student_id", studentId);
-
-        if (historyErr) throw new Error(`Error loading history: ${historyErr.message}`);
-        if (cancelled) return;
-
-        setHistory((historyData ?? []) as HistoryRow[]);
-
-        // 4) Course details
-        if (allCourseIds.length > 0) {
-          const { data: coursesData, error: coursesErr } = await supabase
-            .from(DB_TABLES.courses)
-            .select("id, subject, number, title, credits")
-            .in("id", allCourseIds);
-
-          if (coursesErr) throw new Error(`Error loading courses: ${coursesErr.message}`);
-          if (cancelled) return;
-
-          const map = new Map<number, Course>();
-          (coursesData ?? []).forEach((c: any) => {
-            map.set(Number(c.id), {
-              id: Number(c.id),
-              subject: c.subject ?? null,
-              number: c.number ?? null,
-              title: c.title ?? null,
-              credits: c.credits == null ? null : Number(c.credits),
-            });
-          });
-
-          setCoursesById(map);
-        } else {
-          setCoursesById(new Map());
-        }
-
+        const allCourseIds = collectAllCourseIds(normalizedBuckets);
         const prereqMap = await evaluatePrereqsForCourses(allCourseIds, studentId);
         if (cancelled) return;
         setPrereqByCourse(prereqMap);
@@ -152,27 +127,7 @@ export default function GenEdRequirements({ studentId }: { studentId: number }) 
     return () => {
       cancelled = true;
     };
-  }, [supabase, studentId]);
-
-  const completedCourseIds = useMemo(() => {
-    return new Set<number>(
-      (history ?? [])
-        .filter((h) => h.completed === true || (h.grade && String(h.grade).trim() !== ""))
-        .map((h) => Number(h.course_id)) // <-- use "course"
-    );
-  }, [history]);
-
-  const bucketToCourseIds = useMemo(() => {
-    const map = new Map<number, number[]>();
-    (bucketCourses ?? []).forEach((row) => {
-      const bId = Number(row.bucket_id);
-      const cId = Number(row.course_id);
-      if (!Number.isFinite(bId) || !Number.isFinite(cId)) return;
-      if (!map.has(bId)) map.set(bId, []);
-      map.get(bId)!.push(cId);
-    });
-    return map;
-  }, [bucketCourses]);
+  }, [studentId]);
 
   const computeStatus = useMemo(
     () =>
@@ -200,16 +155,9 @@ export default function GenEdRequirements({ studentId }: { studentId: number }) 
   );
 
   const bucketsWithProgress = useMemo(() => {
-    return (buckets ?? []).map((b) => {
-      const courseIds = bucketToCourseIds.get(b.id) ?? [];
-
-      const detailed = courseIds
-        .map((id) => coursesById.get(id))
-        .filter(Boolean)
-        .map((course) => {
-          const c = course as Course;
-          return { course: c, completed: completedCourseIds.has(c.id) };
-        })
+    return buckets.map((b) => {
+      const detailed = (b.courses ?? [])
+        .map((course) => ({ course, completed: completedCourseIds.has(course.id) }))
         .sort((a, d) => {
           const s1 = a.course.subject ?? "";
           const s2 = d.course.subject ?? "";
@@ -236,7 +184,7 @@ export default function GenEdRequirements({ studentId }: { studentId: number }) 
         pct,
       };
     });
-  }, [buckets, bucketToCourseIds, coursesById, completedCourseIds]);
+  }, [buckets, completedCourseIds]);
 
   useEffect(() => {
     setShowRemaining((prev) => {
@@ -250,14 +198,7 @@ export default function GenEdRequirements({ studentId }: { studentId: number }) 
   }, [bucketsWithProgress]);
 
   if (loading) {
-    return (
-      <Box px={{ base: "4", md: "8" }} py="8">
-        <HStack gap="3">
-          <Spinner />
-          <Text color="fg.muted">Loading Gen Ed requirements…</Text>
-        </HStack>
-      </Box>
-    );
+    return <GenEdSkeleton />;
   }
 
   if (error) {
@@ -283,7 +224,7 @@ export default function GenEdRequirements({ studentId }: { studentId: number }) 
           </Text>
           <Heading
             size="lg"
-            fontFamily="var(--font-outfit), sans-serif"
+            fontFamily="var(--font-dm-sans), sans-serif"
             fontWeight="400"
             letterSpacing="-0.02em"
           >
@@ -340,11 +281,11 @@ export default function GenEdRequirements({ studentId }: { studentId: number }) 
                           border={completed ? "1px solid" : undefined}
                           borderWidth="1px"
                           boxShadow={
-                            completed ? "0 0 0 1px rgba(34,197,94,0.25)" : undefined
+                            completed ? "0 0 0 1px color-mix(in srgb, var(--chakra-colors-blue-500) 25%, transparent)" : undefined
                           }
-                          bg={completed ? "green.700" : "bg.subtle"}
-                          borderColor={completed ? "green.500" : "border.subtle"}
-                          _hover={{ bg: completed ? "green.600" : "bg.subtle" }}
+                          bg={completed ? "blue.700" : "bg.subtle"}
+                          borderColor={completed ? "blue.500" : "border.subtle"}
+                          _hover={{ bg: completed ? "blue.600" : "bg.subtle" }}
                         >
                           <HStack gap="3">
                             <Box>
@@ -368,7 +309,7 @@ export default function GenEdRequirements({ studentId }: { studentId: number }) 
                               ) : null}
                               {showPrereqWarning && prereq.summary.length > 0 ? (
                                 <Text fontSize="xs" color="orange.600" fontWeight="400">
-                                  {prereq.summary.join(" • ")}
+                                  {prereq.summary.join("  ")}
                                 </Text>
                               ) : null}
                             </Box>
@@ -391,30 +332,30 @@ export default function GenEdRequirements({ studentId }: { studentId: number }) 
                     <Box>
                       <HStack gap="2" wrap="wrap">
                         <Heading size="md">{b.name}</Heading>
-                        <Badge colorPalette="green" variant="subtle">
+                        <Badge colorPalette="blue" variant="subtle">
                           {b.code}
                         </Badge>
                       </HStack>
                     </Box>
 
-                    <Badge colorPalette={b.remaining === 0 ? "green" : "gray"} variant="surface">
+                    <Badge colorPalette={b.remaining === 0 ? "blue" : "gray"} variant="surface">
                       {b.remaining === 0 ? "Done" : "In progress"}
                     </Badge>
                   </Flex>
 
                   <HStack gap="2" wrap="wrap">
-                    <Badge colorPalette="green" variant="subtle">
-                      Completed ({completedCount}) • {completedCredits} cr
+                    <Badge colorPalette="blue" variant="subtle">
+                      Completed ({completedCount}) â¢ {completedCredits} cr
                     </Badge>
                     <Badge colorPalette="orange" variant="subtle">
-                      In progress ({inProgressCount}) • {inProgressCredits} cr
+                      In progress ({inProgressCount}) â¢ {inProgressCredits} cr
                     </Badge>
                     <Badge colorPalette="gray" variant="outline">
-                      Remaining ({remainingCount}) • {remainingCredits} cr
+                      Remaining ({remainingCount}) â¢ {remainingCredits} cr
                     </Badge>
                   </HStack>
 
-                  <Progress.Root value={b.pct} max={100} colorPalette="green" size="sm">
+                  <Progress.Root value={b.pct} max={100} colorPalette="blue" size="sm">
                     <Progress.Track borderRadius="md">
                       <Progress.Range borderRadius="md" />
                     </Progress.Track>
@@ -440,55 +381,54 @@ export default function GenEdRequirements({ studentId }: { studentId: number }) 
                               <Text fontSize="sm" fontWeight="600" color="fg.muted">
                                 Completed
                               </Text>
-                              <Badge variant="subtle" colorPalette="green">
+                              <Badge variant="subtle" colorPalette="blue">
                                 {completedCourses.length}
                               </Badge>
                             </HStack>
-                            {completedCourses.map(renderCourseRow)}
+                          {completedCourses.map(renderCourseRow)}
                           </>
                         ) : null}
+                              {inProgressCourses.length > 0 ? (
+                                <>
+                                  <Divider opacity={0.4} mt="3" mb="2" />
+                                  <HStack justify="space-between" mt="3" mb="2">
+                                    <Text fontSize="sm" fontWeight="600" color="fg.muted">
+                                      In progress
+                                    </Text>
+                                    <Badge variant="subtle" colorPalette="orange">
+                                      {inProgressCourses.length}
+                                    </Badge>
+                                  </HStack>
+                                  {inProgressCourses.map(renderCourseRow)}
+                                </>
+                              ) : null}
 
-                        {inProgressCourses.length > 0 ? (
-                          <>
-                            <Divider opacity={0.4} mt="3" mb="2" />
-                            <HStack justify="space-between" mt="3" mb="2">
-                              <Text fontSize="sm" fontWeight="600" color="fg.muted">
-                                In progress
-                              </Text>
-                              <Badge variant="subtle" colorPalette="orange">
-                                {inProgressCourses.length}
-                              </Badge>
-                            </HStack>
-                            {inProgressCourses.map(renderCourseRow)}
-                          </>
-                        ) : null}
-
-                        {remainingCourses.length > 0 ? (
-                          <>
-                            <Divider opacity={0.4} mt="3" mb="2" />
-                            <HStack justify="flex-end" align="center" mt="3" mb="2">
-                              <Text
-                                fontSize="sm"
-                                color="fg.muted"
-                                cursor="pointer"
-                                onClick={() =>
-                                  setShowRemaining((prev) => ({
-                                    ...prev,
-                                    [bucketKey]: !prev[bucketKey],
-                                  }))
-                                }
-                              >
-                                {isRemainingOpen
-                                  ? "Hide remaining"
-                                  : `Show remaining (${remainingCourses.length})`}
-                              </Text>
-                            </HStack>
-                            {isRemainingOpen ? remainingCourses.map(renderCourseRow) : null}
-                          </>
-                        ) : null}
-                      </VStack>
-                    )}
-                  </Box>
+                              {remainingCourses.length > 0 ? (
+                                <>
+                                  <Divider opacity={0.4} mt="3" mb="2" />
+                                  <HStack justify="flex-end" align="center" mt="3" mb="2">
+                                    <Text
+                                      fontSize="sm"
+                                      color="fg.muted"
+                                      cursor="pointer"
+                                      onClick={() =>
+                                        setShowRemaining((prev) => ({
+                                          ...prev,
+                                          [bucketKey]: !prev[bucketKey],
+                                        }))
+                                      }
+                                    >
+                                      {isRemainingOpen
+                                        ? "Hide remaining"
+                                        : `Show remaining (${remainingCourses.length})`}
+                                    </Text>
+                                  </HStack>
+                                  {isRemainingOpen ? remainingCourses.map(renderCourseRow) : null}
+                                </>
+                              ) : null}
+                            </VStack>
+                          )}
+                        </Box>
                       </>
                     );
                   })()}

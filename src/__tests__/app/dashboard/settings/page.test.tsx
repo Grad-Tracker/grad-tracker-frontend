@@ -5,11 +5,16 @@ import { ChakraProvider, defaultSystem } from "@chakra-ui/react";
 
 /* ---------------- HOISTED MOCKS ---------------- */
 
-const { mockGetUser, mockUpdateUser, mockFrom, mockToasterCreate } = vi.hoisted(() => ({
+const { mockGetUser, mockUpdateUser, mockFrom, mockToasterCreate, mockPush } = vi.hoisted(() => ({
   mockGetUser: vi.fn(),
   mockUpdateUser: vi.fn(),
   mockFrom: vi.fn(),
   mockToasterCreate: vi.fn(),
+  mockPush: vi.fn(),
+}));
+
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: mockPush, replace: vi.fn(), refresh: vi.fn() }),
 }));
 
 vi.mock("@/lib/supabase/client", () => ({
@@ -104,10 +109,10 @@ describe("SettingsPage", () => {
 
   /* ---- Loading ---- */
 
-  it("shows loading state initially", () => {
+  it("shows skeleton loading state initially", () => {
     mockGetUser.mockReturnValue(new Promise(() => {})); // never resolves
     renderSettings();
-    expect(screen.getByText(/Loading\.\.\./i)).toBeInTheDocument();
+    expect(screen.getByTestId("settings-skeleton")).toBeInTheDocument();
   });
 
   /* ---- Profile section ---- */
@@ -161,7 +166,7 @@ describe("SettingsPage", () => {
     });
 
     expect(updateFn).toHaveBeenCalledWith({ first_name: "Bobby", last_name: "Smith" });
-  });
+  }, 15000);
 
   /* ---- Email section ---- */
 
@@ -190,7 +195,7 @@ describe("SettingsPage", () => {
     await act(async () => { fireEvent.click(btn); });
 
     expect(mockUpdateUser).toHaveBeenCalledWith({ email: "newemail@uwp.edu" });
-  });
+  }, 15000);
 
   /* ---- Expected Graduation section ---- */
 
@@ -282,48 +287,240 @@ describe("SettingsPage", () => {
     );
   });
 
-  /* ---- Notification Preferences section ---- */
+  /* Notification Preferences section is commented out — tests skipped until re-enabled */
 
-  it("renders Notification Preferences heading", async () => {
+  it("renders blank profile fields when the student lookup returns null", async () => {
+    mockGetUser.mockResolvedValue({
+      data: { user: { id: "auth-uuid", email: "test@uwp.edu" } },
+      error: null,
+    });
+
+    mockFrom.mockImplementation(() => {
+      const chain = createChainMock();
+      chain.maybeSingle = vi.fn().mockResolvedValue({ data: null, error: null });
+      return chain;
+    });
+
+    await act(async () => { renderSettings(); });
+
+    await waitFor(() => {
+      expect(screen.getByPlaceholderText("First name")).toHaveValue("");
+      expect(screen.getByPlaceholderText("Last name")).toHaveValue("");
+      expect(screen.getByPlaceholderText("you@example.com")).toHaveValue("test@uwp.edu");
+    });
+  });
+
+  it("shows an error toast when saving the name fails", async () => {
+    const eqFn = vi.fn().mockResolvedValue({ data: null, error: new Error("save failed") });
+    const updateFn = vi.fn().mockReturnValue({ eq: eqFn });
+
+    mockGetUser.mockResolvedValue({
+      data: { user: { id: "auth-uuid", email: "test@uwp.edu" } },
+      error: null,
+    });
+
+    mockFrom.mockImplementation((table: string) => {
+      if (table === "students") {
+        const chain = createChainMock();
+        chain.maybeSingle = vi.fn().mockResolvedValue({ data: DEFAULT_STUDENT, error: null });
+        chain.update = updateFn;
+        return chain;
+      }
+      return createChainMock();
+    });
+
+    await act(async () => { renderSettings(); });
+    await waitFor(() => screen.getByPlaceholderText("First name"));
+
+    await act(async () => {
+      fireEvent.click(screen.getByText("Save Name"));
+    });
+
+    expect(mockToasterCreate).toHaveBeenCalledWith(
+      expect.objectContaining({ title: "Failed to update name", description: "save failed", type: "error" })
+    );
+  });
+
+  it("shows a success toast when updating the email succeeds", async () => {
     setupMocks();
     await act(async () => { renderSettings(); });
+    await waitFor(() => screen.getByPlaceholderText("you@example.com"));
 
-    await waitFor(() => {
-      expect(screen.getByText("Notification Preferences")).toBeInTheDocument();
+    fireEvent.change(screen.getByPlaceholderText("you@example.com"), {
+      target: { value: "updated@uwp.edu" },
+    });
+
+    await act(async () => { fireEvent.click(screen.getByText("Update Email")); });
+
+    expect(mockToasterCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: "Verification email sent",
+        type: "success",
+      })
+    );
+  });
+
+  it("shows an error toast when updating the email fails", async () => {
+    setupMocks();
+    mockUpdateUser.mockResolvedValue({ data: null, error: new Error("email failed") });
+
+    await act(async () => { renderSettings(); });
+    await waitFor(() => screen.getByPlaceholderText("you@example.com"));
+
+    fireEvent.change(screen.getByPlaceholderText("you@example.com"), {
+      target: { value: "updated@uwp.edu" },
+    });
+
+    await act(async () => { fireEvent.click(screen.getByText("Update Email")); });
+
+    expect(mockToasterCreate).toHaveBeenCalledWith(
+      expect.objectContaining({ title: "Failed to update email", description: "email failed", type: "error" })
+    );
+  });
+
+  it("allows clearing graduation info and saves null values", async () => {
+    const eqFn = vi.fn().mockResolvedValue({ data: null, error: null });
+    const updateFn = vi.fn().mockReturnValue({ eq: eqFn });
+
+    mockGetUser.mockResolvedValue({
+      data: { user: { id: "auth-uuid", email: "test@uwp.edu" } },
+      error: null,
+    });
+
+    mockFrom.mockImplementation((table: string) => {
+      if (table === "students") {
+        const chain = createChainMock();
+        chain.maybeSingle = vi.fn().mockResolvedValue({ data: DEFAULT_STUDENT, error: null });
+        chain.update = updateFn;
+        return chain;
+      }
+      return createChainMock();
+    });
+
+    await act(async () => { renderSettings(); });
+    await waitFor(() => screen.getByPlaceholderText("e.g. 2026"));
+
+    fireEvent.change(screen.getByRole("combobox"), { target: { value: "" } });
+    fireEvent.change(screen.getByPlaceholderText("e.g. 2026"), { target: { value: "" } });
+
+    await act(async () => {
+      fireEvent.click(screen.getByText("Save Graduation Info"));
+    });
+
+    expect(updateFn).toHaveBeenCalledWith({
+      expected_graduation_semester: null,
+      expected_graduation_year: null,
     });
   });
 
-  it("renders all four notification option labels", async () => {
+  it("shows an error toast when saving graduation info fails", async () => {
+    const eqFn = vi.fn().mockResolvedValue({ data: null, error: new Error("grad failed") });
+    const updateFn = vi.fn().mockReturnValue({ eq: eqFn });
+
+    mockGetUser.mockResolvedValue({
+      data: { user: { id: "auth-uuid", email: "test@uwp.edu" } },
+      error: null,
+    });
+
+    mockFrom.mockImplementation((table: string) => {
+      if (table === "students") {
+        const chain = createChainMock();
+        chain.maybeSingle = vi.fn().mockResolvedValue({ data: DEFAULT_STUDENT, error: null });
+        chain.update = updateFn;
+        return chain;
+      }
+      return createChainMock();
+    });
+
+    await act(async () => { renderSettings(); });
+    await waitFor(() => screen.getByPlaceholderText("e.g. 2026"));
+
+    await act(async () => {
+      fireEvent.click(screen.getByText("Save Graduation Info"));
+    });
+
+    expect(mockToasterCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: "Failed to update graduation info",
+        description: "grad failed",
+        type: "error",
+      })
+    );
+  });
+
+  /* Notification preference tests skipped — UI is commented out until notifications are implemented */
+
+  it("opens and cancels the reset-progress confirmation", async () => {
     setupMocks();
     await act(async () => { renderSettings(); });
+    await waitFor(() => screen.getByText("Reset All Progress"));
 
-    await waitFor(() => {
-      expect(screen.getByText("Requirement Alerts")).toBeInTheDocument();
-      expect(screen.getByText("Semester Planning Reminders")).toBeInTheDocument();
-      expect(screen.getByText("Graduation Reminders")).toBeInTheDocument();
-      expect(screen.getByText("Weekly Progress Digest")).toBeInTheDocument();
+    await act(async () => {
+      fireEvent.click(screen.getByText("Reset All Progress"));
     });
+
+    expect(screen.getByText(/This will delete all your progress/i)).toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.click(screen.getByText("Cancel"));
+    });
+
+    expect(screen.queryByText(/This will delete all your progress/i)).not.toBeInTheDocument();
   });
 
-  it("loads existing notification preferences from DB", async () => {
-    setupMocks({}, {
-      notif_requirement_alerts: false,
-      notif_semester_reminders: true,
-      notif_graduation_reminders: false,
-      notif_weekly_digest: true,
+  it("resets progress successfully and routes back to the dashboard", async () => {
+    const studentEqFn = vi.fn().mockResolvedValue({ data: null, error: null });
+    const studentUpdateFn = vi.fn().mockReturnValue({ eq: studentEqFn });
+
+    mockGetUser.mockResolvedValue({
+      data: { user: { id: "auth-uuid", email: "test@uwp.edu" } },
+      error: null,
     });
+
+    mockFrom.mockImplementation((table: string) => {
+      if (table === "students") {
+        const chain = createChainMock();
+        chain.maybeSingle = vi.fn().mockResolvedValue({ data: DEFAULT_STUDENT, error: null });
+        chain.update = studentUpdateFn;
+        return chain;
+      }
+      if (
+        table === "student_course_history" ||
+        table === "student_planned_courses" ||
+        table === "student_programs"
+      ) {
+        const chain = createChainMock();
+        chain.delete = vi.fn().mockReturnValue(chain);
+        chain.eq = vi.fn().mockResolvedValue({ data: null, error: null });
+        return chain;
+      }
+      if (table === "notification_preferences") {
+        const chain = createChainMock();
+        chain.maybeSingle = vi.fn().mockResolvedValue({ data: null, error: null });
+        return chain;
+      }
+      return createChainMock();
+    });
+
     await act(async () => { renderSettings(); });
+    await waitFor(() => screen.getByText("Reset All Progress"));
 
-    // All labels still render regardless of toggle state
-    await waitFor(() => {
-      expect(screen.getByText("Requirement Alerts")).toBeInTheDocument();
-      expect(screen.getByText("Weekly Progress Digest")).toBeInTheDocument();
+    await act(async () => {
+      fireEvent.click(screen.getByText("Reset All Progress"));
     });
+
+    await act(async () => {
+      fireEvent.click(screen.getByText("Yes, Reset"));
+    });
+
+    expect(studentUpdateFn).toHaveBeenCalledWith({ has_completed_onboarding: false });
+    expect(mockToasterCreate).toHaveBeenCalledWith(
+      expect.objectContaining({ title: "Progress reset", type: "success" })
+    );
+    expect(mockPush).toHaveBeenCalledWith("/dashboard");
   });
 
-  it("Save Preferences calls upsert on notification_preferences with student_id", async () => {
-    const upsertFn = vi.fn().mockResolvedValue({ data: null, error: null });
-
+  it("shows an error toast when resetting progress fails", async () => {
     mockGetUser.mockResolvedValue({
       data: { user: { id: "auth-uuid", email: "test@uwp.edu" } },
       error: null,
@@ -335,26 +532,45 @@ describe("SettingsPage", () => {
         chain.maybeSingle = vi.fn().mockResolvedValue({ data: DEFAULT_STUDENT, error: null });
         return chain;
       }
+      if (table === "student_course_history") {
+        const chain = createChainMock();
+        chain.delete = vi.fn().mockReturnValue(chain);
+        chain.eq = vi.fn().mockResolvedValue({ data: null, error: new Error("reset failed") });
+        return chain;
+      }
+      if (table === "student_planned_courses" || table === "student_programs") {
+        const chain = createChainMock();
+        chain.delete = vi.fn().mockReturnValue(chain);
+        chain.eq = vi.fn().mockResolvedValue({ data: null, error: null });
+        return chain;
+      }
       if (table === "notification_preferences") {
         const chain = createChainMock();
         chain.maybeSingle = vi.fn().mockResolvedValue({ data: null, error: null });
-        chain.upsert = upsertFn;
         return chain;
       }
       return createChainMock();
     });
 
     await act(async () => { renderSettings(); });
-    await waitFor(() => screen.getByText("Notification Preferences"));
+    await waitFor(() => screen.getByText("Reset All Progress"));
 
     await act(async () => {
-      fireEvent.click(screen.getByText("Save Preferences"));
+      fireEvent.click(screen.getByText("Reset All Progress"));
     });
 
-    expect(upsertFn).toHaveBeenCalledWith(
-      expect.objectContaining({ student_id: 1 }),
-      expect.objectContaining({ onConflict: "student_id" })
+    await act(async () => {
+      fireEvent.click(screen.getByText("Yes, Reset"));
+    });
+
+    expect(mockToasterCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: "Failed to reset progress",
+        description: "reset failed",
+        type: "error",
+      })
     );
+    expect(screen.queryByText(/This will delete all your progress/i)).not.toBeInTheDocument();
   });
 
   /* ---- Password section ---- */

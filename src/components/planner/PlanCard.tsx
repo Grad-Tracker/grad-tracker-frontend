@@ -71,11 +71,13 @@ export default function PlanCard({
       : 0;
 
   const progressColor =
-    degreePct >= 75 ? "green" : degreePct >= 40 ? "yellow" : "orange";
+    degreePct >= 75 ? "blue" : degreePct >= 40 ? "yellow" : "orange";
 
   return (
     <Box
-      role="group"
+      role="button"
+      tabIndex={0}
+      aria-label={`Open plan ${plan.name}`}
       position="relative"
       borderRadius="2xl"
       borderWidth="1px"
@@ -85,7 +87,7 @@ export default function PlanCard({
       cursor="pointer"
       transition="all 0.3s cubic-bezier(0.4, 0, 0.2, 1)"
       _hover={{
-        borderColor: "green.300",
+        borderColor: "blue.300",
         boxShadow: "0 8px 30px rgba(0, 0, 0, 0.08)",
         transform: "translateY(-4px)",
       }}
@@ -94,6 +96,13 @@ export default function PlanCard({
       onClick={() => {
         if (!isRenaming) onOpen(plan.id);
       }}
+      onKeyDown={(e) => {
+        if (isRenaming) return;
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onOpen(plan.id);
+        }
+      }}
       style={{
         animationDelay: `${index * 80}ms`,
       }}
@@ -101,10 +110,9 @@ export default function PlanCard({
     >
       {/* Top accent bar */}
       <Box
-        h="3px"
-        bg={plan.has_graduate_program ? "purple.500" : "green.500"}
+        bg={plan.has_graduate_program ? "purple.500" : "blue.500"}
         transition="height 0.2s"
-        _groupHover={{ h: "4px" }}
+        h={isHovered ? "4px" : "3px"}
       />
 
       <Box p="5">
@@ -124,13 +132,13 @@ export default function PlanCard({
                   autoFocus
                   borderRadius="lg"
                   onClick={(e) => e.stopPropagation()}
-                  fontFamily="var(--font-outfit), sans-serif"
+                  fontFamily="var(--font-dm-sans), sans-serif"
                 />
                 <IconButton
                   aria-label="Confirm"
                   size="xs"
                   variant="ghost"
-                  colorPalette="green"
+                  colorPalette="blue"
                   onClick={(e) => {
                     e.stopPropagation();
                     confirmRename();
@@ -153,7 +161,7 @@ export default function PlanCard({
             ) : (
               <Heading
                 size="md"
-                fontFamily="var(--font-outfit), sans-serif"
+                fontFamily="var(--font-dm-sans), sans-serif"
                 fontWeight="400"
                 letterSpacing="-0.02em"
                 truncate
@@ -285,12 +293,12 @@ export default function PlanCard({
                   w="7"
                   h="7"
                   borderRadius="md"
-                  bg="green.subtle"
+                  bg="blue.subtle"
                   display="flex"
                   alignItems="center"
                   justifyContent="center"
                 >
-                  <Icon color="green.fg" boxSize="3.5">
+                  <Icon color="blue.fg" boxSize="3.5">
                     <LuGraduationCap />
                   </Icon>
                 </Box>
@@ -344,7 +352,7 @@ export default function PlanCard({
               })}`
             : "No changes yet"}
         </Text>
-        <HStack gap="1" color="green.fg" fontSize="xs" fontWeight="600">
+        <HStack gap="1" color="blue.fg" fontSize="xs" fontWeight="600">
           <Text>Open</Text>
           <LuArrowRight size={12} />
         </HStack>

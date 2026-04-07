@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/client";
+import { DB_VIEWS } from "@/lib/supabase/queries/schema";
 
 export type PrereqEvaluation = {
   unlocked: boolean;
@@ -45,6 +46,10 @@ type StudentHistoryRow = {
 type EvalResult = {
   ok: boolean;
   summary: string[];
+};
+
+type SupabasePrereqClient = {
+  from: (table: string) => any;
 };
 
 const GRADE_RANK: Record<string, number> = {
@@ -106,41 +111,47 @@ function gradeMeetsMinimum(studentGrade: unknown, minGrade: unknown): boolean {
   return GRADE_RANK[student] >= GRADE_RANK[min];
 }
 
-function formatCourseRequirement(requiredCourseId: number, minGrade: unknown): string {
+function formatCourseRequirement(
+  requiredCourseId: number,
+  minGrade: unknown,
+  courseCodeMap: Map<number, string>
+): string {
+  const code = courseCodeMap.get(requiredCourseId) ?? `course #${requiredCourseId}`;
   const min = normalizeGrade(minGrade);
   if (min) {
-    return `Requires course ${requiredCourseId} (${min} or better)`;
+    return `Requires ${code} (${min} or better)`;
   }
-  return `Requires course ${requiredCourseId}`;
+  return `Requires ${code}`;
 }
 
 function dedupeSummary(items: string[]): string[] {
   return Array.from(new Set(items.map((s) => s.trim()).filter(Boolean)));
 }
 
-async function fetchCompletedHistoryRows(supabase: ReturnType<typeof createClient>, studentId: number) {
-  const tryColumns = ["student", "student_id"] as const;
-  let lastError: unknown = null;
+async function fetchCompletedHistoryRows(supabase: SupabasePrereqClient, studentId: number) {
+  const res = await supabase
+    .from(DB_VIEWS.studentCourseProgress)
+    .select("student_id, course_id, grade, completed, progress_status")
+    .eq("student_id", studentId)
+    .eq("completed", true);
 
-  for (const studentCol of tryColumns) {
-    const res = await supabase
-      .from("student_course_history")
-      .select("*")
-      .eq(studentCol, studentId)
-      .eq("completed", true);
+  if (res.error) return { data: null, error: res.error };
 
-    if (!res.error) {
-      return res;
-    }
-    lastError = res.error;
-  }
-
-  return { data: null, error: lastError };
+  return {
+    data: (res.data ?? []).map((row: any) => ({
+      student_id: row.student_id,
+      course_id: row.course_id,
+      grade: row.grade,
+      completed: row.completed,
+    })),
+    error: null,
+  };
 }
 
 export async function evaluatePrereqsForCourses(
   targetCourseIds: number[],
-  studentId: number
+  studentId: number,
+  supabaseOverride?: SupabasePrereqClient
 ): Promise<PrereqEvaluationMap> {
   const courseIds = Array.from(
     new Set(targetCourseIds.map((id) => Number(id)).filter((id) => Number.isFinite(id)))
@@ -153,7 +164,7 @@ export async function evaluatePrereqsForCourses(
 
   if (courseIds.length === 0) return result;
 
-  const supabase = createClient();
+  const supabase = supabaseOverride ?? createClient();
 
   const { data: reqSetsData, error: reqSetsErr } = await supabase
     .from("course_req_sets")
@@ -196,6 +207,25 @@ export async function evaluatePrereqsForCourses(
 
   if (historyRes.error) throw historyRes.error;
   const historyRows = (historyRes.data ?? []) as StudentHistoryRow[];
+
+  // Build a courseId → "SUBJ NUM" map for all referenced prerequisite courses
+  const referencedCourseIds = new Set<number>();
+  for (const atom of reqAtoms) {
+    const id = num(atom.required_course_id ?? atom.course_id);
+    if (id != null) referencedCourseIds.add(id);
+  }
+  const courseCodeMap = new Map<number, string>();
+  if (referencedCourseIds.size > 0) {
+    const { data: courseRows } = await supabase
+      .from(DB_VIEWS.courseCatalog)
+      .select("course_id, subject, number")
+      .in("course_id", Array.from(referencedCourseIds));
+    for (const row of courseRows ?? []) {
+      const id = Number(row.course_id);
+      const code = `${String(row.subject ?? "").trim()} ${String(row.number ?? "").trim()}`.trim().toUpperCase();
+      if (code) courseCodeMap.set(id, code);
+    }
+  }
 
   const completedByCourse = new Map<number, StudentHistoryRow[]>();
   for (const row of historyRows) {
@@ -240,7 +270,7 @@ export async function evaluatePrereqsForCourses(
       if (ok) return { ok: true, summary: [] };
       return {
         ok: false,
-        summary: [formatCourseRequirement(requiredCourseId, atom.min_grade)],
+        summary: [formatCourseRequirement(requiredCourseId, atom.min_grade, courseCodeMap)],
       };
     }
 

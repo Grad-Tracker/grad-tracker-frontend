@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import {
   Badge,
   Box,
@@ -13,24 +12,12 @@ import {
   Heading,
   HStack,
   Icon,
-  Input,
   SimpleGrid,
   Stack,
   Text,
   VStack,
 } from "@chakra-ui/react";
 import { ColorModeButton } from "@/components/ui/color-mode";
-import {
-  DialogBody,
-  DialogCloseTrigger,
-  DialogContent,
-  DialogHeader,
-  DialogRoot,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import { Field } from "@/components/ui/field";
-import { PasswordInput } from "@/components/ui/password-input";
 import {
   ProgressBar,
   ProgressLabel,
@@ -62,12 +49,10 @@ import {
   LuArrowRight,
   LuSparkles,
   LuShield,
+  LuShare2,
   LuZap,
 } from "react-icons/lu";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
-import { toaster } from "@/components/ui/toaster";
 
 const features = [
   {
@@ -75,7 +60,7 @@ const features = [
     title: "Credit Tracking",
     description:
       "Track your completed, in-progress, and remaining credits toward your Parkside degree requirements.",
-    color: "green",
+    color: "blue",
   },
   {
     icon: LuSquareCheck,
@@ -138,49 +123,6 @@ const steps = [
 ];
 
 export default function LandingPage() {
-  const router = useRouter();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
-
-  async function handleSignin() {
-    if (!email || !password) {
-      toaster.create({
-        title: "Missing fields",
-        description: "Please enter your email and password.",
-        type: "error",
-      });
-      return;
-    }
-
-    setLoading(true);
-
-    const supabase = createClient();
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-
-    setLoading(false);
-
-    if (error) {
-      toaster.create({
-        title: "Sign in failed",
-        description: error.message,
-        type: "error",
-      });
-      return;
-    }
-
-    toaster.create({
-      title: "Welcome back!",
-      description: "Redirecting to your dashboard...",
-      type: "success",
-    });
-
-    router.push("/dashboard");
-  }
-
   return (
     <Box
       minH="100vh"
@@ -202,7 +144,7 @@ export default function LandingPage() {
             <HStack gap="3">
               <Box
                 p="2"
-                bg="green.solid"
+                bg="blue.solid"
                 borderRadius="lg"
                 className="animate-pulse-glow"
               >
@@ -219,7 +161,7 @@ export default function LandingPage() {
                 GradTracker
               </Text>
               <Badge
-                colorPalette="green"
+                colorPalette="blue"
                 variant="surface"
                 size="sm"
                 fontWeight="500"
@@ -229,76 +171,19 @@ export default function LandingPage() {
             </HStack>
             <HStack gap="3">
               <ColorModeButton variant="ghost" size="sm" />
-              <DialogRoot>
-                <DialogTrigger asChild>
-                  <Button
-                    variant="solid"
-                    colorPalette="green"
-                    size="sm"
-                    rounded="full"
-                    px="5"
-                    fontWeight="600"
-                  >
-                    Sign In
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="glass-card">
-                  <DialogHeader>
-                    <DialogTitle fontFamily="var(--font-outfit), sans-serif">
-                      Welcome Back, Ranger
-                    </DialogTitle>
-                  </DialogHeader>
-                  <DialogCloseTrigger />
-                  <DialogBody pb="6">
-                    <VStack gap="5">
-                      <Field label="Email">
-                        <Input
-                          placeholder="your.name@uwp.edu"
-                          type="email"
-                          rounded="lg"
-                          size="lg"
-                          value={email}
-                          onChange={(e) => setEmail(e.target.value)}
-                        />
-                      </Field>
-                      <Field label="Password">
-                        <PasswordInput
-                          placeholder="Enter your password"
-                          rounded="lg"
-                          size="lg"
-                          value={password}
-                          onChange={(e) => setPassword(e.target.value)}
-                        />
-                      </Field>
-                      <Button
-                        w="full"
-                        colorPalette="green"
-                        size="lg"
-                        rounded="lg"
-                        fontWeight="600"
-                        onClick={handleSignin}
-                        disabled={loading}
-                      >
-                        {loading ? "Signing In..." : "Sign In"}
-                      </Button>
-                      <Text fontSize="sm" color="fg.muted">
-                        Don&apos;t have an account?{" "}
-                        <Link href="/signup">
-                          <Text
-                            as="span"
-                            color="green.solid"
-                            cursor="pointer"
-                            fontWeight="600"
-                            _hover={{ textDecoration: "underline" }}
-                          >
-                            Create one
-                          </Text>
-                        </Link>
-                      </Text>
-                    </VStack>
-                  </DialogBody>
-                </DialogContent>
-              </DialogRoot>
+              <Link href="/signin">
+                <Button
+                  as="span"
+                  variant="solid"
+                  colorPalette="blue"
+                  size="sm"
+                  rounded="full"
+                  px="5"
+                  fontWeight="600"
+                >
+                  Sign In
+                </Button>
+              </Link>
             </HStack>
           </HStack>
         </Container>
@@ -318,7 +203,7 @@ export default function LandingPage() {
           right="-10%"
           w="500px"
           h="500px"
-          bg="green.500"
+          bg="blue.500"
           opacity="0.05"
           borderRadius="full"
           filter="blur(100px)"
@@ -354,7 +239,7 @@ export default function LandingPage() {
             >
               <HStack className="animate-fade-up">
                 <Badge
-                  colorPalette="green"
+                  colorPalette="blue"
                   variant="surface"
                   size="lg"
                   px="4"
@@ -406,7 +291,7 @@ export default function LandingPage() {
                 <Link href="/signup">
                   <Button
                     size="lg"
-                    colorPalette="green"
+                    colorPalette="blue"
                     rounded="full"
                     px="8"
                     fontWeight="600"
@@ -449,13 +334,13 @@ export default function LandingPage() {
                 justify={{ base: "center", lg: "start" }}
               >
                 <HStack gap="2">
-                  <Icon color="green.solid">
+                  <Icon color="blue.solid">
                     <LuShield />
                   </Icon>
                   <Text>Secure & Private</Text>
                 </HStack>
                 <HStack gap="2">
-                  <Icon color="green.solid">
+                  <Icon color="blue.solid">
                     <LuZap />
                   </Icon>
                   <Text>Always Free</Text>
@@ -469,7 +354,7 @@ export default function LandingPage() {
                 <Box
                   position="absolute"
                   inset="-4"
-                  bg="green.500"
+                  bg="blue.500"
                   opacity="0.15"
                   borderRadius="3xl"
                   filter="blur(40px)"
@@ -495,7 +380,7 @@ export default function LandingPage() {
                     h="1px"
                     bgGradient="to-r"
                     gradientFrom="transparent"
-                    gradientVia="green.500"
+                    gradientVia="blue.500"
                     gradientTo="transparent"
                   />
 
@@ -505,7 +390,7 @@ export default function LandingPage() {
                         <ProgressCircleRoot
                           value={72}
                           size="xl"
-                          colorPalette="green"
+                          colorPalette="blue"
                         >
                           <ProgressCircleRing
                             cap="round"
@@ -532,7 +417,7 @@ export default function LandingPage() {
                       </VStack>
                       <HStack gap="4" w="full" justify="center">
                         <VStack gap="0">
-                          <Text fontWeight="700" fontSize="lg" color="green.fg">
+                          <Text fontWeight="700" fontSize="lg" color="blue.fg">
                             34
                           </Text>
                           <Text fontSize="xs" color="fg.muted">
@@ -606,7 +491,7 @@ export default function LandingPage() {
           <VStack gap="16" align="center">
             <VStack gap="5" textAlign="center" maxW="2xl" mx="auto">
               <Badge
-                colorPalette="green"
+                colorPalette="blue"
                 variant="surface"
                 size="lg"
                 px="4"
@@ -728,11 +613,11 @@ export default function LandingPage() {
                     <Center
                       w="10"
                       h="10"
-                      bg={index === 0 ? "green.solid" : "bg"}
+                      bg={index === 0 ? "blue.solid" : "bg"}
                       borderWidth="2px"
-                      borderColor={index === 0 ? "green.solid" : "green.muted"}
+                      borderColor={index === 0 ? "blue.solid" : "blue.muted"}
                       borderRadius="full"
-                      color={index === 0 ? "white" : "green.fg"}
+                      color={index === 0 ? "white" : "blue.fg"}
                       fontWeight="700"
                       fontSize="sm"
                     >
@@ -780,13 +665,13 @@ export default function LandingPage() {
                     >
                       Your Dashboard
                     </Heading>
-                    <Badge colorPalette="green" variant="surface" size="sm">
+                    <Badge colorPalette="blue" variant="surface" size="sm">
                       Demo
                     </Badge>
                   </HStack>
 
                   <Stack gap="5">
-                    <ProgressRoot value={72} colorPalette="green" size="sm">
+                    <ProgressRoot value={72} colorPalette="blue" size="sm">
                       <HStack justify="space-between" mb="2">
                         <ProgressLabel fontWeight="500" fontSize="sm">
                           Overall Completion
@@ -875,10 +760,10 @@ export default function LandingPage() {
                       justify="center"
                       w="6"
                       h="6"
-                      bg="green.subtle"
+                      bg="blue.subtle"
                       borderRadius="full"
                     >
-                      <Icon color="green.fg" boxSize="3.5">
+                      <Icon color="blue.fg" boxSize="3.5">
                         <LuCheck />
                       </Icon>
                     </Flex>
@@ -893,13 +778,185 @@ export default function LandingPage() {
         </Container>
       </Box>
 
+      {/* Shared Plans Section */}
+      <Box bg="bg.subtle" py={{ base: "16", md: "20" }}>
+        <Container maxW="7xl" mx="auto" px={{ base: "4", md: "6", lg: "8" }}>
+          <Grid
+            templateColumns={{ base: "1fr", lg: "1.05fr 1fr" }}
+            gap={{ base: "10", lg: "14" }}
+            alignItems="center"
+          >
+            <VStack
+              align={{ base: "center", lg: "start" }}
+              gap="6"
+              textAlign={{ base: "center", lg: "left" }}
+            >
+              <Badge
+                colorPalette="blue"
+                variant="surface"
+                size="lg"
+                px="4"
+                py="2"
+                rounded="full"
+              >
+                Shared Plans
+              </Badge>
+              <Heading
+                fontFamily="var(--font-outfit), sans-serif"
+                size={{ base: "2xl", md: "3xl" }}
+                letterSpacing="-0.02em"
+                fontWeight="400"
+              >
+                Compare real planning paths
+              </Heading>
+              <Text fontSize="lg" color="fg.muted" lineHeight="1.7" maxW="xl">
+                Browse read-only degree plans that students and advisors share publicly. See how
+                other people sequence semesters, balance credit loads, and map out the road to
+                graduation.
+              </Text>
+              <VStack
+                align={{ base: "center", lg: "start" }}
+                gap="3"
+                pt="2"
+                w="full"
+              >
+                {[
+                  "View semester-by-semester course layouts",
+                  "Compare pacing before building your own plan",
+                  "Open shared links without needing to sign in",
+                ].map((item) => (
+                  <HStack key={item} gap="3">
+                    <Flex
+                      align="center"
+                      justify="center"
+                      w="6"
+                      h="6"
+                      bg="blue.subtle"
+                      borderRadius="full"
+                    >
+                      <Icon color="blue.fg" boxSize="3.5">
+                        <LuCheck />
+                      </Icon>
+                    </Flex>
+                    <Text fontSize="sm" fontWeight="500">
+                      {item}
+                    </Text>
+                  </HStack>
+                ))}
+              </VStack>
+              <Button asChild colorPalette="blue" rounded="full" px="7">
+                <Link href="/shared/plans">
+                  Browse Shared Plans
+                  <Icon ml="2">
+                    <LuArrowRight />
+                  </Icon>
+                </Link>
+              </Button>
+            </VStack>
+
+            <Card.Root
+              bg="linear-gradient(135deg, var(--chakra-colors-bg) 0%, var(--chakra-colors-blue-subtle) 100%)"
+              borderRadius="3xl"
+              borderWidth="1px"
+              borderColor="border.subtle"
+              boxShadow="lg"
+              overflow="hidden"
+            >
+              <Card.Body p={{ base: "6", md: "8" }}>
+                <VStack align="stretch" gap="5">
+                  <HStack justify="space-between" align="start">
+                    <VStack align="start" gap="1">
+                      <HStack gap="3">
+                        <Flex
+                          align="center"
+                          justify="center"
+                          w="10"
+                          h="10"
+                          bg="bg"
+                          borderRadius="xl"
+                          borderWidth="1px"
+                          borderColor="border.subtle"
+                        >
+                          <Icon color="blue.fg" boxSize="5">
+                            <LuShare2 />
+                          </Icon>
+                        </Flex>
+                        <VStack align="start" gap="0">
+                          <Text fontSize="xs" color="fg.muted" fontWeight="700" letterSpacing="0.08em">
+                            PUBLIC EXAMPLE
+                          </Text>
+                          <Heading
+                            size="md"
+                            fontFamily="var(--font-outfit), sans-serif"
+                            fontWeight="400"
+                          >
+                            Computer Science Plan
+                          </Heading>
+                        </VStack>
+                      </HStack>
+                      <Text fontSize="sm" color="fg.muted" pl={{ base: "0", sm: "13" }}>
+                        Shared by Maya / B.S. Computer Science
+                      </Text>
+                    </VStack>
+
+                    <Badge colorPalette="blue" variant="solid">
+                      Read-only
+                    </Badge>
+                  </HStack>
+
+                  <SimpleGrid columns={{ base: 1, sm: 2 }} gap="3">
+                    {[
+                      {
+                        term: "Fall 2026",
+                        credits: "15 cr",
+                        courses: ["CS 231", "MATH 222", "ENGL 202"],
+                      },
+                      {
+                        term: "Spring 2027",
+                        credits: "14 cr",
+                        courses: ["CS 320", "CS 331", "COMM 105"],
+                      },
+                    ].map((term) => (
+                      <Box
+                        key={term.term}
+                        p="4"
+                        borderRadius="2xl"
+                        bg="bg"
+                        borderWidth="1px"
+                        borderColor="border.subtle"
+                      >
+                        <HStack justify="space-between" mb="3">
+                          <Text fontWeight="700">{term.term}</Text>
+                          <Badge variant="surface" colorPalette="gray">
+                            {term.credits}
+                          </Badge>
+                        </HStack>
+                        <VStack align="stretch" gap="2">
+                          {term.courses.map((course) => (
+                            <Box key={course} p="2.5" borderRadius="lg" bg="bg.subtle">
+                              <Text fontSize="sm" fontWeight="500">
+                                {course}
+                              </Text>
+                            </Box>
+                          ))}
+                        </VStack>
+                      </Box>
+                    ))}
+                  </SimpleGrid>
+                </VStack>
+              </Card.Body>
+            </Card.Root>
+          </Grid>
+        </Container>
+      </Box>
+
       {/* CTA Section */}
       <Box
         position="relative"
         overflow="hidden"
         py={{ base: "16", md: "24" }}
-        bg="green.950"
-        _light={{ bg: "green.600" }}
+        bg="blue.950"
+        _light={{ bg: "blue.600" }}
       >
         {/* Decorative elements */}
         <Box
@@ -908,7 +965,7 @@ export default function LandingPage() {
           right="-20%"
           w="600px"
           h="600px"
-          bg="green.500"
+          bg="blue.500"
           opacity="0.15"
           borderRadius="full"
           filter="blur(100px)"
@@ -960,7 +1017,7 @@ export default function LandingPage() {
                 <Button
                   size="lg"
                   bg="white"
-                  color="green.700"
+                  color="blue.700"
                   rounded="full"
                   px="8"
                   fontWeight="600"
@@ -1010,7 +1067,7 @@ export default function LandingPage() {
           <SimpleGrid columns={{ base: 1, md: 4 }} gap="8">
             <VStack align="start" gap="4">
               <HStack gap="3">
-                <Box p="2" bg="green.solid" borderRadius="lg">
+                <Box p="2" bg="blue.solid" borderRadius="lg">
                   <Icon color="white" boxSize="4">
                     <LuGraduationCap />
                   </Icon>
@@ -1054,7 +1111,7 @@ export default function LandingPage() {
                       color="fg.muted"
                       fontSize="sm"
                       cursor="pointer"
-                      _hover={{ color: "green.fg" }}
+                      _hover={{ color: "blue.fg" }}
                       transition="color 0.2s"
                     >
                       {link}

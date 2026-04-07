@@ -1,13 +1,11 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import {
-  Badge,
   Box,
   Button,
   CloseButton,
   Dialog,
-  Flex,
   HStack,
   Icon,
   Input,
@@ -17,13 +15,9 @@ import {
   Textarea,
   VStack,
 } from "@chakra-ui/react";
-import {
-  LuSearch,
-  LuGraduationCap,
-  LuBookOpen,
-  LuAward,
-  LuCheck,
-} from "react-icons/lu";
+import { LuSparkles } from "react-icons/lu";
+import ProgramSelector from "@/components/shared/ProgramSelector";
+import { Switch } from "@/components/ui/switch";
 import { fetchPrograms } from "@/lib/supabase/queries/onboarding";
 import type { Program } from "@/types/onboarding";
 
@@ -33,22 +27,11 @@ interface CreatePlanDialogProps {
   onCreatePlan: (
     name: string,
     description: string | null,
-    programIds: number[]
+    programIds: number[],
+    autoGenerate: boolean
   ) => Promise<void>;
   existingPlanCount: number;
 }
-
-const TYPE_ORDER: Program["program_type"][] = ["MAJOR", "MINOR", "CERTIFICATE", "GRADUATE"];
-
-const TYPE_META: Record<
-  Program["program_type"],
-  { label: string; color: string; icon: typeof LuGraduationCap }
-> = {
-  MAJOR: { label: "Majors", color: "green", icon: LuGraduationCap },
-  MINOR: { label: "Minors", color: "blue", icon: LuBookOpen },
-  CERTIFICATE: { label: "Certificates", color: "orange", icon: LuAward },
-  GRADUATE: { label: "Graduate Programs", color: "purple", icon: LuGraduationCap },
-};
 
 export default function CreatePlanDialog({
   open,
@@ -62,6 +45,7 @@ export default function CreatePlanDialog({
     new Set()
   );
   const [search, setSearch] = useState("");
+  const [autoGenerate, setAutoGenerate] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const [allPrograms, setAllPrograms] = useState<Program[]>([]);
@@ -72,6 +56,7 @@ export default function CreatePlanDialog({
     setName(`Plan ${existingPlanCount + 1}`);
     setDescription("");
     setSelectedProgramIds(new Set());
+    setAutoGenerate(false);
     setSearch("");
 
     if (allPrograms.length === 0) {
@@ -89,24 +74,6 @@ export default function CreatePlanDialog({
     }
   }, [open]);
 
-  const filteredByType = useMemo(() => {
-    const q = search.toLowerCase().trim();
-    const filtered = q
-      ? allPrograms.filter((p) => p.name.toLowerCase().includes(q))
-      : allPrograms;
-
-    const grouped: Record<Program["program_type"], Program[]> = {
-      MAJOR: [],
-      MINOR: [],
-      CERTIFICATE: [],
-      GRADUATE: [],
-    };
-    for (const p of filtered) {
-      grouped[p.program_type].push(p);
-    }
-    return grouped;
-  }, [allPrograms, search]);
-
   function toggleProgram(id: number) {
     setSelectedProgramIds((prev) => {
       const next = new Set(prev);
@@ -123,7 +90,8 @@ export default function CreatePlanDialog({
       await onCreatePlan(
         name.trim(),
         description.trim() || null,
-        Array.from(selectedProgramIds)
+        Array.from(selectedProgramIds),
+        autoGenerate
       );
       onOpenChange(false);
     } finally {
@@ -144,7 +112,7 @@ export default function CreatePlanDialog({
           <Dialog.Content borderRadius="xl" maxH="85vh" overflow="hidden">
             <Dialog.Header>
               <Dialog.Title
-                fontFamily="var(--font-outfit), sans-serif"
+                fontFamily="var(--font-dm-sans), sans-serif"
                 fontWeight="400"
                 letterSpacing="-0.02em"
               >
@@ -203,106 +171,46 @@ export default function CreatePlanDialog({
                     available courses.
                   </Text>
 
-                  {/* Search */}
-                  <Box position="relative" mb="3">
-                    <Box
-                      position="absolute"
-                      left="3"
-                      top="50%"
-                      transform="translateY(-50%)"
-                      color="fg.muted"
-                      zIndex="1"
-                    >
-                      <LuSearch size={14} />
-                    </Box>
-                    <Input
-                      value={search}
-                      onChange={(e) => setSearch(e.target.value)}
-                      placeholder="Search programs..."
-                      size="sm"
-                      borderRadius="lg"
-                      pl="9"
-                    />
-                  </Box>
-
-                  {programsLoading ? (
-                    <Text fontSize="sm" color="fg.muted" py="4" textAlign="center">
-                      Loading programs...
-                    </Text>
-                  ) : (
-                    <VStack
-                      align="stretch"
-                      gap="4"
-                      maxH="280px"
-                      overflowY="auto"
-                      pr="1"
-                    >
-                      {TYPE_ORDER.map((type) => {
-                        const programs = filteredByType[type];
-                        if (programs.length === 0) return null;
-                        const meta = TYPE_META[type];
-
-                        return (
-                          <Box key={type}>
-                            <HStack gap="2" mb="2">
-                              <Icon
-                                boxSize="3.5"
-                                color={`${meta.color}.fg`}
-                              >
-                                <meta.icon />
-                              </Icon>
-                              <Text
-                                fontSize="xs"
-                                fontWeight="600"
-                                color="fg.muted"
-                                textTransform="uppercase"
-                                letterSpacing="0.05em"
-                              >
-                                {meta.label}
-                              </Text>
-                              <Badge
-                                size="sm"
-                                variant="subtle"
-                                colorPalette={meta.color}
-                              >
-                                {programs.length}
-                              </Badge>
-                            </HStack>
-
-                            <Flex gap="2" flexWrap="wrap">
-                              {programs.map((program) => {
-                                const isSelected = selectedProgramIds.has(
-                                  program.id
-                                );
-                                return (
-                                  <Button
-                                    key={program.id}
-                                    size="xs"
-                                    variant={isSelected ? "solid" : "outline"}
-                                    colorPalette={
-                                      isSelected ? meta.color : "gray"
-                                    }
-                                    borderRadius="full"
-                                    onClick={() => toggleProgram(program.id)}
-                                    fontWeight={isSelected ? "600" : "400"}
-                                  >
-                                    {isSelected && <LuCheck size={12} />}
-                                    {program.name}
-                                  </Button>
-                                );
-                              })}
-                            </Flex>
-                          </Box>
-                        );
-                      })}
-                    </VStack>
-                  )}
+                  <ProgramSelector
+                    programs={allPrograms}
+                    selectedIds={selectedProgramIds}
+                    onToggle={toggleProgram}
+                    searchQuery={search}
+                    onSearchChange={setSearch}
+                    loading={programsLoading}
+                  />
 
                   <Text fontSize="xs" color={selectedProgramIds.size > 0 ? "fg.muted" : "orange.fg"} mt="3">
                     {selectedProgramIds.size > 0
                       ? `${selectedProgramIds.size} program${selectedProgramIds.size !== 1 ? "s" : ""} selected`
                       : "Select at least one program to create a plan."}
                   </Text>
+                </Box>
+
+                <Separator />
+
+                {/* Auto-generate option */}
+                <Box>
+                  <HStack justify="space-between">
+                    <HStack gap="2">
+                      <Icon boxSize="4" color="purple.fg">
+                        <LuSparkles />
+                      </Icon>
+                      <Box>
+                        <Text fontSize="sm" fontWeight="600">
+                          Auto-fill courses
+                        </Text>
+                        <Text fontSize="xs" color="fg.muted">
+                          Automatically schedule courses across semesters
+                        </Text>
+                      </Box>
+                    </HStack>
+                    <Switch
+                      checked={autoGenerate}
+                      onCheckedChange={(e) => setAutoGenerate(e.checked)}
+                      colorPalette="purple"
+                    />
+                  </HStack>
                 </Box>
               </VStack>
             </Dialog.Body>
@@ -314,13 +222,14 @@ export default function CreatePlanDialog({
                 </Button>
               </Dialog.ActionTrigger>
               <Button
-                colorPalette="green"
+                colorPalette={autoGenerate ? "purple" : "blue"}
                 borderRadius="lg"
                 onClick={handleCreate}
                 disabled={!name.trim() || selectedProgramIds.size === 0}
                 loading={loading}
               >
-                Create Plan
+                {autoGenerate && <LuSparkles size={14} />}
+                {autoGenerate ? "Create & Auto-Fill" : "Create Plan"}
               </Button>
             </Dialog.Footer>
             <Dialog.CloseTrigger asChild>

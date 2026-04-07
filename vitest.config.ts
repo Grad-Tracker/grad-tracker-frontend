@@ -10,7 +10,7 @@ export default defineConfig({
     include: ["src/**/*.test.{ts,tsx}"],
     coverage: {
       provider: "v8",
-      reporter: ["text", "html", "lcov"],
+      reporter: ["text", "html", "lcov", "json"],
       reportsDirectory: "./coverage",
       // Measure coverage for all source files in src/.
       // Excludes: auto-generated Chakra UI wrappers, test files, config files.
@@ -27,6 +27,9 @@ export default defineConfig({
         "next.config.*",
         // Auto-generated Chakra UI wrapper components — not project logic
         "src/components/ui/**",
+        // Large shared-plan seed/fallback dataset; covered selectively via focused tests,
+        // but excluded from global thresholds to avoid static seed branches dominating totals.
+        "src/lib/supabase/queries/shared-plans.ts",
         // Test files themselves
         "src/__tests__/**",
         "**/*.test.ts",
@@ -45,7 +48,8 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      "@": path.resolve(__dirname, "./src")
+      "@": path.resolve(__dirname, "./src"),
+      "server-only": path.resolve(__dirname, "./src/__tests__/mocks/server-only.ts")
     }
   }
 });
