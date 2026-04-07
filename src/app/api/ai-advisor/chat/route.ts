@@ -21,11 +21,11 @@ function parseRequestBody(body: unknown): AdvisorChatRequest | null {
   if (!body || typeof body !== "object") return null;
   const candidate = body as Record<string, unknown>;
 
-  if (typeof candidate.message !== "string" || candidate.message.trim().length === 0) {
+  if (typeof candidate.message !== "string" || candidate.message.trim().length === 0 || candidate.message.length > 10_000) {
     return null;
   }
 
-  if (!Array.isArray(candidate.history) || !candidate.history.every(isHistoryItem)) {
+  if (!Array.isArray(candidate.history) || candidate.history.length > 100 || !candidate.history.every(isHistoryItem)) {
     return null;
   }
 
@@ -77,9 +77,9 @@ export async function POST(request: Request) {
   try {
     profile = await resolveStudentProfile(supabase, user.id);
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown profile error";
+    console.error("Failed to load student profile:", error);
     return NextResponse.json(
-      { error: `Failed to load student profile: ${message}` },
+      { error: "Unable to load student profile." },
       { status: 500 }
     );
   }
@@ -113,10 +113,9 @@ export async function POST(request: Request) {
 
     return NextResponse.json(response, { status: 200 });
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Unexpected AI advisor failure";
+    console.error("AI advisor error:", error);
     return NextResponse.json(
-      { error: message },
+      { error: "Unable to process request." },
       { status: 500 }
     );
   }

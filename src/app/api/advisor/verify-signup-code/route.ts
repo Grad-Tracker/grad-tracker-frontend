@@ -1,3 +1,4 @@
+import { timingSafeEqual } from "node:crypto";
 import { NextResponse } from "next/server";
 import {
   createAdvisorSignupGateToken,
@@ -62,7 +63,12 @@ export async function POST(request: Request) {
     );
   }
 
-  if (body.code === expectedCode) {
+  const provided = Buffer.from(body.code);
+  const expected = Buffer.from(expectedCode);
+  const codesMatch =
+    provided.length === expected.length && timingSafeEqual(provided, expected);
+
+  if (codesMatch) {
     const token = createAdvisorSignupGateToken();
 
     if (!token) {
