@@ -252,12 +252,9 @@ export default function LandingPage() {
         px={{ base: "4", md: "12" }}
         mt={{ base: "-8", md: "-12" }}
         textAlign="center"
+        maxW="960px"
+        mx="auto"
       >
-        <Box
-          position="relative"
-          maxW="960px"
-          mx="auto"
-        >
           <Box
             borderRadius="xl"
             borderWidth="1px"
@@ -305,7 +302,6 @@ export default function LandingPage() {
               style={{ width: "100%", height: "auto", display: "block" }}
             />
           </Box>
-        </Box>
       </Box>
       </FadeIn>
       </Box>
@@ -757,9 +753,6 @@ export default function LandingPage() {
                   <Text
                     key={link}
                     fontSize="sm"
-                    cursor="pointer"
-                    _hover={{ color: "white" }}
-                    transition="color 0.2s"
                   >
                     {link}
                   </Text>

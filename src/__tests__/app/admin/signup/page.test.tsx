@@ -141,7 +141,7 @@ describe("AdminSignupPage", () => {
 
     expect(screen.getAllByText("Create Advisor Account").length).toBeGreaterThanOrEqual(1);
     expect(
-      screen.getAllByText("Create an advisor account for advisor tools access.").length
+      screen.getAllByText("Set up your advisor account for program management tools.").length
     ).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText("First Name").length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText("Last Name").length).toBeGreaterThanOrEqual(1);
