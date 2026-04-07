@@ -24,6 +24,7 @@
     "@floating-ui/react": "^0.27.17",
     "@supabase/ssr": "^0.8.0",
     "@supabase/supabase-js": "^2.95.3",
+    "@tanstack/react-virtual": "^3.13.23",
     "@tiptap/pm": "^3.18.0",
     "@tiptap/react": "^3.18.0",
     "next": "16.2.2",
