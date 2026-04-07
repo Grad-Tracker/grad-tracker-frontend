@@ -17,7 +17,7 @@ import { LuArrowRight, LuLoader } from "react-icons/lu";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { validateEmailDomain, normalizeEmail } from "@/lib/email-validation";
+import { normalizeEmail } from "@/lib/email-validation";
 import AuthPageLayout from "@/components/auth/AuthPageLayout";
 import PasswordStrength from "@/components/auth/PasswordStrength";
 
@@ -122,16 +122,6 @@ export default function SignupPage() {
     }
 
     const normalized = normalizeEmail(email);
-    const validation = validateEmailDomain("student", normalized);
-
-    if (!validation.isValid) {
-      toaster.create({
-        title: validation.errorTitle!,
-        description: validation.errorDescription!,
-        type: "error",
-      });
-      return;
-    }
 
     setLoading(true);
 
@@ -224,7 +214,7 @@ export default function SignupPage() {
 
         <Field label="Email">
           <Input
-            placeholder="your.name@rangers.uwp.edu"
+            placeholder="you@example.com"
             type="email"
             rounded="lg"
             size="lg"

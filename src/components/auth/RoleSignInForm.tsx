@@ -18,7 +18,7 @@ import { Field } from "@/components/ui/field";
 import { PasswordInput } from "@/components/ui/password-input";
 import { toaster } from "@/components/ui/toaster";
 import { createClient } from "@/lib/supabase/client";
-import { validateEmailDomain, normalizeEmail } from "@/lib/email-validation";
+import { normalizeEmail } from "@/lib/email-validation";
 import AuthPageLayout from "./AuthPageLayout";
 
 type Role = "student" | "advisor";
@@ -43,8 +43,8 @@ const roleContent: Record<
   student: {
     title: "Sign In",
     helper: "View your dashboard, requirements, and planner.",
-    emailPlaceholder: "your.name@rangers.uwp.edu",
-    emailHelper: "Use your Parkside student email ending in @rangers.uwp.edu.",
+    emailPlaceholder: "you@example.com",
+    emailHelper: "",
     postSignInHint: "You'll be taken to your student dashboard.",
     signupHref: "/signup",
     signupLabel: "Create student account",
@@ -52,8 +52,8 @@ const roleContent: Record<
   advisor: {
     title: "Sign In",
     helper: "Manage programs, Gen-Ed buckets, and course catalog.",
-    emailPlaceholder: "your.name@uwp.edu",
-    emailHelper: "Use your advisor email ending in @uwp.edu.",
+    emailPlaceholder: "you@example.com",
+    emailHelper: "",
     postSignInHint: "You'll be taken to the advisor console.",
     signupHref: "/admin/signup",
     signupLabel: "Create advisor account",
@@ -83,16 +83,6 @@ export default function RoleSignInForm({
     }
 
     const normalized = normalizeEmail(email);
-    const validation = validateEmailDomain(selectedRole, normalized);
-
-    if (!validation.isValid) {
-      toaster.create({
-        title: validation.errorTitle!,
-        description: validation.errorDescription!,
-        type: "error",
-      });
-      return;
-    }
 
     setLoading(true);
 
@@ -258,9 +248,11 @@ export default function RoleSignInForm({
               value={email}
               onChange={(e) => setEmail(e.target.value)}
             />
-            <Text fontSize="xs" color="fg.muted" mt="1">
-              {currentRole.emailHelper}
-            </Text>
+            {currentRole.emailHelper && (
+              <Text fontSize="xs" color="fg.muted" mt="1">
+                {currentRole.emailHelper}
+              </Text>
+            )}
           </Field>
 
           <Field label="Password">
