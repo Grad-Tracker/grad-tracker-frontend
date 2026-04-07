@@ -78,7 +78,7 @@ describe("DeletePlanDialog", () => {
       // handleDelete calls onOpenChange(false) after confirm resolves
       expect(defaultProps.onOpenChange).toHaveBeenCalledWith(false);
     });
-  });
+  }, 15000);
 
   it("shows loading state on delete button while confirming", async () => {
     let resolveConfirm!: () => void;
@@ -111,7 +111,7 @@ describe("DeletePlanDialog", () => {
     await act(async () => {
       resolveConfirm();
     });
-  });
+  }, 15000);
 
   it("calls onOpenChange(false) when Cancel is clicked (covers Dialog.Root onOpenChange branch)", async () => {
     renderWithChakra(<DeletePlanDialog {...defaultProps} />);

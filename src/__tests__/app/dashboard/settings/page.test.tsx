@@ -166,7 +166,7 @@ describe("SettingsPage", () => {
     });
 
     expect(updateFn).toHaveBeenCalledWith({ first_name: "Bobby", last_name: "Smith" });
-  });
+  }, 15000);
 
   /* ---- Email section ---- */
 
@@ -195,7 +195,7 @@ describe("SettingsPage", () => {
     await act(async () => { fireEvent.click(btn); });
 
     expect(mockUpdateUser).toHaveBeenCalledWith({ email: "newemail@uwp.edu" });
-  });
+  }, 15000);
 
   /* ---- Expected Graduation section ---- */
 

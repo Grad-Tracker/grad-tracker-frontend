@@ -14,6 +14,7 @@ import {
   Portal,
   Separator,
   SimpleGrid,
+  Heading,
   Text,
   VStack,
 } from "@chakra-ui/react";
@@ -27,6 +28,7 @@ import {
   LuTrash2,
 } from "react-icons/lu";
 import { Field } from "@/components/ui/field";
+import { NativeSelectField, NativeSelectRoot } from "@/components/ui/native-select";
 import { Tooltip } from "@/components/ui/tooltip";
 import { toaster } from "@/components/ui/toaster";
 import { createClient } from "@/lib/supabase/client";
@@ -47,6 +49,12 @@ export type GenEdBucket = {
   credits_required: number;
   courses: Course[];
 };
+
+type BucketSortOption =
+  | "name-asc"
+  | "name-desc"
+  | "courses-most"
+  | "courses-least";
 
 type BucketForm = {
   code: string;
@@ -76,7 +84,7 @@ export default function GenEdAdminClient({
 }) {
   const [supabase] = useState(() => createClient());
   const [buckets, setBuckets] = useState(initialBuckets);
-  const [expanded, setExpanded] = useState<Record<number, boolean>>({});
+  const [expandedBucketIds, setExpandedBucketIds] = useState<Set<number>>(() => new Set());
   const [loading, setLoading] = useState(false);
   const [bucketDialogOpen, setBucketDialogOpen] = useState(false);
   const [coursesDialogOpen, setCoursesDialogOpen] = useState(false);
@@ -88,6 +96,19 @@ export default function GenEdAdminClient({
   const [courseResults, setCourseResults] = useState<Course[]>([]);
   const [selectedCourseIds, setSelectedCourseIds] = useState<number[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
+  const [bucketSort, setBucketSort] = useState<BucketSortOption>("name-asc");
+
+  function toggleBucketExpanded(bucketId: number) {
+    setExpandedBucketIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(bucketId)) {
+        next.delete(bucketId);
+      } else {
+        next.add(bucketId);
+      }
+      return next;
+    });
+  }
 
   async function loadBuckets() {
     const { data: bucketRows, error: bucketsError } = await supabase
@@ -330,15 +351,31 @@ export default function GenEdAdminClient({
     setCoursesDialogOpen(false);
   }
 
-  const bucketCountText = useMemo(
-    () => `${buckets.length} bucket${buckets.length === 1 ? "" : "s"}`,
-    [buckets.length]
-  );
+  const sortedBuckets = useMemo(() => {
+    return [...buckets].sort((a, b) => {
+      const nameA = a.name ?? "";
+      const nameB = b.name ?? "";
+      const courseCountA = a.courses.length;
+      const courseCountB = b.courses.length;
+
+      switch (bucketSort) {
+        case "name-desc":
+          return nameB.localeCompare(nameA);
+        case "courses-most":
+          return courseCountB - courseCountA || nameA.localeCompare(nameB);
+        case "courses-least":
+          return courseCountA - courseCountB || nameA.localeCompare(nameB);
+        case "name-asc":
+        default:
+          return nameA.localeCompare(nameB);
+      }
+    });
+  }, [bucketSort, buckets]);
 
   return (
     <VStack align="stretch" gap="6">
       <Flex justify="space-between" align={{ base: "start", md: "center" }} gap="4" wrap="wrap">
-        <Box>
+        <Box flex="1" minW={{ base: "full", xl: "auto" }}>
           <Text
             fontSize={{ base: "2xl", md: "3xl" }}
             fontWeight="700"
@@ -347,26 +384,52 @@ export default function GenEdAdminClient({
           >
             Gen-Ed Buckets
           </Text>
-          <Text color="fg.muted">{bucketCountText}</Text>
+          <Text color="fg.muted">
+            {buckets.length} bucket{buckets.length === 1 ? "" : "s"}
+          </Text>
+          <Text color="fg.muted" fontSize="sm" mt="1">
+            Manage Gen-Ed buckets and their course mappings.
+          </Text>
         </Box>
-        <Button
-          colorPalette="blue"
-          borderRadius="lg"
-          onClick={() => {
-            setEditingBucket(null);
-            setBucketForm(emptyBucketForm());
-            setBucketDialogOpen(true);
-          }}
+        <HStack
+          data-testid="gened-controls"
+          gap="3"
+          w={{ base: "full", md: "auto" }}
+          align={{ base: "stretch", md: "center" }}
+          flexDir={{ base: "column", md: "row" }}
         >
-          <LuPlus />
-          Add Bucket
-        </Button>
+          <NativeSelectRoot width={{ base: "full", md: "300px" }}>
+            <NativeSelectField
+              aria-label="Sort buckets"
+              value={bucketSort}
+              onChange={(event) => setBucketSort(event.target.value as BucketSortOption)}
+            >
+              <option value="name-asc">Name (A-Z)</option>
+              <option value="name-desc">Name (Z-A)</option>
+              <option value="courses-most">Course count (most)</option>
+              <option value="courses-least">Course count (least)</option>
+            </NativeSelectField>
+          </NativeSelectRoot>
+          <Button
+            colorPalette="green"
+            borderRadius="lg"
+            onClick={() => {
+              setEditingBucket(null);
+              setBucketForm(emptyBucketForm());
+              setBucketDialogOpen(true);
+            }}
+          >
+            <LuPlus />
+            Add Bucket
+          </Button>
+        </HStack>
       </Flex>
 
       <SimpleGrid columns={{ base: 1, xl: 2 }} gap="4">
-        {buckets.map((bucket) => (
+        {sortedBuckets.map((bucket) => (
           <Card.Root
             key={bucket.id}
+            data-testid={`bucket-card-${bucket.id}`}
             bg="bg"
             borderRadius="xl"
             borderWidth="1px"
@@ -390,17 +453,17 @@ export default function GenEdAdminClient({
                         {bucket.courses.length} course{bucket.courses.length === 1 ? "" : "s"}
                       </Badge>
                     </HStack>
-                    <Text fontWeight="700" fontSize="lg">
+                    <Heading size="sm">
                       {bucket.name}
-                    </Text>
+                    </Heading>
                   </Box>
                   <Button
                     size="sm"
                     variant="outline"
-                    onClick={() => setExpanded((prev) => ({ ...prev, [bucket.id]: !prev[bucket.id] }))}
+                    onClick={() => toggleBucketExpanded(bucket.id)}
                   >
-                    {expanded[bucket.id] ? <LuChevronUp /> : <LuChevronDown />}
-                    {expanded[bucket.id] ? "Collapse" : "Expand"}
+                    {expandedBucketIds.has(bucket.id) ? <LuChevronUp /> : <LuChevronDown />}
+                    {expandedBucketIds.has(bucket.id) ? "Collapse" : "Expand"}
                   </Button>
                 </Flex>
 
@@ -461,7 +524,7 @@ export default function GenEdAdminClient({
                   )}
                 </HStack>
 
-                {expanded[bucket.id] ? (
+                {expandedBucketIds.has(bucket.id) ? (
                   <>
                     <Separator />
                     <VStack align="stretch" gap="3">

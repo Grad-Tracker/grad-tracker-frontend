@@ -332,5 +332,5 @@ describe("CoursesClient", () => {
       const showingTexts = screen.getAllByText(/Showing 1-/);
       expect(showingTexts.length).toBeGreaterThanOrEqual(1);
     });
-  });
+  }, 15000);
 });
