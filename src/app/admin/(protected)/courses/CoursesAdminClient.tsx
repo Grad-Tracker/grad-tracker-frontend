@@ -124,7 +124,7 @@ export default function CoursesAdminClient({
   const subjectCollection = useMemo(() => {
     const seen = new Set<string>();
     courses.forEach((c) => seen.add(c.subject));
-    const sorted = Array.from(seen).sort();
+    const sorted = Array.from(seen).sort((a, b) => a.localeCompare(b));
     return createListCollection({
       items: sorted.map((s) => ({ label: s, value: s })),
     });
