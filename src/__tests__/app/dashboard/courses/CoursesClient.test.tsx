@@ -4,18 +4,73 @@ import { ChakraProvider, defaultSystem } from "@chakra-ui/react";
 import CoursesClient from "@/app/dashboard/courses/CoursesClient";
 import type { Course } from "@/types/course";
 
-vi.mock("next/navigation", () => ({ useRouter: vi.fn() }));
+const {
+  mockPush,
+  mockGetUser,
+  mockFrom,
+  mockFetchPlans,
+  mockCreatePlan,
+  mockFetchPlannedCourses,
+  mockFetchStudentTerms,
+  mockGetOrCreateTerm,
+  mockAddTermPlan,
+  mockAddPlannedCourse,
+  mockToasterCreate,
+} = vi.hoisted(() => ({
+  mockPush: vi.fn(),
+  mockGetUser: vi.fn(),
+  mockFrom: vi.fn(),
+  mockFetchPlans: vi.fn(),
+  mockCreatePlan: vi.fn(),
+  mockFetchPlannedCourses: vi.fn(),
+  mockFetchStudentTerms: vi.fn(),
+  mockGetOrCreateTerm: vi.fn(),
+  mockAddTermPlan: vi.fn(),
+  mockAddPlannedCourse: vi.fn(),
+  mockToasterCreate: vi.fn(),
+}));
+
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: mockPush }),
+}));
 vi.mock("next/link", () => ({
   default: (p: any) => <a href={p.href}>{p.children}</a>,
 }));
 vi.mock("@/components/ui/color-mode", () => ({
   ColorModeButton: () => null,
 }));
+vi.mock("@/components/ui/toaster", () => ({
+  toaster: { create: mockToasterCreate },
+}));
+vi.mock("@/lib/supabase/client", () => ({
+  createClient: () => ({
+    auth: { getUser: mockGetUser },
+    from: mockFrom,
+  }),
+}));
+vi.mock("@/lib/supabase/queries/planner", () => ({
+  fetchPlans: (...args: any[]) => mockFetchPlans(...args),
+  createPlan: (...args: any[]) => mockCreatePlan(...args),
+  fetchPlannedCourses: (...args: any[]) => mockFetchPlannedCourses(...args),
+  fetchStudentTerms: (...args: any[]) => mockFetchStudentTerms(...args),
+  getOrCreateTerm: (...args: any[]) => mockGetOrCreateTerm(...args),
+  addTermPlan: (...args: any[]) => mockAddTermPlan(...args),
+  addPlannedCourse: (...args: any[]) => mockAddPlannedCourse(...args),
+}));
 
 function renderWithChakra(ui: React.ReactElement) {
   return render(
     <ChakraProvider value={defaultSystem}>{ui}</ChakraProvider>
   );
+}
+
+function findClickableAncestor(element: HTMLElement | null): HTMLElement {
+  return (
+    element?.closest("button") ??
+    element?.closest("[role='button']") ??
+    element ??
+    document.body
+  ) as HTMLElement;
 }
 
 const mockCourses: Course[] = [
@@ -31,6 +86,30 @@ const mockSubjects = ["CS", "MATH", "ENGL"];
 describe("CoursesClient", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockGetUser.mockResolvedValue({
+      data: { user: { id: "auth-123" } },
+      error: null,
+    });
+    mockFrom.mockImplementation((table: string) => {
+      const promise: any = Promise.resolve({
+        data: table === "v_student_profile" ? { student_id: 1 } : [],
+        error: null,
+      });
+      promise.select = vi.fn().mockReturnValue(promise);
+      promise.eq = vi.fn().mockReturnValue(promise);
+      promise.maybeSingle = vi.fn().mockResolvedValue({
+        data: table === "v_student_profile" ? { student_id: 1 } : null,
+        error: null,
+      });
+      return promise;
+    });
+    mockFetchPlans.mockResolvedValue([{ id: 10, name: "My Plan", student_id: 1 }]);
+    mockCreatePlan.mockResolvedValue({ id: 10, name: "My Plan", student_id: 1 });
+    mockFetchPlannedCourses.mockResolvedValue([]);
+    mockFetchStudentTerms.mockResolvedValue([{ id: 20, season: "Spring", year: 2026 }]);
+    mockGetOrCreateTerm.mockResolvedValue({ id: 20, season: "Spring", year: 2026 });
+    mockAddTermPlan.mockResolvedValue(undefined);
+    mockAddPlannedCourse.mockResolvedValue(undefined);
   });
 
   it("renders course catalog header", () => {
@@ -136,6 +215,92 @@ describe("CoursesClient", () => {
     fireEvent.click(cardElement!);
     await waitFor(() => {
       expect(screen.getAllByText("Prerequisites").length).toBeGreaterThanOrEqual(1);
+    });
+  });
+
+  it("shows Add to Plan and Add Class to Current Semester buttons in drawer", async () => {
+    renderWithChakra(<CoursesClient initialCourses={mockCourses} subjects={mockSubjects} />);
+    const cs201Elements = screen.getAllByText("CS 201");
+    const cardElement = cs201Elements[0].closest("[class*='card']") || cs201Elements[0].closest("div");
+    fireEvent.click(cardElement!);
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Add to Plan" })).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: "Add Class to Current Semester" })
+      ).toBeInTheDocument();
+    });
+  });
+
+  it("shows plan and semester choices when Add to Plan is clicked", async () => {
+    renderWithChakra(<CoursesClient initialCourses={mockCourses} subjects={mockSubjects} />);
+    const cs101Elements = screen.getAllByText("CS 101");
+    const cardElement = cs101Elements[0].closest("[class*='card']") || cs101Elements[0].closest("div");
+    fireEvent.click(cardElement!);
+
+    const addToPlanButton = await screen.findByRole("button", { name: "Add to Plan" });
+    fireEvent.click(addToPlanButton);
+
+    await waitFor(() => {
+      expect(screen.getByText("Add Course to Plan")).toBeInTheDocument();
+      expect(screen.getByText("1. Pick a plan")).toBeInTheDocument();
+      expect(screen.getAllByText("My Plan").length).toBeGreaterThanOrEqual(1);
+      expect(screen.getByText("2. Pick a semester")).toBeInTheDocument();
+      expect(screen.getAllByText(/Spring 2026/).length).toBeGreaterThanOrEqual(1);
+    });
+  });
+
+  it("adds the selected course to a chosen plan semester", async () => {
+    mockFetchPlans.mockResolvedValue([
+      { id: 10, name: "My Plan", student_id: 1 },
+      { id: 11, name: "Backup Plan", student_id: 1 },
+    ]);
+    mockFetchStudentTerms.mockImplementation(async (_studentId: number, planId: number) => {
+      if (planId === 10) return [{ id: 20, season: "Spring", year: 2026 }];
+      return [{ id: 21, season: "Fall", year: 2026 }];
+    });
+
+    renderWithChakra(<CoursesClient initialCourses={mockCourses} subjects={mockSubjects} />);
+    const cs101Elements = screen.getAllByText("CS 101");
+    const cardElement = cs101Elements[0].closest("[class*='card']") || cs101Elements[0].closest("div");
+    fireEvent.click(cardElement!);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Add to Plan" }));
+    const backupPlanLabels = await screen.findAllByText("Backup Plan");
+    fireEvent.click(findClickableAncestor(backupPlanLabels[0]));
+    const fallSemesterLabels = await screen.findAllByText(/Fall 2026/);
+    fireEvent.click(findClickableAncestor(fallSemesterLabels[0]));
+
+    await waitFor(() => {
+      expect(mockAddPlannedCourse).toHaveBeenCalledWith(1, 21, 1, 11, "CS 101");
+      expect(mockToasterCreate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: "Added to plan",
+          type: "success",
+        })
+      );
+    });
+  });
+
+  it("adds the selected course to the current semester", async () => {
+    renderWithChakra(<CoursesClient initialCourses={mockCourses} subjects={mockSubjects} />);
+    const cs101Elements = screen.getAllByText("CS 101");
+    const cardElement = cs101Elements[0].closest("[class*='card']") || cs101Elements[0].closest("div");
+    fireEvent.click(cardElement!);
+
+    const addSemesterButton = await screen.findByRole("button", {
+      name: "Add Class to Current Semester",
+    });
+    fireEvent.click(addSemesterButton);
+
+    await waitFor(() => {
+      expect(mockAddPlannedCourse).toHaveBeenCalledWith(1, 20, 1, 10, "CS 101");
+      expect(mockToasterCreate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: "Added to current semester",
+          type: "success",
+        })
+      );
     });
   });
 

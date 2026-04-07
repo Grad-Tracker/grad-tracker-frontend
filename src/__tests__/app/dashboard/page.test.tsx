@@ -16,6 +16,8 @@ const {
   mockFetchStudentProfileByAuthUserId,
   mockFetchStudentMajorProgram,
   mockFetchStudentCourseProgress,
+  mockFetchRecentStudentActivity,
+  mockLogStudentActivity,
   mockToasterCreate,
 } = vi.hoisted(() => ({
   mockPush: vi.fn(),
@@ -30,6 +32,8 @@ const {
   mockFetchStudentProfileByAuthUserId: vi.fn(),
   mockFetchStudentMajorProgram: vi.fn(),
   mockFetchStudentCourseProgress: vi.fn(),
+  mockFetchRecentStudentActivity: vi.fn(),
+  mockLogStudentActivity: vi.fn(),
   mockToasterCreate: vi.fn(),
 }));
 
@@ -57,6 +61,10 @@ vi.mock("@/lib/supabase/queries/onboarding", () => ({
 }));
 vi.mock("@/lib/supabase/queries/planner", () => ({
   fetchStudentCourseProgress: (...args: any[]) => mockFetchStudentCourseProgress(...args),
+}));
+vi.mock("@/lib/supabase/queries/activity", () => ({
+  fetchRecentStudentActivity: (...args: any[]) => mockFetchRecentStudentActivity(...args),
+  logStudentActivity: (...args: any[]) => mockLogStudentActivity(...args),
 }));
 vi.mock("@/components/ui/toaster", () => ({
   toaster: { create: mockToasterCreate, success: vi.fn(), error: vi.fn() },
@@ -151,6 +159,19 @@ function setupHappyPath(overrides?: {
       },
     ]) as any
   );
+  mockFetchRecentStudentActivity.mockResolvedValue(
+    [
+      {
+        id: 1,
+        student_id: 1,
+        activity_type: "course_added",
+        message: "Added CS 350 to a semester plan",
+        metadata: {},
+        created_at: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
+      },
+    ] as any
+  );
+  mockLogStudentActivity.mockResolvedValue(undefined);
 
   mockFetchPrograms.mockResolvedValue(overrides?.majors ?? []);
   mockGetOrCreateStudent.mockResolvedValue({ id: 1 });
@@ -291,8 +312,22 @@ describe("Dashboard", () => {
     });
 
     await waitFor(() => {
-      expect(screen.getAllByText(/Added CS 350/).length).toBeGreaterThanOrEqual(1);
+      expect(screen.getAllByText(/Added CS 350 to a semester plan/).length).toBeGreaterThanOrEqual(1);
     });
+  });
+
+  it("navigates to course management when Add Course is clicked", async () => {
+    await act(async () => {
+      renderWithChakra(<Dashboard />);
+    });
+
+    const addCourseButton = await screen.findByRole("button", { name: /Add Course/i });
+
+    await act(async () => {
+      fireEvent.click(addCourseButton);
+    });
+
+    expect(mockPush).toHaveBeenCalledWith("/dashboard/courses");
   });
 
   it("renders waitlist and planned status badges for courses", async () => {

@@ -55,6 +55,7 @@ export function AdditionalCourses({ courses, onDelete, onCourseSelected }: Addit
                     variant="ghost"
                     size="xs"
                     colorPalette="red"
+                    aria-label={`Remove ${course.subject} ${course.number}`}
                     onClick={() => onDelete(course.id)}
                   >
                     <Icon>

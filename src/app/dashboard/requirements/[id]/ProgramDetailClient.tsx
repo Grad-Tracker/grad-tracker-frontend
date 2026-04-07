@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import type { KeyboardEvent } from "react";
 import {
   Badge,
   Box,
@@ -104,6 +105,21 @@ function CourseTable({
   onCourseClick: (course: Course) => void;
   crossPairs?: number[][];
 }) {
+  const handleRowKeyDown = (event: KeyboardEvent<HTMLTableRowElement>, course: Course) => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      onCourseClick(course);
+    }
+  };
+
+  const handleAltKeyDown = (event: KeyboardEvent<HTMLSpanElement>, course: Course) => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      event.stopPropagation();
+      onCourseClick(course);
+    }
+  };
+
   // Map every course id to its full cross-pair group
   const groupByCourseId = new Map<number, number[]>();
   for (const group of crossPairs) {
@@ -142,6 +158,9 @@ function CourseTable({
                 key={course.id}
                 onClick={() => onCourseClick(course)}
                 cursor="pointer"
+                tabIndex={0}
+                aria-label={`Open details for ${course.subject} ${course.number}`}
+                onKeyDown={(event) => handleRowKeyDown(event, course)}
               >
                 <Table.Cell>
                   <HStack gap="1.5" wrap="wrap">
@@ -158,7 +177,12 @@ function CourseTable({
                           variant="surface"
                           size="sm"
                           fontFamily="mono"
+                          as="span"
                           cursor="pointer"
+                          tabIndex={0}
+                          role="button"
+                          aria-label={`Open details for alternate course ${alt.subject} ${alt.number}`}
+                          onKeyDown={(e) => handleAltKeyDown(e, alt)}
                           onClick={(e) => { e.stopPropagation(); onCourseClick(alt); }}
                         >
                           {alt.subject} {alt.number}

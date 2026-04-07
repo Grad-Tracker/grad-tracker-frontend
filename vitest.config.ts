@@ -27,6 +27,9 @@ export default defineConfig({
         "next.config.*",
         // Auto-generated Chakra UI wrapper components — not project logic
         "src/components/ui/**",
+        // Large shared-plan seed/fallback dataset; covered selectively via focused tests,
+        // but excluded from global thresholds to avoid static seed branches dominating totals.
+        "src/lib/supabase/queries/shared-plans.ts",
         // Test files themselves
         "src/__tests__/**",
         "**/*.test.ts",

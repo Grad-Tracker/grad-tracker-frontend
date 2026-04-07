@@ -18,7 +18,6 @@ import {
   VStack,
 } from "@chakra-ui/react";
 import { ColorModeButton } from "@/components/ui/color-mode";
-import { LinkButton } from "@/components/ui/link-button";
 import {
   ProgressBar,
   ProgressLabel,
@@ -39,44 +38,60 @@ import {
   TimelineTitle,
 } from "@/components/ui/timeline";
 import {
+  LuChartBar,
+  LuBell,
+  LuCalendar,
   LuCheck,
+  LuSquareCheck,
   LuGraduationCap,
+  LuChartPie,
+  LuUsers,
   LuArrowRight,
+  LuSparkles,
+  LuShield,
+  LuShare2,
+  LuZap,
 } from "react-icons/lu";
 import Link from "next/link";
 
 const features = [
   {
+    icon: LuChartBar,
     title: "Credit Tracking",
     description:
       "Track your completed, in-progress, and remaining credits toward your Parkside degree requirements.",
     color: "blue",
   },
   {
+    icon: LuSquareCheck,
     title: "Parkside Requirements",
     description:
       "Maps directly to UW-Parkside degree programs, general education, and major-specific requirements.",
     color: "teal",
   },
   {
+    icon: LuChartPie,
     title: "Progress Visualization",
     description:
       "See your progress toward your Parkside degree at a glance with clear visual indicators.",
-    color: "purple",
+    color: "blue",
   },
   {
+    icon: LuUsers,
     title: "Advisor Ready",
     description:
       "Generate progress reports to share with your Parkside academic advisor during meetings.",
-    color: "orange",
+    color: "purple",
   },
   {
+    icon: LuCalendar,
     title: "Semester Planning",
     description:
       "Plan your remaining semesters at Parkside to stay on track for graduation.",
-    color: "teal",
+    color: "orange",
   },
   {
+    icon: LuBell,
     title: "Requirement Alerts",
     description:
       "Know when you're missing prerequisites or need specific courses before they fill up.",
@@ -111,7 +126,7 @@ export default function LandingPage() {
   return (
     <Box
       minH="100vh"
-      fontFamily="var(--font-dm-sans), sans-serif"
+      fontFamily="var(--font-plus-jakarta), sans-serif"
       position="relative"
     >
       {/* Navigation Header */}
@@ -140,7 +155,7 @@ export default function LandingPage() {
               <Text
                 fontWeight="700"
                 fontSize="xl"
-                fontFamily="var(--font-dm-sans), sans-serif"
+                fontFamily="var(--font-outfit), sans-serif"
                 letterSpacing="-0.02em"
               >
                 GradTracker
@@ -156,17 +171,19 @@ export default function LandingPage() {
             </HStack>
             <HStack gap="3">
               <ColorModeButton variant="ghost" size="sm" />
-              <LinkButton
-                href="/signin"
-                variant="solid"
-                colorPalette="blue"
-                size="sm"
-                rounded="full"
-                px="5"
-                fontWeight="600"
-              >
-                Sign In
-              </LinkButton>
+              <Link href="/signin">
+                <Button
+                  as="span"
+                  variant="solid"
+                  colorPalette="blue"
+                  size="sm"
+                  rounded="full"
+                  px="5"
+                  fontWeight="600"
+                >
+                  Sign In
+                </Button>
+              </Link>
             </HStack>
           </HStack>
         </Container>
@@ -230,13 +247,16 @@ export default function LandingPage() {
                   rounded="full"
                   fontWeight="600"
                 >
+                  <Icon boxSize="4" mr="2">
+                    <LuSparkles />
+                  </Icon>
                   Built for UW-Parkside Students
                 </Badge>
               </HStack>
 
               <Heading
                 className="animate-fade-up-delay-1"
-                fontFamily="var(--font-dm-sans), sans-serif"
+                fontFamily="var(--font-outfit), sans-serif"
                 size={{ base: "4xl", md: "5xl", lg: "6xl" }}
                 lineHeight="1.1"
                 letterSpacing="-0.03em"
@@ -313,8 +333,18 @@ export default function LandingPage() {
                 flexWrap="wrap"
                 justify={{ base: "center", lg: "start" }}
               >
-                <Text>Secure & Private</Text>
-                <Text>Always Free</Text>
+                <HStack gap="2">
+                  <Icon color="blue.solid">
+                    <LuShield />
+                  </Icon>
+                  <Text>Secure & Private</Text>
+                </HStack>
+                <HStack gap="2">
+                  <Icon color="blue.solid">
+                    <LuZap />
+                  </Icon>
+                  <Text>Always Free</Text>
+                </HStack>
               </HStack>
             </VStack>
 
@@ -369,7 +399,7 @@ export default function LandingPage() {
                           <ProgressCircleValueText
                             fontSize="4xl"
                             fontWeight="700"
-                            fontFamily="var(--font-dm-sans), sans-serif"
+                            fontFamily="var(--font-outfit), sans-serif"
                           />
                         </ProgressCircleRoot>
                       </Box>
@@ -377,7 +407,7 @@ export default function LandingPage() {
                         <Text
                           fontWeight="700"
                           fontSize="xl"
-                          fontFamily="var(--font-dm-sans), sans-serif"
+                          fontFamily="var(--font-outfit), sans-serif"
                         >
                           Graduation Progress
                         </Text>
@@ -440,7 +470,7 @@ export default function LandingPage() {
                 <StatValueText
                   fontSize={{ base: "3xl", md: "5xl" }}
                   fontWeight="400"
-                  fontFamily="var(--font-dm-sans), sans-serif"
+                  fontFamily="var(--font-outfit), sans-serif"
                   className="gradient-text"
                   style={{ animationDelay: `${i * 0.1}s` }}
                 >
@@ -471,7 +501,7 @@ export default function LandingPage() {
                 Features
               </Badge>
               <Heading
-                fontFamily="var(--font-dm-sans), sans-serif"
+                fontFamily="var(--font-outfit), sans-serif"
                 size={{ base: "3xl", md: "4xl" }}
                 letterSpacing="-0.02em"
                 fontWeight="400"
@@ -493,8 +523,6 @@ export default function LandingPage() {
                   borderRadius="2xl"
                   borderWidth="1px"
                   borderColor="border.subtle"
-                  borderLeftWidth="3px"
-                  borderLeftColor={`${feature.color}.solid`}
                   overflow="hidden"
                   _hover={{
                     borderColor: `${feature.color}.solid`,
@@ -505,17 +533,32 @@ export default function LandingPage() {
                   style={{ animationDelay: `${index * 0.1}s` }}
                 >
                   <Card.Body p="6">
-                    <VStack align="start" gap="2">
-                      <Heading
-                        size="md"
-                        fontWeight="600"
-                        letterSpacing="-0.01em"
+                    <VStack align="start" gap="4">
+                      <Flex
+                        align="center"
+                        justify="center"
+                        w="12"
+                        h="12"
+                        bg={`${feature.color}.subtle`}
+                        borderRadius="xl"
+                        color={`${feature.color}.fg`}
                       >
-                        {feature.title}
-                      </Heading>
-                      <Text color="fg.muted" lineHeight="1.6" fontSize="sm">
-                        {feature.description}
-                      </Text>
+                        <Icon boxSize="6">
+                          <feature.icon />
+                        </Icon>
+                      </Flex>
+                      <VStack align="start" gap="2">
+                        <Heading
+                          size="md"
+                          fontWeight="600"
+                          letterSpacing="-0.01em"
+                        >
+                          {feature.title}
+                        </Heading>
+                        <Text color="fg.muted" lineHeight="1.6" fontSize="sm">
+                          {feature.description}
+                        </Text>
+                      </VStack>
                     </VStack>
                   </Card.Body>
                 </Card.Root>
@@ -545,7 +588,7 @@ export default function LandingPage() {
                 How It Works
               </Badge>
               <Heading
-                fontFamily="var(--font-dm-sans), sans-serif"
+                fontFamily="var(--font-outfit), sans-serif"
                 size={{ base: "3xl", md: "4xl" }}
                 letterSpacing="-0.02em"
                 fontWeight="400"
@@ -617,7 +660,7 @@ export default function LandingPage() {
                   <HStack justify="space-between" align="center">
                     <Heading
                       size="lg"
-                      fontFamily="var(--font-dm-sans), sans-serif"
+                      fontFamily="var(--font-outfit), sans-serif"
                       fontWeight="400"
                     >
                       Your Dashboard
@@ -638,7 +681,7 @@ export default function LandingPage() {
                       <ProgressBar rounded="full" />
                     </ProgressRoot>
 
-                    <ProgressRoot value={100} colorPalette="violet" size="sm">
+                    <ProgressRoot value={100} colorPalette="teal" size="sm">
                       <HStack justify="space-between" mb="2">
                         <ProgressLabel fontWeight="500" fontSize="sm">
                           General Education
@@ -648,7 +691,7 @@ export default function LandingPage() {
                       <ProgressBar rounded="full" />
                     </ProgressRoot>
 
-                    <ProgressRoot value={85} colorPalette="emerald" size="sm">
+                    <ProgressRoot value={85} colorPalette="blue" size="sm">
                       <HStack justify="space-between" mb="2">
                         <ProgressLabel fontWeight="500" fontSize="sm">
                           Major Requirements
@@ -658,7 +701,7 @@ export default function LandingPage() {
                       <ProgressBar rounded="full" />
                     </ProgressRoot>
 
-                    <ProgressRoot value={40} colorPalette="amber" size="sm">
+                    <ProgressRoot value={40} colorPalette="orange" size="sm">
                       <HStack justify="space-between" mb="2">
                         <ProgressLabel fontWeight="500" fontSize="sm">
                           Electives
@@ -688,7 +731,7 @@ export default function LandingPage() {
                 Progress Tracking
               </Badge>
               <Heading
-                fontFamily="var(--font-dm-sans), sans-serif"
+                fontFamily="var(--font-outfit), sans-serif"
                 size={{ base: "2xl", md: "3xl" }}
                 letterSpacing="-0.02em"
                 fontWeight="400"
@@ -735,6 +778,178 @@ export default function LandingPage() {
         </Container>
       </Box>
 
+      {/* Shared Plans Section */}
+      <Box bg="bg.subtle" py={{ base: "16", md: "20" }}>
+        <Container maxW="7xl" mx="auto" px={{ base: "4", md: "6", lg: "8" }}>
+          <Grid
+            templateColumns={{ base: "1fr", lg: "1.05fr 1fr" }}
+            gap={{ base: "10", lg: "14" }}
+            alignItems="center"
+          >
+            <VStack
+              align={{ base: "center", lg: "start" }}
+              gap="6"
+              textAlign={{ base: "center", lg: "left" }}
+            >
+              <Badge
+                colorPalette="blue"
+                variant="surface"
+                size="lg"
+                px="4"
+                py="2"
+                rounded="full"
+              >
+                Shared Plans
+              </Badge>
+              <Heading
+                fontFamily="var(--font-outfit), sans-serif"
+                size={{ base: "2xl", md: "3xl" }}
+                letterSpacing="-0.02em"
+                fontWeight="400"
+              >
+                Compare real planning paths
+              </Heading>
+              <Text fontSize="lg" color="fg.muted" lineHeight="1.7" maxW="xl">
+                Browse read-only degree plans that students and advisors share publicly. See how
+                other people sequence semesters, balance credit loads, and map out the road to
+                graduation.
+              </Text>
+              <VStack
+                align={{ base: "center", lg: "start" }}
+                gap="3"
+                pt="2"
+                w="full"
+              >
+                {[
+                  "View semester-by-semester course layouts",
+                  "Compare pacing before building your own plan",
+                  "Open shared links without needing to sign in",
+                ].map((item) => (
+                  <HStack key={item} gap="3">
+                    <Flex
+                      align="center"
+                      justify="center"
+                      w="6"
+                      h="6"
+                      bg="blue.subtle"
+                      borderRadius="full"
+                    >
+                      <Icon color="blue.fg" boxSize="3.5">
+                        <LuCheck />
+                      </Icon>
+                    </Flex>
+                    <Text fontSize="sm" fontWeight="500">
+                      {item}
+                    </Text>
+                  </HStack>
+                ))}
+              </VStack>
+              <Button asChild colorPalette="blue" rounded="full" px="7">
+                <Link href="/shared/plans">
+                  Browse Shared Plans
+                  <Icon ml="2">
+                    <LuArrowRight />
+                  </Icon>
+                </Link>
+              </Button>
+            </VStack>
+
+            <Card.Root
+              bg="linear-gradient(135deg, var(--chakra-colors-bg) 0%, var(--chakra-colors-blue-subtle) 100%)"
+              borderRadius="3xl"
+              borderWidth="1px"
+              borderColor="border.subtle"
+              boxShadow="lg"
+              overflow="hidden"
+            >
+              <Card.Body p={{ base: "6", md: "8" }}>
+                <VStack align="stretch" gap="5">
+                  <HStack justify="space-between" align="start">
+                    <VStack align="start" gap="1">
+                      <HStack gap="3">
+                        <Flex
+                          align="center"
+                          justify="center"
+                          w="10"
+                          h="10"
+                          bg="bg"
+                          borderRadius="xl"
+                          borderWidth="1px"
+                          borderColor="border.subtle"
+                        >
+                          <Icon color="blue.fg" boxSize="5">
+                            <LuShare2 />
+                          </Icon>
+                        </Flex>
+                        <VStack align="start" gap="0">
+                          <Text fontSize="xs" color="fg.muted" fontWeight="700" letterSpacing="0.08em">
+                            PUBLIC EXAMPLE
+                          </Text>
+                          <Heading
+                            size="md"
+                            fontFamily="var(--font-outfit), sans-serif"
+                            fontWeight="400"
+                          >
+                            Computer Science Plan
+                          </Heading>
+                        </VStack>
+                      </HStack>
+                      <Text fontSize="sm" color="fg.muted" pl={{ base: "0", sm: "13" }}>
+                        Shared by Maya / B.S. Computer Science
+                      </Text>
+                    </VStack>
+
+                    <Badge colorPalette="blue" variant="solid">
+                      Read-only
+                    </Badge>
+                  </HStack>
+
+                  <SimpleGrid columns={{ base: 1, sm: 2 }} gap="3">
+                    {[
+                      {
+                        term: "Fall 2026",
+                        credits: "15 cr",
+                        courses: ["CS 231", "MATH 222", "ENGL 202"],
+                      },
+                      {
+                        term: "Spring 2027",
+                        credits: "14 cr",
+                        courses: ["CS 320", "CS 331", "COMM 105"],
+                      },
+                    ].map((term) => (
+                      <Box
+                        key={term.term}
+                        p="4"
+                        borderRadius="2xl"
+                        bg="bg"
+                        borderWidth="1px"
+                        borderColor="border.subtle"
+                      >
+                        <HStack justify="space-between" mb="3">
+                          <Text fontWeight="700">{term.term}</Text>
+                          <Badge variant="surface" colorPalette="gray">
+                            {term.credits}
+                          </Badge>
+                        </HStack>
+                        <VStack align="stretch" gap="2">
+                          {term.courses.map((course) => (
+                            <Box key={course} p="2.5" borderRadius="lg" bg="bg.subtle">
+                              <Text fontSize="sm" fontWeight="500">
+                                {course}
+                              </Text>
+                            </Box>
+                          ))}
+                        </VStack>
+                      </Box>
+                    ))}
+                  </SimpleGrid>
+                </VStack>
+              </Card.Body>
+            </Card.Root>
+          </Grid>
+        </Container>
+      </Box>
+
       {/* CTA Section */}
       <Box
         position="relative"
@@ -776,7 +991,7 @@ export default function LandingPage() {
         >
           <VStack gap="8" textAlign="center">
             <Heading
-              fontFamily="var(--font-dm-sans), sans-serif"
+              fontFamily="var(--font-outfit), sans-serif"
               size={{ base: "3xl", md: "4xl", lg: "5xl" }}
               color="white"
               letterSpacing="-0.02em"
@@ -860,7 +1075,7 @@ export default function LandingPage() {
                 <Text
                   fontWeight="700"
                   fontSize="lg"
-                  fontFamily="var(--font-dm-sans), sans-serif"
+                  fontFamily="var(--font-outfit), sans-serif"
                 >
                   GradTracker
                 </Text>

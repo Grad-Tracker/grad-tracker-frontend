@@ -5,7 +5,12 @@ vi.mock("@/lib/supabase/client", () => ({
   createClient: vi.fn(),
 }));
 
+vi.mock("@/lib/supabase/queries/activity", () => ({
+  logStudentActivity: vi.fn().mockResolvedValue(undefined),
+}));
+
 import { createClient } from "@/lib/supabase/client";
+import { logStudentActivity } from "@/lib/supabase/queries/activity";
 import {
   fetchPlans,
   createPlan,
@@ -707,7 +712,7 @@ describe("planner queries", () => {
       });
       mockFrom.mockReturnValueOnce(chain);
 
-      await addPlannedCourse(1, 10, 100, 5);
+      await addPlannedCourse(1, 10, 100, 5, "CSCI 410");
 
       expect(mockFrom).toHaveBeenCalledWith("student_planned_courses");
       expect(chain.insert).toHaveBeenCalledWith({
@@ -717,6 +722,17 @@ describe("planner queries", () => {
         plan_id: 5,
         status: "PLANNED",
       });
+      expect(logStudentActivity).toHaveBeenCalledWith(
+        1,
+        "course_added",
+        "Added CSCI 410 to a semester plan",
+        expect.objectContaining({
+          course_id: 100,
+          term_id: 10,
+          plan_id: 5,
+          course_label: "CSCI 410",
+        })
+      );
     });
 
     it("throws on error", async () => {
@@ -740,7 +756,7 @@ describe("planner queries", () => {
       });
       mockFrom.mockReturnValueOnce(chain);
 
-      await removePlannedCourse(1, 10, 100, 5);
+      await removePlannedCourse(1, 10, 100, 5, "CSCI 410");
 
       expect(mockFrom).toHaveBeenCalledWith("student_planned_courses");
       expect(chain.delete).toHaveBeenCalled();
@@ -748,6 +764,17 @@ describe("planner queries", () => {
       expect(chain.eq).toHaveBeenCalledWith("term_id", 10);
       expect(chain.eq).toHaveBeenCalledWith("course_id", 100);
       expect(chain.eq).toHaveBeenCalledWith("plan_id", 5);
+      expect(logStudentActivity).toHaveBeenCalledWith(
+        1,
+        "course_removed",
+        "Removed CSCI 410 from a semester plan",
+        expect.objectContaining({
+          course_id: 100,
+          term_id: 10,
+          plan_id: 5,
+          course_label: "CSCI 410",
+        })
+      );
     });
 
     it("throws on error", async () => {
@@ -777,7 +804,7 @@ describe("planner queries", () => {
         .mockReturnValueOnce(delChain)
         .mockReturnValueOnce(insChain);
 
-      await movePlannedCourse(1, 100, 10, 20, 5);
+      await movePlannedCourse(1, 100, 10, 20, 5, "CSCI 410");
 
       expect(mockFrom).toHaveBeenCalledTimes(2);
       expect(mockFrom).toHaveBeenNthCalledWith(1, "student_planned_courses");
@@ -791,6 +818,18 @@ describe("planner queries", () => {
         plan_id: 5,
         status: "PLANNED",
       });
+      expect(logStudentActivity).toHaveBeenCalledWith(
+        1,
+        "plan_updated",
+        "Moved CSCI 410 to a different semester",
+        expect.objectContaining({
+          course_id: 100,
+          from_term_id: 10,
+          to_term_id: 20,
+          plan_id: 5,
+          course_label: "CSCI 410",
+        })
+      );
     });
 
     it("throws on delete error", async () => {

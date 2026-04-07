@@ -65,7 +65,11 @@ function getProgramTypeLabel(type: string): string {
 function ProgramCard({ program, index }: { program: Program; index: number }) {
   const colorPalette = getProgramColor(program.program_type);
   return (
-    <Link href={`/dashboard/requirements/${program.id}`} style={{ display: "block" }}>
+    <Link
+      href={`/dashboard/requirements/${program.id}`}
+      style={{ display: "block" }}
+      aria-label={`Open ${program.name}`}
+    >
     <Card.Root
       bg="bg"
       borderRadius="xl"

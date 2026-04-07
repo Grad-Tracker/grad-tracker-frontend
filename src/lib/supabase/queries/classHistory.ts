@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/client";
 import { DB_TABLES, DB_VIEWS } from "./schema";
+import { logStudentActivity } from "./activity";
 import type {
   ViewCourseCatalogRow,
   ViewProgramBlockCourseItem,
@@ -35,6 +36,24 @@ function toCourseRow(course: ViewProgramBlockCourseItem): CourseRow {
     title: String(course.title ?? ""),
     credits: Number(course.credits ?? 0),
   };
+}
+
+async function safeLogActivity(
+  studentId: number,
+  activityType: Parameters<typeof logStudentActivity>[1],
+  message: string,
+  metadata: Record<string, unknown>
+) {
+  try {
+    await logStudentActivity(studentId, activityType, message, metadata);
+  } catch (error) {
+    console.error("Failed to log student activity:", error);
+  }
+}
+
+function formatActivityCourseLabel(courseLabel?: string): string {
+  const normalized = courseLabel?.trim();
+  return normalized && normalized.length > 0 ? normalized : "a course";
 }
 
 // --- Queries ---
@@ -119,7 +138,8 @@ export async function fetchStudentCourseHistory(
 export async function insertCourseHistory(
   studentId: number,
   courseId: number,
-  termId: number
+  termId: number,
+  courseLabel?: string
 ): Promise<void> {
   const supabase = createClient();
   const { error } = await supabase.from(DB_TABLES.studentCourseHistory).insert({
@@ -133,13 +153,27 @@ export async function insertCourseHistory(
     if (error.code === "23505") return;
     throw error;
   }
+
+  const activityCourseLabel = formatActivityCourseLabel(courseLabel);
+  await safeLogActivity(
+    studentId,
+    "course_added",
+    `Added ${activityCourseLabel} to completed history`,
+    {
+      course_id: courseId,
+      term_id: termId,
+      source: "class_history",
+      course_label: activityCourseLabel,
+    }
+  );
 }
 
 /** Delete a course from student_course_history by all 3 PK columns. */
 export async function deleteCourseHistory(
   studentId: number,
   courseId: number,
-  termId: number
+  termId: number,
+  courseLabel?: string
 ): Promise<void> {
   const supabase = createClient();
   const { error } = await supabase
@@ -149,6 +183,19 @@ export async function deleteCourseHistory(
     .eq("course_id", courseId)
     .eq("term_id", termId);
   if (error) throw error;
+
+  const activityCourseLabel = formatActivityCourseLabel(courseLabel);
+  await safeLogActivity(
+    studentId,
+    "course_removed",
+    `Removed ${activityCourseLabel} from completed history`,
+    {
+      course_id: courseId,
+      term_id: termId,
+      source: "class_history",
+      course_label: activityCourseLabel,
+    }
+  );
 }
 
 /** Search active course catalog by subject+number or title. Min 2 chars. Max 20 results. */
