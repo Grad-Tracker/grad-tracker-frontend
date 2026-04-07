@@ -52,10 +52,7 @@ const TYPE_ORDER: ProgramType[] = ["MAJOR", "MINOR", "CERTIFICATE", "GRADUATE"];
 export default async function AdminDashboardPage() {
   const supabase = await createClient();
 
-  // Auth check (defense-in-depth; proxy handles the primary redirect)
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
-  if (authError) { console.error("Auth error:", authError); redirect("/signin"); }
-  if (!user) redirect("/signin");
+  const { data: { user } } = await supabase.auth.getUser();
 
   // Verify staff/advisor record exists
   const { data: advisor, error: advisorError } = await supabase
