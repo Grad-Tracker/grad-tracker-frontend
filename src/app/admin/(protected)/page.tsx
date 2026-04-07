@@ -53,6 +53,7 @@ export default async function AdminDashboardPage() {
   const supabase = await createClient();
 
   const { data: { user } } = await supabase.auth.getUser();
+  if (!user) redirect("/signin");
 
   // Verify staff/advisor record exists
   const { data: advisor, error: advisorError } = await supabase
