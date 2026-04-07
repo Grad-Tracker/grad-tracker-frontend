@@ -2,18 +2,14 @@
 
 import { Box, Card, Flex, HStack, Stack } from "@chakra-ui/react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { SkeletonCard, SkeletonProgressBar } from "@/components/shared/SkeletonParts";
 
 /** Skeleton for the RequirementsDashboard while degree blocks are loading. */
 export function RequirementsSkeleton() {
   return (
     <Stack gap="4" data-testid="requirements-skeleton">
       {[1, 2, 3].map((i) => (
-        <Card.Root
-          key={i}
-          borderRadius="xl"
-          borderWidth="1px"
-          borderColor="border.subtle"
-        >
+        <SkeletonCard key={i}>
           <Card.Body>
             <Stack gap="4">
               {/* Title + badge */}
@@ -30,13 +26,7 @@ export function RequirementsSkeleton() {
               </HStack>
 
               {/* Progress bar */}
-              <Box>
-                <HStack justify="space-between" mb="2">
-                  <Skeleton height="4" width="60px" />
-                  <Skeleton height="4" width="30px" />
-                </HStack>
-                <Skeleton height="2" width="full" borderRadius="full" />
-              </Box>
+              <SkeletonProgressBar labelWidth="60px" valueWidth="30px" />
 
               {/* Course rows */}
               <Stack gap="2">
@@ -51,7 +41,7 @@ export function RequirementsSkeleton() {
               </Stack>
             </Stack>
           </Card.Body>
-        </Card.Root>
+        </SkeletonCard>
       ))}
     </Stack>
   );
