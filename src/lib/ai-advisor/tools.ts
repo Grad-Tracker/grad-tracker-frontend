@@ -94,7 +94,7 @@ function normalizeCourseCode(raw: string): string {
 }
 
 function extractCourseCodes(message: string): string[] {
-  const matches = message.matchAll(/([A-Za-z]{2,6})\s*[- ]\s*([0-9]{2,4}[A-Za-z]?)/g);
+  const matches = message.matchAll(/([A-Za-z]{2,6})[\s-]+([0-9]{2,4}[A-Za-z]?)/g);
   const codes = new Set<string>();
   for (const match of matches) {
     const subject = String(match[1] ?? "").toUpperCase();
@@ -132,12 +132,18 @@ function tryParseJson(text: string): unknown {
     // Continue with fallback parsing.
   }
 
-  const fenced = /```(?:json)?\s*([\s\S]*?)```/i.exec(raw);
-  if (fenced?.[1]) {
-    try {
-      return JSON.parse(fenced[1]);
-    } catch {
-      // Continue with fallback parsing.
+  const fenceOpen = raw.indexOf("```");
+  if (fenceOpen >= 0) {
+    let contentStart = raw.indexOf("\n", fenceOpen);
+    if (contentStart < 0) contentStart = fenceOpen + 3;
+    else contentStart += 1;
+    const fenceClose = raw.indexOf("```", contentStart);
+    if (fenceClose >= 0) {
+      try {
+        return JSON.parse(raw.slice(contentStart, fenceClose).trim());
+      } catch {
+        // Continue with fallback parsing.
+      }
     }
   }
 

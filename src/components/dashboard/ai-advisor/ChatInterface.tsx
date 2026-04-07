@@ -38,7 +38,7 @@ const promptChips = [
 ];
 
 function createId() {
-  return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  return `${Date.now()}-${crypto.randomUUID()}`;
 }
 
 function AIMessage({ message }: { message: AdvisorMessage }) {
