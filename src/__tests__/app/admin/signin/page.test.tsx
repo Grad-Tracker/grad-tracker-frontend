@@ -46,7 +46,7 @@ describe("AdminSigninPage", () => {
   it("renders advisor copy by default", () => {
     renderWithChakra(<AdminSigninPage />);
 
-    expect(screen.getAllByText("Advisor Sign In").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("Sign In").length).toBeGreaterThanOrEqual(1);
     expect(
       screen.getAllByText("Manage programs, Gen-Ed buckets, and course catalog.").length
     ).toBeGreaterThanOrEqual(1);
