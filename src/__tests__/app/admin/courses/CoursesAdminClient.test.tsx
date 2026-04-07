@@ -1,7 +1,7 @@
 import React from "react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
-import { ChakraProvider, defaultSystem } from "@chakra-ui/react";
+import { screen, fireEvent, waitFor } from "@testing-library/react";
+import { renderWithChakra } from "@/__tests__/helpers/mocks";
 
 // ── hoisted mocks ─────────────────────────────────────────────────────────────
 
@@ -43,10 +43,6 @@ vi.mock("next/link", () => ({
 
 import CoursesAdminClient from "@/app/admin/(protected)/courses/CoursesAdminClient";
 import type { CourseDetail } from "@/types/course";
-
-function renderWithChakra(ui: React.ReactElement) {
-  return render(<ChakraProvider value={defaultSystem}>{ui}</ChakraProvider>);
-}
 
 // ── fixtures ──────────────────────────────────────────────────────────────────
 

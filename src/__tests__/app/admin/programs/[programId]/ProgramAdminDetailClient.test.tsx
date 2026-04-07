@@ -1,7 +1,7 @@
 import React from "react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
-import { ChakraProvider, defaultSystem } from "@chakra-ui/react";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
+import { renderWithChakra } from "@/__tests__/helpers/mocks";
 
 const {
   mockFrom,
@@ -66,10 +66,6 @@ vi.mock("@/components/ui/native-select", () => ({
 }));
 
 import ProgramAdminDetailClient from "@/app/admin/(protected)/programs/[programId]/ProgramAdminDetailClient";
-
-function renderWithChakra(ui: React.ReactElement) {
-  return render(<ChakraProvider value={defaultSystem}>{ui}</ChakraProvider>);
-}
 
 const program = {
   id: 1,

@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { cleanup } from "@testing-library/react";
-import { render, screen, fireEvent, waitFor, act } from "@testing-library/react";
+import { screen, fireEvent, waitFor, act } from "@testing-library/react";
 import React from "react";
-import { ChakraProvider, defaultSystem } from "@chakra-ui/react";
+import { renderWithChakra } from "@/__tests__/helpers/mocks";
 
 const { mockPush, mockSignInWithPassword, mockGetUser, mockToaster } = vi.hoisted(() => ({
   mockPush: vi.fn(),
@@ -76,10 +76,6 @@ vi.mock("@/components/ui/timeline", () => ({
 }));
 
 import LandingPage from "@/components/LandingPage";
-
-function renderWithChakra(ui: React.ReactElement) {
-  return render(<ChakraProvider value={defaultSystem}>{ui}</ChakraProvider>);
-}
 
 describe("LandingPage", { timeout: 15000 }, () => {
   afterEach(cleanup);

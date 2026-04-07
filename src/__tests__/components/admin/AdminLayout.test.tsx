@@ -1,7 +1,7 @@
 import React from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { ChakraProvider, defaultSystem } from "@chakra-ui/react";
+import { fireEvent, screen, waitFor } from "@testing-library/react";
+import { renderWithChakra } from "@/__tests__/helpers/mocks";
 
 const { mockPush, mockUsePathname, mockSignOut, mockGetUser, mockToasterCreate } = vi.hoisted(() => ({
   mockPush: vi.fn(),
@@ -46,10 +46,6 @@ vi.mock("@/components/ui/toaster", () => ({
 import AdminHeader from "@/components/admin/AdminHeader";
 import AdminShell from "@/components/admin/AdminShell";
 import AdminSidebar from "@/components/admin/AdminSidebar";
-
-function renderWithChakra(ui: React.ReactElement) {
-  return render(<ChakraProvider value={defaultSystem}>{ui}</ChakraProvider>);
-}
 
 describe("Admin layout components", () => {
   beforeEach(() => {

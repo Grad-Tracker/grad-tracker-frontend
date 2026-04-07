@@ -1,7 +1,7 @@
 import React from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
-import { ChakraProvider, defaultSystem } from "@chakra-ui/react";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
+import { renderWithChakra } from "@/__tests__/helpers/mocks";
 
 type BucketRow = {
   id: number;
@@ -100,10 +100,6 @@ vi.mock("@/components/ui/tooltip", () => ({
 }));
 
 import AdminGenEdPage from "@/app/admin/(protected)/gen-ed/page";
-
-function renderWithChakra(ui: React.ReactElement) {
-  return render(<ChakraProvider value={defaultSystem}>{ui}</ChakraProvider>);
-}
 
 function makeAwaitable(result: unknown) {
   return {
