@@ -64,6 +64,8 @@ import {
 import type { Program } from "@/types/onboarding";
 import DashboardSkeleton from "@/components/dashboard/DashboardSkeleton";
 import { Skeleton } from "@/components/ui/skeleton";
+import { getCurrentAcademicTerm } from "@/lib/academic-term";
+import type { ViewPlanTermRow, ViewPlanCourseRow, ViewStudentCourseProgressRow } from "@/lib/supabase/queries/view-types";
 
 function getStatusBadgeProps(status: string): { color: string; label: string } {
   if (status === "enrolled") return { color: "emerald", label: "Enrolled" };
@@ -306,16 +308,22 @@ export default function Dashboard() {
 
         const completedPromise = fetchStudentCourseProgress(studentId);
         const activityPromise = fetchRecentStudentActivity(studentId).catch(() => [] as StudentActivityRow[]);
-        const plannedPromise = supabase
-          .from(DB_VIEWS.planCourses)
-          .select("status, subject, number, title, credits")
-          .eq("student_id", studentId);
+
+        // Find term IDs for the current academic semester
+        const currentTerm = getCurrentAcademicTerm();
+        const currentTermIdsPromise = supabase
+          .from(DB_VIEWS.planTerms)
+          .select("term_id")
+          .eq("student_id", studentId)
+          .eq("season", currentTerm.season)
+          .eq("year", currentTerm.year);
+
         const blocksPromise = resolveMajorAndBlocks(supabase, studentId);
 
-        const [completedResult, blocksResult, plannedResult, activityResult] = await Promise.all([
+        const [completedResult, blocksResult, currentTermIdsResult, activityResult] = await Promise.all([
           completedPromise,
           blocksPromise,
-          plannedPromise,
+          currentTermIdsPromise,
           activityPromise,
         ]);
         setRecentActivity(activityResult);
@@ -325,29 +333,35 @@ export default function Dashboard() {
         setCurrentMajorProgramId(majorProgramId);
         setSelectedMajorId(majorProgramId);
 
+        const termIds = ((currentTermIdsResult as { data?: Pick<ViewPlanTermRow, "term_id">[] })?.data ?? []).map(
+          (r) => r.term_id
+        );
+        const plannedRows: Pick<ViewPlanCourseRow, "status" | "subject" | "number" | "title" | "credits">[] = termIds.length > 0
+          ? (await supabase
+              .from(DB_VIEWS.planCourses)
+              .select("status, subject, number, title, credits")
+              .eq("student_id", studentId)
+              .in("term_id", termIds)).data ?? []
+          : [];
+
         // Reuse completedResult for BOTH:
         //  - requirement-block matching
         //  - credit summary (completed credits)
-        const completedCourseRows = (completedResult ?? []) as any[];
+        const completedCourseRows: ViewStudentCourseProgressRow[] = completedResult ?? [];
         const completedCourseIds = new Set<number>(
-          (completedCourseRows ?? [])
+          completedCourseRows
             .filter(
-              (r: any) =>
-                r?.completed === true ||
-                String(r?.progress_status ?? "").toUpperCase() === "COMPLETED"
+              (r) =>
+                r.completed === true ||
+                String(r.progress_status ?? "").toUpperCase() === "COMPLETED"
             )
-            .map((r: any) => Number(r?.course_id))
-            .filter((x: number) => !Number.isNaN(x))
+            .map((r) => r.course_id)
+            .filter((x) => !Number.isNaN(x))
         );
 
-        // Reuse plannedResult for BOTH:
-        //  - course cards
-        //  - in-progress credits
-        const plannedRows = (plannedResult as any)?.data ?? [];
-
         const mapped: PlannedCourseCard[] =
-          (plannedRows ?? [])
-            .map((r: any) => {
+          plannedRows
+            .map((r) => {
               const rawStatus = String(r.status ?? "").toLowerCase();
               const status: PlannedCourseCard["status"] =
                 rawStatus === "enrolled"
@@ -371,10 +385,10 @@ export default function Dashboard() {
         setLoadingCourses(false);
 
         const inProgressCredits =
-          (plannedRows ?? []).reduce((sum: number, r: any) => {
-            const s = String(r?.status ?? "").toLowerCase();
+          plannedRows.reduce((sum, r) => {
+            const s = String(r.status ?? "").toLowerCase();
             if (s !== "enrolled" && s !== "waitlist") return sum;
-            return sum + Number(r?.credits ?? 0);
+            return sum + Number(r.credits ?? 0);
           }, 0);
 
         // Requirements (uses blocksResult + completedCourseIds)
@@ -442,12 +456,6 @@ export default function Dashboard() {
             if (!courseCreditsById.has(courseId)) {
               courseCreditsById.set(courseId, Number(c?.credits ?? 0));
             }
-          }
-        }
-        for (const r of plannedRows ?? []) {
-          const cid = Number(r?.course_id);
-          if (!Number.isNaN(cid) && !courseCreditsById.has(cid)) {
-            courseCreditsById.set(cid, Number(r?.credits ?? 0));
           }
         }
         const completedCredits = Array.from(completedCourseIds).reduce(

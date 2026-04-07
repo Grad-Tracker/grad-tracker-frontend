@@ -31,7 +31,6 @@ import {
 } from "@chakra-ui/react";
 import { Select } from "@chakra-ui/react";
 import Link from "next/link";
-import { ColorModeButton } from "@/components/ui/color-mode";
 import { toaster } from "@/components/ui/toaster";
 import {
   LuLayoutDashboard,
@@ -63,7 +62,8 @@ import {
   getOrCreateTerm,
 } from "@/lib/supabase/queries/planner";
 import { DB_TABLES, DB_VIEWS } from "@/lib/supabase/queries/schema";
-import { compareTerms, type Season, type Term } from "@/types/planner";
+import { compareTerms, type Term } from "@/types/planner";
+import { getCurrentAcademicTerm } from "@/lib/academic-term";
 
 const PAGE_SIZE = 52;
 
@@ -114,16 +114,6 @@ export default function CoursesClient({
     setAvailablePlans([]);
     setPlanTerms({});
     setSelectedPlanId(null);
-  };
-
-  const getCurrentAcademicTerm = (): { season: Season; year: number } => {
-    const now = new Date();
-    const month = now.getMonth();
-    const year = now.getFullYear();
-
-    if (month <= 4) return { season: "Spring", year };
-    if (month <= 7) return { season: "Summer", year };
-    return { season: "Fall", year };
   };
 
   const ensureDefaultPlan = async (studentId: number): Promise<number> => {
