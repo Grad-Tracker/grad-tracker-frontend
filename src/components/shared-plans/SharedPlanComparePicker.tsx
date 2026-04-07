@@ -36,7 +36,7 @@ function formatPrograms(programNames: string[]) {
 export default function SharedPlanComparePicker({
   sharedPlans,
   ownPlans,
-}: SharedPlanComparePickerProps) {
+}: Readonly<SharedPlanComparePickerProps>) {
   const router = useRouter();
   const [selectedShareToken, setSelectedShareToken] = useState<string | null>(null);
   const [selectedPlanId, setSelectedPlanId] = useState<number | null>(null);

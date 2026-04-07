@@ -10,7 +10,7 @@ interface MajorChecklistProps {
   onToggle: (courseId: number, checked: boolean) => void;
 }
 
-export function MajorChecklist({ major, completedCourseIds, onToggle }: MajorChecklistProps) {
+export function MajorChecklist({ major, completedCourseIds, onToggle }: Readonly<MajorChecklistProps>) {
   const allCourses = major.blocks.flatMap((b) => b.courses);
   const completedCount = allCourses.filter((c) => completedCourseIds.has(c.id)).length;
 

@@ -78,7 +78,7 @@ export default function SemesterGrid({
           summer: term.season === "Summer" ? term : null,
         });
       } else {
-        const group = groups[groups.length - 1];
+        const group = groups.at(-1)!;
         if (term.season === "Fall") group.fall = term;
         else if (term.season === "Spring") group.spring = term;
         else if (term.season === "Summer") group.summer = term;

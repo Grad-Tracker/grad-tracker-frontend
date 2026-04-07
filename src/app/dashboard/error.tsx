@@ -13,10 +13,10 @@ import Link from "next/link";
 export default function DashboardError({
   error,
   reset,
-}: {
+}: Readonly<{
   error: Error & { digest?: string };
   reset: () => void;
-}) {
+}>) {
   return (
     <Box
       flex="1"

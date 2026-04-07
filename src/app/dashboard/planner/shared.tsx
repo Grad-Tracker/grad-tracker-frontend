@@ -209,10 +209,10 @@ function SinglePlanGrid({ plan }: { plan: SharedPlanDetail }) {
 function ComparePlansView({
   sharedPlan,
   myPlan,
-}: {
+}: Readonly<{
   sharedPlan: SharedPlanDetail;
   myPlan: ComparablePlanDetail;
-}) {
+}>) {
   const termMap = new Map<string, SharedPlanDetail["terms"][number]>();
   [...sharedPlan.terms, ...myPlan.terms].forEach((term) => {
     termMap.set(getTermKey(term), term);
@@ -621,12 +621,12 @@ export function SharedPlanView({
   showPlannerCta = false,
   ownPlans = [],
   comparisonPlan = null,
-}: {
+}: Readonly<{
   plan: SharedPlanDetail;
   showPlannerCta?: boolean;
   ownPlans?: OwnPlanSummary[];
   comparisonPlan?: ComparablePlanDetail | null;
-}) {
+}>) {
   return (
     <Box minH="100vh" bg="bg.subtle" px={{ base: "4", md: "8" }} py={{ base: "8", md: "10" }}>
       <Box maxW="7xl" mx="auto">

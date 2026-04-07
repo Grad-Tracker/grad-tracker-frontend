@@ -100,11 +100,11 @@ function CourseTable({
   courses,
   onCourseClick,
   crossPairs = [],
-}: {
+}: Readonly<{
   courses: Course[];
   onCourseClick: (course: Course) => void;
   crossPairs?: number[][];
-}) {
+}>) {
   const handleRowKeyDown = (event: KeyboardEvent<HTMLTableRowElement>, course: Course) => {
     if (event.key === "Enter" || event.key === " ") {
       event.preventDefault();
@@ -207,17 +207,17 @@ function OptionGroupView({
   options,
   onCourseClick,
   crossPairs,
-}: {
+}: Readonly<{
   options: Course[][];
   onCourseClick: (course: Course) => void;
   crossPairs?: number[][];
-}) {
+}>) {
   return (
     <VStack align="stretch" gap="0">
       {options.map((group, i) => {
         const totalCredits = group.reduce((sum, c) => sum + Number(c.credits), 0);
         return (
-          <Box key={i}>
+          <Box key={group.map((c) => c.id).join("-")}>
             {i > 0 && (
               <HStack my="3">
                 <Separator flex="1" />
@@ -248,11 +248,11 @@ function BreadthPackageView({
   courses,
   onCourseClick,
   crossPairs,
-}: {
+}: Readonly<{
   courses: Course[];
   onCourseClick: (course: Course) => void;
   crossPairs?: number[][];
-}) {
+}>) {
   return (
     <VStack align="stretch" gap="5">
       {BREADTH_PACKAGES.map((pkg, i) => {
@@ -299,10 +299,46 @@ function getRuleLabel(block: Block): string {
   }
 }
 
+function BlockCourseContent({
+  block,
+  courses,
+  onCourseClick,
+}: Readonly<{
+  block: Block;
+  courses: Course[];
+  onCourseClick: (course: Course) => void;
+}>) {
+  if (block.options) {
+    return (
+      <OptionGroupView
+        options={block.options}
+        onCourseClick={onCourseClick}
+        crossPairs={block.crossPairs}
+      />
+    );
+  }
+  if (isBreadthBlock(block.name)) {
+    return (
+      <BreadthPackageView
+        courses={courses}
+        onCourseClick={onCourseClick}
+        crossPairs={block.crossPairs}
+      />
+    );
+  }
+  return (
+    <CourseTable
+      courses={courses}
+      onCourseClick={onCourseClick}
+      crossPairs={block.crossPairs}
+    />
+  );
+}
+
 export default function ProgramDetailClient({
   program,
   blocks,
-}: ProgramDetailClientProps) {
+}: Readonly<ProgramDetailClientProps>) {
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
 
@@ -416,23 +452,11 @@ export default function ProgramDetailClient({
                         <Text color="fg.muted" fontSize="sm" fontStyle="italic">
                           No courses listed for this requirement.
                         </Text>
-                      ) : block.options ? (
-                        <OptionGroupView
-                          options={block.options}
-                          onCourseClick={handleCourseClick}
-                          crossPairs={block.crossPairs}
-                        />
-                      ) : isBreadthBlock(block.name) ? (
-                        <BreadthPackageView
-                          courses={courses}
-                          onCourseClick={handleCourseClick}
-                          crossPairs={block.crossPairs}
-                        />
                       ) : (
-                        <CourseTable
+                        <BlockCourseContent
+                          block={block}
                           courses={courses}
                           onCourseClick={handleCourseClick}
-                          crossPairs={block.crossPairs}
                         />
                       )}
                     </Card.Body>

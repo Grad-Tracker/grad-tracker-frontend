@@ -13,6 +13,7 @@ import type {
   ViewPlanCourseRow,
 } from "@/lib/supabase/queries/view-types";
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type SupabaseTableClient = any;
 
 export interface AdvisorProgramInfo {
@@ -127,7 +128,7 @@ function normalizeCourseCode(subject: string, number: string): string {
 
 function parseCourseCode(raw: string): { subject: string; number: string } | null {
   const cleaned = raw.trim().toUpperCase().replace(/-/g, " ");
-  const match = cleaned.match(/^([A-Z]{2,6})\s+([0-9]{2,4}[A-Z]?)$/);
+  const match = /^([A-Z]{2,6})\s+([0-9]{2,4}[A-Z]?)$/.exec(cleaned);
   if (!match) return null;
   return { subject: match[1], number: match[2] };
 }
@@ -410,7 +411,7 @@ export async function getDegreeProgress(
     if (majorError) throw majorError;
     resolvedProgramIds = (majorRows ?? [])
       .map((r: any) => Number(r.program_id))
-      .filter((id: number) => Number.isFinite(id) && !isNaN(id));
+      .filter((id: number) => Number.isFinite(id) && !Number.isNaN(id));
   }
 
   const [blocks, { completedIds, inProgressIds }] = await Promise.all([
@@ -514,7 +515,7 @@ export async function getRemainingRequirements(
     if (majorError) throw majorError;
     resolvedProgramIds = (majorRows ?? [])
       .map((r: any) => Number(r.program_id))
-      .filter((id: number) => Number.isFinite(id) && !isNaN(id));
+      .filter((id: number) => Number.isFinite(id) && !Number.isNaN(id));
   }
 
   const [blocks, { completedIds, inProgressIds }] = await Promise.all([
@@ -568,7 +569,7 @@ export async function resolveCourseIdsByCodes(
   const normalized = Array.from(
     new Set(
       courseCodes
-        .map((code) => code.trim().toUpperCase().replace(/\s+/g, " "))
+        .map((code) => code.trim().toUpperCase().replaceAll(/\s+/g, " "))
         .filter(Boolean)
     )
   );

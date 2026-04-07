@@ -132,7 +132,7 @@ function tryParseJson(text: string): unknown {
     // Continue with fallback parsing.
   }
 
-  const fenced = raw.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  const fenced = /```(?:json)?\s*([\s\S]*?)```/i.exec(raw);
   if (fenced?.[1]) {
     try {
       return JSON.parse(fenced[1]);
@@ -181,13 +181,13 @@ function normalizeAdvisorResponse(payload: unknown): AdvisorChatResponse | null 
     : [];
 
   const risks = Array.isArray(obj.risks)
-    ? obj.risks.map((value) => String(value)).filter(Boolean)
+    ? obj.risks.map(String).filter(Boolean)
     : [];
   const missingData = Array.isArray(obj.missingData)
-    ? obj.missingData.map((value) => String(value)).filter(Boolean)
+    ? obj.missingData.map(String).filter(Boolean)
     : [];
   const citations = Array.isArray(obj.citations)
-    ? obj.citations.map((value) => String(value)).filter(Boolean)
+    ? obj.citations.map(String).filter(Boolean)
     : [];
 
   return {
@@ -314,7 +314,7 @@ export function createAdvisorTools(deps: AdvisorToolDependencies): AdvisorToolse
       const normalizedIds = Array.from(
         new Set(
           (input.courseIds ?? [])
-            .map((id) => Number(id))
+            .map(Number)
             .filter((id) => Number.isFinite(id))
         )
       );

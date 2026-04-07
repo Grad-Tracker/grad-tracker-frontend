@@ -5,7 +5,7 @@ import { Box, Flex } from "@chakra-ui/react";
 import AdminSidebar from "@/components/admin/AdminSidebar";
 import AdminHeader from "@/components/admin/AdminHeader";
 
-export default function AdminShell({ children }: { children: React.ReactNode }) {
+export default function AdminShell({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <Box minH="100vh" bg="bg" fontFamily="var(--font-dm-sans), sans-serif">
       <Flex>

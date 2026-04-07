@@ -1,6 +1,6 @@
 "use client";
 
-import { Badge, Box, Button, CloseButton, Drawer, HStack, Icon, Portal, Text } from "@chakra-ui/react";
+import { Badge, Box, CloseButton, Drawer, HStack, Icon, Portal, Text } from "@chakra-ui/react";
 import { LuSparkles } from "react-icons/lu";
 import { useAtlasPanel } from "@/contexts/AtlasPanelContext";
 import { ChatInterface } from "@/components/dashboard/ai-advisor/ChatInterface";

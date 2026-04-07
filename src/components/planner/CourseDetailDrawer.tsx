@@ -30,7 +30,7 @@ export default function CourseDetailDrawer({
   onOpenChange,
   onRemoveCourse,
   isRemovingCourse = false,
-}: CourseDetailDrawerProps) {
+}: Readonly<CourseDetailDrawerProps>) {
   return (
     <Drawer.Root
       open={open}

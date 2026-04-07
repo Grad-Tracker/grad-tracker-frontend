@@ -443,7 +443,7 @@ export default function ProgramAdminDetailClient({
   }
 
   async function handleDeleteBlock(block: Block) {
-    if (!window.confirm(`Delete ${block.name}?`)) return;
+    if (!globalThis.confirm(`Delete ${block.name}?`)) return;
 
     setLoading(true);
 

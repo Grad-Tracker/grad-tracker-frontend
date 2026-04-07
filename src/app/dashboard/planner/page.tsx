@@ -96,7 +96,7 @@ function getLegacyBreadthPackageFromStorage(studentId: number): string | null {
   const planScopedPrefix = `gradtracker:breadthPackage:${studentId}:`;
   for (let i = 0; i < localStorage.length; i += 1) {
     const key = localStorage.key(i);
-    if (!key || !key.startsWith(planScopedPrefix)) continue;
+    if (!key?.startsWith(planScopedPrefix)) continue;
     const value = localStorage.getItem(key);
     if (isValidBreadthPackageId(value)) return value;
   }

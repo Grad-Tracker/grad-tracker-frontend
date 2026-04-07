@@ -255,7 +255,7 @@ export default function ProgramsClient({ programs }: ProgramsClientProps) {
 
         {/* Results count */}
         <Text fontSize="sm" color="fg.muted">
-          {filteredPrograms.length} program{filteredPrograms.length !== 1 ? "s" : ""} found
+          {filteredPrograms.length} program{filteredPrograms.length === 1 ? "" : "s"} found
         </Text>
 
         {/* Program Grid */}

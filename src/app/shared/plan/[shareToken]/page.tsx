@@ -72,6 +72,7 @@ export default async function SharedPlanPage({
     }
   } catch (err) {
     // non-fatal — proceed without user-specific data
+    console.error("Failed to load user-specific plan data:", err);
     ownPlans = [];
     comparisonPlan = null;
   }

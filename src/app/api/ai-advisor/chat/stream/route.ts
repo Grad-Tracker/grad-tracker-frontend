@@ -222,7 +222,7 @@ export async function POST(request: Request) {
               break;
             }
 
-            send({ type: "status", text: `Looking up ${toolUse.name.replace(/_/g, " ")}...` });
+            send({ type: "status", text: `Looking up ${toolUse.name.replaceAll("_", " ")}...` });
             try {
               const toolInput = (toolUse.input ?? {}) as Record<string, unknown>;
               const toolName = toolUse.name as AdvisorToolName;

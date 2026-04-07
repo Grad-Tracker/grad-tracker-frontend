@@ -16,7 +16,7 @@ import type {
   ViewGenEdBucketCoursesRow,
   ViewPlanCourseRow,
   ViewPlanMetaRow,
-  ViewPlanTermRow,
+
   ViewProgramBlockCourseItem,
   ViewProgramBlockCoursesRow,
   ViewStudentCourseProgressRow,

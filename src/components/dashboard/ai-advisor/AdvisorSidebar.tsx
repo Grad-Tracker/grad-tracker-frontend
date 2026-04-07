@@ -50,11 +50,11 @@ function SidebarCard({
   icon,
   title,
   children,
-}: {
+}: Readonly<{
   icon: React.ReactNode;
   title: string;
   children: React.ReactNode;
-}) {
+}>) {
   return (
     <Box
       bg="bg"
