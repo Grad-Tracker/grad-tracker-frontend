@@ -37,7 +37,7 @@ vi.mock("@/lib/supabase/server", () => ({
   }),
 }));
 
-import AdminDashboardPage from "@/app/admin/page";
+import AdminDashboardPage from "@/app/admin/(protected)/page";
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
