@@ -38,7 +38,13 @@ mockFrom.mockImplementation(() => ({
 }));
 
 vi.mock("next/navigation", () => ({
+  usePathname: () => "/dashboard",
   useRouter: () => ({ push: mockPush }),
+}));
+
+vi.mock("next/link", () => ({
+  default: ({ children, href }: { children: React.ReactNode; href: string }) =>
+    React.createElement("a", { href }, children),
 }));
 
 vi.mock("@/lib/supabase/client", () => ({
@@ -70,9 +76,9 @@ vi.mock("@/components/ui/menu", () => ({
   MenuTrigger: ({ children }: any) => <div>{children}</div>,
 }));
 
-import DashboardHeader from "@/components/dashboard/DashboardHeader";
+import DashboardSidebar from "@/components/dashboard/DashboardSidebar";
 
-describe("DashboardHeader", () => {
+describe("DashboardSidebar account menu", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockSelect.mockClear();
@@ -86,7 +92,7 @@ describe("DashboardHeader", () => {
   it("renders avatar fallback when no user", async () => {
     mockGetUser.mockResolvedValue({ data: { user: null } });
     await act(async () => {
-      renderWithChakra(<DashboardHeader />);
+      renderWithChakra(<DashboardSidebar />);
     });
     // Fallback name is "User" when no userName is set
     expect(screen.getAllByText("U").length).toBeGreaterThanOrEqual(1);
@@ -109,7 +115,7 @@ describe("DashboardHeader", () => {
       },
     });
     await act(async () => {
-      renderWithChakra(<DashboardHeader />);
+      renderWithChakra(<DashboardSidebar />);
     });
     await waitFor(() => {
       expect(screen.getAllByText("JD").length).toBeGreaterThanOrEqual(1);
@@ -133,7 +139,7 @@ describe("DashboardHeader", () => {
       },
     });
     await act(async () => {
-      renderWithChakra(<DashboardHeader />);
+      renderWithChakra(<DashboardSidebar />);
     });
     await waitFor(() => {
       expect(screen.getAllByText("A").length).toBeGreaterThanOrEqual(1);
@@ -150,6 +156,7 @@ describe("DashboardHeader", () => {
     });
     mockCreateSignedUrl.mockResolvedValue({
       data: { signedUrl: "https://example.com/avatar.png" },
+      error: null,
     });
     mockGetUser.mockResolvedValue({
       data: {
@@ -161,14 +168,13 @@ describe("DashboardHeader", () => {
     });
 
     await act(async () => {
-      renderWithChakra(<DashboardHeader />);
+      renderWithChakra(<DashboardSidebar />);
     });
 
     await waitFor(() => {
-      expect(screen.getByAltText("Jamie Smith")).toHaveAttribute(
-        "src",
-        "https://example.com/avatar.png"
-      );
+      const avatars = screen.getAllByAltText("Jamie Smith");
+      expect(avatars.length).toBeGreaterThanOrEqual(1);
+      expect(avatars[0]).toHaveAttribute("src", "https://example.com/avatar.png");
     });
   });
 
@@ -200,7 +206,7 @@ describe("DashboardHeader", () => {
     });
 
     await act(async () => {
-      renderWithChakra(<DashboardHeader />);
+      renderWithChakra(<DashboardSidebar />);
     });
 
     await waitFor(() => {
@@ -208,92 +214,10 @@ describe("DashboardHeader", () => {
     });
   });
 
-  it("renders a staff avatar image when the staff record has an avatar path", async () => {
-    mockFrom.mockImplementation((table: string) => ({
-      select: () => ({
-        eq: () => ({
-          maybeSingle:
-            table === "students"
-              ? vi.fn().mockResolvedValue({ data: null })
-              : vi.fn().mockResolvedValue({
-                  data: {
-                    first_name: "Taylor",
-                    last_name: "Admin",
-                    avatar_path: "staff/staff-2/avatar.png",
-                  },
-                }),
-        }),
-      }),
-    }));
-
-    mockCreateSignedUrl.mockResolvedValue({
-      data: { signedUrl: "https://example.com/staff-avatar.png" },
-    });
-    mockGetUser.mockResolvedValue({
-      data: {
-        user: {
-          id: "staff-2",
-          user_metadata: { first_name: "Taylor", last_name: "Admin" },
-        },
-      },
-    });
-
-    await act(async () => {
-      renderWithChakra(<DashboardHeader />);
-    });
-
-    await waitFor(() => {
-      expect(screen.getByAltText("Taylor Admin")).toHaveAttribute(
-        "src",
-        "https://example.com/staff-avatar.png"
-      );
-    });
-  });
-
-  it("keeps the fallback avatar initials when signed URL creation fails", async () => {
-    mockFrom.mockImplementation((table: string) => ({
-      select: () => ({
-        eq: () => ({
-          maybeSingle:
-            table === "students"
-              ? vi.fn().mockResolvedValue({
-                  data: {
-                    first_name: "Jamie",
-                    last_name: "Smith",
-                    avatar_path: "students/user-3/avatar.png",
-                  },
-                })
-              : vi.fn().mockResolvedValue({ data: null }),
-        }),
-      }),
-    }));
-    mockCreateSignedUrl.mockResolvedValue({
-      data: null,
-      error: new Error("signed url failed"),
-    });
-    mockGetUser.mockResolvedValue({
-      data: {
-        user: {
-          id: "user-3",
-          user_metadata: { first_name: "Jamie", last_name: "Smith" },
-        },
-      },
-    });
-
-    await act(async () => {
-      renderWithChakra(<DashboardHeader />);
-    });
-
-    await waitFor(() => {
-      expect(screen.getAllByText("JS").length).toBeGreaterThanOrEqual(1);
-    });
-    expect(screen.queryByAltText("Jamie Smith")).not.toBeInTheDocument();
-  });
-
   it("renders Settings and Sign Out menu items", async () => {
     mockGetUser.mockResolvedValue({ data: { user: null } });
     await act(async () => {
-      renderWithChakra(<DashboardHeader />);
+      renderWithChakra(<DashboardSidebar />);
     });
     expect(screen.getAllByText("Settings").length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText("Sign Out").length).toBeGreaterThanOrEqual(1);

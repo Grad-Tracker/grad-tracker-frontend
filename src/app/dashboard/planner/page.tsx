@@ -936,27 +936,6 @@ export default function PlannerPage() {
               </HStack>
 
               <HStack gap="2">
-                {/* Compact plan tabs for quick switching */}
-                {plans.length > 1 && (
-                  <HStack gap="0" bg="bg.subtle" borderRadius="lg" p="0.5" mr="1">
-                    {plans.map((p) => (
-                      <Button
-                        key={p.id}
-                        size="xs"
-                        variant={p.id === activePlanId ? "solid" : "ghost"}
-                        colorPalette={p.id === activePlanId ? "blue" : "gray"}
-                        borderRadius="md"
-                        fontSize="xs"
-                        fontWeight={p.id === activePlanId ? "600" : "500"}
-                        onClick={() => handleSwitchPlan(p.id)}
-                        px="3"
-                        transition="all 0.15s"
-                      >
-                        {p.name}
-                      </Button>
-                    ))}
-                  </HStack>
-                )}
                 <Button
                   aria-label="Add a semester to the active plan"
                   size="sm"

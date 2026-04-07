@@ -23,8 +23,14 @@ export default function AtlasPanel() {
     >
       <Portal>
         <Drawer.Positioner pointerEvents="none">
-          <Drawer.Content pointerEvents="auto">
-            <Drawer.Header borderBottomWidth="1px" borderColor="border.subtle">
+          <Drawer.Content
+            pointerEvents="auto"
+            bg="bg"
+            borderLeftWidth="1px"
+            borderColor="border.subtle"
+            boxShadow="lg"
+          >
+            <Drawer.Header bg="bg" borderBottomWidth="1px" borderColor="border.subtle">
               <HStack gap="3" flex="1">
                 <Box p="1.5" bg="blue.solid" borderRadius="md">
                   <Icon color="white" boxSize="4">
@@ -42,7 +48,7 @@ export default function AtlasPanel() {
                 <CloseButton size="sm" />
               </Drawer.CloseTrigger>
             </Drawer.Header>
-            <Drawer.Body p="0" display="flex" flexDirection="column">
+            <Drawer.Body p="0" display="flex" flexDirection="column" bg="bg">
               <ChatInterface />
             </Drawer.Body>
           </Drawer.Content>

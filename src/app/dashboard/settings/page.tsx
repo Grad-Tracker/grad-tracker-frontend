@@ -19,11 +19,14 @@ import {
   Text,
 } from "@chakra-ui/react";
 import Link from "next/link";
-import { LuLock, LuCalendar, LuBell, LuTrash2, LuTriangleAlert } from "react-icons/lu";
+import { LuLock, LuCalendar, LuBell, LuTrash2, LuTriangleAlert, LuSun, LuMoon, LuMonitor, LuGraduationCap } from "react-icons/lu";
+import { useColorMode } from "@/components/ui/color-mode";
 import { Field } from "@/components/ui/field";
 import { toaster } from "@/components/ui/toaster";
 import { createClient } from "@/lib/supabase/client";
 import { DB_TABLES, STUDENT_COLUMNS } from "@/lib/supabase/queries/schema";
+import { fetchPrograms, fetchStudentMajorProgram } from "@/lib/supabase/queries/onboarding";
+import type { Program } from "@/types/onboarding";
 import { ClassHistoryTab } from "@/components/settings/ClassHistoryTab";
 import { SettingsSkeleton } from "@/components/settings/SettingsSkeleton";
 
@@ -64,8 +67,15 @@ const NOTIF_OPTIONS: { key: keyof NotifPrefs; label: string; description: string
   },
 ];
 
+const THEME_OPTIONS = [
+  { value: "system", label: "System", description: "Follows your device settings", icon: LuMonitor },
+  { value: "light", label: "Light", description: "Always use light mode", icon: LuSun },
+  { value: "dark", label: "Dark", description: "Always use dark mode", icon: LuMoon },
+] as const;
+
 export default function SettingsPage() {
   const router = useRouter();
+  const { themePreference, setColorMode } = useColorMode();
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
@@ -80,6 +90,10 @@ export default function SettingsPage() {
   const [savingGrad, setSavingGrad] = useState(false);
   const [savingNotif, setSavingNotif] = useState(false);
   const [resetConfirming, setResetConfirming] = useState(false);
+  const [majors, setMajors] = useState<Program[]>([]);
+  const [selectedMajorId, setSelectedMajorId] = useState<number | null>(null);
+  const [currentMajorProgramId, setCurrentMajorProgramId] = useState<number | null>(null);
+  const [savingMajor, setSavingMajor] = useState(false);
   const [resetting, setResetting] = useState(false);
 
   useEffect(() => {
@@ -124,6 +138,17 @@ export default function SettingsPage() {
               notif_weekly_digest: prefs.notif_weekly_digest ?? DEFAULT_PREFS.notif_weekly_digest,
             });
           }
+
+          // Load current major and available majors
+          const [majorProgram, allMajors] = await Promise.all([
+            fetchStudentMajorProgram(student.id).catch(() => null),
+            fetchPrograms("MAJOR").catch(() => [] as Program[]),
+          ]);
+          if (majorProgram) {
+            setCurrentMajorProgramId(majorProgram.program_id);
+            setSelectedMajorId(majorProgram.program_id);
+          }
+          setMajors(allMajors);
         }
       } finally {
         setLoading(false);
@@ -221,6 +246,36 @@ export default function SettingsPage() {
     }
   };
 
+  const handleChangeMajor = async () => {
+    if (!selectedMajorId || !studentId || selectedMajorId === currentMajorProgramId) return;
+    setSavingMajor(true);
+    try {
+      const supabase = createClient();
+
+      if (currentMajorProgramId) {
+        const { error: deleteError } = await supabase
+          .from(DB_TABLES.studentPrograms)
+          .delete()
+          .eq("student_id", studentId)
+          .eq("program_id", currentMajorProgramId);
+        if (deleteError) throw deleteError;
+      }
+
+      const { error } = await supabase
+        .from(DB_TABLES.studentPrograms)
+        .insert({ student_id: studentId, program_id: selectedMajorId });
+      if (error) throw error;
+
+      setCurrentMajorProgramId(selectedMajorId);
+      toaster.create({ title: "Major updated", type: "success" });
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : "Unknown error";
+      toaster.create({ title: "Failed to change major", description: msg, type: "error" });
+    } finally {
+      setSavingMajor(false);
+    }
+  };
+
   const handleResetProgress = async () => {
     if (!studentId) return;
     setResetting(true);
@@ -260,7 +315,7 @@ export default function SettingsPage() {
         <Text fontSize="sm" color="fg.muted" fontWeight="500">
           Settings
         </Text>
-        <Heading size="lg" fontFamily="'DM Serif Display', serif" fontWeight="400">
+        <Heading size="lg" fontFamily="var(--font-dm-sans), sans-serif" fontWeight="400" letterSpacing="-0.02em">
           Account Settings
         </Heading>
       </Box>
@@ -315,6 +370,63 @@ export default function SettingsPage() {
                 </Stack>
               </Card.Body>
             </Card.Root>
+
+            {/* Change Major */}
+            {majors.length > 0 && (
+              <Card.Root bg="bg" borderRadius="xl" borderWidth="1px" borderColor="border.subtle">
+                <Card.Header p="5" pb="3">
+                  <Flex align="center" gap="2">
+                    <Icon color="blue.fg">
+                      <LuGraduationCap />
+                    </Icon>
+                    <Heading size="md" fontWeight="600">
+                      Major
+                    </Heading>
+                  </Flex>
+                  <Text fontSize="sm" color="fg.muted" mt="1">
+                    Change your declared major program.
+                  </Text>
+                </Card.Header>
+                <Card.Body p="5" pt="2">
+                  <Stack gap="4">
+                    <Field label="Current Major">
+                      <chakra.select
+                        value={selectedMajorId ?? ""}
+                        onChange={(e) => setSelectedMajorId(Number(e.target.value))}
+                        aria-label="Select major"
+                        w="full"
+                        px="3"
+                        py="2"
+                        borderRadius="lg"
+                        borderWidth="1px"
+                        borderColor="border.subtle"
+                        bg="bg"
+                        fontSize="sm"
+                        color="fg"
+                        _focus={{ outline: "2px solid", outlineColor: "blue.fg", outlineOffset: "2px" }}
+                        cursor="pointer"
+                      >
+                        {majors.map((m) => (
+                          <option key={m.id} value={m.id}>
+                            {m.name}
+                          </option>
+                        ))}
+                      </chakra.select>
+                    </Field>
+                    <Button
+                      colorPalette="blue"
+                      onClick={handleChangeMajor}
+                      loading={savingMajor}
+                      disabled={!selectedMajorId || selectedMajorId === currentMajorProgramId}
+                      alignSelf="flex-start"
+                      borderRadius="lg"
+                    >
+                      Save Major
+                    </Button>
+                  </Stack>
+                </Card.Body>
+              </Card.Root>
+            )}
 
             {/* Email */}
             <Card.Root bg="bg" borderRadius="xl" borderWidth="1px" borderColor="border.subtle">
@@ -416,8 +528,8 @@ export default function SettingsPage() {
               </Card.Body>
             </Card.Root>
 
-            {/* Notification Preferences */}
-            <Card.Root bg="bg" borderRadius="xl" borderWidth="1px" borderColor="border.subtle">
+            {/* TODO: Notification Preferences - uncomment when notifications are implemented */}
+            {/* <Card.Root bg="bg" borderRadius="xl" borderWidth="1px" borderColor="border.subtle">
               <Card.Header p="5" pb="3">
                 <Flex align="center" gap="2">
                   <Icon color="blue.fg">
@@ -469,6 +581,57 @@ export default function SettingsPage() {
                     Save Preferences
                   </Button>
                 </Stack>
+              </Card.Body>
+            </Card.Root> */}
+
+            {/* Appearance */}
+            <Card.Root bg="bg" borderRadius="xl" borderWidth="1px" borderColor="border.subtle">
+              <Card.Header p="5" pb="3">
+                <Flex align="center" gap="2">
+                  <Icon color="blue.fg">
+                    <LuSun />
+                  </Icon>
+                  <Heading size="md" fontWeight="600">
+                    Appearance
+                  </Heading>
+                </Flex>
+                <Text fontSize="sm" color="fg.muted" mt="1">
+                  Choose how GradTracker looks to you. System preference is used by default.
+                </Text>
+              </Card.Header>
+              <Card.Body p="5" pt="2">
+                <Flex gap="3" direction={{ base: "column", sm: "row" }}>
+                  {THEME_OPTIONS.map((opt) => {
+                    const selected = themePreference === opt.value;
+                    return (
+                      <Box
+                        key={opt.value}
+                        as="button"
+                        flex="1"
+                        p="4"
+                        borderRadius="xl"
+                        borderWidth="2px"
+                        borderColor={selected ? "blue.500" : "border.subtle"}
+                        bg={selected ? "blue.subtle" : "bg"}
+                        cursor="pointer"
+                        transition="all 0.15s"
+                        _hover={{ borderColor: selected ? "blue.500" : "blue.300", bg: selected ? "blue.subtle" : "bg.subtle" }}
+                        onClick={() => setColorMode(opt.value)}
+                        textAlign="center"
+                      >
+                        <Icon boxSize="5" color={selected ? "blue.fg" : "fg.muted"} mb="2">
+                          <opt.icon />
+                        </Icon>
+                        <Text fontSize="sm" fontWeight="600" color={selected ? "blue.fg" : "fg"}>
+                          {opt.label}
+                        </Text>
+                        <Text fontSize="xs" color="fg.muted" mt="0.5">
+                          {opt.description}
+                        </Text>
+                      </Box>
+                    );
+                  })}
+                </Flex>
               </Card.Body>
             </Card.Root>
 

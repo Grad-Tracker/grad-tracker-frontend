@@ -177,8 +177,7 @@ export async function POST(request: Request) {
             system: systemPromptWithJsonInstruction,
             tools: CLAUDE_TOOL_DEFINITIONS,
             messages,
-            signal: request.signal,
-          });
+          }, { signal: request.signal });
 
           let turnHasToolUse = false;
 

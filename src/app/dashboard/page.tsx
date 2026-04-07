@@ -6,7 +6,6 @@ import {
   Avatar,
   Badge,
   Box,
-  chakra,
   Button,
   Card,
   Flex,
@@ -24,7 +23,6 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import {
   checkOnboardingStatus,
-  fetchPrograms,
   fetchStudentMajorProgram,
   fetchStudentProfileByAuthUserId,
   getOrCreateStudent,
@@ -34,7 +32,7 @@ import {
   logStudentActivity,
   type StudentActivityRow,
 } from "@/lib/supabase/queries/activity";
-import { fetchStudentCourseProgress } from "@/lib/supabase/queries/planner";
+import { fetchStudentCourseProgress, fetchGenEdBucketsWithCourses } from "@/lib/supabase/queries/planner";
 import {
   DB_VIEWS,
   DB_TABLES
@@ -61,7 +59,7 @@ import {
   LuArrowRight,
   LuGraduationCap,
 } from "react-icons/lu";
-import type { Program } from "@/types/onboarding";
+
 import DashboardSkeleton from "@/components/dashboard/DashboardSkeleton";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getCurrentAcademicTerm } from "@/lib/academic-term";
@@ -157,7 +155,7 @@ async function resolveMajorAndBlocks(
 
   const blocksRes = await supabase
     .from(DB_VIEWS.programBlockCourses)
-    .select("block_id, block_name, credits_required, courses")
+    .select("block_id, block_name, rule, n_required, credits_required, courses")
     .eq("program_id", majorProgramId);
 
   return { ...blocksRes, majorName, majorProgramId };
@@ -243,10 +241,7 @@ export default function Dashboard() {
   const [loadingCourses, setLoadingCourses] = React.useState(true);
   const [recentActivity, setRecentActivity] = React.useState<StudentActivityRow[]>([]);
 
-  const [majors, setMajors] = React.useState<Program[]>([]);
-  const [selectedMajorId, setSelectedMajorId] = React.useState<number | null>(null);
   const [currentMajorProgramId, setCurrentMajorProgramId] = React.useState<number | null>(null);
-  const [changingMajor, setChangingMajor] = React.useState(false);
 
   const [studentIdForReset, setStudentIdForReset] = React.useState<number | null>(null);
 
@@ -331,7 +326,6 @@ export default function Dashboard() {
         const majorName = (blocksResult as any).majorName ?? "Unknown";
         const majorProgramId = (blocksResult as any).majorProgramId as number | null;
         setCurrentMajorProgramId(majorProgramId);
-        setSelectedMajorId(majorProgramId);
 
         const termIds = ((currentTermIdsResult as { data?: Pick<ViewPlanTermRow, "term_id">[] })?.data ?? []).map(
           (r) => r.term_id
@@ -384,47 +378,72 @@ export default function Dashboard() {
         setCurrentCourses(mapped);
         setLoadingCourses(false);
 
+        // All courses in the current semester are considered in-progress
         const inProgressCredits =
-          plannedRows.reduce((sum, r) => {
-            const s = String(r.status ?? "").toLowerCase();
-            if (s !== "enrolled" && s !== "waitlist") return sum;
-            return sum + Number(r.credits ?? 0);
-          }, 0);
+          plannedRows.reduce((sum, r) => sum + Number(r.credits ?? 0), 0);
 
-        // Requirements (uses blocksResult + completedCourseIds)
-        if (!majorProgramId || (blocksResult as any)?.error) {
-          setRequirements(DEFAULT_REQUIREMENTS);
-          setLoadingRequirements(false);
-        } else {
+        // Requirements: gen ed buckets + major program blocks
+        const agg: Record<
+          string,
+          { completed: number; total: number; color: RequirementBar["color"] }
+        > = {
+          "General Education": { completed: 0, total: 0, color: "violet" },
+          "Major Core": { completed: 0, total: 0, color: "emerald" },
+          "Major Electives": { completed: 0, total: 0, color: "blue" },
+          "Free Electives": { completed: 0, total: 0, color: "amber" },
+        };
+
+        // Gen ed from gen_ed_buckets (separate from major program)
+        try {
+          const genEdBuckets = await fetchGenEdBucketsWithCourses();
+          for (const bucket of genEdBuckets) {
+            agg["General Education"].total += bucket.credits_required;
+            const bucketCompleted = bucket.courses.reduce((sum, c) => {
+              if (!completedCourseIds.has(c.id)) return sum;
+              return sum + c.credits;
+            }, 0);
+            agg["General Education"].completed += bucketCompleted;
+          }
+        } catch {
+          // Non-critical — gen ed bar will show 0/0
+        }
+
+        // Major program blocks
+        if (majorProgramId && !(blocksResult as any)?.error) {
           const blocks = ((blocksResult as any)?.data ?? []) as any[];
 
-          const categorize = (blockName: string) => {
-            const n = blockName.toLowerCase();
-            if (n.includes("general")) return { key: "General Education", color: "violet" as const };
-            if (n.includes("core")) return { key: "Major Core", color: "emerald" as const };
-            if (n.includes("elective")) return { key: "Major Electives", color: "blue" as const };
-            return { key: "Free Electives", color: "amber" as const };
-          };
-
-          const agg: Record<
-            string,
-            { completed: number; total: number; color: RequirementBar["color"] }
-          > = {
-            "General Education": { completed: 0, total: 0, color: "violet" },
-            "Major Core": { completed: 0, total: 0, color: "emerald" },
-            "Major Electives": { completed: 0, total: 0, color: "blue" },
-            "Free Electives": { completed: 0, total: 0, color: "amber" },
-          };
-
           for (const b of blocks) {
-            const { key, color } = categorize(String(b?.block_name ?? ""));
             const blockCourseRows = b?.courses ?? [];
+            // Skip parent blocks with no courses (their sub-blocks have the actual courses)
+            if (blockCourseRows.length === 0) continue;
 
-            const fallbackTotal = blockCourseRows.reduce((sum: number, r: any) => {
-              return sum + Number(r?.credits ?? 0);
-            }, 0);
+            const name = String(b?.block_name ?? "").toLowerCase();
+            const isElective = name.includes("elective");
+            const key = isElective ? "Major Electives" : "Major Core";
 
-            const total = Number(b?.credits_required ?? fallbackTotal ?? 0);
+            const rule = String(b?.rule ?? "ALL_OF");
+            const nRequired = Number(b?.n_required ?? 0);
+
+            // Calculate expected total credits for this block
+            let total: number;
+            if (b?.credits_required != null) {
+              // Explicit credits_required — use directly
+              total = Number(b.credits_required);
+            } else if (rule === "N_OF" && nRequired > 0 && blockCourseRows.length > 0) {
+              // Pick N courses — estimate credits as N * average credit per course
+              const avgCredits = blockCourseRows.reduce(
+                (sum: number, r: any) => sum + Number(r?.credits ?? 0), 0
+              ) / blockCourseRows.length;
+              total = Math.round(nRequired * avgCredits);
+            } else if (rule === "ANY_OF") {
+              // Pick 1 — use the first course's credits as estimate
+              total = Number(blockCourseRows[0]?.credits ?? 3);
+            } else {
+              // ALL_OF or unknown — sum all course credits
+              total = blockCourseRows.reduce(
+                (sum: number, r: any) => sum + Number(r?.credits ?? 0), 0
+              );
+            }
 
             const completed = blockCourseRows.reduce((sum: number, r: any) => {
               const cid = Number(r?.course_id ?? r?.id);
@@ -434,34 +453,34 @@ export default function Dashboard() {
 
             agg[key].total += total;
             agg[key].completed += completed;
-            agg[key].color = color;
           }
+        }
 
-          const bars: RequirementBar[] = Object.entries(agg).map(([name, v]) => {
+        const bars: RequirementBar[] = Object.entries(agg)
+          .filter(([, v]) => v.total > 0)
+          .map(([name, v]) => {
             const total = Math.max(0, Math.round(v.total));
             const completed = Math.min(total, Math.round(v.completed));
             const percentage = total === 0 ? 0 : Math.min(100, Math.round((completed / total) * 100));
             return { name, completed, total, percentage, color: v.color };
           });
 
-          setRequirements(bars);
-          setLoadingRequirements(false);
-        }
+        setRequirements(bars);
+        setLoadingRequirements(false);
 
-        const courseCreditsById = new Map<number, number>();
-        for (const b of ((blocksResult as any)?.data ?? [])) {
-          for (const c of (b?.courses ?? [])) {
-            const courseId = Number(c?.course_id ?? c?.id);
-            if (Number.isNaN(courseId)) continue;
-            if (!courseCreditsById.has(courseId)) {
-              courseCreditsById.set(courseId, Number(c?.credits ?? 0));
-            }
-          }
+        // Fetch credits for all completed courses directly from courses table
+        const completedIdArray = Array.from(completedCourseIds);
+        let completedCredits = 0;
+        if (completedIdArray.length > 0) {
+          const { data: creditRows } = await supabase
+            .from("courses")
+            .select("id, credits")
+            .in("id", completedIdArray);
+          completedCredits = (creditRows ?? []).reduce(
+            (sum: number, r: any) => sum + Number(r.credits ?? 0),
+            0
+          );
         }
-        const completedCredits = Array.from(completedCourseIds).reduce(
-          (sum, cid) => sum + Number(courseCreditsById.get(cid) ?? 0),
-          0
-        );
 
         // Progress summary (reused completedCredits + inProgressCredits)
         const totalCredits = TOTAL_REQUIRED_CREDITS;
@@ -499,25 +518,8 @@ export default function Dashboard() {
 
         setStudentIdForReset(resolvedStudentRow.student_id);
         setCurrentMajorProgramId(majorProgramId);
-        setSelectedMajorId(majorProgramId);
-        try {
-          const allMajors = await fetchPrograms("MAJOR");
-          setMajors(allMajors);
-        } catch {
-          // Non-critical – skip if it fails
-        }
 
         setLoadingStudent(false);
-
-        // Load majors for Change Major card (only if onboarded)
-        if (resolvedStudentRow.has_completed_onboarding) {
-          try {
-            const allMajors = await fetchPrograms("MAJOR");
-            setMajors(allMajors);
-          } catch {
-            // Non-critical: Change Major card simply won't show
-          }
-        }
       } catch {
         const supabase = createClient();
         await supabase.auth.signOut();
@@ -532,64 +534,6 @@ export default function Dashboard() {
 
     loadStudent();
   }, [router]);
-
-  const handleChangeMajor = async () => {
-    if (!selectedMajorId || !studentIdForReset || selectedMajorId === currentMajorProgramId) return;
-    setChangingMajor(true);
-    try {
-      const supabase = createClient();
-
-      // Remove existing major program entries for this student
-      if (currentMajorProgramId) {
-        const { error: deleteError } = await supabase
-          .from(DB_TABLES.studentPrograms)
-          .delete()
-          .eq("student_id", studentIdForReset)
-          .eq("program_id", currentMajorProgramId);
-        if (deleteError) throw deleteError;
-      }
-
-      // Insert the new major
-      const { error } = await supabase
-        .from(DB_TABLES.studentPrograms)
-        .insert({ student_id: studentIdForReset, program_id: selectedMajorId });
-
-      if (error) throw error;
-
-      setCurrentMajorProgramId(selectedMajorId);
-      const newMajor = majors.find((m) => m.id === selectedMajorId);
-      const previousMajor = majors.find((m) => m.id === currentMajorProgramId)?.name ?? student?.major ?? "previous major";
-      if (newMajor && student) {
-        setStudent({ ...student, major: newMajor.name });
-      }
-      if (newMajor) {
-        await safeLogActivity(studentIdForReset, "major_changed", `Changed major from ${previousMajor} to ${newMajor.name}`, {
-          previous_program_id: currentMajorProgramId,
-          new_program_id: selectedMajorId,
-        });
-        setRecentActivity((prev) => [
-          {
-            id: Date.now(),
-            student_id: studentIdForReset,
-            activity_type: "major_changed" as const,
-            message: `Changed major from ${previousMajor} to ${newMajor.name}`,
-            metadata: {
-              previous_program_id: currentMajorProgramId,
-              new_program_id: selectedMajorId,
-            },
-            created_at: new Date().toISOString(),
-          },
-          ...prev,
-        ].slice(0, 5));
-      }
-      toaster.create({ title: "Major updated", type: "success" });
-    } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : "Unknown error";
-      toaster.create({ title: "Failed to change major", description: msg, type: "error" });
-    } finally {
-      setChangingMajor(false);
-    }
-  };
 
   const handleAddCourse = () => {
     router.push("/dashboard/courses");
@@ -611,7 +555,7 @@ export default function Dashboard() {
         <Text fontSize="sm" color="fg.muted" fontWeight="500">
           Dashboard
         </Text>
-        <Heading size="lg" fontFamily="'DM Serif Display', serif" fontWeight="400">
+        <Heading size="lg" fontFamily="var(--font-dm-sans), sans-serif" fontWeight="400" letterSpacing="-0.02em">
           Grad Tracker
         </Heading>
       </Box>
@@ -978,60 +922,6 @@ export default function Dashboard() {
               </VStack>
             </Card.Body>
           </Card.Root>
-
-          {/* Change Major */}
-          {majors.length > 0 && (
-            <Card.Root bg="bg" borderRadius="xl" borderWidth="1px" borderColor="border.subtle">
-              <Card.Header p="5" pb="3">
-                <Flex align="center" gap="2">
-                  <Icon color="blue.fg">
-                    <LuGraduationCap />
-                  </Icon>
-                  <Heading size="sm" fontWeight="600">
-                    Change Major
-                  </Heading>
-                </Flex>
-              </Card.Header>
-              <Card.Body p="5" pt="0">
-                <Stack gap="3">
-                  <chakra.select
-                    value={selectedMajorId ?? ""}
-                    onChange={(e) =>
-                      setSelectedMajorId(Number(e.target.value))
-                    }
-                    aria-label="Select major"
-                    w="full"
-                    px="3"
-                    py="2"
-                    borderRadius="lg"
-                    borderWidth="1px"
-                    borderColor="border.subtle"
-                    bg="bg"
-                    fontSize="sm"
-                    color="fg"
-                    _focus={{ outline: "2px solid", outlineColor: "blue.fg", outlineOffset: "2px" }}
-                    cursor="pointer"
-                  >
-                    {majors.map((m) => (
-                      <option key={m.id} value={m.id}>
-                        {m.name}
-                      </option>
-                    ))}
-                  </chakra.select>
-                  <Button
-                    colorPalette="blue"
-                    size="sm"
-                    borderRadius="lg"
-                    loading={changingMajor}
-                    disabled={!selectedMajorId || selectedMajorId === currentMajorProgramId}
-                    onClick={handleChangeMajor}
-                  >
-                    Save Major
-                  </Button>
-                </Stack>
-              </Card.Body>
-            </Card.Root>
-          )}
 
           <Card.Root bg="bg" borderRadius="xl" borderWidth="1px" borderColor="border.subtle" className="animate-fade-up-delay-3">
             <Card.Header p="5" pb="0">

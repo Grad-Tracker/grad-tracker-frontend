@@ -3,7 +3,6 @@
 import React from "react";
 import { Box, Flex } from "@chakra-ui/react";
 import DashboardSidebar from "@/components/dashboard/DashboardSidebar";
-import DashboardHeader from "@/components/dashboard/DashboardHeader";
 import { AtlasPanelProvider } from "@/contexts/AtlasPanelContext";
 import AtlasPanel from "@/components/dashboard/AtlasPanel";
 import AtlasFAB from "@/components/dashboard/AtlasFAB";
@@ -23,7 +22,6 @@ export default function DashboardShell({ children }: { children: React.ReactNode
             position="relative"
             className="mesh-gradient-subtle"
           >
-            <DashboardHeader />
             <Box px={{ base: "4", md: "8" }} py="6" position="relative" zIndex="1">
               {children}
             </Box>

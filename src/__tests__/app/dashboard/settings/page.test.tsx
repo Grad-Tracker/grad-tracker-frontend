@@ -287,44 +287,7 @@ describe("SettingsPage", () => {
     );
   });
 
-  /* ---- Notification Preferences section ---- */
-
-  it("renders Notification Preferences heading", async () => {
-    setupMocks();
-    await act(async () => { renderSettings(); });
-
-    await waitFor(() => {
-      expect(screen.getByText("Notification Preferences")).toBeInTheDocument();
-    });
-  });
-
-  it("renders all four notification option labels", async () => {
-    setupMocks();
-    await act(async () => { renderSettings(); });
-
-    await waitFor(() => {
-      expect(screen.getByText("Requirement Alerts")).toBeInTheDocument();
-      expect(screen.getByText("Semester Planning Reminders")).toBeInTheDocument();
-      expect(screen.getByText("Graduation Reminders")).toBeInTheDocument();
-      expect(screen.getByText("Weekly Progress Digest")).toBeInTheDocument();
-    });
-  });
-
-  it("loads existing notification preferences from DB", async () => {
-    setupMocks({}, {
-      notif_requirement_alerts: false,
-      notif_semester_reminders: true,
-      notif_graduation_reminders: false,
-      notif_weekly_digest: true,
-    });
-    await act(async () => { renderSettings(); });
-
-    // All labels still render regardless of toggle state
-    await waitFor(() => {
-      expect(screen.getByText("Requirement Alerts")).toBeInTheDocument();
-      expect(screen.getByText("Weekly Progress Digest")).toBeInTheDocument();
-    });
-  });
+  /* Notification Preferences section is commented out — tests skipped until re-enabled */
 
   it("renders blank profile fields when the student lookup returns null", async () => {
     mockGetUser.mockResolvedValue({
@@ -485,87 +448,7 @@ describe("SettingsPage", () => {
     );
   });
 
-  it("updates toggled notification preferences before saving", async () => {
-    const upsertFn = vi.fn().mockResolvedValue({ data: null, error: null });
-
-    mockGetUser.mockResolvedValue({
-      data: { user: { id: "auth-uuid", email: "test@uwp.edu" } },
-      error: null,
-    });
-
-    mockFrom.mockImplementation((table: string) => {
-      if (table === "students") {
-        const chain = createChainMock();
-        chain.maybeSingle = vi.fn().mockResolvedValue({ data: DEFAULT_STUDENT, error: null });
-        return chain;
-      }
-      if (table === "notification_preferences") {
-        const chain = createChainMock();
-        chain.maybeSingle = vi.fn().mockResolvedValue({ data: null, error: null });
-        chain.upsert = upsertFn;
-        return chain;
-      }
-      return createChainMock();
-    });
-
-    await act(async () => { renderSettings(); });
-    await waitFor(() => screen.getByText("Notification Preferences"));
-
-    await act(async () => {
-      fireEvent.click(screen.getByLabelText("Toggle Requirement Alerts"));
-    });
-
-    await act(async () => {
-      fireEvent.click(screen.getByText("Save Preferences"));
-    });
-
-    expect(upsertFn).toHaveBeenCalledWith(
-      expect.objectContaining({
-        student_id: 1,
-        notif_requirement_alerts: false,
-      }),
-      expect.objectContaining({ onConflict: "student_id" })
-    );
-  });
-
-  it("shows an error toast when saving notification preferences fails", async () => {
-    const upsertFn = vi.fn().mockResolvedValue({ data: null, error: new Error("prefs failed") });
-
-    mockGetUser.mockResolvedValue({
-      data: { user: { id: "auth-uuid", email: "test@uwp.edu" } },
-      error: null,
-    });
-
-    mockFrom.mockImplementation((table: string) => {
-      if (table === "students") {
-        const chain = createChainMock();
-        chain.maybeSingle = vi.fn().mockResolvedValue({ data: DEFAULT_STUDENT, error: null });
-        return chain;
-      }
-      if (table === "notification_preferences") {
-        const chain = createChainMock();
-        chain.maybeSingle = vi.fn().mockResolvedValue({ data: null, error: null });
-        chain.upsert = upsertFn;
-        return chain;
-      }
-      return createChainMock();
-    });
-
-    await act(async () => { renderSettings(); });
-    await waitFor(() => screen.getByText("Notification Preferences"));
-
-    await act(async () => {
-      fireEvent.click(screen.getByText("Save Preferences"));
-    });
-
-    expect(mockToasterCreate).toHaveBeenCalledWith(
-      expect.objectContaining({
-        title: "Failed to save preferences",
-        description: "prefs failed",
-        type: "error",
-      })
-    );
-  });
+  /* Notification preference tests skipped — UI is commented out until notifications are implemented */
 
   it("opens and cancels the reset-progress confirmation", async () => {
     setupMocks();
@@ -688,42 +571,6 @@ describe("SettingsPage", () => {
       })
     );
     expect(screen.queryByText(/This will delete all your progress/i)).not.toBeInTheDocument();
-  });
-
-  it("Save Preferences calls upsert on notification_preferences with student_id", async () => {
-    const upsertFn = vi.fn().mockResolvedValue({ data: null, error: null });
-
-    mockGetUser.mockResolvedValue({
-      data: { user: { id: "auth-uuid", email: "test@uwp.edu" } },
-      error: null,
-    });
-
-    mockFrom.mockImplementation((table: string) => {
-      if (table === "students") {
-        const chain = createChainMock();
-        chain.maybeSingle = vi.fn().mockResolvedValue({ data: DEFAULT_STUDENT, error: null });
-        return chain;
-      }
-      if (table === "notification_preferences") {
-        const chain = createChainMock();
-        chain.maybeSingle = vi.fn().mockResolvedValue({ data: null, error: null });
-        chain.upsert = upsertFn;
-        return chain;
-      }
-      return createChainMock();
-    });
-
-    await act(async () => { renderSettings(); });
-    await waitFor(() => screen.getByText("Notification Preferences"));
-
-    await act(async () => {
-      fireEvent.click(screen.getByText("Save Preferences"));
-    });
-
-    expect(upsertFn).toHaveBeenCalledWith(
-      expect.objectContaining({ student_id: 1 }),
-      expect.objectContaining({ onConflict: "student_id" })
-    );
   });
 
   /* ---- Password section ---- */
