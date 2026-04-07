@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
 import {
   Box,
   Button,
@@ -9,15 +10,21 @@ import {
   Heading,
   HStack,
   Icon,
-  SimpleGrid,
   Text,
   VStack,
 } from "@chakra-ui/react";
 import { LinkButton } from "@/components/ui/link-button";
 import {
   LuArrowRight,
-  LuCheck,
+  LuBookOpen,
+  LuCalendarRange,
+
   LuGraduationCap,
+  LuLayoutGrid,
+  LuMousePointerClick,
+  LuSparkles,
+  LuTrendingUp,
+  LuUserPlus,
 } from "react-icons/lu";
 import Link from "next/link";
 import Image from "next/image";
@@ -110,25 +117,6 @@ export default function LandingPage() {
 
         {/* Hero content */}
         <VStack gap="7" position="relative" zIndex="2" maxW="700px">
-          {/* Badge */}
-          <Box
-            display="inline-flex"
-            alignItems="center"
-            gap="2"
-            px="4"
-            py="1.5"
-            borderRadius="full"
-            fontSize="xs"
-            fontWeight="600"
-            color="white"
-            bg="rgba(255,255,255,0.12)"
-            border="1px solid rgba(255,255,255,0.2)"
-            backdropFilter="blur(8px)"
-          >
-            <Box w="1.5" h="1.5" borderRadius="full" bg="blue.400" />
-            Built for Parkside Rangers
-          </Box>
-
           {/* Headline */}
           <Heading
             fontFamily="var(--font-dm-sans), sans-serif"
@@ -202,6 +190,9 @@ export default function LandingPage() {
                 borderColor: "rgba(255,255,255,0.5)",
               }}
               transition="all 0.2s"
+              onClick={() =>
+                document.getElementById("how-it-works")?.scrollIntoView({ behavior: "smooth" })
+              }
             >
               See How It Works
             </Button>
@@ -255,11 +246,11 @@ export default function LandingPage() {
       </Box>
 
       {/* ===== PRODUCT SCREENSHOT — overlaps hero ===== */}
+      <Box position="relative" zIndex="3">
+      <FadeIn>
       <Box
         px={{ base: "4", md: "12" }}
         mt={{ base: "-8", md: "-12" }}
-        position="relative"
-        zIndex="3"
         textAlign="center"
       >
         <Box
@@ -275,36 +266,175 @@ export default function LandingPage() {
             overflow="hidden"
             bg="bg"
           >
+            {/* Browser chrome */}
+            <Flex
+              align="center"
+              px="4"
+              py="3"
+              bg="bg.subtle"
+              borderBottomWidth="1px"
+              borderColor="border.subtle"
+              gap="2"
+            >
+              <HStack gap="1.5">
+                <Box w="3" h="3" borderRadius="full" bg="red.400" />
+                <Box w="3" h="3" borderRadius="full" bg="yellow.400" />
+                <Box w="3" h="3" borderRadius="full" bg="green.400" />
+              </HStack>
+              <Box
+                flex="1"
+                maxW="360px"
+                mx="auto"
+                bg="bg"
+                borderRadius="md"
+                px="3"
+                py="1"
+                borderWidth="1px"
+                borderColor="border.subtle"
+              >
+                <Text fontSize="2xs" color="fg.muted" textAlign="center" fontFamily="monospace">
+                  gradtracker.app/dashboard
+                </Text>
+              </Box>
+            </Flex>
             <Image
               src="/landing/Dashboard_page.png"
               alt="GradTracker Dashboard"
               width={1920}
               height={1080}
               style={{ width: "100%", height: "auto", display: "block" }}
-    
             />
           </Box>
-          {/* Bottom fade */}
-          <Box
-            position="absolute"
-            bottom="0"
-            left="0"
-            right="0"
-            h="180px"
-            style={{
-              background: "linear-gradient(to top, var(--chakra-colors-bg) 0%, transparent 100%)",
-            }}
-            pointerEvents="none"
-            zIndex="2"
-          />
         </Box>
+      </Box>
+      </FadeIn>
+      </Box>
+
+      {/* ===== HOW IT WORKS ===== */}
+      <Box id="how-it-works" py={{ base: "16", md: "24" }} scrollMarginTop="4">
+        <Container maxW="960px" mx="auto" px={{ base: "4", md: "6" }}>
+          <FadeIn>
+          <VStack gap="3" textAlign="center" mb={{ base: "12", md: "16" }}>
+            <Text
+              fontSize="xs"
+              fontWeight="700"
+              letterSpacing="1.5px"
+              textTransform="uppercase"
+              color="blue.fg"
+            >
+              How it works
+            </Text>
+            <Heading
+              fontFamily="var(--font-dm-sans), sans-serif"
+              fontSize={{ base: "3xl", md: "4xl" }}
+              fontWeight="400"
+              letterSpacing="-0.02em"
+            >
+              Three steps to graduation clarity
+            </Heading>
+          </VStack>
+          </FadeIn>
+
+          <Grid
+            templateColumns={{ base: "1fr", md: "1fr 1fr 1fr" }}
+            gap={{ base: "8", md: "6" }}
+            position="relative"
+          >
+            {/* Connecting line (desktop only) */}
+            <Box
+              display={{ base: "none", md: "block" }}
+              position="absolute"
+              top="36px"
+              left="calc(16.67% + 20px)"
+              right="calc(16.67% + 20px)"
+              h="2px"
+              style={{
+                background: "linear-gradient(90deg, #3B82F6, #8B5CF6)",
+                opacity: 0.2,
+              }}
+            />
+
+            {[
+              {
+                icon: LuUserPlus,
+                step: "01",
+                title: "Create your account",
+                desc: "Sign up free with your Parkside email. Takes less than a minute.",
+                color: "#3B82F6",
+              },
+              {
+                icon: LuMousePointerClick,
+                step: "02",
+                title: "Select your program",
+                desc: "Choose your major, minor, or certificates from 40+ Parkside programs.",
+                color: "#6366F1",
+              },
+              {
+                icon: LuTrendingUp,
+                step: "03",
+                title: "Track your progress",
+                desc: "See exactly where you stand and what you need to graduate on time.",
+                color: "#8B5CF6",
+              },
+            ].map((item, i) => (
+              <FadeIn key={item.step} delay={i * 0.12}>
+              <VStack gap="4" textAlign="center" position="relative">
+                <Flex
+                  w="14"
+                  h="14"
+                  borderRadius="2xl"
+                  align="center"
+                  justify="center"
+                  bg="bg"
+                  border="1px solid"
+                  borderColor="border.subtle"
+                  boxShadow="0 2px 8px rgba(0,0,0,0.04)"
+                  position="relative"
+                  zIndex="1"
+                >
+                  <Icon boxSize="6" color={item.color}>
+                    <item.icon />
+                  </Icon>
+                </Flex>
+                <Text
+                  fontSize="2xs"
+                  fontWeight="700"
+                  letterSpacing="1px"
+                  color="fg.subtle"
+                >
+                  STEP {item.step}
+                </Text>
+                <Heading
+                  fontSize="md"
+                  fontWeight="600"
+                  fontFamily="var(--font-dm-sans), sans-serif"
+                >
+                  {item.title}
+                </Heading>
+                <Text fontSize="sm" color="fg.muted" lineHeight="1.6" maxW="280px">
+                  {item.desc}
+                </Text>
+              </VStack>
+              </FadeIn>
+            ))}
+          </Grid>
+        </Container>
       </Box>
 
       {/* ===== FEATURES — Bento Grid ===== */}
-      <Box py={{ base: "10", md: "20" }}>
+      <Box py={{ base: "10", md: "20" }} borderTopWidth="1px" borderColor="border.subtle">
         <Container maxW="960px" mx="auto" px={{ base: "4", md: "6" }}>
-          {/* Section header */}
+          <FadeIn>
           <VStack gap="3" textAlign="center" mb={{ base: "10", md: "14" }}>
+            <Text
+              fontSize="xs"
+              fontWeight="700"
+              letterSpacing="1.5px"
+              textTransform="uppercase"
+              color="blue.fg"
+            >
+              Features
+            </Text>
             <Heading
               fontFamily="var(--font-dm-sans), sans-serif"
               fontSize={{ base: "3xl", md: "4xl" }}
@@ -314,18 +444,21 @@ export default function LandingPage() {
               Everything you need to graduate on time
             </Heading>
             <Text fontSize="md" color="fg.muted" maxW="480px" lineHeight="1.6">
-              Six tools working together to keep you on track from enrollment to
-              commencement.
+              Plan, track, and get guidance — everything working together from
+              enrollment to commencement.
             </Text>
           </VStack>
+          </FadeIn>
 
-          {/* Bento grid */}
+          <FadeIn delay={0.1}>
           <Grid
             templateColumns={{ base: "1fr", md: "1fr 1fr" }}
             gap="4"
           >
             {/* 1. Semester Planner — wide */}
             <BentoCard
+              icon={LuCalendarRange}
+              iconColor="#3B82F6"
               title="Semester Planner"
               description="Build your path to graduation semester by semester. Drag courses, track credits, and see your degree progress update in real time."
               wide
@@ -338,6 +471,8 @@ export default function LandingPage() {
 
             {/* 2. Course Catalog */}
             <BentoCard
+              icon={LuBookOpen}
+              iconColor="#6366F1"
               title="Course Catalog"
               description="Browse 2,200+ courses with credits, prerequisites, and requirement mapping."
             >
@@ -349,6 +484,8 @@ export default function LandingPage() {
 
             {/* 3. Requirement Breakdown */}
             <BentoCard
+              icon={LuLayoutGrid}
+              iconColor="#8B5CF6"
               title="Requirement Breakdown"
               description="Every gen-ed bucket and major block mapped to your program — 106+ programs tracked."
             >
@@ -358,10 +495,12 @@ export default function LandingPage() {
               />
             </BentoCard>
 
-            {/* 4. AI Advisor — Atlas — wide */}
+            {/* 4. AI Advisor — wide */}
             <BentoCard
-              title="AI Academic Advisor — Atlas"
-              description="Get instant, personalized guidance. Atlas knows your progress, your requirements, and your program."
+              icon={LuSparkles}
+              iconColor="#EC4899"
+              title="AI Academic Advisor"
+              description="Get instant, personalized guidance. Knows your progress, your requirements, and your program."
               wide
             >
               <Box
@@ -370,7 +509,21 @@ export default function LandingPage() {
                 bg="bg.subtle"
                 borderTop="1px solid"
                 borderColor="border.subtle"
+                position="relative"
+                overflow="hidden"
               >
+                {/* Subtle gradient accent */}
+                <Box
+                  position="absolute"
+                  top="0"
+                  left="0"
+                  right="0"
+                  h="1px"
+                  style={{
+                    background: "linear-gradient(90deg, transparent, #EC4899, #8B5CF6, transparent)",
+                    opacity: 0.4,
+                  }}
+                />
                 <VStack
                   gap="3"
                   maxW="600px"
@@ -392,7 +545,7 @@ export default function LandingPage() {
                         justify="center"
                         flexShrink={0}
                       >
-                        LM
+                        JM
                       </Flex>
                       <Box
                         bg="#1E3A5F"
@@ -409,14 +562,14 @@ export default function LandingPage() {
                       </Box>
                     </HStack>
                   </Flex>
-                  {/* Atlas reply */}
+                  {/* AI reply */}
                   <HStack gap="2.5" align="flex-start">
                     <Flex
                       w="7"
                       h="7"
                       borderRadius="full"
                       style={{
-                        background: "linear-gradient(135deg, #3B82F6, #8B5CF6)",
+                        background: "linear-gradient(135deg, #EC4899, #8B5CF6)",
                       }}
                       color="white"
                       fontSize="sm"
@@ -452,220 +605,174 @@ export default function LandingPage() {
               </Box>
             </BentoCard>
 
-            {/* 5. Degree Progress */}
-            <BentoCard
-              title="Degree Progress"
-              description="See your overall completion, credits earned, and what's left at a glance."
-            >
-              <ScreenshotVisual
-                src="/landing/Dashboard_page.png"
-                alt="Degree Progress"
-                maxH="220px"
-              />
-            </BentoCard>
-
-            {/* 6. Easy Onboarding */}
-            <BentoCard
-              title="Set Up in Minutes"
-              description="Pick your major, add your courses, and start tracking immediately."
-            >
-              <Box px="6" py="5" bg="bg.subtle" borderTop="1px solid" borderColor="border.subtle">
-                <VStack align="stretch" gap="0">
-                  {[
-                    { num: 1, title: "Choose your program", desc: "Select from 40+ Parkside degrees", done: true },
-                    { num: 2, title: "Add completed courses", desc: "Enter courses or transfer credits", current: true },
-                    { num: 3, title: "Start tracking", desc: "See your progress instantly" },
-                  ].map((step, i) => (
-                    <Flex key={i} gap="3.5" align="flex-start" position="relative" pb={i < 2 ? "5" : "0"}>
-                      {/* Connecting line */}
-                      {i < 2 && (
-                        <Box
-                          position="absolute"
-                          left="13px"
-                          top="28px"
-                          bottom="0"
-                          w="2px"
-                          bg="border"
-                        />
-                      )}
-                      {/* Number circle */}
-                      <Flex
-                        w="7"
-                        h="7"
-                        borderRadius="full"
-                        align="center"
-                        justify="center"
-                        fontSize="xs"
-                        fontWeight="700"
-                        flexShrink={0}
-                        position="relative"
-                        zIndex="1"
-                        {...(step.done
-                          ? { bg: "blue.solid", color: "white" }
-                          : step.current
-                          ? { bg: "bg", border: "2px solid", borderColor: "blue.solid", color: "blue.fg" }
-                          : { bg: "bg", border: "2px solid", borderColor: "border", color: "fg.muted" })}
-                      >
-                        {step.done ? <LuCheck size={12} /> : step.num}
-                      </Flex>
-                      <Box>
-                        <Text fontSize="sm" fontWeight="600">
-                          {step.title}
-                        </Text>
-                        <Text fontSize="xs" color="fg.muted" lineHeight="1.4">
-                          {step.desc}
-                        </Text>
-                      </Box>
-                    </Flex>
-                  ))}
-                </VStack>
-              </Box>
-            </BentoCard>
           </Grid>
+          </FadeIn>
         </Container>
       </Box>
 
-      {/* ===== CTA ===== */}
+      {/* ===== CTA + FOOTER — single dark section ===== */}
       <Box
-        py={{ base: "16", md: "20" }}
-        textAlign="center"
         position="relative"
         overflow="hidden"
-        borderTopWidth="1px"
-        borderColor="border.subtle"
+        style={{
+          background: "linear-gradient(to bottom, #0F172A 0%, #0B1120 100%)",
+        }}
       >
-        {/* Subtle glow */}
+        {/* Background glow */}
         <Box
           position="absolute"
-          top="-100px"
+          top="-200px"
           left="50%"
           transform="translateX(-50%)"
-          w="700px"
-          h="400px"
-          bg="blue.500"
-          opacity="0.04"
+          w="800px"
+          h="600px"
           borderRadius="full"
-          filter="blur(100px)"
+          style={{
+            background: "radial-gradient(circle, rgba(59,130,246,0.15) 0%, rgba(139,92,246,0.08) 40%, transparent 70%)",
+          }}
+          pointerEvents="none"
+        />
+        {/* Grid pattern overlay */}
+        <Box
+          position="absolute"
+          inset="0"
+          opacity="0.03"
+          style={{
+            backgroundImage: "linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)",
+            backgroundSize: "40px 40px",
+          }}
           pointerEvents="none"
         />
 
-        <Container maxW="lg" mx="auto" position="relative">
-          <Heading
-            fontFamily="var(--font-dm-sans), sans-serif"
-            fontSize={{ base: "3xl", md: "4xl" }}
-            fontWeight="400"
-            letterSpacing="-0.02em"
-            mb="4"
-          >
-            Ready to graduate on time?
-          </Heading>
-          <Text fontSize="md" color="fg.muted" mb="8" lineHeight="1.6">
-            Free for all UW-Parkside students. Set up in under 5 minutes.
-          </Text>
-          <Link href="/signup">
-            <Button
-              size="lg"
-              colorPalette="blue"
-              rounded="full"
-              px="8"
-              fontWeight="600"
-              _hover={{
-                transform: "translateY(-2px)",
-                boxShadow: "lg",
-              }}
-              transition="all 0.2s"
-            >
-              Get Started Free
-              <Icon ml="2">
-                <LuArrowRight />
-              </Icon>
-            </Button>
-          </Link>
-        </Container>
-      </Box>
+        {/* CTA */}
+        <Box
+          py={{ base: "20", md: "28" }}
+          textAlign="center"
+          position="relative"
+        >
+          <FadeIn>
+          <Container maxW="lg" mx="auto">
+            <VStack gap="6">
+              <Heading
+                fontFamily="var(--font-dm-sans), sans-serif"
+                fontSize={{ base: "3xl", md: "5xl" }}
+                fontWeight="400"
+                letterSpacing="-0.03em"
+                lineHeight="1.1"
+                color="white"
+              >
+                Your graduation roadmap
+                <br />
+                <Text
+                  as="span"
+                  style={{
+                    background: "linear-gradient(135deg, #93C5FD, #C4B5FD)",
+                    WebkitBackgroundClip: "text",
+                    WebkitTextFillColor: "transparent",
+                  }}
+                >
+                  starts here
+                </Text>
+              </Heading>
+              <Text
+                fontSize="md"
+                color="whiteAlpha.600"
+                lineHeight="1.6"
+                maxW="420px"
+              >
+                Free for all UW-Parkside students. Set up in under 2 minutes.
+                No credit card required.
+              </Text>
+              <Link href="/signup">
+                <Button
+                  size="lg"
+                  bg="white"
+                  color="#0F172A"
+                  rounded="full"
+                  px="10"
+                  fontWeight="600"
+                  fontSize="md"
+                  _hover={{
+                    bg: "whiteAlpha.900",
+                    transform: "translateY(-2px)",
+                    boxShadow: "0 8px 30px rgba(255,255,255,0.15)",
+                  }}
+                  transition="all 0.2s"
+                >
+                  Get Started Free
+                  <Icon ml="2">
+                    <LuArrowRight />
+                  </Icon>
+                </Button>
+              </Link>
+            </VStack>
+          </Container>
+          </FadeIn>
+        </Box>
 
-      {/* ===== FOOTER ===== */}
-      <Box
-        as="footer"
-        py="12"
-        borderTopWidth="1px"
-        borderColor="border.subtle"
-      >
-        <Container maxW="7xl" mx="auto" px={{ base: "4", md: "6", lg: "8" }}>
-          <SimpleGrid columns={{ base: 1, md: 4 }} gap="8">
-            <VStack align="start" gap="4">
+        {/* Footer */}
+        <Box
+          as="footer"
+          py="10"
+          position="relative"
+          color="whiteAlpha.700"
+        >
+          <Container maxW="960px" mx="auto" px={{ base: "4", md: "6" }}>
+            <Box
+              mb="8"
+              h="1px"
+              style={{
+                background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent)",
+              }}
+            />
+            <Flex
+              direction={{ base: "column", md: "row" }}
+              justify="space-between"
+              align={{ base: "start", md: "center" }}
+              gap="6"
+            >
               <HStack gap="3">
                 <Flex
                   align="center"
                   justify="center"
                   w="6"
                   h="6"
-                  bg="#1E3A5F"
+                  bg="whiteAlpha.100"
                   borderRadius="md"
                 >
                   <Icon color="white" boxSize="3.5">
                     <LuGraduationCap />
                   </Icon>
                 </Flex>
-                <Text fontWeight="700" fontSize="sm">
+                <Text fontWeight="700" fontSize="sm" color="white">
                   GradTracker{" "}
-                  <Text as="span" color="fg.muted" fontWeight="500" fontSize="xs">
+                  <Text as="span" color="whiteAlpha.400" fontWeight="500" fontSize="xs">
                     Parkside
                   </Text>
                 </Text>
               </HStack>
-              <Text color="fg.muted" fontSize="xs" lineHeight="1.5" maxW="200px">
-                Built for UW-Parkside students.
-              </Text>
-            </VStack>
 
-            {[
-              {
-                title: "Product",
-                links: [
-                  "Progress Tracking",
-                  "Semester Planner",
-                  "AI Advisor",
-                  "Course Catalog",
-                ],
-              },
-              {
-                title: "Resources",
-                links: ["UW-Parkside", "Academic Calendar", "SOLAR"],
-              },
-              {
-                title: "Support",
-                links: ["Help Center", "Contact Advising", "FAQ"],
-              },
-            ].map((section) => (
-              <VStack align="start" gap="3" key={section.title}>
-                <Text
-                  fontWeight="600"
-                  fontSize="xs"
-                  letterSpacing="0.5px"
-                  textTransform="uppercase"
-                >
-                  {section.title}
-                </Text>
-                <VStack align="start" gap="1.5">
-                  {section.links.map((link) => (
-                    <Text
-                      key={link}
-                      color="fg.muted"
-                      fontSize="sm"
-                      cursor="pointer"
-                      _hover={{ color: "blue.fg" }}
-                      transition="color 0.2s"
-                      lineHeight="2"
-                    >
-                      {link}
-                    </Text>
-                  ))}
-                </VStack>
-              </VStack>
-            ))}
-          </SimpleGrid>
-        </Container>
+              <HStack gap="6" flexWrap="wrap">
+                {["Progress Tracking", "Semester Planner", "AI Advisor", "Course Catalog"].map((link) => (
+                  <Text
+                    key={link}
+                    fontSize="sm"
+                    cursor="pointer"
+                    _hover={{ color: "white" }}
+                    transition="color 0.2s"
+                  >
+                    {link}
+                  </Text>
+                ))}
+              </HStack>
+            </Flex>
+            <Box mt="8" pt="6">
+              <Text fontSize="xs" color="whiteAlpha.400">
+                &copy; {new Date().getFullYear()} GradTracker. A project for UW-Parkside.
+              </Text>
+            </Box>
+          </Container>
+        </Box>
       </Box>
     </Box>
   );
@@ -673,12 +780,54 @@ export default function LandingPage() {
 
 /* ===== Sub-components ===== */
 
+function FadeIn({
+  children,
+  delay = 0,
+}: {
+  children: React.ReactNode;
+  delay?: number;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [isVisible, setIsVisible] = useState(false);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setIsVisible(true);
+          observer.unobserve(entry.target);
+        }
+      },
+      { threshold: 0.1, rootMargin: "0px 0px -40px 0px" }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  return (
+    <Box
+      ref={ref}
+      opacity={isVisible ? 1 : 0}
+      transform={isVisible ? "translateY(0)" : "translateY(24px)"}
+      transition={`opacity 0.7s cubic-bezier(0.16,1,0.3,1) ${delay}s, transform 0.7s cubic-bezier(0.16,1,0.3,1) ${delay}s`}
+    >
+      {children}
+    </Box>
+  );
+}
+
 function BentoCard({
+  icon: IconComponent,
+  iconColor,
   title,
   description,
   wide,
   children,
 }: {
+  icon: React.ComponentType;
+  iconColor: string;
   title: string;
   description: string;
   wide?: boolean;
@@ -697,8 +846,29 @@ function BentoCard({
         transform: "translateY(-4px)",
         boxShadow: "0 12px 40px rgba(0,0,0,0.06)",
       }}
+      css={{
+        "& img": {
+          transition: "transform 0.5s cubic-bezier(0.16,1,0.3,1)",
+        },
+        "&:hover img": {
+          transform: "scale(1.03)",
+        },
+      }}
     >
       <Box px={{ base: "5", md: "6" }} pt={{ base: "5", md: "6" }}>
+        <Flex
+          w="9"
+          h="9"
+          borderRadius="xl"
+          align="center"
+          justify="center"
+          mb="4"
+          style={{ backgroundColor: `${iconColor}12` }}
+        >
+          <Icon boxSize="4.5" color={iconColor}>
+            <IconComponent />
+          </Icon>
+        </Flex>
         <Heading
           fontSize="lg"
           fontWeight="600"
@@ -719,20 +889,16 @@ function BentoCard({
 function ScreenshotVisual({
   src,
   alt,
-  maxH,
 }: {
   src: string;
   alt: string;
-  maxH?: string;
 }) {
   return (
     <Box
       mt="4"
-      position="relative"
       overflow="hidden"
       borderTop="1px solid"
       borderColor="border.subtle"
-      maxH={maxH}
     >
       <Image
         src={src}
@@ -740,18 +906,6 @@ function ScreenshotVisual({
         width={1920}
         height={1080}
         style={{ width: "100%", height: "auto", display: "block" }}
-      />
-      {/* Bottom fade */}
-      <Box
-        position="absolute"
-        bottom="0"
-        left="0"
-        right="0"
-        h="60px"
-        style={{
-          background: "linear-gradient(to top, var(--chakra-colors-bg) 0%, transparent 100%)",
-        }}
-        pointerEvents="none"
       />
     </Box>
   );
