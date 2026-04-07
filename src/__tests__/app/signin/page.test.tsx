@@ -46,7 +46,7 @@ describe("SigninPage", () => {
 
   it("renders role selector with Student selected by default", () => {
     renderWithChakra(<SigninPage />);
-    expect(screen.getAllByText("Student Sign In").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("Sign In").length).toBeGreaterThanOrEqual(1);
     expect(screen.getByRole("button", { name: "Student" })).toHaveAttribute("aria-pressed", "true");
     expect(screen.getByRole("button", { name: "Advisor" })).toHaveAttribute("aria-pressed", "false");
     expect(
@@ -67,7 +67,7 @@ describe("SigninPage", () => {
       fireEvent.click(screen.getByRole("button", { name: "Advisor" }));
     });
 
-    expect(screen.getAllByText("Advisor Sign In").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("Sign In").length).toBeGreaterThanOrEqual(1);
     expect(
       screen.getAllByText("Manage programs, Gen-Ed buckets, and course catalog.").length
     ).toBeGreaterThanOrEqual(1);
@@ -95,7 +95,7 @@ describe("SigninPage", () => {
     expect(mockToaster.create).toHaveBeenCalledWith(
       expect.objectContaining({
         title: "Invalid email domain",
-        description: "Student sign in requires a @rangers.uwp.edu email address.",
+        description: "Student sign up requires a @rangers.uwp.edu email address.",
       })
     );
   });
@@ -123,7 +123,7 @@ describe("SigninPage", () => {
     expect(mockToaster.create).toHaveBeenCalledWith(
       expect.objectContaining({
         title: "Invalid email domain",
-        description: "Advisor sign in requires a @uwp.edu email address.",
+        description: "Advisor sign up requires a @uwp.edu email address.",
       })
     );
   });
