@@ -1,13 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import {
-  Button,
-  CloseButton,
-  Dialog,
-  Portal,
-  Text,
-} from "@chakra-ui/react";
+import { Text } from "@chakra-ui/react";
+import { ConfirmationDialog } from "@/components/shared/ConfirmationDialog";
 import type { Term } from "@/types/planner";
 
 interface RemoveSemesterDialogProps {
@@ -25,70 +19,25 @@ export default function RemoveSemesterDialog({
   term,
   courseCount,
 }: RemoveSemesterDialogProps) {
-  const [loading, setLoading] = useState(false);
-
-  async function handleConfirm() {
-    setLoading(true);
-    try {
-      await onConfirm();
-      onOpenChange(false);
-    } finally {
-      setLoading(false);
-    }
-  }
-
   if (!term) return null;
 
   return (
-    <Dialog.Root
-      lazyMount
+    <ConfirmationDialog
       open={open}
-      onOpenChange={(e) => onOpenChange(e.open)}
+      onOpenChange={onOpenChange}
+      onConfirm={onConfirm}
+      title={`Remove ${term.season} ${term.year}?`}
+      confirmText="Remove Semester"
+      confirmColor="red"
     >
-      <Portal>
-        <Dialog.Backdrop />
-        <Dialog.Positioner>
-          <Dialog.Content borderRadius="xl">
-            <Dialog.Header>
-              <Dialog.Title
-                fontFamily="var(--font-dm-sans), sans-serif"
-                fontWeight="400"
-                letterSpacing="-0.02em"
-              >
-                Remove {term.season} {term.year}?
-              </Dialog.Title>
-            </Dialog.Header>
-            <Dialog.Body>
-              <Text fontSize="sm" color="fg.muted">
-                This semester has{" "}
-                <Text as="span" fontWeight="600" color="fg">
-                  {courseCount} {courseCount === 1 ? "course" : "courses"}
-                </Text>{" "}
-                planned. Removing it will unplan all courses and return them to
-                the course pool.
-              </Text>
-            </Dialog.Body>
-            <Dialog.Footer>
-              <Dialog.ActionTrigger asChild>
-                <Button variant="outline" borderRadius="lg">
-                  Cancel
-                </Button>
-              </Dialog.ActionTrigger>
-              <Button
-                colorPalette="red"
-                borderRadius="lg"
-                onClick={handleConfirm}
-                loading={loading}
-              >
-                Remove Semester
-              </Button>
-            </Dialog.Footer>
-            <Dialog.CloseTrigger asChild>
-              <CloseButton size="sm" />
-            </Dialog.CloseTrigger>
-          </Dialog.Content>
-        </Dialog.Positioner>
-      </Portal>
-    </Dialog.Root>
+      <Text fontSize="sm" color="fg.muted">
+        This semester has{" "}
+        <Text as="span" fontWeight="600" color="fg">
+          {courseCount} {courseCount === 1 ? "course" : "courses"}
+        </Text>{" "}
+        planned. Removing it will unplan all courses and return them to
+        the course pool.
+      </Text>
+    </ConfirmationDialog>
   );
 }

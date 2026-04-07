@@ -1,7 +1,7 @@
 import React from "react";
 import { describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen, within } from "@testing-library/react";
-import { ChakraProvider, defaultSystem } from "@chakra-ui/react";
+import { fireEvent, screen, within } from "@testing-library/react";
+import { renderWithChakra } from "@/__tests__/helpers/mocks";
 
 import AdminProgramsClient from "@/app/admin/(protected)/programs/AdminProgramsClient";
 import type { AdminProgramSummary } from "@/app/admin/(protected)/programs/server-helpers";
@@ -9,10 +9,6 @@ import type { AdminProgramSummary } from "@/app/admin/(protected)/programs/serve
 vi.mock("next/link", () => ({
   default: ({ href, children }: any) => <a href={href}>{children}</a>,
 }));
-
-function renderWithChakra(ui: React.ReactElement) {
-  return render(<ChakraProvider value={defaultSystem}>{ui}</ChakraProvider>);
-}
 
 const programs: AdminProgramSummary[] = [
   {

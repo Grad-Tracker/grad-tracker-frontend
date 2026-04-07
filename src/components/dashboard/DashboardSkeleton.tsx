@@ -10,6 +10,7 @@ import {
   Stack,
 } from "@chakra-ui/react";
 import { Skeleton, SkeletonCircle, SkeletonText } from "@/components/ui/skeleton";
+import { SkeletonCard, SkeletonProgressBar, SkeletonRow } from "@/components/shared/SkeletonParts";
 
 /** Full-page skeleton shown while the student profile is loading. */
 export default function DashboardSkeleton() {
@@ -34,7 +35,7 @@ export default function DashboardSkeleton() {
       <Grid templateColumns={{ base: "1fr", xl: "2fr 1fr" }} gap="6">
         <Stack gap="6">
           {/* Degree Requirements card */}
-          <Card.Root bg="bg" borderRadius="xl" borderWidth="1px" borderColor="border.subtle">
+          <SkeletonCard>
             <Card.Header p="5" pb="0">
               <Flex justify="space-between" align="center">
                 <Skeleton height="6" width="180px" />
@@ -44,20 +45,14 @@ export default function DashboardSkeleton() {
             <Card.Body p="5">
               <Stack gap="5">
                 {[1, 2, 3, 4].map((i) => (
-                  <Box key={i}>
-                    <HStack justify="space-between" mb="2">
-                      <Skeleton height="4" width="140px" />
-                      <Skeleton height="4" width="90px" />
-                    </HStack>
-                    <Skeleton height="2" width="full" borderRadius="full" />
-                  </Box>
+                  <SkeletonProgressBar key={i} />
                 ))}
               </Stack>
             </Card.Body>
-          </Card.Root>
+          </SkeletonCard>
 
           {/* Current Semester card */}
-          <Card.Root bg="bg" borderRadius="xl" borderWidth="1px" borderColor="border.subtle">
+          <SkeletonCard>
             <Card.Header p="5" pb="0">
               <Flex justify="space-between" align="center">
                 <Skeleton height="6" width="160px" />
@@ -74,25 +69,23 @@ export default function DashboardSkeleton() {
                     borderRadius="lg"
                     justify="space-between"
                   >
-                    <HStack gap="3">
-                      <Skeleton height="10" width="10" borderRadius="lg" />
-                      <Box>
-                        <Skeleton height="4" width="80px" mb="1" />
-                        <Skeleton height="3" width="140px" />
-                      </Box>
-                    </HStack>
+                    <SkeletonRow
+                      iconSize="10"
+                      primaryWidth="80px"
+                      secondaryWidth="140px"
+                    />
                     <Skeleton height="6" width="60px" borderRadius="full" />
                   </HStack>
                 ))}
               </Stack>
             </Card.Body>
-          </Card.Root>
+          </SkeletonCard>
         </Stack>
 
         {/* Right column */}
         <Stack gap="6">
           {/* Profile card */}
-          <Card.Root bg="bg" borderRadius="xl" borderWidth="1px" borderColor="border.subtle">
+          <SkeletonCard>
             <Card.Body p="5">
               <HStack gap="4" mb="4">
                 <SkeletonCircle size="12" />
@@ -103,27 +96,25 @@ export default function DashboardSkeleton() {
               </HStack>
               <SkeletonText noOfLines={3} gap="3" />
             </Card.Body>
-          </Card.Root>
+          </SkeletonCard>
 
           {/* Recent Activity card */}
-          <Card.Root bg="bg" borderRadius="xl" borderWidth="1px" borderColor="border.subtle">
+          <SkeletonCard>
             <Card.Header p="5" pb="0">
               <Skeleton height="6" width="140px" />
             </Card.Header>
             <Card.Body p="5">
               <Stack gap="4">
                 {[1, 2, 3].map((i) => (
-                  <HStack key={i} gap="3">
-                    <Skeleton height="8" width="8" borderRadius="lg" />
-                    <Box flex="1">
-                      <Skeleton height="4" width="full" mb="1" />
-                      <Skeleton height="3" width="70px" />
-                    </Box>
-                  </HStack>
+                  <SkeletonRow
+                    key={i}
+                    primaryWidth="full"
+                    secondaryWidth="70px"
+                  />
                 ))}
               </Stack>
             </Card.Body>
-          </Card.Root>
+          </SkeletonCard>
         </Stack>
       </Grid>
     </Stack>
@@ -132,7 +123,7 @@ export default function DashboardSkeleton() {
 
 function StatCardSkeleton() {
   return (
-    <Card.Root bg="bg" borderRadius="xl" borderWidth="1px" borderColor="border.subtle">
+    <SkeletonCard>
       <Card.Body p="5">
         <HStack justify="space-between" align="start" mb="4">
           <Box>
@@ -143,6 +134,6 @@ function StatCardSkeleton() {
         </HStack>
         <Skeleton height="3" width="130px" />
       </Card.Body>
-    </Card.Root>
+    </SkeletonCard>
   );
 }

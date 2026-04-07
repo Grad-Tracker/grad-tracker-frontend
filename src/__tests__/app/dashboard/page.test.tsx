@@ -1,7 +1,7 @@
 import React from "react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, waitFor, fireEvent, act } from "@testing-library/react";
-import { ChakraProvider, defaultSystem } from "@chakra-ui/react";
+import { screen, waitFor, fireEvent, act } from "@testing-library/react";
+import { renderWithChakra } from "@/__tests__/helpers/mocks";
 
 const {
   mockPush,
@@ -105,10 +105,6 @@ function createChainMock(defaultData: any = [], defaultError: any = null) {
   promise.single = vi.fn().mockResolvedValue({ data: null, error: null });
 
   return promise;
-}
-
-function renderWithChakra(ui: React.ReactElement) {
-  return render(<ChakraProvider value={defaultSystem}>{ui}</ChakraProvider>);
 }
 
 function setupHappyPath(overrides?: {

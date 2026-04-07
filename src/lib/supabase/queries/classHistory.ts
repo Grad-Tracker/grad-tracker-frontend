@@ -27,8 +27,6 @@ export interface MajorWithRequirements {
   }[];
 }
 
-const toCourseRow = viewItemToCourse;
-
 // --- Queries ---
 
 /** Get the earliest chronological term to use as default for inserts. */
@@ -75,7 +73,7 @@ export async function fetchMajorRequirementCourses(
     blocks: ((blocks as ViewProgramBlockCoursesRow[] | null) ?? []).map((block) => ({
       id: Number(block.block_id),
       name: block.block_name,
-      courses: (block.courses ?? []).map(toCourseRow),
+      courses: (block.courses ?? []).map(viewItemToCourse),
     })),
   };
 }

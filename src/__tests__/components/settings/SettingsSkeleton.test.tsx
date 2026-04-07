@@ -1,12 +1,7 @@
-import React from "react";
 import { describe, it, expect } from "vitest";
-import { render, screen } from "@testing-library/react";
-import { ChakraProvider, defaultSystem } from "@chakra-ui/react";
+import { screen } from "@testing-library/react";
+import { renderWithChakra } from "@/__tests__/helpers/mocks";
 import { SettingsSkeleton, ClassHistorySkeleton } from "@/components/settings/SettingsSkeleton";
-
-function renderWithChakra(ui: React.ReactElement) {
-  return render(<ChakraProvider value={defaultSystem}>{ui}</ChakraProvider>);
-}
 
 describe("SettingsSkeleton", () => {
   it("renders without crashing", () => {

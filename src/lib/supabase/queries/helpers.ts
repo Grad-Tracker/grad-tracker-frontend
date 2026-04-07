@@ -1,4 +1,4 @@
-import type { ViewProgramBlockCourseItem, ViewGenEdBucketCourseItem } from "./view-types";
+import type { ViewProgramBlockCourseItem, ViewProgramBlockCoursesRow, ViewGenEdBucketCourseItem } from "./view-types";
 import { logStudentActivity } from "./activity";
 
 /** Convert a view course item to a plain course object. */
@@ -9,6 +9,19 @@ export function viewItemToCourse(item: ViewProgramBlockCourseItem | ViewGenEdBuc
     number: String(item.number ?? ""),
     title: String(item.title ?? ""),
     credits: Number(item.credits ?? 0),
+  };
+}
+
+/** Map a program-block view row to a typed block object with nested courses. */
+export function mapViewBlockToCourseBlock(block: ViewProgramBlockCoursesRow) {
+  return {
+    id: Number(block.block_id),
+    program_id: Number(block.program_id),
+    name: block.block_name,
+    rule: block.rule,
+    n_required: block.n_required,
+    credits_required: block.credits_required,
+    courses: (block.courses ?? []).map(viewItemToCourse),
   };
 }
 
