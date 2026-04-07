@@ -21,6 +21,7 @@ import { LuGraduationCap, LuArrowRight, LuLoader } from "react-icons/lu";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { validateEmailDomain, normalizeEmail } from "@/lib/email-validation";
 import { DB_TABLES } from "@/lib/supabase/queries/schema";
 
 export default function AdvisorSignupClient() {
@@ -60,16 +61,13 @@ export default function AdvisorSignupClient() {
       return;
     }
 
-    const normalizedEmail = email.trim().toLowerCase();
+    const normalizedEmail = normalizeEmail(email);
+    const validation = validateEmailDomain("advisor", normalizedEmail);
 
-    const hasValidAdvisorDomain =
-      normalizedEmail.endsWith("@uwp.edu") &&
-      !normalizedEmail.endsWith("@rangers.uwp.edu");
-
-    if (!hasValidAdvisorDomain) {
+    if (!validation.isValid) {
       toaster.create({
-        title: "Invalid email domain",
-        description: "Advisor sign up requires a @uwp.edu email address.",
+        title: validation.errorTitle!,
+        description: validation.errorDescription!,
         type: "error",
       });
       return;
@@ -89,7 +87,7 @@ export default function AdvisorSignupClient() {
             first_name: firstName,
             last_name: lastName,
           },
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
+          emailRedirectTo: `${globalThis.location.origin}/auth/callback`,
         },
       });
 
@@ -187,7 +185,7 @@ export default function AdvisorSignupClient() {
               <HStack gap="3" cursor="pointer">
                 <Box
                   p="2"
-                  bg="green.solid"
+                  bg="blue.solid"
                   borderRadius="lg"
                   className="animate-pulse-glow"
                 >
@@ -204,7 +202,7 @@ export default function AdvisorSignupClient() {
                   GradTracker
                 </Text>
                 <Badge
-                  colorPalette="green"
+                  colorPalette="blue"
                   variant="surface"
                   size="sm"
                   fontWeight="500"
@@ -235,7 +233,7 @@ export default function AdvisorSignupClient() {
           right="-10%"
           w="500px"
           h="500px"
-          bg="green.500"
+          bg="blue.500"
           opacity="0.05"
           borderRadius="full"
           filter="blur(100px)"
@@ -257,7 +255,7 @@ export default function AdvisorSignupClient() {
             <Box
               position="absolute"
               inset="-4"
-              bg="green.500"
+              bg="blue.500"
               opacity="0.15"
               borderRadius="3xl"
               filter="blur(40px)"
@@ -281,7 +279,7 @@ export default function AdvisorSignupClient() {
                 h="1px"
                 bgGradient="to-r"
                 gradientFrom="transparent"
-                gradientVia="green.500"
+                gradientVia="blue.500"
                 gradientTo="transparent"
               />
 
@@ -357,7 +355,7 @@ export default function AdvisorSignupClient() {
 
                   <Button
                     w="full"
-                    colorPalette="green"
+                    colorPalette="blue"
                     size="lg"
                     rounded="lg"
                     fontWeight="600"
@@ -391,7 +389,7 @@ export default function AdvisorSignupClient() {
                     <Link href="/signin">
                       <Text
                         as="span"
-                        color="green.solid"
+                        color="blue.solid"
                         cursor="pointer"
                         fontWeight="600"
                         _hover={{ textDecoration: "underline" }}

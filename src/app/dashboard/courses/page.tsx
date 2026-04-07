@@ -28,7 +28,7 @@ export default async function CoursesPage() {
   }));
 
   // Extract unique subjects for filter
-  const subjects = [...new Set(courses.map((c) => c.subject))].sort();
+  const subjects = [...new Set(courses.map((c) => c.subject))].sort((a, b) => a.localeCompare(b));
 
   return (
     <CoursesClient

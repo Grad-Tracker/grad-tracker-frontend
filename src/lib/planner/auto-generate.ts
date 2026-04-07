@@ -32,12 +32,12 @@ export function buildCoreqMap(courses: Course[]): Map<number, Set<number>> {
     const lectures = group.filter((c) => c.credits > 1 && !/\blab\b/i.test(c.title));
 
     for (const lab of labs) {
-      const labNum = parseInt(lab.number) || 0;
+      const labNum = Number.parseInt(lab.number) || 0;
       // Find closest lecture by course number
       let bestLecture: Course | null = null;
       let bestDist = Infinity;
       for (const lec of lectures) {
-        const lecNum = parseInt(lec.number) || 0;
+        const lecNum = Number.parseInt(lec.number) || 0;
         const dist = Math.abs(labNum - lecNum);
         if (dist <= 5 && dist < bestDist) {
           bestDist = dist;
@@ -86,6 +86,48 @@ export function buildAvailabilityMap(
   );
 }
 
+const TERM_CODE_SUFFIX_TO_SEASON: Record<string, Season> = {
+  FA: "Fall",
+  SP: "Spring",
+  SU: "Summer",
+};
+
+/** Check if a named term code (e.g. "FALL", "SPRING_EVEN") matches season/year */
+function matchesNamedTermCode(code: string, season: Season, year: number): boolean {
+  switch (code) {
+    case "YEARLY":
+      return season === "Fall" || season === "Spring";
+    case "FALL":
+      return season === "Fall";
+    case "SPRING":
+      return season === "Spring";
+    case "SUMMER":
+      return season === "Summer";
+    case "FALL_EVEN":
+      return season === "Fall" && year % 2 === 0;
+    case "FALL_ODD":
+      return season === "Fall" && year % 2 !== 0;
+    case "SPRING_EVEN":
+      return season === "Spring" && year % 2 === 0;
+    case "SPRING_ODD":
+      return season === "Spring" && year % 2 !== 0;
+    case "OCCASIONALLY":
+      return true;
+    default:
+      return false;
+  }
+}
+
+/** Check if a specific term code like "2026FA" matches season/year */
+function matchesSpecificTermCode(code: string, season: Season, year: number): boolean {
+  for (const [suffix, expectedSeason] of Object.entries(TERM_CODE_SUFFIX_TO_SEASON)) {
+    if (code.endsWith(suffix) && season === expectedSeason) {
+      return Number.parseInt(code.slice(0, -suffix.length)) === year;
+    }
+  }
+  return false;
+}
+
 /** Check if a course is offered in a specific season+year */
 export function isAvailable(
   courseId: number,
@@ -94,52 +136,11 @@ export function isAvailable(
   availabilityMap: Map<number, Set<string>>
 ): boolean {
   const codes = availabilityMap.get(courseId);
-  // No offering data → assume available everywhere
   if (!codes || codes.size === 0) return true;
 
   for (const code of codes) {
-    switch (code) {
-      case "YEARLY":
-        if (season === "Fall" || season === "Spring") return true;
-        break;
-      case "FALL":
-        if (season === "Fall") return true;
-        break;
-      case "SPRING":
-        if (season === "Spring") return true;
-        break;
-      case "SUMMER":
-        if (season === "Summer") return true;
-        break;
-      case "FALL_EVEN":
-        if (season === "Fall" && year % 2 === 0) return true;
-        break;
-      case "FALL_ODD":
-        if (season === "Fall" && year % 2 !== 0) return true;
-        break;
-      case "SPRING_EVEN":
-        if (season === "Spring" && year % 2 === 0) return true;
-        break;
-      case "SPRING_ODD":
-        if (season === "Spring" && year % 2 !== 0) return true;
-        break;
-      case "OCCASIONALLY":
-        // Can't predict — treat as available
-        return true;
-      default:
-        // Specific term codes like "2026FA", "2026SP"
-        if (code.endsWith("FA") && season === "Fall") {
-          const y = parseInt(code.slice(0, -2));
-          if (y === year) return true;
-        } else if (code.endsWith("SP") && season === "Spring") {
-          const y = parseInt(code.slice(0, -2));
-          if (y === year) return true;
-        } else if (code.endsWith("SU") && season === "Summer") {
-          const y = parseInt(code.slice(0, -2));
-          if (y === year) return true;
-        }
-        break;
-    }
+    if (matchesNamedTermCode(code, season, year)) return true;
+    if (matchesSpecificTermCode(code, season, year)) return true;
   }
 
   return false;
@@ -182,8 +183,8 @@ export function selectCoursesForBlock(
     if (aPrereqs !== bPrereqs) return aPrereqs - bPrereqs;
 
     // 3. Lower course number first
-    const aNum = parseInt(a.number) || 999;
-    const bNum = parseInt(b.number) || 999;
+    const aNum = Number.parseInt(a.number) || 999;
+    const bNum = Number.parseInt(b.number) || 999;
     return aNum - bNum;
   });
 
@@ -272,8 +273,8 @@ export function resolveGenEdGaps(
         const aPrereqs = prereqCounts.get(a.id) ?? 0;
         const bPrereqs = prereqCounts.get(b.id) ?? 0;
         if (aPrereqs !== bPrereqs) return aPrereqs - bPrereqs;
-        const aNum = parseInt(a.number) || 999;
-        const bNum = parseInt(b.number) || 999;
+        const aNum = Number.parseInt(a.number) || 999;
+        const bNum = Number.parseInt(b.number) || 999;
         return aNum - bNum;
       });
 
@@ -296,16 +297,13 @@ export function resolveGenEdGaps(
  * Level 0 = no prerequisites, level 1 = depends only on level 0, etc.
  * Courses not in prereqEdges get level 0.
  */
-export function computeTopologicalLevels(
+function buildInDegreeAndDependents(
   courseIds: number[],
+  courseIdSet: Set<number>,
   prereqEdges: Map<number, Set<number>>
-): Map<number, number> {
-  const levels = new Map<number, number>();
-  const courseIdSet = new Set(courseIds);
-
-  // Build in-degree map (only counting edges within our course set)
+): { inDegree: Map<number, number>; dependents: Map<number, number[]> } {
   const inDegree = new Map<number, number>();
-  const dependents = new Map<number, number[]>(); // prereq → courses that depend on it
+  const dependents = new Map<number, number[]>();
 
   for (const id of courseIds) {
     inDegree.set(id, 0);
@@ -325,8 +323,16 @@ export function computeTopologicalLevels(
     inDegree.set(id, count);
   }
 
-  // BFS from in-degree 0
+  return { inDegree, dependents };
+}
+
+function bfsTopologicalLevels(
+  inDegree: Map<number, number>,
+  dependents: Map<number, number[]>
+): Map<number, number> {
+  const levels = new Map<number, number>();
   const queue: number[] = [];
+
   for (const [id, deg] of inDegree) {
     if (deg === 0) {
       queue.push(id);
@@ -342,7 +348,6 @@ export function computeTopologicalLevels(
     for (const dep of dependents.get(current) ?? []) {
       const newDeg = (inDegree.get(dep) ?? 1) - 1;
       inDegree.set(dep, newDeg);
-      // Level is max of all prereq levels + 1
       const prevLevel = levels.get(dep) ?? 0;
       levels.set(dep, Math.max(prevLevel, currentLevel + 1));
       if (newDeg === 0) {
@@ -350,6 +355,17 @@ export function computeTopologicalLevels(
       }
     }
   }
+
+  return levels;
+}
+
+export function computeTopologicalLevels(
+  courseIds: number[],
+  prereqEdges: Map<number, Set<number>>
+): Map<number, number> {
+  const courseIdSet = new Set(courseIds);
+  const { inDegree, dependents } = buildInDegreeAndDependents(courseIds, courseIdSet, prereqEdges);
+  const levels = bfsTopologicalLevels(inDegree, dependents);
 
   // Any course not reached (cycle) gets pushed to a high level
   for (const id of courseIds) {
@@ -428,8 +444,8 @@ export function scheduleCourses(
     const levelB = levels.get(b.id) ?? 0;
     if (levelA !== levelB) return levelA - levelB;
     if (a.subject !== b.subject) return a.subject.localeCompare(b.subject);
-    const aNum = parseInt(a.number) || 999;
-    const bNum = parseInt(b.number) || 999;
+    const aNum = Number.parseInt(a.number) || 999;
+    const bNum = Number.parseInt(b.number) || 999;
     return aNum - bNum;
   });
 
@@ -589,8 +605,8 @@ function sortCoursesByLevelAndCode(
     const levelB = levels.get(b.id) ?? 0;
     if (levelA !== levelB) return levelA - levelB;
     if (a.subject !== b.subject) return a.subject.localeCompare(b.subject);
-    const aNum = parseInt(a.number) || 999;
-    const bNum = parseInt(b.number) || 999;
+    const aNum = Number.parseInt(a.number) || 999;
+    const bNum = Number.parseInt(b.number) || 999;
     return aNum - bNum;
   });
 }
@@ -640,7 +656,7 @@ function getNextStartTerm(
   sortedTerms: Term[],
   includeSummers: boolean
 ): { season: Season; year: number } {
-  const lastTerm = sortedTerms[sortedTerms.length - 1];
+  const lastTerm = sortedTerms.at(-1);
   if (lastTerm) {
     return {
       season: nextSeason(lastTerm.season, includeSummers),
@@ -678,6 +694,42 @@ function arePrereqsSatisfiedForExistingTerm(
   return true;
 }
 
+type TermPlacementState = {
+  semCourses: Course[];
+  remaining: number;
+  scheduled: Set<number>;
+  newCourseToSemIdx: Map<number, number>;
+};
+
+function tryPlaceInExistingTerm(
+  course: Course,
+  term: Term,
+  termIdx: number,
+  state: TermPlacementState,
+  prereqEdges: Map<number, Set<number>>,
+  completedIds: Set<number>,
+  existingCourseToSemIdx: Map<number, number>,
+  availabilityMap: Map<number, Set<string>>
+): boolean {
+  if (state.scheduled.has(course.id)) return false;
+  if (course.credits > state.remaining) return false;
+  if (!isAvailable(course.id, term.season, term.year, availabilityMap)) return false;
+  if (
+    !arePrereqsSatisfiedForExistingTerm(
+      course, termIdx, prereqEdges, completedIds,
+      existingCourseToSemIdx, state.newCourseToSemIdx
+    )
+  ) {
+    return false;
+  }
+
+  state.semCourses.push(course);
+  state.remaining -= course.credits;
+  state.scheduled.add(course.id);
+  state.newCourseToSemIdx.set(course.id, termIdx);
+  return true;
+}
+
 function placeIntoExistingSemesters(
   sortedCourses: Course[],
   context: ExistingPlanContext,
@@ -695,52 +747,35 @@ function placeIntoExistingSemesters(
   for (let termIdx = 0; termIdx < context.sortedTerms.length; termIdx++) {
     const term = context.sortedTerms[termIdx];
     const currentCredits = context.termCredits.get(term.id) ?? 0;
-    let remaining = creditCap - currentCredits;
+    const remaining = creditCap - currentCredits;
     if (remaining <= 0) continue;
 
-    const semCourses: Course[] = [];
-    const tryPlace = (course: Course): boolean => {
-      if (scheduled.has(course.id)) return false;
-      if (course.credits > remaining) return false;
-      if (!isAvailable(course.id, term.season, term.year, availabilityMap)) return false;
-      if (
-        !arePrereqsSatisfiedForExistingTerm(
-          course,
-          termIdx,
-          prereqEdges,
-          completedIds,
-          context.existingCourseToSemIdx,
-          newCourseToSemIdx
-        )
-      ) {
-        return false;
-      }
-
-      semCourses.push(course);
-      remaining -= course.credits;
-      scheduled.add(course.id);
-      newCourseToSemIdx.set(course.id, termIdx);
-      return true;
+    const state: TermPlacementState = {
+      semCourses: [],
+      remaining,
+      scheduled,
+      newCourseToSemIdx,
     };
 
     for (const course of sortedCourses) {
-      if (scheduled.has(course.id) || course.credits > remaining) continue;
-      if (!tryPlace(course)) continue;
+      if (scheduled.has(course.id) || course.credits > state.remaining) continue;
+      if (!tryPlaceInExistingTerm(course, term, termIdx, state, prereqEdges, completedIds, context.existingCourseToSemIdx, availabilityMap)) continue;
 
       const partners = coreqs.get(course.id);
-      if (!partners) continue;
-      for (const partnerId of partners) {
-        const partner = courseById.get(partnerId);
-        if (partner) tryPlace(partner);
+      if (partners) {
+        for (const partnerId of partners) {
+          const partner = courseById.get(partnerId);
+          if (partner) tryPlaceInExistingTerm(partner, term, termIdx, state, prereqEdges, completedIds, context.existingCourseToSemIdx, availabilityMap);
+        }
       }
     }
 
-    if (semCourses.length > 0) {
+    if (state.semCourses.length > 0) {
       semesters.push({
         season: term.season,
         year: term.year,
-        courses: semCourses,
-        totalCredits: currentCredits + semCourses.reduce((s, c) => s + c.credits, 0),
+        courses: state.semCourses,
+        totalCredits: currentCredits + state.semCourses.reduce((s, c) => s + c.credits, 0),
       });
     }
   }

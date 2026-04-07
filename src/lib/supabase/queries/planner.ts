@@ -10,36 +10,13 @@ import type {
 import type { Course } from "@/types/course";
 import type { GenEdBucketWithCourses, ScheduledSemester } from "@/types/auto-generate";
 import { DB_TABLES, DB_VIEWS, PLANNED_COURSE_STATUS, STUDENT_COLUMNS } from "./schema";
+import { viewItemToCourse, mapViewBlockToCourseBlock, safeLogActivity, formatActivityCourseLabel } from "./helpers";
 import type {
-  ViewGenEdBucketCourseItem,
   ViewGenEdBucketCoursesRow,
-  ViewPlanCourseRow,
   ViewPlanMetaRow,
-  ViewPlanTermRow,
-  ViewProgramBlockCourseItem,
   ViewProgramBlockCoursesRow,
   ViewStudentCourseProgressRow,
 } from "./view-types";
-
-function toCourseFromBlockItem(item: ViewProgramBlockCourseItem): Course {
-  return {
-    id: Number(item.course_id),
-    subject: String(item.subject ?? ""),
-    number: String(item.number ?? ""),
-    title: String(item.title ?? ""),
-    credits: Number(item.credits ?? 0),
-  };
-}
-
-function toCourseFromGenEdItem(item: ViewGenEdBucketCourseItem): Course {
-  return {
-    id: Number(item.course_id),
-    subject: String(item.subject ?? ""),
-    number: String(item.number ?? ""),
-    title: String(item.title ?? ""),
-    credits: Number(item.credits ?? 0),
-  };
-}
 
 // ── Plan CRUD ────────────────────────────────────────────
 
@@ -98,6 +75,11 @@ export async function createPlan(
       .insert(rows);
     if (ppError) throw ppError;
   }
+
+  await safeLogActivity(studentId, "plan_created", `Created plan ${name}`, {
+    plan_id: Number(plan.id),
+    program_ids: programIds,
+  });
 
   return plan as Plan;
 }
@@ -180,14 +162,17 @@ export async function setPlanPrograms(
 
 export async function fetchStudentTerms(
   studentId: number,
-  planId: number
+  planId: number,
+  signal?: AbortSignal
 ): Promise<Term[]> {
   const supabase = createClient();
-  const { data, error } = await supabase
+  let query = supabase
     .from(DB_VIEWS.planTerms)
     .select("term_id, season, year")
     .eq("student_id", studentId)
     .eq("plan_id", planId);
+  if (signal) query = query.abortSignal(signal);
+  const { data, error } = await query;
 
   if (error) throw error;
   return (data as any[] | null | undefined ?? []).map((row) => {
@@ -202,14 +187,17 @@ export async function fetchStudentTerms(
 
 export async function fetchPlannedCourses(
   studentId: number,
-  planId: number
+  planId: number,
+  signal?: AbortSignal
 ): Promise<PlannedCourseWithDetails[]> {
   const supabase = createClient();
-  const { data, error } = await supabase
+  let query = supabase
     .from(DB_VIEWS.planCourses)
     .select("student_id, term_id, course_id, status, plan_id, subject, number, title, credits")
     .eq("student_id", studentId)
     .eq("plan_id", planId);
+  if (signal) query = query.abortSignal(signal);
+  const { data, error } = await query;
 
   if (error) throw error;
   return (data as any[] | null | undefined ?? []).map((row) => {
@@ -243,44 +231,39 @@ export async function fetchPlannedCourses(
 
 export async function fetchAvailableCourses(
   studentId: number,
-  planId: number
+  planId: number,
+  signal?: AbortSignal
 ): Promise<RequirementBlockWithCourses[]> {
   const supabase = createClient();
 
-  const { data: planMeta, error: ppError } = await supabase
+  let metaBuilder = supabase
     .from(DB_VIEWS.planMeta)
     .select("program_ids")
     .eq("student_id", studentId)
-    .eq("plan_id", planId)
-    .single();
+    .eq("plan_id", planId);
+  if (signal) metaBuilder = metaBuilder.abortSignal(signal);
+  const { data: planMeta, error: ppError } = await metaBuilder.single();
 
   if (ppError) throw ppError;
   const programIds = (planMeta?.program_ids ?? []).map(Number);
   if (!programIds.length) return [];
 
-  const { data: blocks, error: blocksError } = await supabase
+  let blocksQuery = supabase
     .from(DB_VIEWS.programBlockCourses)
     .select(
       "block_id, program_id, block_name, rule, n_required, credits_required, courses"
     )
     .in("program_id", programIds)
     .order("block_name");
+  if (signal) blocksQuery = blocksQuery.abortSignal(signal);
+  const { data: blocks, error: blocksError } = await blocksQuery;
 
   if (blocksError) throw blocksError;
   if (!blocks?.length) return [];
 
-  return (blocks as ViewProgramBlockCoursesRow[]).map((block) => {
-    const blockCourses = (block.courses ?? []).map(toCourseFromBlockItem);
-    return {
-      id: Number(block.block_id),
-      program_id: Number(block.program_id),
-      name: block.block_name,
-      rule: block.rule,
-      n_required: block.n_required,
-      credits_required: block.credits_required,
-      courses: blockCourses,
-    } as RequirementBlockWithCourses;
-  });
+  return (blocks as ViewProgramBlockCoursesRow[]).map(
+    (block) => mapViewBlockToCourseBlock(block) as RequirementBlockWithCourses
+  );
 }
 
 export async function getOrCreateTerm(
@@ -352,7 +335,8 @@ export async function addPlannedCourse(
   studentId: number,
   termId: number,
   courseId: number,
-  planId: number
+  planId: number,
+  courseLabel?: string
 ): Promise<void> {
   const supabase = createClient();
   const { error } = await supabase
@@ -366,13 +350,28 @@ export async function addPlannedCourse(
     });
 
   if (error) throw error;
+
+  const activityCourseLabel = formatActivityCourseLabel(courseLabel);
+  await safeLogActivity(
+    studentId,
+    "course_added",
+    `Added ${activityCourseLabel} to a semester plan`,
+    {
+      course_id: courseId,
+      term_id: termId,
+      plan_id: planId,
+      source: "planner",
+      course_label: activityCourseLabel,
+    }
+  );
 }
 
 export async function removePlannedCourse(
   studentId: number,
   termId: number,
   courseId: number,
-  planId: number
+  planId: number,
+  courseLabel?: string
 ): Promise<void> {
   const supabase = createClient();
   const { error } = await supabase
@@ -384,6 +383,20 @@ export async function removePlannedCourse(
     .eq("plan_id", planId);
 
   if (error) throw error;
+
+  const activityCourseLabel = formatActivityCourseLabel(courseLabel);
+  await safeLogActivity(
+    studentId,
+    "course_removed",
+    `Removed ${activityCourseLabel} from a semester plan`,
+    {
+      course_id: courseId,
+      term_id: termId,
+      plan_id: planId,
+      source: "planner",
+      course_label: activityCourseLabel,
+    }
+  );
 }
 
 export async function movePlannedCourse(
@@ -391,7 +404,8 @@ export async function movePlannedCourse(
   courseId: number,
   fromTermId: number,
   toTermId: number,
-  planId: number
+  planId: number,
+  courseLabel?: string
 ): Promise<void> {
   const supabase = createClient();
 
@@ -416,16 +430,33 @@ export async function movePlannedCourse(
     });
 
   if (insertError) throw insertError;
+
+  const activityCourseLabel = formatActivityCourseLabel(courseLabel);
+  await safeLogActivity(
+    studentId,
+    "plan_updated",
+    `Moved ${activityCourseLabel} to a different semester`,
+    {
+      course_id: courseId,
+      from_term_id: fromTermId,
+      to_term_id: toTermId,
+      plan_id: planId,
+      course_label: activityCourseLabel,
+    }
+  );
 }
 
 export async function fetchCompletedCourseIds(
-  studentId: number
+  studentId: number,
+  signal?: AbortSignal
 ): Promise<Set<number>> {
   const supabase = createClient();
-  const { data, error } = await supabase
+  let query = supabase
     .from(DB_VIEWS.studentCourseProgress)
     .select("course_id, completed, progress_status")
     .eq("student_id", studentId);
+  if (signal) query = query.abortSignal(signal);
+  const { data, error } = await query;
 
   if (error) throw error;
   return new Set(
@@ -513,7 +544,6 @@ export async function fetchCrossListings(
   if (courseIds.length === 0) return result;
 
   const supabase = createClient();
-  const courseIdSet = new Set(courseIds);
 
   // Get cross-listings where the course_id is in our set
   const { data, error } = await supabase
@@ -578,7 +608,7 @@ export async function fetchGenEdBucketsWithCourses(): Promise<GenEdBucketWithCou
       code: bucket.bucket_code,
       name: bucket.bucket_name,
       credits_required: Number(bucket.bucket_credits_required ?? 0),
-      courses: (bucket.courses ?? []).map(toCourseFromGenEdItem),
+      courses: (bucket.courses ?? []).map(viewItemToCourse),
     } as GenEdBucketWithCourses;
   });
 }

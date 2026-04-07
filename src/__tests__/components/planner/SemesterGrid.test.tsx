@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { screen } from "@testing-library/react";
+import { screen, fireEvent, waitFor } from "@testing-library/react";
 import React from "react";
 import { renderWithChakra } from "../../helpers/mocks";
 import type { Term, Season, PlannedCourseWithDetails } from "@/types/planner";
@@ -8,14 +8,28 @@ import SemesterGrid from "@/components/planner/SemesterGrid";
 
 // Mock SemesterColumn to a simple div so we can inspect what props are passed
 vi.mock("@/components/planner/SemesterColumn", () => ({
-  default: ({ term, courses, onRemoveTerm }: any) =>
+  default: ({ term, courses, onRemoveTerm, onCourseClick }: any) =>
     React.createElement(
       "div",
-      {
-        "data-testid": `semester-${term.id}`,
-        onClick: () => onRemoveTerm(term.id),
-      },
-      `${term.season} ${term.year} (${courses.length} courses)`
+      { "data-testid": `semester-${term.id}` },
+      React.createElement(
+        "button",
+        {
+          "data-testid": `remove-term-${term.id}`,
+          onClick: () => onRemoveTerm(term.id),
+        },
+        `${term.season} ${term.year} (${courses.length} courses)`
+      ),
+      courses[0]
+        ? React.createElement(
+            "button",
+            {
+              "data-testid": `open-course-${term.id}`,
+              onClick: () => onCourseClick(courses[0].course, term.id),
+            },
+            `Open ${courses[0].course.subject} ${courses[0].course.number}`
+          )
+        : null
     ),
 }));
 
@@ -167,8 +181,31 @@ describe("SemesterGrid", () => {
     );
 
     // Our mock calls onRemoveTerm(term.id) on click
-    screen.getByTestId("semester-42").click();
+    fireEvent.click(screen.getByTestId("remove-term-42"));
     expect(onRemoveTerm).toHaveBeenCalledWith(42);
+  });
+
+  it("removes a course from the selected semester via the drawer action", async () => {
+    const terms = [makeTerm({ id: 1, season: "Fall", year: 2025 })];
+    const course = makeCourse({ id: 101, subject: "CSCI", number: "410" });
+    const onRemoveCourse = vi.fn().mockResolvedValue(undefined);
+
+    renderWithChakra(
+      <SemesterGrid
+        terms={terms}
+        plannedCourses={[makePlannedCourse(course, 1)]}
+        onRemoveTerm={onRemoveTerm}
+        onRemoveCourse={onRemoveCourse}
+      />
+    );
+
+    fireEvent.click(screen.getByTestId("open-course-1"));
+    const removeButton = await screen.findByRole("button", { name: "Remove Course" });
+    fireEvent.click(removeButton);
+
+    await waitFor(() => {
+      expect(onRemoveCourse).toHaveBeenCalledWith(course, 1);
+    });
   });
 
   it("handles empty terms array gracefully", () => {

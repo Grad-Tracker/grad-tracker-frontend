@@ -87,7 +87,7 @@ const FileUploadItem = React.forwardRef<HTMLLIElement, FileUploadItemProps>(
 
         {clearable && (
           <ChakraFileUpload.ItemDeleteTrigger asChild>
-            <IconButton variant="ghost" color="fg.muted" size="xs">
+            <IconButton variant="ghost" color="fg.muted" size="xs" aria-label={`Remove file ${file.name}`}>
               <LuX />
             </IconButton>
           </ChakraFileUpload.ItemDeleteTrigger>

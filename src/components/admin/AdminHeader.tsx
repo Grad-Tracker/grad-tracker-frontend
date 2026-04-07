@@ -1,44 +1,16 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { Avatar, Badge, Box, Button, Flex, HStack, Text } from "@chakra-ui/react";
 import { useRouter } from "next/navigation";
 import { LuLogOut, LuShield } from "react-icons/lu";
 import { ColorModeButton } from "@/components/ui/color-mode";
-import { toaster } from "@/components/ui/toaster";
-import { createClient } from "@/lib/supabase/client";
+import { signOutAndRedirect } from "@/lib/auth-helpers";
+import { useUserProfile } from "@/lib/hooks/useUserProfile";
 
 export default function AdminHeader() {
   const router = useRouter();
-  const [advisorName, setAdvisorName] = useState("");
-
-  useEffect(() => {
-    async function loadUser() {
-      const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user?.user_metadata) {
-        const { first_name, last_name } = user.user_metadata;
-        setAdvisorName([first_name, last_name].filter(Boolean).join(" "));
-      }
-    }
-    loadUser();
-  }, []);
-
-  async function handleSignOut() {
-    const supabase = createClient();
-    const { error } = await supabase.auth.signOut();
-    if (error) {
-      console.error("Sign-out error:", error);
-      toaster.create({ title: "Sign-out failed", description: error.message, type: "error" });
-      return;
-    }
-    toaster.create({
-      title: "Signed out",
-      description: "You have been signed out successfully.",
-      type: "success",
-    });
-    router.push("/signin");
-  }
+  const { userName: advisorName } = useUserProfile();
+  const handleSignOut = () => signOutAndRedirect(router.push);
 
   return (
     <Box

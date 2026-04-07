@@ -27,6 +27,7 @@ const {
   mockFetchGenEdBucketsWithCourses,
   mockFetchBreadthPackageId,
   mockUpdateBreadthPackageId,
+  mockLogStudentActivity,
 
   // NEW: capture DnD handlers so tests can call them
   mockDndHandlers,
@@ -61,6 +62,7 @@ const {
     mockFetchGenEdBucketsWithCourses: vi.fn().mockResolvedValue([]),
     mockFetchBreadthPackageId: vi.fn().mockResolvedValue(null),
     mockUpdateBreadthPackageId: vi.fn().mockResolvedValue(undefined),
+    mockLogStudentActivity: vi.fn().mockResolvedValue(undefined),
 
     mockDndHandlers: {
       onDragStart: null as null | ((e: any) => void),
@@ -101,6 +103,10 @@ vi.mock("@/lib/supabase/queries/planner", () => ({
   movePlannedCourse: mockMovePlannedCourse,
   fetchBreadthPackageId: mockFetchBreadthPackageId,
   updateBreadthPackageId: mockUpdateBreadthPackageId,
+}));
+
+vi.mock("@/lib/supabase/queries/activity", () => ({
+  logStudentActivity: mockLogStudentActivity,
 }));
 
 // Mock all child components to avoid DnD and complex setup
@@ -232,6 +238,7 @@ vi.mock("@dnd-kit/core", () => ({
   },
   DragOverlay: ({ children }: any) => <div>{children}</div>,
   PointerSensor: class {},
+  KeyboardSensor: class {},
   useSensor: vi.fn(),
   useSensors: vi.fn(() => []),
 }));
@@ -324,10 +331,10 @@ describe("PlannerPage", () => {
     localStorage.clear();
   });
 
-  it("shows loading spinner initially", () => {
+  it("shows skeleton loading state initially", () => {
     mockGetUser.mockReturnValue(new Promise(() => {}));
     renderWithChakra(<PlannerPage />);
-    expect(screen.getAllByText(/loading/i).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByTestId("planner-page-skeleton")).toBeInTheDocument();
   });
 
   it("redirects to signin when no user", async () => {
@@ -565,35 +572,9 @@ describe("PlannerPage", () => {
     });
   });
 
-  it("shows plan tabs when multiple plans exist", async () => {
-    const twoPlans = [
-      {
-        id: 1, student_id: 1, name: "Plan Alpha", description: null,
-        created_at: "2025-01-01", updated_at: "2025-01-15",
-        program_ids: [1], term_count: 0, course_count: 0,
-        total_credits: 0, has_graduate_program: false,
-      },
-      {
-        id: 2, student_id: 1, name: "Plan Beta", description: null,
-        created_at: "2025-01-02", updated_at: "2025-01-16",
-        program_ids: [1], term_count: 0, course_count: 0,
-        total_credits: 0, has_graduate_program: false,
-      },
-    ];
-    setupAuthenticatedState(twoPlans);
+  // Plan tabs were removed — users switch plans via the plans hub
 
-    await act(async () => renderWithChakra(<PlannerPage />));
-    await waitFor(() => expect(screen.getByTestId("plans-hub")).toBeInTheDocument());
-
-    await act(async () => fireEvent.click(screen.getByTestId("open-plan")));
-
-    await waitFor(() => {
-      expect(screen.getAllByText("Plan Alpha").length).toBeGreaterThanOrEqual(1);
-      expect(screen.getAllByText("Plan Beta").length).toBeGreaterThanOrEqual(1);
-    });
-  });
-
-  it("shows plan data loading spinner", async () => {
+  it("shows plan data skeleton while plan is loading", async () => {
     setupAuthenticatedState();
     mockFetchTerms.mockReturnValue(new Promise(() => {}));
 
@@ -603,7 +584,7 @@ describe("PlannerPage", () => {
     await act(async () => fireEvent.click(screen.getByTestId("open-plan")));
 
     await waitFor(() => {
-      expect(screen.getAllByText(/Loading plan/i).length).toBeGreaterThanOrEqual(1);
+      expect(screen.getByTestId("planner-skeleton")).toBeInTheDocument();
     });
   });
 
@@ -683,34 +664,7 @@ describe("PlannerPage", () => {
     });
   });
 
-  it("switches plans in workspace (handleSwitchPlan)", async () => {
-    const twoPlans = [
-      { id: 1, student_id: 1, name: "Plan Alpha", program_ids: [1], term_count: 0, course_count: 0, total_credits: 0, has_graduate_program: false },
-      { id: 2, student_id: 1, name: "Plan Beta", program_ids: [1], term_count: 0, course_count: 0, total_credits: 0, has_graduate_program: false },
-    ];
-    setupAuthenticatedState(twoPlans);
-
-    mockFetchTerms.mockResolvedValue([{ id: 1, season: "Fall", year: 2025 }]);
-
-    await act(async () => renderWithChakra(<PlannerPage />));
-    await waitFor(() => expect(screen.getByTestId("plans-hub")).toBeInTheDocument());
-
-    await act(async () => fireEvent.click(screen.getByTestId("open-plan")));
-    await waitFor(() => expect(screen.getAllByText("Plan Alpha").length).toBeGreaterThan(0));
-
-    // Click the Plan Beta tab button
-    fireEvent.click(screen.getByText("Plan Beta"));
-
-    await waitFor(() => {
-      // loadPlanData triggers fetchStudentTerms(sid, planId)
-      expect(mockFetchTerms).toHaveBeenCalled();
-    });
-
-    // assert last call is planId 2
-    const last = mockFetchTerms.mock.calls[mockFetchTerms.mock.calls.length - 1];
-    expect(last[0]).toBe(1);
-    expect(last[1]).toBe(2);
-  });
+  // Plan switching via tabs was removed — users switch plans via the plans hub
 
   it("removes an empty term immediately (handleRemoveTermRequest -> handleRemoveTermConfirmed)", async () => {
     setupAuthenticatedState();
@@ -998,7 +952,7 @@ describe("PlannerPage", () => {
 
     await waitFor(() => {
       expect(mockToaster.create).toHaveBeenCalledWith(
-        expect.objectContaining({ title: "Error", type: "error" })
+        expect.objectContaining({ title: "Failed to move course", type: "error" })
       );
     });
   });
@@ -1055,8 +1009,7 @@ describe("PlannerPage", () => {
     await waitFor(() => {
       expect(mockToaster.create).toHaveBeenCalledWith(
         expect.objectContaining({
-          title: "Error",
-          description: "Failed to update plan",
+          title: "Failed to move course",
           type: "error",
         })
       );
@@ -1070,5 +1023,46 @@ describe("PlannerPage", () => {
       });
     });
     expect(mockRemovePlannedCourse).toHaveBeenCalled();
+  });
+
+  it("exercises plannerPoolBlocks genEd path when buckets have courses", async () => {
+    setupAuthenticatedState();
+    mockFetchTerms.mockResolvedValue([{ id: 1, season: "Fall", year: 2025 }]);
+
+    // Return gen-ed buckets with courses — exercises the IIFE, flatMap, and filter callbacks
+    mockFetchGenEdBucketsWithCourses.mockResolvedValueOnce([
+      {
+        id: 1,
+        code: "MATH",
+        name: "Mathematics",
+        credits_required: 6,
+        courses: [
+          { id: 201, subject: "MATH", number: "101", title: "Calculus I", credits: 3 },
+          { id: 201, subject: "MATH", number: "101", title: "Calculus I", credits: 3 }, // duplicate to exercise dedup filter
+        ],
+      },
+    ]);
+
+    // Return blocks without a "General Education" block so the Gen Ed synthetic block is added
+    mockFetchAvailableCourses.mockResolvedValueOnce([
+      {
+        id: 10,
+        program_id: 1,
+        name: "Core Requirements",
+        rule: "ALL_OF",
+        n_required: null,
+        credits_required: null,
+        courses: [],
+      },
+    ]);
+
+    await act(async () => renderWithChakra(<PlannerPage />));
+    await waitFor(() => expect(screen.getByTestId("plans-hub")).toBeInTheDocument());
+
+    await act(async () => fireEvent.click(screen.getByTestId("open-plan")));
+    await waitFor(() => expect(screen.getByTestId("course-panel")).toBeInTheDocument());
+
+    // Component rendered successfully with the gen-ed block appended
+    expect(mockFetchGenEdBucketsWithCourses).toHaveBeenCalled();
   });
 });

@@ -75,7 +75,9 @@ export default function PlanCard({
 
   return (
     <Box
-      role="group"
+      role="button"
+      tabIndex={0}
+      aria-label={`Open plan ${plan.name}`}
       position="relative"
       borderRadius="2xl"
       borderWidth="1px"
@@ -94,6 +96,13 @@ export default function PlanCard({
       onClick={() => {
         if (!isRenaming) onOpen(plan.id);
       }}
+      onKeyDown={(e) => {
+        if (isRenaming) return;
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onOpen(plan.id);
+        }
+      }}
       style={{
         animationDelay: `${index * 80}ms`,
       }}
@@ -101,10 +110,9 @@ export default function PlanCard({
     >
       {/* Top accent bar */}
       <Box
-        h="3px"
         bg={plan.has_graduate_program ? "purple.500" : "blue.500"}
         transition="height 0.2s"
-        _groupHover={{ h: "4px" }}
+        h={isHovered ? "4px" : "3px"}
       />
 
       <Box p="5">

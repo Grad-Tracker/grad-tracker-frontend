@@ -11,10 +11,10 @@ import {
   Progress,
   Separator,
   Separator as Divider,
-  Spinner,
   Text,
   VStack,
 } from "@chakra-ui/react";
+import { GenEdSkeleton } from "@/components/requirements/RequirementsSkeleton";
 import { evaluatePrereqsForCourses, type PrereqEvaluationMap } from "@/lib/prereq";
 import {
   fetchGenEdBucketsWithCourses,
@@ -36,6 +36,26 @@ type Bucket = {
   credits_required: number;
   courses: Course[];
 };
+
+function normalizeBucketCourse(c: { id: number | string; subject: string | null; number: string | null; title: string | null; credits: number | string | null }): Course {
+  return {
+    id: Number(c.id),
+    subject: c.subject ?? null,
+    number: c.number ?? null,
+    title: c.title ?? null,
+    credits: c.credits == null ? null : Number(c.credits),
+  };
+}
+
+function collectAllCourseIds(buckets: Bucket[]): number[] {
+  const ids = new Set<number>();
+  for (const b of buckets) {
+    for (const c of b.courses) {
+      ids.add(c.id);
+    }
+  }
+  return Array.from(ids);
+}
 
 function sortByCode(a: Course, b: Course) {
   const aSubject = (a.subject ?? "").toString();
@@ -75,13 +95,7 @@ export default function GenEdRequirements({ studentId }: { studentId: number }) 
           code: String(b.code),
           name: String(b.name),
           credits_required: Number(b.credits_required ?? 0),
-          courses: (b.courses ?? []).map((c) => ({
-            id: Number(c.id),
-            subject: c.subject ?? null,
-            number: c.number ?? null,
-            title: c.title ?? null,
-            credits: c.credits == null ? null : Number(c.credits),
-          })),
+          courses: (b.courses ?? []).map(normalizeBucketCourse),
         }));
 
         setBuckets(normalizedBuckets);
@@ -98,9 +112,7 @@ export default function GenEdRequirements({ studentId }: { studentId: number }) 
         );
         setCompletedCourseIds(completed);
 
-        const allCourseIds = Array.from(
-          new Set(normalizedBuckets.flatMap((b) => b.courses.map((c) => c.id)))
-        );
+        const allCourseIds = collectAllCourseIds(normalizedBuckets);
         const prereqMap = await evaluatePrereqsForCourses(allCourseIds, studentId);
         if (cancelled) return;
         setPrereqByCourse(prereqMap);
@@ -186,14 +198,7 @@ export default function GenEdRequirements({ studentId }: { studentId: number }) 
   }, [bucketsWithProgress]);
 
   if (loading) {
-    return (
-      <Box px={{ base: "4", md: "8" }} py="8">
-        <HStack gap="3">
-          <Spinner />
-          <Text color="fg.muted">Loading Gen Ed requirements...</Text>
-        </HStack>
-      </Box>
-    );
+    return <GenEdSkeleton />;
   }
 
   if (error) {

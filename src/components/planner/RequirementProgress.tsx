@@ -28,6 +28,15 @@ interface RequirementProgressProps {
 const BLOCK_COLORS = ["blue", "purple", "orange", "teal", "cyan", "pink", "yellow", "emerald"];
 const GRADUATE_TOTAL_CREDITS = 30;
 
+/** For N_OF blocks without credits_required, estimate from n_required * avg credits per course. */
+function estimateRequiredCredits(block: RequirementBlockWithCourses): number {
+  if (block.rule === "N_OF" && block.n_required && block.courses.length > 0) {
+    const avgCredits = block.courses.reduce((s, c) => s + c.credits, 0) / block.courses.length;
+    return Math.round(block.n_required * avgCredits);
+  }
+  return block.courses.reduce((s, c) => s + c.credits, 0);
+}
+
 function graduateBlockColor(name: string): string {
   const n = name.toLowerCase();
   if (n.includes("core")) return "blue";
@@ -75,7 +84,7 @@ export default function RequirementProgress({
 
       const totalRequired = breadthNoSelection
         ? 9
-        : (block.credits_required ?? block.courses.reduce((s, c) => s + c.credits, 0));
+        : (block.credits_required ?? estimateRequiredCredits(block));
       const filledCredits = completedCredits + plannedCredits;
       const percentage = totalRequired > 0 ? Math.min(100, Math.round((filledCredits / totalRequired) * 100)) : 0;
       const displayName = breadthNoSelection ? "Breadth (select package)" : block.name;

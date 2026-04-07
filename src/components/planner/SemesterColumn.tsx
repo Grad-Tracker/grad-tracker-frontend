@@ -13,22 +13,17 @@ import { LuTrash2, LuCalendar, LuTriangleAlert } from "react-icons/lu";
 import type { Term, PlannedCourseWithDetails } from "@/types/planner";
 import type { Course } from "@/types/course";
 import DraggableCourseRow from "./DraggableCourseRow";
+import { SEASON_COLORS } from "@/constants/planner";
 
 interface SemesterColumnProps {
   term: Term;
   courses: PlannedCourseWithDetails[];
   onRemoveTerm: (termId: number) => void;
-  onCourseClick: (course: Course) => void;
+  onCourseClick: (course: Course, termId: number) => void;
   isCollapsed?: boolean;
   onToggleCollapse?: () => void;
   isGraduatePlan?: boolean;
 }
-
-const SEASON_COLORS: Record<string, string> = {
-  Fall: "orange",
-  Spring: "blue",
-  Summer: "yellow",
-};
 
 function getCreditLoadInfo(
   credits: number,

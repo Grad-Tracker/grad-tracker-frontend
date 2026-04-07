@@ -5,8 +5,10 @@ export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("code");
 
-  // default behavior stays the same
-  const nextParam = searchParams.get("next") ?? "/dashboard";
+  // Validate the "next" param to prevent open-redirect attacks.
+  const raw = searchParams.get("next") ?? "/dashboard";
+  const nextParam =
+    raw.startsWith("/") && !raw.startsWith("//") ? raw : "/dashboard";
 
   if (code) {
     const supabase = await createClient();

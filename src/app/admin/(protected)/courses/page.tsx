@@ -15,7 +15,7 @@ export default async function AdminCoursesPage() {
   if (error) console.error("Error fetching courses:", error);
 
   const courses: CourseDetail[] = (data ?? []) as CourseDetail[];
-  const subjects = [...new Set(courses.map((c) => c.subject))].sort();
+  const subjects = [...new Set(courses.map((c) => c.subject))].sort((a, b) => a.localeCompare(b));
 
   return <CoursesAdminClient initialCourses={courses} subjects={subjects} />;
 }

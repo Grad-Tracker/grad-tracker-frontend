@@ -29,6 +29,7 @@ import { LuGraduationCap, LuArrowRight, LuLoader } from "react-icons/lu";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { validateEmailDomain, normalizeEmail } from "@/lib/email-validation";
 
 function AdvisorAccessQuerySync({
   onOpen,
@@ -142,12 +143,13 @@ export default function SignupPage() {
       return;
     }
 
-    const normalizedEmail = email.trim().toLowerCase();
+    const normalizedEmail = normalizeEmail(email);
+    const validation = validateEmailDomain("student", normalizedEmail);
 
-    if (!normalizedEmail.endsWith("@rangers.uwp.edu")) {
+    if (!validation.isValid) {
       toaster.create({
-        title: "Invalid email domain",
-        description: "Student sign up requires a @rangers.uwp.edu email address.",
+        title: validation.errorTitle!,
+        description: validation.errorDescription!,
         type: "error",
       });
       return;
@@ -507,7 +509,7 @@ export default function SignupPage() {
             >
               Cancel
             </Button>
-            <Button colorPalette="green" onClick={handleAdvisorAccessContinue}>
+            <Button colorPalette="blue" onClick={handleAdvisorAccessContinue}>
               Continue
             </Button>
           </DialogFooter>

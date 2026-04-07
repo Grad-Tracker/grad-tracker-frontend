@@ -1,6 +1,5 @@
 import type { Course } from "@/types/course";
-import type { RequirementBlockWithCourses } from "@/types/planner";
-import type { BreadthPackage } from "@/types/planner";
+import type { RequirementBlockWithCourses, BreadthPackage } from "@/types/planner";
 import { isBreadthBlock, getPackageCourseKeys, courseKey } from "@/types/planner";
 import type {
   AutoGenerateOptions,
