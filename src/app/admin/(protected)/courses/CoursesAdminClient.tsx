@@ -95,7 +95,7 @@ interface CoursesAdminClientProps {
 export default function CoursesAdminClient({
   initialCourses,
   subjects,
-}: CoursesAdminClientProps) {
+}: Readonly<CoursesAdminClientProps>) {
   // ── data state ──────────────────────────────────────────────────────────────
   const [courses, setCourses] = useState<CourseDetail[]>(initialCourses);
 
@@ -193,7 +193,7 @@ export default function CoursesAdminClient({
     if (!form.number.trim()) errors.number = "Number is required.";
     if (!form.title.trim()) errors.title = "Title is required.";
     const credits = parseFloat(form.creditsStr);
-    if (!form.creditsStr.trim() || isNaN(credits) || credits <= 0) {
+    if (!form.creditsStr.trim() || Number.isNaN(credits) || credits <= 0) {
       errors.credits = "Credits must be a positive number.";
     }
     setFormErrors(errors);
@@ -230,9 +230,9 @@ export default function CoursesAdminClient({
         };
         setCourses((prev) =>
           [...prev, newCourse].sort((a, b) =>
-            a.subject !== b.subject
-              ? a.subject.localeCompare(b.subject)
-              : a.number.localeCompare(b.number)
+            a.subject === b.subject
+              ? a.number.localeCompare(b.number)
+              : a.subject.localeCompare(b.subject)
           )
         );
         toaster.create({ title: "Course added", type: "success" });

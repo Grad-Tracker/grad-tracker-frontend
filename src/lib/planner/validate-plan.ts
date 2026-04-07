@@ -122,10 +122,6 @@ export function validatePlan(
     let requiredCredits: number | null = null;
 
     switch (block.rule) {
-      case "ALL_OF":
-        satisfied = scheduledCount >= block.courses.length;
-        requiredCredits = block.courses.reduce((s, c) => s + c.credits, 0);
-        break;
       case "ANY_OF":
         satisfied = scheduledCount >= 1;
         requiredCredits = block.courses.length > 0 ? Math.min(...block.courses.map((c) => c.credits)) : 0;
@@ -138,6 +134,7 @@ export function validatePlan(
         satisfied = scheduledCredits >= (block.credits_required ?? 0);
         requiredCredits = block.credits_required;
         break;
+      case "ALL_OF":
       default:
         satisfied = scheduledCount >= block.courses.length;
         requiredCredits = block.courses.reduce((s, c) => s + c.credits, 0);

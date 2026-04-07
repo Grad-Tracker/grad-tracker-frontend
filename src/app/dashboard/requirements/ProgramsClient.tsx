@@ -62,7 +62,7 @@ function getProgramTypeLabel(type: string): string {
   return labelMap[type] || type;
 }
 
-function ProgramCard({ program, index }: { program: Program; index: number }) {
+function ProgramCard({ program, index }: Readonly<{ program: Program; index: number }>) {
   const colorPalette = getProgramColor(program.program_type);
   return (
     <Link

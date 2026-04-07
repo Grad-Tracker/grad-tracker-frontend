@@ -81,6 +81,12 @@ function getActivityVisualType(activityType: string): "course_added" | "requirem
   return "course_added";
 }
 
+function activityBgColor(visualType: string): string {
+  if (visualType === "alert") return "orange.subtle";
+  if (visualType === "requirement_met") return "emerald.subtle";
+  return "blue.subtle";
+}
+
 function formatRelativeTime(timestamp: string): string {
   if (!timestamp) return "Just now";
 
@@ -516,9 +522,6 @@ export default function Dashboard() {
           hasCompletedOnboarding: !!resolvedStudentRow.has_completed_onboarding,
         });
 
-        setStudentIdForReset(resolvedStudentRow.student_id);
-        setCurrentMajorProgramId(majorProgramId);
-
         setLoadingStudent(false);
       } catch {
         const supabase = createClient();
@@ -946,13 +949,7 @@ export default function Dashboard() {
                         justify="center"
                         w="8"
                         h="8"
-                        bg={
-                          visualType === "alert"
-                            ? "orange.subtle"
-                            : visualType === "requirement_met"
-                              ? "emerald.subtle"
-                              : "blue.subtle"
-                        }
+                        bg={activityBgColor(visualType)}
                         borderRadius="full"
                         flexShrink={0}
                       >

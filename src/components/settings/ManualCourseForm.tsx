@@ -42,7 +42,7 @@ export function ManualCourseForm({ onCourseCreated, onBack }: ManualCourseFormPr
         subject.trim().toUpperCase(),
         number.trim(),
         title.trim(),
-        parseFloat(credits)
+        Number.parseFloat(credits)
       );
       toaster.create({ title: "Course added", type: "success" });
       onCourseCreated(course);

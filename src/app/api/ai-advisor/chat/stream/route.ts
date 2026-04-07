@@ -50,7 +50,7 @@ function parseRequestBody(body: unknown): AdvisorChatRequest | null {
   return {
     message: candidate.message.trim(),
     history: candidate.history,
-    activePlanId: (candidate.activePlanId as number | null | undefined) ?? null,
+    activePlanId: (candidate.activePlanId ?? null) as number | null,
   };
 }
 

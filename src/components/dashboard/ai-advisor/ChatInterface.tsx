@@ -134,7 +134,7 @@ function AIMessage({ message }: { message: AdvisorMessage }) {
   );
 }
 
-function UserMessage({ message }: { message: AdvisorMessage }) {
+function UserMessage({ message }: Readonly<{ message: AdvisorMessage }>) {
   return (
     <VStack align="end" gap="1">
       <Badge colorPalette="blue" variant="subtle">
@@ -294,12 +294,9 @@ export function ChatInterface() {
 
       if (!response.ok) {
         const payload = (await response.json().catch(() => ({}))) as { error?: string };
-        const fallbackError =
-          response.status === 401
-            ? "You must sign in again to use Atlas."
-            : response.status === 409
-              ? "Complete onboarding before using Atlas."
-              : "Atlas could not process your request.";
+        let fallbackError = "Atlas could not process your request.";
+        if (response.status === 401) fallbackError = "You must sign in again to use Atlas.";
+        else if (response.status === 409) fallbackError = "Complete onboarding before using Atlas.";
         throw new Error(payload.error || fallbackError);
       }
 

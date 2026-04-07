@@ -193,9 +193,9 @@ function getCourseOrderFromTree(nodes: ReqNode[]): number[] {
 
 export default async function ProgramDetailPage({
   params,
-}: {
+}: Readonly<{
   params: Promise<{ id: string }>;
-}) {
+}>) {
   const { id } = await params;
   const supabase = await createClient();
 

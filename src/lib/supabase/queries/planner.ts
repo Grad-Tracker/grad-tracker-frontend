@@ -595,7 +595,6 @@ export async function fetchCrossListings(
   if (courseIds.length === 0) return result;
 
   const supabase = createClient();
-  const courseIdSet = new Set(courseIds);
 
   // Get cross-listings where the course_id is in our set
   const { data, error } = await supabase

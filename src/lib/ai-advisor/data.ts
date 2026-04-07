@@ -14,7 +14,8 @@ import type {
 } from "@/lib/supabase/queries/view-types";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export type SupabaseTableClient = any;
+type SupabaseClient = any;
+export type SupabaseTableClient = SupabaseClient;
 
 export interface AdvisorProgramInfo {
   id: number;
@@ -128,7 +129,7 @@ function normalizeCourseCode(subject: string, number: string): string {
 
 function parseCourseCode(raw: string): { subject: string; number: string } | null {
   const cleaned = raw.trim().toUpperCase().replace(/-/g, " ");
-  const match = /^([A-Z]{2,6})\s+([0-9]{2,4}[A-Z]?)$/.exec(cleaned);
+  const match = /^([A-Z]{2,6})\s+(\d{2,4}[A-Z]?)$/.exec(cleaned);
   if (!match) return null;
   return { subject: match[1], number: match[2] };
 }
@@ -237,7 +238,7 @@ async function resolvePlanMeta(
 
 function getProgramIdsFromPlanMeta(planMeta: ViewPlanMetaRow | null): number[] {
   if (!planMeta) return [];
-  return (planMeta.program_ids ?? []).map((id) => Number(id)).filter((id) => Number.isFinite(id));
+  return (planMeta.program_ids ?? []).map(Number).filter((id) => Number.isFinite(id));
 }
 
 // ── Requirement blocks ─────────────────────────────────────
@@ -259,7 +260,7 @@ async function fetchRequirementBlocks(
   if (error) throw error;
   if (!data?.length) return [];
 
-  return (data as ViewProgramBlockCoursesRow[]).map((row) => {
+  return data.map((row: ViewProgramBlockCoursesRow) => {
     const courses: CourseRecord[] = ((row.courses ?? []) as ViewProgramBlockCourseItem[]).map(
       (c) => ({
         id: Number(c.course_id),

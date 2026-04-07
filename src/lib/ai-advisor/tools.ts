@@ -90,7 +90,7 @@ export function createAdvisorToolDependencies(
 }
 
 function normalizeCourseCode(raw: string): string {
-  return raw.trim().toUpperCase().replace(/\s+/g, " ").replace(/-/g, " ");
+  return raw.trim().toUpperCase().replaceAll(/\s+/g, " ").replaceAll("-", " ");
 }
 
 function extractCourseCodes(message: string): string[] {

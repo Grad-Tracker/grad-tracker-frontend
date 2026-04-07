@@ -9,10 +9,10 @@ afterEach(() => {
 import "@testing-library/jest-dom/vitest";
 
 // Mock scrollIntoView — not implemented in jsdom
-window.HTMLElement.prototype.scrollIntoView = () => {};
+globalThis.HTMLElement.prototype.scrollIntoView = () => {};
 
 // Mock matchMedia for next-themes / Chakra color mode behavior
-Object.defineProperty(window, "matchMedia", {
+Object.defineProperty(globalThis, "matchMedia", {
   writable: true,
   value: (query: string) => ({
     matches: false,

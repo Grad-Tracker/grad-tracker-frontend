@@ -103,9 +103,9 @@ export function ClassHistoryTab() {
       if (!studentId || !defaultTermId) return;
 
       // Capture existing row before optimistic update (for delete path)
-      const existingRow = !checked
-        ? history.find((h) => h.course_id === courseId)
-        : undefined;
+      const existingRow = checked
+        ? undefined
+        : history.find((h) => h.course_id === courseId);
       const existingCourse = existingRow?.course ?? findCourseById(courseId, buckets, major);
 
       // Optimistic update

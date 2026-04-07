@@ -656,7 +656,7 @@ function getNextStartTerm(
   sortedTerms: Term[],
   includeSummers: boolean
 ): { season: Season; year: number } {
-  const lastTerm = sortedTerms[sortedTerms.length - 1];
+  const lastTerm = sortedTerms.at(-1);
   if (lastTerm) {
     return {
       season: nextSeason(lastTerm.season, includeSummers),

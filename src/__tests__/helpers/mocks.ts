@@ -8,10 +8,7 @@ import React from "react";
  */
 export function renderWithChakra(ui: React.ReactElement) {
   return render(
-    React.createElement(ChakraProvider, {
-      value: defaultSystem,
-      children: ui,
-    })
+    React.createElement(ChakraProvider, { value: defaultSystem }, ui)
   );
 }
 

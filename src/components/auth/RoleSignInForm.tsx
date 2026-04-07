@@ -64,7 +64,7 @@ const roleContent: Record<
 export default function RoleSignInForm({
   defaultRole,
   hideRoleSelector = false,
-}: RoleSignInFormProps) {
+}: Readonly<RoleSignInFormProps>) {
   const router = useRouter();
   const [selectedRole, setSelectedRole] = useState<Role>(defaultRole);
   const [email, setEmail] = useState("");
@@ -362,8 +362,8 @@ export default function RoleSignInForm({
                             aria-label={role === "student" ? "Student" : "Advisor"}
                             transition="all 0.18s ease"
                             borderWidth="1px"
-                            borderColor={active ? "transparent" : "transparent"}
-                            bg={active ? "transparent" : "transparent"}
+                            borderColor="transparent"
+                            bg="transparent"
                             boxShadow={
                               active
                                 ? "0 0 0 1px rgba(37, 99, 235, 0.14), 0 6px 16px rgba(37, 99, 235, 0.14)"

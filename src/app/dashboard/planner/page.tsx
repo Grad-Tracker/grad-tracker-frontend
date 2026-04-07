@@ -111,7 +111,7 @@ function clearLegacyBreadthPackageStorage(studentId: number): void {
 
   for (let i = 0; i < localStorage.length; i += 1) {
     const key = localStorage.key(i);
-    if (key && key.startsWith(planScopedPrefix)) {
+    if (key?.startsWith(planScopedPrefix)) {
       keysToRemove.push(key);
     }
   }

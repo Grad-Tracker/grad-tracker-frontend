@@ -89,7 +89,7 @@ export default function AdvisorSignupClient() {
             first_name: firstName,
             last_name: lastName,
           },
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
+          emailRedirectTo: `${globalThis.location.origin}/auth/callback`,
         },
       });
 
