@@ -10,20 +10,13 @@ import type {
 import type { Course } from "@/types/course";
 import type { GenEdBucketWithCourses, ScheduledSemester } from "@/types/auto-generate";
 import { DB_TABLES, DB_VIEWS, PLANNED_COURSE_STATUS, STUDENT_COLUMNS } from "./schema";
-import { viewItemToCourse, safeLogActivity, formatActivityCourseLabel } from "./helpers";
+import { viewItemToCourse, mapViewBlockToCourseBlock, safeLogActivity, formatActivityCourseLabel } from "./helpers";
 import type {
-  ViewGenEdBucketCourseItem,
   ViewGenEdBucketCoursesRow,
-  ViewPlanCourseRow,
   ViewPlanMetaRow,
-
-  ViewProgramBlockCourseItem,
   ViewProgramBlockCoursesRow,
   ViewStudentCourseProgressRow,
 } from "./view-types";
-
-const toCourseFromBlockItem = viewItemToCourse;
-const toCourseFromGenEdItem = viewItemToCourse;
 
 // ── Plan CRUD ────────────────────────────────────────────
 
@@ -268,18 +261,9 @@ export async function fetchAvailableCourses(
   if (blocksError) throw blocksError;
   if (!blocks?.length) return [];
 
-  return (blocks as ViewProgramBlockCoursesRow[]).map((block) => {
-    const blockCourses = (block.courses ?? []).map(toCourseFromBlockItem);
-    return {
-      id: Number(block.block_id),
-      program_id: Number(block.program_id),
-      name: block.block_name,
-      rule: block.rule,
-      n_required: block.n_required,
-      credits_required: block.credits_required,
-      courses: blockCourses,
-    } as RequirementBlockWithCourses;
-  });
+  return (blocks as ViewProgramBlockCoursesRow[]).map(
+    (block) => mapViewBlockToCourseBlock(block) as RequirementBlockWithCourses
+  );
 }
 
 export async function getOrCreateTerm(
@@ -624,7 +608,7 @@ export async function fetchGenEdBucketsWithCourses(): Promise<GenEdBucketWithCou
       code: bucket.bucket_code,
       name: bucket.bucket_name,
       credits_required: Number(bucket.bucket_credits_required ?? 0),
-      courses: (bucket.courses ?? []).map(toCourseFromGenEdItem),
+      courses: (bucket.courses ?? []).map(viewItemToCourse),
     } as GenEdBucketWithCourses;
   });
 }

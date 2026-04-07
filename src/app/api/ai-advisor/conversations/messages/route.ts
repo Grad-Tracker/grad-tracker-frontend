@@ -1,12 +1,11 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { requireAuthUser } from "@/lib/auth-helpers.server";
 import { saveMessage } from "@/lib/ai-advisor/persistence";
 import { DB_TABLES } from "@/lib/supabase/queries/schema";
 
 export async function POST(request: Request) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const { user, supabase, errorResponse } = await requireAuthUser();
+  if (errorResponse) return errorResponse;
 
   const body = await request.json();
   const { conversationId, role, content, metadata } = body;
