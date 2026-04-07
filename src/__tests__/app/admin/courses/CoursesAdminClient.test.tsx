@@ -41,7 +41,7 @@ vi.mock("next/link", () => ({
   default: ({ href, children }: any) => <a href={href}>{children}</a>,
 }));
 
-import CoursesAdminClient from "@/app/admin/courses/CoursesAdminClient";
+import CoursesAdminClient from "@/app/admin/(protected)/courses/CoursesAdminClient";
 import type { CourseDetail } from "@/types/course";
 
 function renderWithChakra(ui: React.ReactElement) {

@@ -157,7 +157,7 @@ describe("POST /api/ai-advisor/chat", () => {
 
     expect(response.status).toBe(500);
     const payload = await response.json();
-    expect(payload.error).toContain("Failed to load student profile");
+    expect(payload.error).toContain("Unable to load student profile");
   });
 
   it("returns 200 for partial tool responses with missingData", async () => {
