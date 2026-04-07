@@ -1,14 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { Avatar, Box, Icon, Text } from "@chakra-ui/react";
 import { LuLogOut, LuSettings } from "react-icons/lu";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAtlasPanel } from "@/contexts/AtlasPanelContext";
-import { createClient } from "@/lib/supabase/client";
 import { signOutAndRedirect } from "@/lib/auth-helpers";
-import { DB_TABLES, STUDENT_COLUMNS } from "@/lib/supabase/queries/schema";
+import { useUserProfile } from "@/lib/hooks/useUserProfile";
 import {
   MenuContent,
   MenuItem,
@@ -18,88 +16,10 @@ import {
   MenuTrigger,
 } from "@/components/ui/menu";
 
-const PROFILE_IMAGE_BUCKET = "profile-images";
-const STAFF_TABLE = "staff";
-
 export default function DashboardHeader() {
   const router = useRouter();
   const { isOpen: atlasPanelOpen } = useAtlasPanel();
-  const [userName, setUserName] = useState("");
-  const [avatarUrl, setAvatarUrl] = useState("");
-
-  useEffect(() => {
-    const loadAvatarSignedUrl = async (path: string) => {
-      const supabase = createClient();
-      const { data, error } = await supabase.storage
-        .from(PROFILE_IMAGE_BUCKET)
-        .createSignedUrl(path, 60 * 60);
-
-      if (error) throw error;
-      return data.signedUrl;
-    };
-
-    async function loadUser() {
-      const supabase = createClient();
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-
-      if (!user) {
-        return;
-      }
-
-      const { first_name, last_name } = user.user_metadata ?? {};
-      const fallbackName = [first_name, last_name].filter(Boolean).join(" ").trim();
-      setUserName(fallbackName);
-
-      const { data: student } = await supabase
-        .from(DB_TABLES.students)
-        .select("first_name, last_name, avatar_path")
-        .eq(STUDENT_COLUMNS.authUserId, user.id)
-        .maybeSingle();
-
-      if (student) {
-        const studentName = [student.first_name, student.last_name]
-          .filter(Boolean)
-          .join(" ")
-          .trim();
-
-        setUserName(studentName || fallbackName);
-
-        if (student.avatar_path) {
-          try {
-            setAvatarUrl(await loadAvatarSignedUrl(student.avatar_path));
-          } catch {
-            setAvatarUrl("");
-          }
-        }
-
-        return;
-      }
-
-      const { data: staff } = await supabase
-        .from(STAFF_TABLE)
-        .select("first_name, last_name, avatar_path")
-        .eq("auth_user_id", user.id)
-        .maybeSingle();
-
-      if (staff) {
-        const staffName = [staff.first_name, staff.last_name].filter(Boolean).join(" ").trim();
-        setUserName(staffName || fallbackName);
-
-        if (staff.avatar_path) {
-          try {
-            setAvatarUrl(await loadAvatarSignedUrl(staff.avatar_path));
-          } catch {
-            setAvatarUrl("");
-          }
-        }
-      }
-    }
-
-    loadUser();
-  }, []);
-
+  const { userName, avatarUrl } = useUserProfile({ includeAvatar: true });
   const handleSignOut = () => signOutAndRedirect(router.push);
 
   return (
