@@ -523,15 +523,14 @@ export default function Dashboard() {
         });
 
         setLoadingStudent(false);
-      } catch {
-        const supabase = createClient();
-        await supabase.auth.signOut();
+      } catch (err) {
+        console.error("[Dashboard] Failed to load student data:", err);
         toaster.create({
-          title: "Session reset required",
-          description: "We had trouble loading your profile after the database reset. Please sign in again.",
+          title: "Failed to load dashboard",
+          description: "Something went wrong loading your profile. Please refresh and try again.",
           type: "error",
         });
-        router.push("/signin");
+        setLoadingStudent(false);
       }
     };
 

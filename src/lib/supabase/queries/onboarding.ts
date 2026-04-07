@@ -46,7 +46,7 @@ export async function fetchStudentMajorProgram(
 ): Promise<ViewStudentMajorProgramRow | null> {
   const supabase = createClient();
   const { data, error } = await supabase
-    .from(DB_VIEWS.studentMajorProgram)
+    .from(DB_VIEWS.studentPrimaryMajorProgram)
     .select("student_id, program_id, program_name, catalog_year, program_type")
     .eq("student_id", studentId)
     .maybeSingle();
