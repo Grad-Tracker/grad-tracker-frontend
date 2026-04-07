@@ -2,6 +2,7 @@
 
 import { Box, Card, Flex, HStack, Stack } from "@chakra-ui/react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { SkeletonCard } from "@/components/shared/SkeletonParts";
 
 /** Skeleton for the settings page initial load. */
 export function SettingsSkeleton() {
@@ -21,7 +22,7 @@ export function SettingsSkeleton() {
 
       <Stack gap="6" pt="2">
         {/* Profile card */}
-        <Card.Root bg="bg" borderRadius="xl" borderWidth="1px" borderColor="border.subtle">
+        <SkeletonCard>
           <Card.Header p="5" pb="3">
             <Skeleton height="5" width="60px" mb="2" />
             <Skeleton height="4" width="180px" />
@@ -41,10 +42,10 @@ export function SettingsSkeleton() {
               <Skeleton height="9" width="100px" borderRadius="lg" />
             </Stack>
           </Card.Body>
-        </Card.Root>
+        </SkeletonCard>
 
         {/* Email card */}
-        <Card.Root bg="bg" borderRadius="xl" borderWidth="1px" borderColor="border.subtle">
+        <SkeletonCard>
           <Card.Header p="5" pb="3">
             <Skeleton height="5" width="120px" mb="2" />
             <Skeleton height="4" width="240px" />
@@ -58,10 +59,10 @@ export function SettingsSkeleton() {
               <Skeleton height="9" width="110px" borderRadius="lg" />
             </Stack>
           </Card.Body>
-        </Card.Root>
+        </SkeletonCard>
 
         {/* Graduation card */}
-        <Card.Root bg="bg" borderRadius="xl" borderWidth="1px" borderColor="border.subtle">
+        <SkeletonCard>
           <Card.Header p="5" pb="3">
             <Skeleton height="5" width="150px" mb="2" />
             <Skeleton height="4" width="200px" />
@@ -81,7 +82,7 @@ export function SettingsSkeleton() {
               <Skeleton height="9" width="130px" borderRadius="lg" />
             </Stack>
           </Card.Body>
-        </Card.Root>
+        </SkeletonCard>
       </Stack>
     </Stack>
   );
