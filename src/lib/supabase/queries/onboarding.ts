@@ -8,7 +8,7 @@ import type {
   ViewStudentMajorProgramRow,
   ViewStudentProfileRow,
 } from "./view-types";
-import { viewItemToCourse, safeLogActivity } from "./helpers";
+import { mapViewBlockToCourseBlock, safeLogActivity } from "./helpers";
 
 function splitFullName(fullName: string): { firstName: string; lastName: string } {
   const trimmed = fullName.trim();
@@ -24,8 +24,6 @@ function isMissingColumnError(error: unknown, columnName: string): boolean {
   const message = String((error as { message?: unknown }).message ?? "");
   return message.includes(columnName) && message.includes("column");
 }
-
-const toCourseRowFromView = viewItemToCourse;
 
 export async function fetchStudentProfileByAuthUserId(
   authUserId: string
@@ -99,15 +97,7 @@ export async function fetchProgramRequirements(
   if (error) throw error;
   if (!data?.length) return [];
 
-  return (data as ViewProgramBlockCoursesRow[]).map((row) => ({
-    id: Number(row.block_id),
-    program_id: Number(row.program_id),
-    name: row.block_name,
-    rule: row.rule,
-    n_required: row.n_required,
-    credits_required: row.credits_required,
-    courses: (row.courses ?? []).map(toCourseRowFromView),
-  }));
+  return (data as ViewProgramBlockCoursesRow[]).map(mapViewBlockToCourseBlock);
 }
 
 /**
