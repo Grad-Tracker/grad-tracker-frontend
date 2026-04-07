@@ -325,7 +325,7 @@ export default function ProgramDetailClient({
           </HStack>
           <Heading
             size="2xl"
-            fontFamily="var(--font-outfit), sans-serif"
+            fontFamily="var(--font-dm-sans), sans-serif"
             fontWeight="400"
             letterSpacing="-0.02em"
           >
@@ -340,7 +340,7 @@ export default function ProgramDetailClient({
         <Box>
           <Heading
             size="md"
-            fontFamily="var(--font-outfit), sans-serif"
+            fontFamily="var(--font-dm-sans), sans-serif"
             fontWeight="500"
             mb="4"
           >
@@ -454,7 +454,7 @@ export default function ProgramDetailClient({
                         </Box>
                         <VStack align="start" gap="0">
                           <Drawer.Title
-                            fontFamily="var(--font-outfit), sans-serif"
+                            fontFamily="var(--font-dm-sans), sans-serif"
                             fontWeight="400"
                             fontSize="xl"
                           >
@@ -498,7 +498,7 @@ export default function ProgramDetailClient({
                               Credits
                             </Text>
                           </HStack>
-                          <Text fontSize="2xl" fontWeight="700" color="green.fg">
+                          <Text fontSize="2xl" fontWeight="700" color="blue.fg">
                             {selectedCourse.credits}
                           </Text>
                         </Box>

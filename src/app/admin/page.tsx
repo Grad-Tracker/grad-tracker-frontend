@@ -133,7 +133,7 @@ export default async function AdminDashboardPage() {
       <Box>
         <Heading
           fontSize={{ base: "2xl", md: "3xl" }}
-          fontFamily="var(--font-outfit), sans-serif"
+          fontFamily="var(--font-dm-sans), sans-serif"
           fontWeight="700"
           letterSpacing="-0.02em"
         >
@@ -156,7 +156,7 @@ export default async function AdminDashboardPage() {
               <Text fontSize="xs" color="fg.muted" fontWeight="500" mb="1">
                 {TYPE_LABELS[type]}s
               </Text>
-              <Text fontSize="2xl" fontWeight="700" fontFamily="var(--font-outfit), sans-serif">
+              <Text fontSize="2xl" fontWeight="700" fontFamily="var(--font-dm-sans), sans-serif">
                 {byType[type].length}
               </Text>
             </Card.Body>
@@ -186,7 +186,7 @@ export default async function AdminDashboardPage() {
               <Heading
                 fontSize="md"
                 fontWeight="600"
-                fontFamily="var(--font-outfit), sans-serif"
+                fontFamily="var(--font-dm-sans), sans-serif"
               >
                 {TYPE_LABELS[type]}s
               </Heading>

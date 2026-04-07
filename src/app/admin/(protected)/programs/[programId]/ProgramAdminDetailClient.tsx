@@ -77,7 +77,7 @@ function getProgramColor(type: string) {
   const colorMap: Record<string, string> = {
     MAJOR: "blue",
     MINOR: "purple",
-    GRADUATE: "green",
+    GRADUATE: "teal",
     CERTIFICATE: "orange",
   };
   return colorMap[type] || "gray";
@@ -577,7 +577,7 @@ export default function ProgramAdminDetailClient({
                   <Text
                     fontSize="2xl"
                     fontWeight="700"
-                    fontFamily="var(--font-outfit), sans-serif"
+                    fontFamily="var(--font-dm-sans), sans-serif"
                     letterSpacing="-0.02em"
                   >
                     {program.name}
@@ -588,7 +588,7 @@ export default function ProgramAdminDetailClient({
                     <LuPencil />
                     Edit Program
                   </Button>
-                  <Button colorPalette="green" borderRadius="lg" onClick={() => setAddBlockOpen(true)}>
+                  <Button colorPalette="blue" borderRadius="lg" onClick={() => setAddBlockOpen(true)}>
                     <LuPlus />
                     Add Block
                   </Button>
@@ -662,7 +662,7 @@ export default function ProgramAdminDetailClient({
                     <Flex justify="space-between" align="start" gap="4" wrap="wrap">
                       <Box>
                         <HStack gap="2" mb="2" wrap="wrap">
-                          <Badge colorPalette="green" variant="subtle">
+                          <Badge colorPalette="blue" variant="subtle">
                             {block.rule}
                           </Badge>
                           <Badge colorPalette="gray" variant="outline">
@@ -840,7 +840,7 @@ export default function ProgramAdminDetailClient({
                 <Button variant="outline" onClick={() => setProgramDialogOpen(false)}>
                   Cancel
                 </Button>
-                <Button colorPalette="green" loading={loading} onClick={handleSaveProgram}>
+                <Button colorPalette="blue" loading={loading} onClick={handleSaveProgram}>
                   Save
                 </Button>
               </Dialog.Footer>
@@ -913,7 +913,7 @@ export default function ProgramAdminDetailClient({
                 >
                   Cancel
                 </Button>
-                <Button colorPalette="green" loading={loading} onClick={handleSaveBlock}>
+                <Button colorPalette="blue" loading={loading} onClick={handleSaveBlock}>
                   Save Block
                 </Button>
               </Dialog.Footer>
@@ -987,7 +987,7 @@ export default function ProgramAdminDetailClient({
                 >
                   Cancel
                 </Button>
-                <Button colorPalette="green" loading={loading} onClick={handleSaveBlock}>
+                <Button colorPalette="blue" loading={loading} onClick={handleSaveBlock}>
                   Save Changes
                 </Button>
               </Dialog.Footer>
@@ -1027,7 +1027,7 @@ export default function ProgramAdminDetailClient({
                         <Button
                           key={course.id}
                           variant={selected ? "solid" : "outline"}
-                          colorPalette={selected ? "green" : "gray"}
+                          colorPalette={selected ? "blue" : "gray"}
                           justifyContent="space-between"
                           onClick={() =>
                             setSelectedCourseIds((prev) =>
@@ -1060,7 +1060,7 @@ export default function ProgramAdminDetailClient({
                 >
                   Cancel
                 </Button>
-                <Button colorPalette="green" onClick={handleAddCourses}>
+                <Button colorPalette="blue" onClick={handleAddCourses}>
                   Add Selected
                 </Button>
               </Dialog.Footer>

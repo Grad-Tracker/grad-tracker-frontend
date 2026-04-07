@@ -10,7 +10,7 @@ vi.mock("@/lib/supabase/server", () => ({
 }));
 
 vi.mock("@/lib/supabase/queries/schema", () => ({
-  DB_TABLES: { courses: "courses" },
+  DB_VIEWS: { courseCatalog: "v_course_catalog" },
 }));
 
 vi.mock("@/app/dashboard/courses/CoursesClient", () => ({
@@ -28,36 +28,33 @@ vi.mock("@/app/dashboard/courses/CoursesClient", () => ({
 import CoursesPage from "@/app/dashboard/courses/page";
 
 const rawCourseWithPrereq = {
-  id: 1,
+  course_id: 1,
   subject: "CS",
   number: "201",
   title: "Data Structures",
   credits: 3,
   description: "Learn DS.",
-  course_req_sets: [
-    { set_type: "PREREQ", note: "CS 101" },
-    { set_type: "COREQ", note: "MATH 221" },
-  ],
+  prereq_text: "CS 101",
 };
 
 const rawCourseNoPrereq = {
-  id: 2,
+  course_id: 2,
   subject: "CS",
   number: "101",
   title: "Intro to CS",
   credits: 3,
   description: "Intro.",
-  course_req_sets: [],
+  prereq_text: null,
 };
 
 const rawCourseNullReqSets = {
-  id: 3,
+  course_id: 3,
   subject: "MATH",
   number: "221",
   title: "Calculus I",
   credits: 4,
   description: null,
-  course_req_sets: null,
+  prereq_text: null,
 };
 
 describe("CoursesPage server component", () => {
@@ -65,7 +62,7 @@ describe("CoursesPage server component", () => {
     vi.clearAllMocks();
   });
 
-  it("extracts prereq_text from the PREREQ set_type", async () => {
+  it("uses prereq_text provided by the course catalog view", async () => {
     mockFrom.mockReturnValue(
       createChainMock({
         then: vi.fn().mockImplementation((resolve: any) =>
@@ -79,7 +76,7 @@ describe("CoursesPage server component", () => {
     expect(screen.getByText("CS 201 prereq=CS 101")).toBeInTheDocument();
   });
 
-  it("passes null for prereq_text when course_req_sets has no PREREQ entry", async () => {
+  it("passes null prereq_text when the catalog view returns null", async () => {
     mockFrom.mockReturnValue(
       createChainMock({
         then: vi.fn().mockImplementation((resolve: any) =>
@@ -93,7 +90,7 @@ describe("CoursesPage server component", () => {
     expect(screen.getByText("CS 101 prereq=null")).toBeInTheDocument();
   });
 
-  it("passes null for prereq_text when course_req_sets is null", async () => {
+  it("passes null prereq_text for rows with no prerequisite text", async () => {
     mockFrom.mockReturnValue(
       createChainMock({
         then: vi.fn().mockImplementation((resolve: any) =>

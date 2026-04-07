@@ -106,31 +106,25 @@ describe("onboarding queries", () => {
     });
 
     it("assembles blocks with their courses", async () => {
-      const blocks = [
-        { id: 10, program_id: 1, name: "Core", rule: "ALL_OF", n_required: null, credits_required: null },
-      ];
-      const mappings = [
-        { block_id: 10, course_id: 100 },
-        { block_id: 10, course_id: 101 },
-      ];
-      const courses = [
-        { id: 100, subject: "CS", number: "101", title: "Intro CS", credits: 3 },
-        { id: 101, subject: "CS", number: "201", title: "Data Structures", credits: 3 },
+      const viewRows = [
+        {
+          block_id: 10,
+          program_id: 1,
+          block_name: "Core",
+          rule: "ALL_OF",
+          n_required: null,
+          credits_required: null,
+          courses: [
+            { course_id: 100, subject: "CS", number: "101", title: "Intro CS", credits: 3 },
+            { course_id: 101, subject: "CS", number: "201", title: "Data Structures", credits: 3 },
+          ],
+        },
       ];
 
       const mockFrom = vi.fn().mockImplementation((table: string) => {
         const chain = createChainMock();
-
-        if (table === "program_requirement_blocks") {
-          chain.order = vi.fn().mockResolvedValue({ data: blocks, error: null });
-        } else if (table === "program_requirement_courses") {
-          // .in() is the terminal call here
-          chain.in = vi.fn().mockResolvedValue({ data: mappings, error: null });
-        } else if (table === "courses") {
-          // second .order() is terminal
-          chain.order = vi.fn().mockReturnValue({
-            order: vi.fn().mockResolvedValue({ data: courses, error: null }),
-          });
+        if (table === "v_program_block_courses") {
+          chain.order = vi.fn().mockResolvedValue({ data: viewRows, error: null });
         }
 
         return chain;

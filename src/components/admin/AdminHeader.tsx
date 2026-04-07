@@ -65,8 +65,8 @@ export default function AdminHeader() {
             w="10"
             h="10"
             borderRadius="xl"
-            bg="green.subtle"
-            color="green.fg"
+            bg="blue.subtle"
+            color="blue.fg"
           >
             <LuShield />
           </Box>
@@ -90,7 +90,7 @@ export default function AdminHeader() {
                 <Text fontSize="sm" fontWeight="600" lineHeight="1.2">
                   {advisorName}
                 </Text>
-                <Badge colorPalette="green" variant="surface" size="xs">
+                <Badge colorPalette="blue" variant="surface" size="xs">
                   Advisor
                 </Badge>
               </Box>

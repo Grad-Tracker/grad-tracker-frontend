@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import {
   Box,
   Button,
@@ -9,15 +9,15 @@ import {
   HStack,
   Icon,
   IconButton,
-  Spinner,
   Text,
-  VStack,
 } from "@chakra-ui/react";
+import PlannerSkeleton, { PlannerPageSkeleton } from "@/components/planner/PlannerSkeleton";
 import { useRouter } from "next/navigation";
 import {
   DndContext,
   DragOverlay,
   PointerSensor,
+  KeyboardSensor,
   useSensor,
   useSensors,
   type DragStartEvent,
@@ -51,7 +51,7 @@ import {
   fetchBreadthPackageId,
   updateBreadthPackageId,
 } from "@/lib/supabase/queries/planner";
-import { DB_TABLES, PLANNED_COURSE_STATUS } from "@/lib/supabase/queries/schema";
+import { DB_TABLES, DB_VIEWS, PLANNED_COURSE_STATUS } from "@/lib/supabase/queries/schema";
 
 import type {
   Term,
@@ -188,6 +188,9 @@ export default function PlannerPage() {
   // View state: hub (plan cards) or workspace (planner grid)
   const [view, setView] = useState<"hub" | "workspace">("hub");
 
+  // Mobile panel toggle (below lg breakpoint)
+  const [mobileTab, setMobileTab] = useState<"courses" | "grid">("grid");
+
   // UI state
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [createPlanDialogOpen, setCreatePlanDialogOpen] = useState(false);
@@ -207,17 +210,61 @@ export default function PlannerPage() {
 
   // DnD sensors
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor)
   );
 
   // Derived data
   const activePlan = plans.find((p) => p.id === activePlanId) ?? null;
   const isGraduatePlan = activePlan?.has_graduate_program ?? false;
-  const plannedCourseIds = new Set(plannedCourses.map((pc) => pc.course_id));
+  const plannedCourseIds = useMemo(
+    () => new Set(plannedCourses.map((pc) => pc.course_id)),
+    [plannedCourses]
+  );
   const graduateTracks: GraduateTrack[] = useMemo(
     () => (isGraduatePlan ? getGraduateTracks(blocks) : []),
     [blocks, isGraduatePlan]
   );
+
+  const plannerPoolBlocks = useMemo(() => {
+    if (isGraduatePlan) return blocks;
+
+    const genEdCourses = (() => {
+      const seenCourseIds = new Set<number>();
+      return genEdBuckets
+        .flatMap((bucket) => bucket.courses ?? [])
+        .filter((course) => {
+          if (seenCourseIds.has(course.id)) return false;
+          seenCourseIds.add(course.id);
+          return true;
+        });
+    })();
+
+    if (!genEdCourses.length) return blocks;
+
+    const hasGeneralEdBlock = blocks.some((block) => {
+      const name = block.name.toLowerCase();
+      return name.includes("general education") || name.includes("gen ed");
+    });
+
+    if (hasGeneralEdBlock) return blocks;
+
+    return [
+      ...blocks,
+      {
+        id: -2,
+        program_id: 0,
+        name: "General Education",
+        rule: "CREDITS_OF",
+        n_required: null,
+        credits_required: genEdBuckets.reduce(
+          (sum, bucket) => sum + Number(bucket.credits_required ?? 0),
+          0
+        ),
+        courses: genEdCourses,
+      },
+    ];
+  }, [blocks, genEdBuckets, isGraduatePlan]);
 
   // Auto-select first concentration track when a graduate plan loads
   useEffect(() => {
@@ -227,23 +274,31 @@ export default function PlannerPage() {
   }, [isGraduatePlan, graduateTracks, selectedTrackId, handleTrackSelect]);
 
   const allDedupedBlocks = useMemo(
-    () => deduplicateBlocks(blocks, { isGraduate: isGraduatePlan }),
-    [blocks, isGraduatePlan]
+    () => deduplicateBlocks(plannerPoolBlocks, { isGraduate: isGraduatePlan }),
+    [plannerPoolBlocks, isGraduatePlan]
   );
 
   const displayBlocks = useMemo(
     () =>
-      deduplicateBlocks(blocks, {
+      deduplicateBlocks(plannerPoolBlocks, {
         selectedPackage: isGraduatePlan ? null : selectedBreadthPackage,
         isGraduate: isGraduatePlan,
         selectedTrackId: isGraduatePlan ? selectedTrackId : null,
       }),
-    [blocks, selectedBreadthPackage, isGraduatePlan, selectedTrackId]
+    [plannerPoolBlocks, selectedBreadthPackage, isGraduatePlan, selectedTrackId]
   );
 
   // ── Load plan-specific data ────────────────────────────
+  const loadAbortRef = useRef<AbortController | null>(null);
+
   const loadPlanData = useCallback(
     async (sid: number, planId: number, graduate = false) => {
+      // Cancel any in-flight load
+      loadAbortRef.current?.abort();
+      const controller = new AbortController();
+      loadAbortRef.current = controller;
+      const { signal } = controller;
+
       setPlanDataLoading(true);
       try {
         if (graduate) {
@@ -258,13 +313,15 @@ export default function PlannerPage() {
 
         const [termsData, coursesData, blocksData, completedData, genEdData, breadthPackageId] =
           await Promise.all([
-            fetchStudentTerms(sid, planId),
-            fetchPlannedCourses(sid, planId),
-            fetchAvailableCourses(sid, planId),
-            fetchCompletedCourseIds(sid),
+            fetchStudentTerms(sid, planId, signal),
+            fetchPlannedCourses(sid, planId, signal),
+            fetchAvailableCourses(sid, planId, signal),
+            fetchCompletedCourseIds(sid, signal),
             fetchGenEdBucketsWithCourses(),
             graduate ? Promise.resolve<string | null>(null) : fetchBreadthPackageId(sid),
           ]);
+
+        if (signal.aborted) return;
 
         setTerms(termsData);
         setPlannedCourses(coursesData);
@@ -277,6 +334,7 @@ export default function PlannerPage() {
           );
         }
       } catch (err) {
+        if (signal.aborted) return;
         console.error("Failed to load plan data:", err);
         toaster.create({
           title: "Failed to load plan",
@@ -290,7 +348,9 @@ export default function PlannerPage() {
         setCompletedIds(new Set());
         setGenEdBuckets([]);
       } finally {
-        setPlanDataLoading(false);
+        if (!signal.aborted) {
+          setPlanDataLoading(false);
+        }
       }
     },
     []
@@ -318,8 +378,8 @@ export default function PlannerPage() {
         }
 
         const { data: studentRow, error: studentErr } = await supabase
-          .from(DB_TABLES.students)
-          .select("id")
+          .from(DB_VIEWS.studentProfile)
+          .select("student_id")
           .eq("auth_user_id", user.id)
           .maybeSingle();
 
@@ -336,7 +396,7 @@ export default function PlannerPage() {
           return;
         }
 
-        const sid = studentRow.id;
+        const sid = Number((studentRow as any).student_id ?? (studentRow as any).id);
         setStudentId(sid);
 
         // Fetch plans (can fail — must be caught to avoid unhandled rejection)
@@ -410,6 +470,7 @@ export default function PlannerPage() {
 
     return () => {
       alive = false;
+      loadAbortRef.current?.abort();
     };
   }, [router]);
 
@@ -621,13 +682,26 @@ export default function PlannerPage() {
 
     const overId = String(over.id);
 
+    // Snapshot for rollback
+    const prevPlannedCourses = plannedCourses;
+    const prevPlans = plans;
+
     if (overId.startsWith("term-")) {
       const toTermId = over.data.current?.term?.id as number | undefined;
       if (!toTermId) return;
       if (fromTermId === toTermId) return;
 
-      try {
-        if (fromTermId) {
+      if (fromTermId) {
+        // MOVE: optimistic update
+        setPlannedCourses((prev) =>
+          prev.map((pc) =>
+            pc.course_id === course.id && pc.term_id === fromTermId
+              ? { ...pc, term_id: toTermId }
+              : pc
+          )
+        );
+
+        try {
           await movePlannedCourse(
             studentId,
             course.id,
@@ -635,72 +709,83 @@ export default function PlannerPage() {
             toTermId,
             activePlanId
           );
-          setPlannedCourses((prev) =>
-            prev.map((pc) =>
-              pc.course_id === course.id && pc.term_id === fromTermId
-                ? { ...pc, term_id: toTermId }
-                : pc
-            )
-          );
-        } else {
-          if (plannedCourseIds.has(course.id)) return;
-          await addPlannedCourse(studentId, toTermId, course.id, activePlanId);
-          setPlannedCourses((prev) => [
-            ...prev,
-            {
-              student_id: studentId,
-              term_id: toTermId,
-              course_id: course.id,
-              status: PLANNED_COURSE_STATUS.planned,
-              plan_id: activePlanId,
-              course,
-            },
-          ]);
-          setPlans((prev) =>
-            prev.map((p) =>
-              p.id === activePlanId
-                ? {
-                    ...p,
-                    course_count: p.course_count + 1,
-                    total_credits: p.total_credits + (course.credits ?? 0),
-                  }
-                : p
-            )
-          );
+        } catch (err: any) {
+          setPlannedCourses(prevPlannedCourses);
+          toaster.create({
+            title: "Failed to move course",
+            description: err?.message || "The change was reverted. Please try again.",
+            type: "error",
+          });
         }
-      } catch (err: any) {
-        toaster.create({
-          title: "Error",
-          description: err?.message || "Failed to update plan",
-          type: "error",
-        });
-      }
-      return;
-    }
+      } else {
+        // ADD: optimistic update
+        if (plannedCourseIds.has(course.id)) return;
 
-    if (fromTermId && (overId === "course-panel" || !overId.startsWith("term-"))) {
-      try {
-        await removePlannedCourse(studentId, fromTermId, course.id, activePlanId);
-        setPlannedCourses((prev) =>
-          prev.filter(
-            (pc) => !(pc.course_id === course.id && pc.term_id === fromTermId)
-          )
-        );
+        setPlannedCourses((prev) => [
+          ...prev,
+          {
+            student_id: studentId,
+            term_id: toTermId,
+            course_id: course.id,
+            status: PLANNED_COURSE_STATUS.planned,
+            plan_id: activePlanId,
+            course,
+          },
+        ]);
         setPlans((prev) =>
           prev.map((p) =>
             p.id === activePlanId
               ? {
                   ...p,
-                  course_count: Math.max(0, p.course_count - 1),
-                  total_credits: Math.max(0, p.total_credits - (course.credits ?? 0)),
+                  course_count: p.course_count + 1,
+                  total_credits: p.total_credits + (course.credits ?? 0),
                 }
               : p
           )
         );
+
+        try {
+          await addPlannedCourse(studentId, toTermId, course.id, activePlanId);
+        } catch (err: any) {
+          setPlannedCourses(prevPlannedCourses);
+          setPlans(prevPlans);
+          toaster.create({
+            title: "Failed to add course",
+            description: err?.message || "The change was reverted. Please try again.",
+            type: "error",
+          });
+        }
+      }
+      return;
+    }
+
+    if (fromTermId && (overId === "course-panel" || !overId.startsWith("term-"))) {
+      // REMOVE: optimistic update
+      setPlannedCourses((prev) =>
+        prev.filter(
+          (pc) => !(pc.course_id === course.id && pc.term_id === fromTermId)
+        )
+      );
+      setPlans((prev) =>
+        prev.map((p) =>
+          p.id === activePlanId
+            ? {
+                ...p,
+                course_count: Math.max(0, p.course_count - 1),
+                total_credits: Math.max(0, p.total_credits - (course.credits ?? 0)),
+              }
+            : p
+        )
+      );
+
+      try {
+        await removePlannedCourse(studentId, fromTermId, course.id, activePlanId);
       } catch (err: any) {
+        setPlannedCourses(prevPlannedCourses);
+        setPlans(prevPlans);
         toaster.create({
-          title: "Error",
-          description: err?.message || "Failed to remove course",
+          title: "Failed to remove course",
+          description: err?.message || "The change was reverted. Please try again.",
           type: "error",
         });
       }
@@ -709,14 +794,7 @@ export default function PlannerPage() {
 
   // ── Loading state ───────────────────────────────────────
   if (loading) {
-    return (
-      <Flex align="center" justify="center" minH="60vh">
-        <VStack gap="4">
-          <Spinner size="xl" color="green.500" />
-          <Text color="fg.muted">Loading your planner...</Text>
-        </VStack>
-      </Flex>
-    );
+    return <PlannerPageSkeleton />;
   }
 
   // ── Render ──────────────────────────────────────────────
@@ -769,7 +847,7 @@ export default function PlannerPage() {
                   <Text
                     color="fg.muted"
                     cursor="pointer"
-                    _hover={{ color: "green.fg" }}
+                    _hover={{ color: "blue.fg" }}
                     onClick={handleBackToHub}
                     fontWeight="500"
                     transition="color 0.15s"
@@ -781,7 +859,7 @@ export default function PlannerPage() {
                   </Icon>
                   <Heading
                     size="md"
-                    fontFamily="var(--font-outfit), sans-serif"
+                    fontFamily="var(--font-dm-sans), sans-serif"
                     fontWeight="400"
                     letterSpacing="-0.02em"
                   >
@@ -799,7 +877,7 @@ export default function PlannerPage() {
                         key={p.id}
                         size="xs"
                         variant={p.id === activePlanId ? "solid" : "ghost"}
-                        colorPalette={p.id === activePlanId ? "green" : "gray"}
+                        colorPalette={p.id === activePlanId ? "blue" : "gray"}
                         borderRadius="md"
                         fontSize="xs"
                         fontWeight={p.id === activePlanId ? "600" : "500"}
@@ -825,36 +903,68 @@ export default function PlannerPage() {
             </Flex>
           </Box>
 
-          {/* Plan data loading overlay */}
+          {/* Plan data loading */}
           {planDataLoading ? (
-            <Flex flex="1" align="center" justify="center">
-              <VStack gap="3">
-                <Spinner size="lg" color="green.500" />
-                <Text fontSize="sm" color="fg.muted">
-                  Loading plan...
-                </Text>
-              </VStack>
-            </Flex>
+            <PlannerSkeleton />
           ) : (
             <>
+              {/* Mobile tab toggle */}
+              <HStack
+                display={{ base: "flex", lg: "none" }}
+                gap="0"
+                bg="bg.subtle"
+                borderRadius="lg"
+                p="0.5"
+                mx="4"
+                mt="2"
+              >
+                <Button
+                  size="sm"
+                  variant={mobileTab === "courses" ? "solid" : "ghost"}
+                  colorPalette={mobileTab === "courses" ? "blue" : "gray"}
+                  borderRadius="md"
+                  flex="1"
+                  onClick={() => setMobileTab("courses")}
+                >
+                  Courses
+                </Button>
+                <Button
+                  size="sm"
+                  variant={mobileTab === "grid" ? "solid" : "ghost"}
+                  colorPalette={mobileTab === "grid" ? "blue" : "gray"}
+                  borderRadius="md"
+                  flex="1"
+                  onClick={() => setMobileTab("grid")}
+                >
+                  Schedule
+                </Button>
+              </HStack>
+
               <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
                 <Flex flex="1" overflow="hidden" minH="0" className="animate-fade-up">
-                  <CoursePanel
-                    blocks={displayBlocks}
-                    allDedupedBlocks={allDedupedBlocks}
-                    completedCourseIds={completedIds}
-                    plannedCourseIds={plannedCourseIds}
-                    plannedCourses={plannedCourses}
-                    isDragActive={!!activeDrag}
-                    selectedBreadthPackageId={selectedBreadthPackageId}
-                    onBreadthPackageSelect={handleBreadthPackageSelect}
-                    isGraduatePlan={isGraduatePlan}
-                    graduateTracks={graduateTracks}
-                    selectedTrackId={selectedTrackId}
-                    onTrackSelect={handleTrackSelect}
-                    genEdBuckets={genEdBuckets}
-                  />
+                  <Box display={{ base: mobileTab === "courses" ? "block" : "none", lg: "block" }}>
+                    <CoursePanel
+                      blocks={displayBlocks}
+                      allDedupedBlocks={allDedupedBlocks}
+                      completedCourseIds={completedIds}
+                      plannedCourseIds={plannedCourseIds}
+                      plannedCourses={plannedCourses}
+                      isDragActive={!!activeDrag}
+                      selectedBreadthPackageId={selectedBreadthPackageId}
+                      onBreadthPackageSelect={handleBreadthPackageSelect}
+                      isGraduatePlan={isGraduatePlan}
+                      graduateTracks={graduateTracks}
+                      selectedTrackId={selectedTrackId}
+                      onTrackSelect={handleTrackSelect}
+                      genEdBuckets={genEdBuckets}
+                    />
+                  </Box>
 
+                  <Box
+                    display={{ base: mobileTab === "grid" ? "flex" : "none", lg: "flex" }}
+                    flex="1"
+                    minH="0"
+                  >
                   {terms.length === 0 ? (
                     <Flex
                       flex="1"
@@ -879,19 +989,19 @@ export default function PlannerPage() {
                           w="16"
                           h="16"
                           borderRadius="2xl"
-                          bg="green.subtle"
+                          bg="blue.subtle"
                           display="flex"
                           alignItems="center"
                           justifyContent="center"
                           mx="auto"
                           mb="4"
                         >
-                          <LuCalendar size={32} color="var(--chakra-colors-green-fg)" />
+                          <LuCalendar size={32} color="blue.fg" />
                         </Box>
                         <Heading
                           size="md"
                           mb="2"
-                          fontFamily="var(--font-outfit), sans-serif"
+                          fontFamily="var(--font-dm-sans), sans-serif"
                           fontWeight="400"
                           letterSpacing="-0.02em"
                         >
@@ -904,7 +1014,7 @@ export default function PlannerPage() {
                           Drag courses from the pool on the left into your semesters to build your plan.
                         </Text>
                         <Button
-                          colorPalette="green"
+                          colorPalette="blue"
                           borderRadius="lg"
                           size="sm"
                           onClick={() => setAddDialogOpen(true)}
@@ -922,6 +1032,7 @@ export default function PlannerPage() {
                       isGraduatePlan={isGraduatePlan}
                     />
                   )}
+                  </Box>
                 </Flex>
 
                 <DragOverlay>

@@ -18,6 +18,25 @@ export const DB_TABLES = {
   terms: "terms",
   notificationPreferences: "notification_preferences",
   staff: "staff",
+  aiConversations: "ai_conversations",
+  aiMessages: "ai_messages",
+} as const;
+
+export const DB_VIEWS = {
+  studentProfile: "v_student_profile",
+  studentMajorProgram: "v_student_major_program",
+  studentPrimaryMajorProgram: "v_student_primary_major_program",
+  studentCourseProgress: "v_student_course_progress",
+  studentCourseHistoryDetail: "v_student_course_history_detail",
+  programBlockCourses: "v_program_block_courses",
+  programCatalog: "v_program_catalog",
+  programRequirementDetail: "v_program_requirement_detail",
+  genEdBucketCourses: "v_gened_bucket_courses",
+  courseCatalog: "v_course_catalog",
+  planMeta: "v_plan_meta",
+  planTerms: "v_plan_terms",
+  planCourses: "v_plan_courses",
+  termsChronological: "v_terms_chronological",
 } as const;
 
 export const STUDENT_COLUMNS = {

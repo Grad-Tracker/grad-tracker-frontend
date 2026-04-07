@@ -1,5 +1,12 @@
 import { createClient } from "@/lib/supabase/client";
-import { DB_TABLES, PROGRAM_TYPES } from "./schema";
+import { DB_TABLES, DB_VIEWS } from "./schema";
+import type {
+  ViewCourseCatalogRow,
+  ViewProgramBlockCourseItem,
+  ViewProgramBlockCoursesRow,
+  ViewStudentCourseHistoryDetailRow,
+  ViewStudentPrimaryMajorProgramRow,
+} from "./view-types";
 import type { CourseRow } from "@/types/onboarding";
 
 // --- Types ---
@@ -20,86 +27,63 @@ export interface MajorWithRequirements {
   }[];
 }
 
+function toCourseRow(course: ViewProgramBlockCourseItem): CourseRow {
+  return {
+    id: Number(course.course_id),
+    subject: String(course.subject ?? ""),
+    number: String(course.number ?? ""),
+    title: String(course.title ?? ""),
+    credits: Number(course.credits ?? 0),
+  };
+}
+
 // --- Queries ---
 
-/** Get the lowest-ID term to use as default for inserts (term_id is NOT NULL). */
+/** Get the earliest chronological term to use as default for inserts. */
 export async function fetchDefaultTermId(): Promise<number> {
   const supabase = createClient();
   const { data, error } = await supabase
-    .from(DB_TABLES.terms)
-    .select("id")
-    .order("id", { ascending: true })
+    .from(DB_VIEWS.termsChronological)
+    .select("term_id")
+    .order("chronological_rank", { ascending: true })
     .limit(1)
     .single();
+
   if (error) throw error;
-  return data.id;
+  return Number(data.term_id);
 }
 
-/** Fetch student's major and its requirement blocks with courses. Returns null if no major. */
+/** Fetch student's primary major and its requirement blocks with courses. */
 export async function fetchMajorRequirementCourses(
   studentId: number
 ): Promise<MajorWithRequirements | null> {
   const supabase = createClient();
 
-  // Step 1: Get all program_ids for this student
-  const { data: studentPrograms, error: spErr } = await supabase
-    .from(DB_TABLES.studentPrograms)
-    .select("program_id")
-    .eq("student_id", studentId);
-
-  if (spErr) throw spErr;
-  if (!studentPrograms?.length) return null;
-
-  const programIds = studentPrograms.map((sp: { program_id: number }) => sp.program_id);
-
-  // Step 2: Find which of those programs is a MAJOR
-  const { data: majorProgram, error: progErr } = await supabase
-    .from(DB_TABLES.programs)
-    .select("id, name")
-    .in("id", programIds)
-    .eq("program_type", PROGRAM_TYPES.major)
+  const { data: majorProgram, error: majorError } = await supabase
+    .from(DB_VIEWS.studentPrimaryMajorProgram)
+    .select("student_id, program_id, program_name")
+    .eq("student_id", studentId)
     .maybeSingle();
 
-  if (progErr) throw progErr;
+  if (majorError) throw majorError;
   if (!majorProgram) return null;
 
-  const program = majorProgram as { id: number; name: string };
+  const major = majorProgram as ViewStudentPrimaryMajorProgramRow;
 
-  // Get requirement blocks for this program
-  const { data: blocks, error: blocksErr } = await supabase
-    .from(DB_TABLES.programRequirementBlocks)
-    .select("id, name")
-    .eq("program_id", program.id);
+  const { data: blocks, error: blocksError } = await supabase
+    .from(DB_VIEWS.programBlockCourses)
+    .select("block_id, block_name, courses")
+    .eq("program_id", major.program_id)
+    .order("block_name");
 
-  if (blocksErr) throw blocksErr;
-  if (!blocks?.length) return { majorName: program.name, blocks: [] };
-
-  const blockIds = blocks.map((b: { id: number }) => b.id);
-
-  // Get courses for all blocks
-  const { data: reqCourses, error: rcErr } = await supabase
-    .from(DB_TABLES.programRequirementCourses)
-    .select("block_id, course_id, courses:course_id (id, subject, number, title, credits)")
-    .in("block_id", blockIds);
-
-  if (rcErr) throw rcErr;
-
-  // Group courses by block
-  const blockMap = new Map<number, CourseRow[]>();
-  for (const rc of reqCourses ?? []) {
-    const course = rc.courses as unknown as CourseRow;
-    if (!course) continue;
-    const existing = blockMap.get(rc.block_id) ?? [];
-    existing.push(course);
-    blockMap.set(rc.block_id, existing);
-  }
+  if (blocksError) throw blocksError;
 
   return {
-    majorName: program.name,
-    blocks: blocks.map((b: { id: number; name: string }) => ({
-      id: b.id,
-      name: b.name,
-      courses: blockMap.get(b.id) ?? [],
+    majorName: major.program_name,
+    blocks: ((blocks as ViewProgramBlockCoursesRow[] | null) ?? []).map((block) => ({
+      id: Number(block.block_id),
+      name: block.block_name,
+      courses: (block.courses ?? []).map(toCourseRow),
     })),
   };
 }
@@ -110,19 +94,23 @@ export async function fetchStudentCourseHistory(
 ): Promise<StudentCourseHistoryRow[]> {
   const supabase = createClient();
   const { data, error } = await supabase
-    .from(DB_TABLES.studentCourseHistory)
-    .select(
-      "course_id, term_id, completed, courses:course_id (id, subject, number, title, credits)"
-    )
+    .from(DB_VIEWS.studentCourseHistoryDetail)
+    .select("course_id, term_id, completed, subject, number, title, credits")
     .eq("student_id", studentId);
 
   if (error) throw error;
 
-  return (data ?? []).map((row: any) => ({
-    course_id: row.course_id,
-    term_id: row.term_id,
-    completed: row.completed,
-    course: row.courses as CourseRow,
+  return ((data as ViewStudentCourseHistoryDetailRow[] | null) ?? []).map((row) => ({
+    course_id: Number(row.course_id),
+    term_id: Number(row.term_id),
+    completed: Boolean(row.completed),
+    course: {
+      id: Number(row.course_id),
+      subject: row.subject,
+      number: row.number,
+      title: row.title,
+      credits: Number(row.credits ?? 0),
+    },
   }));
 }
 
@@ -163,7 +151,7 @@ export async function deleteCourseHistory(
   if (error) throw error;
 }
 
-/** Search courses by subject+number or title. Min 2 chars. Max 20 results. */
+/** Search active course catalog by subject+number or title. Min 2 chars. Max 20 results. */
 export async function searchCourses(query: string): Promise<CourseRow[]> {
   if (query.length < 2) return [];
   const supabase = createClient();
@@ -171,13 +159,20 @@ export async function searchCourses(query: string): Promise<CourseRow[]> {
   const pattern = `%${escaped}%`;
 
   const { data, error } = await supabase
-    .from(DB_TABLES.courses)
-    .select("id, subject, number, title, credits")
+    .from(DB_VIEWS.courseCatalog)
+    .select("course_id, subject, number, title, credits")
     .or(`title.ilike.${pattern},subject.ilike.${pattern},number.ilike.${pattern}`)
     .limit(20);
 
   if (error) throw error;
-  return (data ?? []) as CourseRow[];
+
+  return ((data as ViewCourseCatalogRow[] | null) ?? []).map((course) => ({
+    id: Number(course.course_id),
+    subject: course.subject,
+    number: course.number,
+    title: course.title,
+    credits: Number(course.credits ?? 0),
+  }));
 }
 
 /** Insert a manually-entered course into the courses table. Returns the new row. */
