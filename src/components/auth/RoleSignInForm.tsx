@@ -21,6 +21,7 @@ import { Field } from "@/components/ui/field";
 import { PasswordInput } from "@/components/ui/password-input";
 import { toaster } from "@/components/ui/toaster";
 import { createClient } from "@/lib/supabase/client";
+import { validateEmailDomain, normalizeEmail } from "@/lib/email-validation";
 
 type Role = "student" | "advisor";
 
@@ -83,16 +84,12 @@ export default function RoleSignInForm({
       return;
     }
 
-    const normalizedEmail = email.trim().toLowerCase();
-    const hasValidDomain =
-      selectedRole === "student"
-        ? normalizedEmail.endsWith("@rangers.uwp.edu")
-        : normalizedEmail.endsWith("@uwp.edu") &&
-          !normalizedEmail.endsWith("@rangers.uwp.edu");
+    const normalizedEmail = normalizeEmail(email);
+    const validation = validateEmailDomain(selectedRole, normalizedEmail);
 
-    if (!hasValidDomain) {
+    if (!validation.isValid) {
       toaster.create({
-        title: "Invalid email domain",
+        title: validation.errorTitle!,
         description:
           selectedRole === "student"
             ? "Student sign in requires a @rangers.uwp.edu email address."

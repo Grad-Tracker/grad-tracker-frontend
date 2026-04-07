@@ -64,8 +64,7 @@ import {
 import { DB_TABLES, DB_VIEWS } from "@/lib/supabase/queries/schema";
 import { compareTerms, type Term } from "@/types/planner";
 import { getCurrentAcademicTerm } from "@/lib/academic-term";
-
-const PAGE_SIZE = 52;
+import { COURSES_PAGE_SIZE } from "@/lib/constants";
 
 const navItems = [
   { icon: LuLayoutDashboard, label: "Dashboard", href: "/dashboard", active: false },
@@ -388,11 +387,11 @@ export default function CoursesClient({
 
   // Paginate the filtered courses
   const paginatedCourses = useMemo(() => {
-    const startIndex = (page - 1) * PAGE_SIZE;
-    return filteredCourses.slice(startIndex, startIndex + PAGE_SIZE);
+    const startIndex = (page - 1) * COURSES_PAGE_SIZE;
+    return filteredCourses.slice(startIndex, startIndex + COURSES_PAGE_SIZE);
   }, [filteredCourses, page]);
 
-  const totalPages = Math.ceil(filteredCourses.length / PAGE_SIZE);
+  const totalPages = Math.ceil(filteredCourses.length / COURSES_PAGE_SIZE);
 
   function renderAddToPlanBody() {
     if (loadingPlans) {
@@ -644,8 +643,8 @@ export default function CoursesClient({
 
         {/* Results count */}
         <Text fontSize="sm" color="fg.muted">
-          Showing {Math.min((page - 1) * PAGE_SIZE + 1, filteredCourses.length)}-
-          {Math.min(page * PAGE_SIZE, filteredCourses.length)} of{" "}
+          Showing {Math.min((page - 1) * COURSES_PAGE_SIZE + 1, filteredCourses.length)}-
+          {Math.min(page * COURSES_PAGE_SIZE, filteredCourses.length)} of{" "}
           {filteredCourses.length} courses
         </Text>
 
@@ -728,7 +727,7 @@ export default function CoursesClient({
               <Flex justify="center" pt="4">
                 <Pagination.Root
                   count={filteredCourses.length}
-                  pageSize={PAGE_SIZE}
+                  pageSize={COURSES_PAGE_SIZE}
                   page={page}
                   onPageChange={(e) => setPage(e.page)}
                   siblingCount={1}

@@ -6,8 +6,7 @@ import type {
   CourseInput,
 } from "@/types/course";
 import { DB_TABLES } from "./schema";
-
-const PAGE_SIZE_DEFAULT = 20;
+import { COURSES_QUERY_PAGE_SIZE } from "@/lib/constants";
 
 // ── List + Search + Filter + Pagination ──────────────────
 
@@ -15,7 +14,7 @@ export async function listCourses({
   search = "",
   subjectFilter = null,
   page = 1,
-  pageSize = PAGE_SIZE_DEFAULT,
+  pageSize = COURSES_QUERY_PAGE_SIZE,
 }: {
   search?: string;
   subjectFilter?: string | null;

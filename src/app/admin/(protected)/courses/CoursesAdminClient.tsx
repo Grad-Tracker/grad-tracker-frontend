@@ -50,10 +50,7 @@ import {
   reactivateCourse,
 } from "@/lib/supabase/queries/courses";
 import type { CourseDetail, CourseInput } from "@/types/course";
-
-// ── constants ─────────────────────────────────────────────────────────────────
-
-const PAGE_SIZE = 25;
+import { COURSES_ADMIN_PAGE_SIZE } from "@/lib/constants";
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
@@ -144,16 +141,16 @@ export default function CoursesAdminClient({
     });
   }, [courses, search, subjectFilter]);
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const totalPages = Math.max(1, Math.ceil(filtered.length / COURSES_ADMIN_PAGE_SIZE));
 
   // Clamp page whenever the filtered set changes (filters or data mutations).
   useEffect(() => {
-    setPage((prev) => Math.min(prev, Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))));
+    setPage((prev) => Math.min(prev, Math.max(1, Math.ceil(filtered.length / COURSES_ADMIN_PAGE_SIZE))));
   }, [filtered]);
 
   const paginated = useMemo(() => {
-    const start = (page - 1) * PAGE_SIZE;
-    return filtered.slice(start, start + PAGE_SIZE);
+    const start = (page - 1) * COURSES_ADMIN_PAGE_SIZE;
+    return filtered.slice(start, start + COURSES_ADMIN_PAGE_SIZE);
   }, [filtered, page]);
 
   // ── dialog helpers ───────────────────────────────────────────────────────────
@@ -545,7 +542,7 @@ export default function CoursesAdminClient({
             </Text>
             <Pagination.Root
               count={filtered.length}
-              pageSize={PAGE_SIZE}
+              pageSize={COURSES_ADMIN_PAGE_SIZE}
               page={page}
               onPageChange={(e) => setPage(e.page)}
               siblingCount={1}

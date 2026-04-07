@@ -21,6 +21,7 @@ import { LuGraduationCap, LuArrowRight, LuLoader } from "react-icons/lu";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { validateEmailDomain, normalizeEmail } from "@/lib/email-validation";
 import { DB_TABLES } from "@/lib/supabase/queries/schema";
 
 export default function AdvisorSignupClient() {
@@ -60,16 +61,13 @@ export default function AdvisorSignupClient() {
       return;
     }
 
-    const normalizedEmail = email.trim().toLowerCase();
+    const normalizedEmail = normalizeEmail(email);
+    const validation = validateEmailDomain("advisor", normalizedEmail);
 
-    const hasValidAdvisorDomain =
-      normalizedEmail.endsWith("@uwp.edu") &&
-      !normalizedEmail.endsWith("@rangers.uwp.edu");
-
-    if (!hasValidAdvisorDomain) {
+    if (!validation.isValid) {
       toaster.create({
-        title: "Invalid email domain",
-        description: "Advisor sign up requires a @uwp.edu email address.",
+        title: validation.errorTitle!,
+        description: validation.errorDescription!,
         type: "error",
       });
       return;
