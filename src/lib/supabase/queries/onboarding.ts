@@ -51,6 +51,7 @@ export async function fetchStudentMajorProgram(
     .from(DB_VIEWS.studentMajorProgram)
     .select("student_id, program_id, program_name, catalog_year, program_type")
     .eq("student_id", studentId)
+    .limit(1)
     .maybeSingle();
 
   if (error) throw error;
