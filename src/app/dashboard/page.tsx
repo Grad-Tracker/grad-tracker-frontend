@@ -805,7 +805,7 @@ export default function Dashboard() {
                         </ProgressLabel>
                         <HStack gap="2">
                           <Text fontSize="xs" color="fg.muted">
-                            {loadingRequirements ? <Skeleton height="3" width="70px" /> : `${req.completed}/${req.total} credits`}
+                            {loadingRequirements ? <Skeleton height="3" width="70px" display="inline-block" /> : `${req.completed}/${req.total} credits`}
                           </Text>
                           <ProgressValueText fontWeight="600" fontSize="sm" />
                         </HStack>

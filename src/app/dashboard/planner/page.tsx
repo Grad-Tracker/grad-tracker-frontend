@@ -9,10 +9,9 @@ import {
   HStack,
   Icon,
   IconButton,
-  Spinner,
   Text,
-  VStack,
 } from "@chakra-ui/react";
+import PlannerSkeleton, { PlannerPageSkeleton } from "@/components/planner/PlannerSkeleton";
 import { useRouter } from "next/navigation";
 import {
   DndContext,
@@ -862,14 +861,7 @@ export default function PlannerPage() {
 
   // ── Loading state ───────────────────────────────────────
   if (loading) {
-    return (
-      <Flex align="center" justify="center" minH="60vh">
-        <VStack gap="4">
-          <Spinner size="xl" color="blue.500" />
-          <Text color="fg.muted">Loading your planner...</Text>
-        </VStack>
-      </Flex>
-    );
+    return <PlannerPageSkeleton />;
   }
 
   // ── Render ──────────────────────────────────────────────
@@ -979,16 +971,9 @@ export default function PlannerPage() {
             </Flex>
           </Box>
 
-          {/* Plan data loading overlay */}
+          {/* Plan data loading */}
           {planDataLoading ? (
-            <Flex flex="1" align="center" justify="center">
-              <VStack gap="3">
-                <Spinner size="lg" color="blue.500" />
-                <Text fontSize="sm" color="fg.muted">
-                  Loading plan...
-                </Text>
-              </VStack>
-            </Flex>
+            <PlannerSkeleton />
           ) : (
             <>
               {/* Mobile tab toggle */}
