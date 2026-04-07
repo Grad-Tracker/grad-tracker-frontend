@@ -1,6 +1,6 @@
 import React from "react";
 import { describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { ChakraProvider, defaultSystem } from "@chakra-ui/react";
 
 import AdminProgramsClient from "@/app/admin/(protected)/programs/AdminProgramsClient";
@@ -47,42 +47,58 @@ const programs: AdminProgramSummary[] = [
     blockCount: 3,
     courseCount: 22,
   },
+  {
+    id: 5,
+    name: "Chemistry",
+    catalog_year: 2024,
+    program_type: "MAJOR",
+    blockCount: 7,
+    courseCount: 9,
+  },
 ];
+
+function getGroupProgramTitles(groupType: string) {
+  return within(screen.getByTestId(`program-group-${groupType}`))
+    .getAllByTestId(/program-card-/)
+    .map((card) => within(card).getByRole("heading").textContent);
+}
 
 describe("AdminProgramsClient", () => {
   it("filters program cards by name and shows an empty state when nothing matches", () => {
     renderWithChakra(<AdminProgramsClient programs={programs} />);
 
-    expect(screen.getByText("Showing 4 of 4 assigned programs")).toBeInTheDocument();
+    expect(screen.getByText("Showing 5 of 5 assigned programs")).toBeInTheDocument();
 
     const searchInput = screen.getByLabelText("Search programs");
     fireEvent.change(searchInput, { target: { value: "computer" } });
 
     expect(screen.getByRole("link", { name: /computer science/i })).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: /biology/i })).not.toBeInTheDocument();
-    expect(screen.getByText("Showing 1 of 4 assigned programs")).toBeInTheDocument();
+    expect(screen.getByText("Showing 1 of 5 assigned programs")).toBeInTheDocument();
 
     fireEvent.change(searchInput, { target: { value: "no-match" } });
 
     expect(screen.getByText("No programs match your search.")).toBeInTheDocument();
   });
 
-  it("sorts programs by name and by course count within each group", () => {
+  it("sorts programs by name A-Z within a group", () => {
     renderWithChakra(<AdminProgramsClient programs={programs} />);
 
     const sortSelect = screen.getByLabelText("Sort programs");
 
     fireEvent.change(sortSelect, { target: { value: "name-asc" } });
+    expect(getGroupProgramTitles("MAJOR")).toEqual(["Biology", "Chemistry", "Computer Science"]);
+    expect(getGroupProgramTitles("GRADUATE")).toEqual(["Applied Science MS", "Data Science MS"]);
+  });
 
-    const majorLinksAsc = screen.getAllByRole("link").slice(0, 2);
-    expect(majorLinksAsc[0]).toHaveTextContent("Biology");
-    expect(majorLinksAsc[1]).toHaveTextContent("Computer Science");
+  it("sorts programs by requirement blocks most to least within a group", () => {
+    renderWithChakra(<AdminProgramsClient programs={programs} />);
 
-    fireEvent.change(sortSelect, { target: { value: "courses-most" } });
+    const sortSelect = screen.getByLabelText("Sort programs");
 
-    const majorLinksCourses = screen.getAllByRole("link").slice(0, 2);
-    expect(majorLinksCourses[0]).toHaveTextContent("Computer Science");
-    expect(majorLinksCourses[1]).toHaveTextContent("Biology");
+    fireEvent.change(sortSelect, { target: { value: "blocks-most" } });
+    expect(getGroupProgramTitles("MAJOR")).toEqual(["Chemistry", "Computer Science", "Biology"]);
+    expect(getGroupProgramTitles("GRADUATE")).toEqual(["Data Science MS", "Applied Science MS"]);
   });
 
   it("preserves grouping while filtering and sorting", () => {

@@ -245,29 +245,17 @@ describe("GenEdAdminClient", () => {
     renderWithChakra(<GenEdAdminClient initialBuckets={initialBuckets} />);
 
     expect(screen.getByText("Gen-Ed Buckets")).toBeInTheDocument();
+    expect(screen.getByTestId("gened-controls")).toBeInTheDocument();
+    expect(
+      screen.getByText("Manage Gen-Ed buckets and their course mappings.")
+    ).toBeInTheDocument();
     expect(screen.getByText("Humanities")).toBeInTheDocument();
     expect(screen.getByText("Natural Sciences")).toBeInTheDocument();
     expect(screen.getByText("HUM_ART")).toBeInTheDocument();
-    expect(
-      screen.getByText(/Search buckets by code\/name\. To search courses, use/i)
-    ).toBeInTheDocument();
+    expect(screen.queryByLabelText("Search buckets")).not.toBeInTheDocument();
   });
 
-  it("filters buckets by name and code", () => {
-    renderWithChakra(<GenEdAdminClient initialBuckets={initialBuckets} />);
-
-    const searchInput = screen.getByLabelText("Search buckets");
-
-    fireEvent.change(searchInput, { target: { value: "human" } });
-    expect(screen.getByText("Humanities")).toBeInTheDocument();
-    expect(screen.queryByText("Natural Sciences")).not.toBeInTheDocument();
-
-    fireEvent.change(searchInput, { target: { value: "elec" } });
-    expect(screen.getByText("Natural Sciences")).toBeInTheDocument();
-    expect(screen.queryByText("Humanities")).not.toBeInTheDocument();
-  });
-
-  it("sorts buckets by name and course count", () => {
+  it("sorts buckets by name and by course count", () => {
     renderWithChakra(<GenEdAdminClient initialBuckets={initialBuckets} />);
 
     const sortSelect = screen.getByLabelText("Sort buckets");
@@ -293,31 +281,31 @@ describe("GenEdAdminClient", () => {
     });
   });
 
-  it("keeps expanded content visible after search and sort when the bucket remains visible", async () => {
+  it("keeps expanded content visible after sorting", async () => {
     renderWithChakra(<GenEdAdminClient initialBuckets={initialBuckets} />);
 
-    fireEvent.click(screen.getAllByRole("button", { name: /expand/i })[0]);
+    const humanitiesCard = screen.getByTestId("bucket-card-1");
+    fireEvent.click(within(humanitiesCard).getByRole("button", { name: /expand/i }));
     expect(await screen.findByText("ENGL 101 - Composition")).toBeInTheDocument();
 
-    fireEvent.change(screen.getByLabelText("Search buckets"), {
-      target: { value: "hum" },
-    });
-    await waitFor(() => {
-      expect(screen.getByText("ENGL 101 - Composition")).toBeInTheDocument();
-    });
-
     fireEvent.change(screen.getByLabelText("Sort buckets"), {
-      target: { value: "credits-least" },
+      target: { value: "courses-least" },
     });
     await waitFor(() => {
       expect(screen.getByText("ENGL 101 - Composition")).toBeInTheDocument();
-      expect(screen.getByRole("button", { name: /collapse/i })).toBeInTheDocument();
+      expect(
+        within(screen.getByTestId("bucket-card-1")).getByRole("button", { name: /collapse/i })
+      ).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByRole("button", { name: /collapse/i }));
+    fireEvent.click(
+      within(screen.getByTestId("bucket-card-1")).getByRole("button", { name: /collapse/i })
+    );
     await waitFor(() => {
       expect(screen.queryByText("ENGL 101 - Composition")).not.toBeInTheDocument();
-      expect(screen.getByRole("button", { name: /expand/i })).toBeInTheDocument();
+      expect(
+        within(screen.getByTestId("bucket-card-1")).getByRole("button", { name: /expand/i })
+      ).toBeInTheDocument();
     });
   });
 

@@ -29,8 +29,6 @@ const PROGRAM_GROUPS = [
 type ProgramSortOption =
   | "name-asc"
   | "name-desc"
-  | "catalog-newest"
-  | "catalog-oldest"
   | "blocks-most"
   | "blocks-least"
   | "courses-most"
@@ -71,10 +69,8 @@ function ProgramCard({ program }: { program: AdminProgramSummary }) {
 }
 
 function comparePrograms(a: AdminProgramSummary, b: AdminProgramSummary, sort: ProgramSortOption) {
-  const nameA = a.name ?? "";
-  const nameB = b.name ?? "";
-  const yearA = Number(a.catalog_year ?? 0);
-  const yearB = Number(b.catalog_year ?? 0);
+  const nameA = (a.name ?? "").toLowerCase();
+  const nameB = (b.name ?? "").toLowerCase();
   const blockA = Number(a.blockCount ?? 0);
   const blockB = Number(b.blockCount ?? 0);
   const courseA = Number(a.courseCount ?? 0);
@@ -83,10 +79,6 @@ function comparePrograms(a: AdminProgramSummary, b: AdminProgramSummary, sort: P
   switch (sort) {
     case "name-desc":
       return nameB.localeCompare(nameA);
-    case "catalog-newest":
-      return yearB - yearA || nameA.localeCompare(nameB);
-    case "catalog-oldest":
-      return yearA - yearB || nameA.localeCompare(nameB);
     case "blocks-most":
       return blockB - blockA || nameA.localeCompare(nameB);
     case "blocks-least":
@@ -107,19 +99,21 @@ export default function AdminProgramsClient({ programs }: { programs: AdminProgr
 
   const normalizedQuery = query.trim().toLowerCase();
 
-  const groupedPrograms = useMemo(() => {
-    const filtered = programs.filter((program) => {
+  const filteredPrograms = useMemo(() => {
+    return programs.filter((program) => {
       if (!normalizedQuery) return true;
       return (program.name ?? "").toLowerCase().includes(normalizedQuery);
     });
+  }, [normalizedQuery, programs]);
 
+  const groupedPrograms = useMemo(() => {
     return PROGRAM_GROUPS.map((group) => ({
       ...group,
-      items: filtered
-        .filter((program) => program.program_type === group.type)
-        .sort((a, b) => comparePrograms(a, b, sort)),
+      items: [...filteredPrograms.filter((program) => program.program_type === group.type)].sort(
+        (a, b) => comparePrograms(a, b, sort)
+      ),
     })).filter((group) => group.items.length > 0);
-  }, [normalizedQuery, programs, sort]);
+  }, [filteredPrograms, sort]);
 
   const visibleCount = groupedPrograms.reduce((total, group) => total + group.items.length, 0);
 
@@ -176,17 +170,15 @@ export default function AdminProgramsClient({ programs }: { programs: AdminProgr
                 >
                   <option value="name-asc">Name (A-Z)</option>
                   <option value="name-desc">Name (Z-A)</option>
-                  <option value="catalog-newest">Catalog year (newest)</option>
-                  <option value="catalog-oldest">Catalog year (oldest)</option>
-                  <option value="blocks-most">Requirement blocks (most)</option>
-                  <option value="blocks-least">Requirement blocks (least)</option>
-                  <option value="courses-most">Courses (most)</option>
-                  <option value="courses-least">Courses (least)</option>
+                  <option value="blocks-most">Requirement Blocks (Most → Least)</option>
+                  <option value="blocks-least">Requirement Blocks (Least → Most)</option>
+                  <option value="courses-most">Courses (Most → Least)</option>
+                  <option value="courses-least">Courses (Least → Most)</option>
                 </NativeSelectField>
               </NativeSelectRoot>
             </HStack>
 
-            <Text color="fg.muted" fontSize="sm">
+            <Text color="fg.muted" fontSize="sm" fontWeight="500">
               Showing {visibleCount} of {programs.length} assigned program{programs.length === 1 ? "" : "s"}
             </Text>
           </VStack>
@@ -204,7 +196,7 @@ export default function AdminProgramsClient({ programs }: { programs: AdminProgr
       ) : (
         <VStack align="stretch" gap="8">
           {groupedPrograms.map((group) => (
-            <Box key={group.type}>
+            <Box key={group.type} data-testid={`program-group-${group.type}`}>
               <HStack gap="3" mb="4">
                 <Box
                   w="10"
