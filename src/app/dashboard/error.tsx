@@ -55,7 +55,7 @@ export default function DashboardError({
         <VStack gap="3" w="full" maxW="xs">
           <Button
             w="full"
-            colorPalette="green"
+            colorPalette="blue"
             size="lg"
             rounded="lg"
             fontWeight="600"

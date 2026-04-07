@@ -61,24 +61,26 @@ describe("onboarding queries", () => {
 
   describe("fetchPrograms", () => {
     it("fetches majors ordered by name", async () => {
-      const mockData = [
-        { id: 1, name: "Biology", catalog_year: "2025-2026", program_type: "MAJOR" },
-        { id: 2, name: "Computer Science", catalog_year: "2025-2026", program_type: "MAJOR" },
+      const viewData = [
+        { program_id: 1, program_name: "Biology", catalog_year: "2025-2026", program_type: "MAJOR" },
+        { program_id: 2, program_name: "Computer Science", catalog_year: "2025-2026", program_type: "MAJOR" },
       ];
 
       const chain = createChainMock();
-      // Make the chain itself resolve as a promise (for the final await)
-      chain.order = vi.fn().mockResolvedValue({ data: mockData, error: null });
+      chain.order = vi.fn().mockResolvedValue({ data: viewData, error: null });
 
       const mockFrom = vi.fn().mockReturnValue(chain);
       vi.mocked(createClient).mockReturnValue({ from: mockFrom } as never);
 
       const result = await fetchPrograms("MAJOR");
 
-      expect(mockFrom).toHaveBeenCalledWith("programs");
-      expect(chain.select).toHaveBeenCalledWith("id, name, catalog_year, program_type");
+      expect(mockFrom).toHaveBeenCalledWith("v_program_catalog");
+      expect(chain.select).toHaveBeenCalledWith("program_id, program_name, catalog_year, program_type");
       expect(chain.eq).toHaveBeenCalledWith("program_type", "MAJOR");
-      expect(result).toEqual(mockData);
+      expect(result).toEqual([
+        { id: 1, name: "Biology", catalog_year: "2025-2026", program_type: "MAJOR" },
+        { id: 2, name: "Computer Science", catalog_year: "2025-2026", program_type: "MAJOR" },
+      ]);
     });
 
     it("throws on Supabase error", async () => {
@@ -242,29 +244,32 @@ describe("onboarding queries", () => {
     });
 
     it("fetches courses by IDs", async () => {
-      const courses = [
-        { id: 1, subject: "CS", number: "101", title: "Intro", credits: 3 },
+      const viewData = [
+        { course_id: 1, subject: "CS", number: "101", title: "Intro", credits: 3 },
       ];
 
       const chain = createChainMock();
       chain.order = vi.fn().mockReturnValue({
-        order: vi.fn().mockResolvedValue({ data: courses, error: null }),
+        order: vi.fn().mockResolvedValue({ data: viewData, error: null }),
       });
 
       const mockFrom = vi.fn().mockReturnValue(chain);
       vi.mocked(createClient).mockReturnValue({ from: mockFrom } as never);
 
       const result = await fetchCoursesByIds([1]);
-      expect(result).toEqual(courses);
+      expect(mockFrom).toHaveBeenCalledWith("v_course_catalog");
+      expect(result).toEqual([
+        { id: 1, subject: "CS", number: "101", title: "Intro", credits: 3 },
+      ]);
     });
   });
 
   describe("fetchCertificatesForMajor", () => {
     it("returns mapped certificates when mappings exist", async () => {
       const mappings = [{ certificate_id: 20 }, { certificate_id: 30 }];
-      const certs = [
-        { id: 20, name: "Data Science", catalog_year: "2025-2026", program_type: "CERTIFICATE" },
-        { id: 30, name: "Cybersecurity", catalog_year: "2025-2026", program_type: "CERTIFICATE" },
+      const viewCerts = [
+        { program_id: 20, program_name: "Data Science", catalog_year: "2025-2026", program_type: "CERTIFICATE" },
+        { program_id: 30, program_name: "Cybersecurity", catalog_year: "2025-2026", program_type: "CERTIFICATE" },
       ];
 
       const mockFrom = vi.fn().mockImplementation((table: string) => {
@@ -272,8 +277,8 @@ describe("onboarding queries", () => {
 
         if (table === "major_certificate_mappings") {
           chain.eq = vi.fn().mockResolvedValue({ data: mappings, error: null });
-        } else if (table === "programs") {
-          chain.order = vi.fn().mockResolvedValue({ data: certs, error: null });
+        } else if (table === "v_program_catalog") {
+          chain.order = vi.fn().mockResolvedValue({ data: viewCerts, error: null });
         }
 
         return chain;
@@ -282,14 +287,17 @@ describe("onboarding queries", () => {
       vi.mocked(createClient).mockReturnValue({ from: mockFrom } as never);
 
       const result = await fetchCertificatesForMajor(10);
-      expect(result).toEqual(certs);
+      expect(result).toEqual([
+        { id: 20, name: "Data Science", catalog_year: "2025-2026", program_type: "CERTIFICATE" },
+        { id: 30, name: "Cybersecurity", catalog_year: "2025-2026", program_type: "CERTIFICATE" },
+      ]);
       expect(mockFrom).toHaveBeenCalledWith("major_certificate_mappings");
-      expect(mockFrom).toHaveBeenCalledWith("programs");
+      expect(mockFrom).toHaveBeenCalledWith("v_program_catalog");
     });
 
     it("falls back to all certificates when no mappings exist", async () => {
-      const allCerts = [
-        { id: 20, name: "Data Science", catalog_year: "2025-2026", program_type: "CERTIFICATE" },
+      const viewCerts = [
+        { program_id: 20, program_name: "Data Science", catalog_year: "2025-2026", program_type: "CERTIFICATE" },
       ];
 
       const mockFrom = vi.fn().mockImplementation((table: string) => {
@@ -297,9 +305,9 @@ describe("onboarding queries", () => {
 
         if (table === "major_certificate_mappings") {
           chain.eq = vi.fn().mockResolvedValue({ data: [], error: null });
-        } else if (table === "programs") {
+        } else if (table === "v_program_catalog") {
           // fallback fetchPrograms("CERTIFICATE") call
-          chain.order = vi.fn().mockResolvedValue({ data: allCerts, error: null });
+          chain.order = vi.fn().mockResolvedValue({ data: viewCerts, error: null });
         }
 
         return chain;
@@ -308,7 +316,9 @@ describe("onboarding queries", () => {
       vi.mocked(createClient).mockReturnValue({ from: mockFrom } as never);
 
       const result = await fetchCertificatesForMajor(10);
-      expect(result).toEqual(allCerts);
+      expect(result).toEqual([
+        { id: 20, name: "Data Science", catalog_year: "2025-2026", program_type: "CERTIFICATE" },
+      ]);
     });
   });
 
