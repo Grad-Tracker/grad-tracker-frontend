@@ -14,6 +14,7 @@ import {
   Text,
   VStack,
 } from "@chakra-ui/react";
+import { GenEdSkeleton } from "@/components/requirements/RequirementsSkeleton";
 import { evaluatePrereqsForCourses, type PrereqEvaluationMap } from "@/lib/prereq";
 import {
   fetchGenEdBucketsWithCourses,
@@ -185,14 +186,7 @@ export default function GenEdRequirements({ studentId }: { studentId: number }) 
   }, [bucketsWithProgress]);
 
   if (loading) {
-    return (
-      <Box px={{ base: "4", md: "8" }} py="8">
-        <HStack gap="3">
-          <Spinner />
-          <Text color="fg.muted">Loading Gen Ed requirements...</Text>
-        </HStack>
-      </Box>
-    );
+    return <GenEdSkeleton />;
   }
 
   if (error) {

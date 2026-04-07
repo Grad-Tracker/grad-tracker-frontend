@@ -244,11 +244,24 @@ export default function OnboardingWizard() {
 
   if (loadingPrograms) {
     return (
-      <Box minH="100vh" bg="bg" display="flex" alignItems="center" justifyContent="center">
-        <VStack gap="4">
-          <Spinner size="xl" colorPalette="blue" />
-          <Text color="fg.muted">Loading programs...</Text>
-        </VStack>
+      <Box minH="100vh" bg="bg" display="flex" alignItems="center" justifyContent="center" data-testid="onboarding-programs-skeleton">
+        <Box w="full" maxW="4xl" px={{ base: "4", md: "8" }} py="8">
+          <VStack gap="6" align="stretch">
+            <VStack gap="3" textAlign="center">
+              <Skeleton height="8" width="120px" borderRadius="full" mx="auto" />
+              <Skeleton height="10" width="280px" mx="auto" />
+              <Skeleton height="4" width="320px" mx="auto" />
+            </VStack>
+            <Skeleton height="12" width="full" borderRadius="lg" />
+            <Box borderRadius="xl" borderWidth="1px" borderColor="border.subtle" p="6">
+              <VStack gap="4" align="stretch">
+                {[1, 2, 3, 4].map((i) => (
+                  <Skeleton key={i} height="12" width="full" borderRadius="lg" />
+                ))}
+              </VStack>
+            </Box>
+          </VStack>
+        </Box>
       </Box>
     );
   }
@@ -337,9 +350,17 @@ export default function OnboardingWizard() {
 
               <Steps.Content index={1}>
                 {loadingRequirements ? (
-                  <VStack py="12" gap="4">
-                    <Spinner size="lg" colorPalette="blue" />
-                    <Text color="fg.muted">Loading courses...</Text>
+                  <VStack py="6" gap="3" align="stretch">
+                    {[1, 2, 3].map((i) => (
+                      <Box key={i} borderRadius="xl" borderWidth="1px" borderColor="border.subtle" p="4">
+                        <Skeleton height="5" width="160px" mb="3" />
+                        <VStack gap="2" align="stretch">
+                          {[1, 2].map((j) => (
+                            <Skeleton key={j} height="10" width="full" borderRadius="lg" />
+                          ))}
+                        </VStack>
+                      </Box>
+                    ))}
                   </VStack>
                 ) : (
                   <ClassSelectionStep
