@@ -124,13 +124,16 @@ describe("evaluatePrereqsForCourses additional branches", () => {
           { id: 100, node_id: 10, atom_type: "COURSE", required_course_id: 50 },
         ])
       )
-      .mockReturnValueOnce(makeResolvingChain([]));
+      .mockReturnValueOnce(makeResolvingChain([]))
+      .mockReturnValueOnce(
+        makeResolvingChain([{ course_id: 50, subject: "CSCI", number: "240" }])
+      );
 
     const result = await evaluatePrereqsForCourses([COURSE_ID], STUDENT_ID);
 
     expect(result.get(COURSE_ID)).toEqual({
       unlocked: false,
-      summary: ["Requires course 50"],
+      summary: ["Requires CSCI 240"],
     });
   });
 

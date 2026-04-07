@@ -1,7 +1,7 @@
 import React from "react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, waitFor, act, fireEvent } from "@testing-library/react";
-import { ChakraProvider, defaultSystem } from "@chakra-ui/react";
+import { screen, waitFor, act, fireEvent } from "@testing-library/react";
+import { renderWithChakra } from "@/__tests__/helpers/mocks";
 
 const {
   mockPush,
@@ -159,10 +159,6 @@ vi.mock("@/components/onboarding/WizardNavigation", () => ({
 import OnboardingWizard from "@/components/onboarding/OnboardingWizard";
 import { createClient } from "@/lib/supabase/client";
 
-function renderWithChakra(ui: React.ReactElement) {
-  return render(<ChakraProvider value={defaultSystem}>{ui}</ChakraProvider>);
-}
-
 describe("OnboardingWizard", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -210,10 +206,10 @@ describe("OnboardingWizard", () => {
     mockSaveOnboardingSelections.mockResolvedValue(undefined);
   });
 
-  it("shows loading spinner while programs are being fetched", () => {
+  it("shows skeleton while programs are being fetched", () => {
     mockFetchPrograms.mockReturnValue(new Promise(() => {}));
     renderWithChakra(<OnboardingWizard />);
-    expect(screen.getAllByText("Loading programs...").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByTestId("onboarding-programs-skeleton")).toBeInTheDocument();
   });
 
   it("renders wizard header after programs load", async () => {

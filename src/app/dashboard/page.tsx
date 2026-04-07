@@ -6,7 +6,6 @@ import {
   Avatar,
   Badge,
   Box,
-  chakra,
   Button,
   Card,
   Flex,
@@ -24,12 +23,16 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import {
   checkOnboardingStatus,
-  fetchPrograms,
   fetchStudentMajorProgram,
   fetchStudentProfileByAuthUserId,
   getOrCreateStudent,
 } from "@/lib/supabase/queries/onboarding";
-import { fetchStudentCourseProgress } from "@/lib/supabase/queries/planner";
+import {
+  fetchRecentStudentActivity,
+  logStudentActivity,
+  type StudentActivityRow,
+} from "@/lib/supabase/queries/activity";
+import { fetchStudentCourseProgress, fetchGenEdBucketsWithCourses } from "@/lib/supabase/queries/planner";
 import {
   DB_VIEWS,
   DB_TABLES
@@ -56,30 +59,78 @@ import {
   LuArrowRight,
   LuGraduationCap,
 } from "react-icons/lu";
-import type { Program } from "@/types/onboarding";
 
-const mockRecentActivity = [
-  {
-    type: "course_added",
-    message: "Added CS 350 to current semester",
-    time: "2 hours ago",
-  },
-  {
-    type: "requirement_met",
-    message: "Completed General Education requirements",
-    time: "1 day ago",
-  },
-  {
-    type: "alert",
-    message: "CS 361 has a prerequisite you haven't completed",
-    time: "2 days ago",
-  },
-];
+import DashboardSkeleton from "@/components/dashboard/DashboardSkeleton";
+import { Skeleton } from "@/components/ui/skeleton";
+import { getCurrentAcademicTerm } from "@/lib/academic-term";
+import type { ViewPlanTermRow, ViewPlanCourseRow, ViewStudentCourseProgressRow } from "@/lib/supabase/queries/view-types";
 
 function getStatusBadgeProps(status: string): { color: string; label: string } {
   if (status === "enrolled") return { color: "emerald", label: "Enrolled" };
   if (status === "waitlist") return { color: "orange", label: "Waitlist" };
   return { color: "gray", label: "Planned" };
+}
+
+function getActivityVisualType(activityType: string): "course_added" | "requirement_met" | "alert" {
+  if (activityType === "major_changed" || activityType === "onboarding_completed") {
+    return "requirement_met";
+  }
+  if (activityType === "plan_updated") {
+    return "alert";
+  }
+  return "course_added";
+}
+
+function activityBgColor(visualType: string): string {
+  if (visualType === "alert") return "orange.subtle";
+  if (visualType === "requirement_met") return "emerald.subtle";
+  return "blue.subtle";
+}
+
+function formatRelativeTime(timestamp: string): string {
+  if (!timestamp) return "Just now";
+
+  const date = new Date(timestamp);
+  if (Number.isNaN(date.getTime())) return "Just now";
+
+  const diffMs = date.getTime() - Date.now();
+  const diffMinutes = Math.round(diffMs / 60000);
+  const rtf = new Intl.RelativeTimeFormat("en", { numeric: "auto" });
+
+  if (Math.abs(diffMinutes) < 60) {
+    return rtf.format(diffMinutes, "minute");
+  }
+
+  const diffHours = Math.round(diffMinutes / 60);
+  if (Math.abs(diffHours) < 24) {
+    return rtf.format(diffHours, "hour");
+  }
+
+  const diffDays = Math.round(diffHours / 24);
+  if (Math.abs(diffDays) < 30) {
+    return rtf.format(diffDays, "day");
+  }
+
+  const diffMonths = Math.round(diffDays / 30);
+  if (Math.abs(diffMonths) < 12) {
+    return rtf.format(diffMonths, "month");
+  }
+
+  const diffYears = Math.round(diffDays / 365);
+  return rtf.format(diffYears, "year");
+}
+
+async function safeLogActivity(
+  studentId: number,
+  activityType: Parameters<typeof logStudentActivity>[1],
+  message: string,
+  metadata: Record<string, unknown>
+) {
+  try {
+    await logStudentActivity(studentId, activityType, message, metadata);
+  } catch (error) {
+    console.error("Failed to log student activity:", error);
+  }
 }
 
 /**
@@ -110,7 +161,7 @@ async function resolveMajorAndBlocks(
 
   const blocksRes = await supabase
     .from(DB_VIEWS.programBlockCourses)
-    .select("block_id, block_name, credits_required, courses")
+    .select("block_id, block_name, rule, n_required, credits_required, courses")
     .eq("program_id", majorProgramId);
 
   return { ...blocksRes, majorName, majorProgramId };
@@ -194,11 +245,9 @@ export default function Dashboard() {
 
   const [currentCourses, setCurrentCourses] = React.useState<PlannedCourseCard[]>([]);
   const [loadingCourses, setLoadingCourses] = React.useState(true);
+  const [recentActivity, setRecentActivity] = React.useState<StudentActivityRow[]>([]);
 
-  const [majors, setMajors] = React.useState<Program[]>([]);
-  const [selectedMajorId, setSelectedMajorId] = React.useState<number | null>(null);
   const [currentMajorProgramId, setCurrentMajorProgramId] = React.useState<number | null>(null);
-  const [changingMajor, setChangingMajor] = React.useState(false);
 
   const [studentIdForReset, setStudentIdForReset] = React.useState<number | null>(null);
 
@@ -259,46 +308,60 @@ export default function Dashboard() {
         setStudentIdForReset(studentId);
 
         const completedPromise = fetchStudentCourseProgress(studentId);
-        const plannedPromise = supabase
-          .from(DB_VIEWS.planCourses)
-          .select("status, subject, number, title, credits")
-          .eq("student_id", studentId);
+        const activityPromise = fetchRecentStudentActivity(studentId).catch(() => [] as StudentActivityRow[]);
+
+        // Find term IDs for the current academic semester
+        const currentTerm = getCurrentAcademicTerm();
+        const currentTermIdsPromise = supabase
+          .from(DB_VIEWS.planTerms)
+          .select("term_id")
+          .eq("student_id", studentId)
+          .eq("season", currentTerm.season)
+          .eq("year", currentTerm.year);
+
         const blocksPromise = resolveMajorAndBlocks(supabase, studentId);
 
-        const [completedResult, blocksResult, plannedResult] = await Promise.all([
+        const [completedResult, blocksResult, currentTermIdsResult, activityResult] = await Promise.all([
           completedPromise,
           blocksPromise,
-          plannedPromise,
+          currentTermIdsPromise,
+          activityPromise,
         ]);
+        setRecentActivity(activityResult);
 
         const majorName = (blocksResult as any).majorName ?? "Unknown";
         const majorProgramId = (blocksResult as any).majorProgramId as number | null;
         setCurrentMajorProgramId(majorProgramId);
-        setSelectedMajorId(majorProgramId);
+
+        const termIds = ((currentTermIdsResult as { data?: Pick<ViewPlanTermRow, "term_id">[] })?.data ?? []).map(
+          (r) => r.term_id
+        );
+        const plannedRows: Pick<ViewPlanCourseRow, "status" | "subject" | "number" | "title" | "credits">[] = termIds.length > 0
+          ? (await supabase
+              .from(DB_VIEWS.planCourses)
+              .select("status, subject, number, title, credits")
+              .eq("student_id", studentId)
+              .in("term_id", termIds)).data ?? []
+          : [];
 
         // Reuse completedResult for BOTH:
         //  - requirement-block matching
         //  - credit summary (completed credits)
-        const completedCourseRows = (completedResult ?? []) as any[];
+        const completedCourseRows: ViewStudentCourseProgressRow[] = completedResult ?? [];
         const completedCourseIds = new Set<number>(
-          (completedCourseRows ?? [])
+          completedCourseRows
             .filter(
-              (r: any) =>
-                r?.completed === true ||
-                String(r?.progress_status ?? "").toUpperCase() === "COMPLETED"
+              (r) =>
+                r.completed === true ||
+                String(r.progress_status ?? "").toUpperCase() === "COMPLETED"
             )
-            .map((r: any) => Number(r?.course_id))
-            .filter((x: number) => !Number.isNaN(x))
+            .map((r) => r.course_id)
+            .filter((x) => !Number.isNaN(x))
         );
 
-        // Reuse plannedResult for BOTH:
-        //  - course cards
-        //  - in-progress credits
-        const plannedRows = (plannedResult as any)?.data ?? [];
-
         const mapped: PlannedCourseCard[] =
-          (plannedRows ?? [])
-            .map((r: any) => {
+          plannedRows
+            .map((r) => {
               const rawStatus = String(r.status ?? "").toLowerCase();
               const status: PlannedCourseCard["status"] =
                 rawStatus === "enrolled"
@@ -321,47 +384,72 @@ export default function Dashboard() {
         setCurrentCourses(mapped);
         setLoadingCourses(false);
 
+        // All courses in the current semester are considered in-progress
         const inProgressCredits =
-          (plannedRows ?? []).reduce((sum: number, r: any) => {
-            const s = String(r?.status ?? "").toLowerCase();
-            if (s !== "enrolled" && s !== "waitlist") return sum;
-            return sum + Number(r?.credits ?? 0);
-          }, 0);
+          plannedRows.reduce((sum, r) => sum + Number(r.credits ?? 0), 0);
 
-        // Requirements (uses blocksResult + completedCourseIds)
-        if (!majorProgramId || (blocksResult as any)?.error) {
-          setRequirements(DEFAULT_REQUIREMENTS);
-          setLoadingRequirements(false);
-        } else {
+        // Requirements: gen ed buckets + major program blocks
+        const agg: Record<
+          string,
+          { completed: number; total: number; color: RequirementBar["color"] }
+        > = {
+          "General Education": { completed: 0, total: 0, color: "violet" },
+          "Major Core": { completed: 0, total: 0, color: "emerald" },
+          "Major Electives": { completed: 0, total: 0, color: "blue" },
+          "Free Electives": { completed: 0, total: 0, color: "amber" },
+        };
+
+        // Gen ed from gen_ed_buckets (separate from major program)
+        try {
+          const genEdBuckets = await fetchGenEdBucketsWithCourses();
+          for (const bucket of genEdBuckets) {
+            agg["General Education"].total += bucket.credits_required;
+            const bucketCompleted = bucket.courses.reduce((sum, c) => {
+              if (!completedCourseIds.has(c.id)) return sum;
+              return sum + c.credits;
+            }, 0);
+            agg["General Education"].completed += bucketCompleted;
+          }
+        } catch {
+          // Non-critical — gen ed bar will show 0/0
+        }
+
+        // Major program blocks
+        if (majorProgramId && !(blocksResult as any)?.error) {
           const blocks = ((blocksResult as any)?.data ?? []) as any[];
 
-          const categorize = (blockName: string) => {
-            const n = blockName.toLowerCase();
-            if (n.includes("general")) return { key: "General Education", color: "violet" as const };
-            if (n.includes("core")) return { key: "Major Core", color: "emerald" as const };
-            if (n.includes("elective")) return { key: "Major Electives", color: "blue" as const };
-            return { key: "Free Electives", color: "amber" as const };
-          };
-
-          const agg: Record<
-            string,
-            { completed: number; total: number; color: RequirementBar["color"] }
-          > = {
-            "General Education": { completed: 0, total: 0, color: "violet" },
-            "Major Core": { completed: 0, total: 0, color: "emerald" },
-            "Major Electives": { completed: 0, total: 0, color: "blue" },
-            "Free Electives": { completed: 0, total: 0, color: "amber" },
-          };
-
           for (const b of blocks) {
-            const { key, color } = categorize(String(b?.block_name ?? ""));
             const blockCourseRows = b?.courses ?? [];
+            // Skip parent blocks with no courses (their sub-blocks have the actual courses)
+            if (blockCourseRows.length === 0) continue;
 
-            const fallbackTotal = blockCourseRows.reduce((sum: number, r: any) => {
-              return sum + Number(r?.credits ?? 0);
-            }, 0);
+            const name = String(b?.block_name ?? "").toLowerCase();
+            const isElective = name.includes("elective");
+            const key = isElective ? "Major Electives" : "Major Core";
 
-            const total = Number(b?.credits_required ?? fallbackTotal ?? 0);
+            const rule = String(b?.rule ?? "ALL_OF");
+            const nRequired = Number(b?.n_required ?? 0);
+
+            // Calculate expected total credits for this block
+            let total: number;
+            if (b?.credits_required != null) {
+              // Explicit credits_required — use directly
+              total = Number(b.credits_required);
+            } else if (rule === "N_OF" && nRequired > 0 && blockCourseRows.length > 0) {
+              // Pick N courses — estimate credits as N * average credit per course
+              const avgCredits = blockCourseRows.reduce(
+                (sum: number, r: any) => sum + Number(r?.credits ?? 0), 0
+              ) / blockCourseRows.length;
+              total = Math.round(nRequired * avgCredits);
+            } else if (rule === "ANY_OF") {
+              // Pick 1 — use the first course's credits as estimate
+              total = Number(blockCourseRows[0]?.credits ?? 3);
+            } else {
+              // ALL_OF or unknown — sum all course credits
+              total = blockCourseRows.reduce(
+                (sum: number, r: any) => sum + Number(r?.credits ?? 0), 0
+              );
+            }
 
             const completed = blockCourseRows.reduce((sum: number, r: any) => {
               const cid = Number(r?.course_id ?? r?.id);
@@ -371,40 +459,34 @@ export default function Dashboard() {
 
             agg[key].total += total;
             agg[key].completed += completed;
-            agg[key].color = color;
           }
+        }
 
-          const bars: RequirementBar[] = Object.entries(agg).map(([name, v]) => {
+        const bars: RequirementBar[] = Object.entries(agg)
+          .filter(([, v]) => v.total > 0)
+          .map(([name, v]) => {
             const total = Math.max(0, Math.round(v.total));
             const completed = Math.min(total, Math.round(v.completed));
             const percentage = total === 0 ? 0 : Math.min(100, Math.round((completed / total) * 100));
             return { name, completed, total, percentage, color: v.color };
           });
 
-          setRequirements(bars);
-          setLoadingRequirements(false);
-        }
+        setRequirements(bars);
+        setLoadingRequirements(false);
 
-        const courseCreditsById = new Map<number, number>();
-        for (const b of ((blocksResult as any)?.data ?? [])) {
-          for (const c of (b?.courses ?? [])) {
-            const courseId = Number(c?.course_id ?? c?.id);
-            if (Number.isNaN(courseId)) continue;
-            if (!courseCreditsById.has(courseId)) {
-              courseCreditsById.set(courseId, Number(c?.credits ?? 0));
-            }
-          }
+        // Fetch credits for all completed courses directly from courses table
+        const completedIdArray = Array.from(completedCourseIds);
+        let completedCredits = 0;
+        if (completedIdArray.length > 0) {
+          const { data: creditRows } = await supabase
+            .from("courses")
+            .select("id, credits")
+            .in("id", completedIdArray);
+          completedCredits = (creditRows ?? []).reduce(
+            (sum: number, r: any) => sum + Number(r.credits ?? 0),
+            0
+          );
         }
-        for (const r of plannedRows ?? []) {
-          const cid = Number(r?.course_id);
-          if (!Number.isNaN(cid) && !courseCreditsById.has(cid)) {
-            courseCreditsById.set(cid, Number(r?.credits ?? 0));
-          }
-        }
-        const completedCredits = Array.from(completedCourseIds).reduce(
-          (sum, cid) => sum + Number(courseCreditsById.get(cid) ?? 0),
-          0
-        );
 
         // Progress summary (reused completedCredits + inProgressCredits)
         const totalCredits = TOTAL_REQUIRED_CREDITS;
@@ -440,27 +522,7 @@ export default function Dashboard() {
           hasCompletedOnboarding: !!resolvedStudentRow.has_completed_onboarding,
         });
 
-        setStudentIdForReset(resolvedStudentRow.id);
-        setCurrentMajorProgramId(majorProgramId);
-        setSelectedMajorId(majorProgramId);
-        try {
-          const allMajors = await fetchPrograms("MAJOR");
-          setMajors(allMajors);
-        } catch {
-          // Non-critical – skip if it fails
-        }
-
         setLoadingStudent(false);
-
-        // Load majors for Change Major card (only if onboarded)
-        if (resolvedStudentRow.has_completed_onboarding) {
-          try {
-            const allMajors = await fetchPrograms("MAJOR");
-            setMajors(allMajors);
-          } catch {
-            // Non-critical: Change Major card simply won't show
-          }
-        }
       } catch {
         const supabase = createClient();
         await supabase.auth.signOut();
@@ -476,46 +538,13 @@ export default function Dashboard() {
     loadStudent();
   }, [router]);
 
-  const handleChangeMajor = async () => {
-    if (!selectedMajorId || !studentIdForReset || selectedMajorId === currentMajorProgramId) return;
-    setChangingMajor(true);
-    try {
-      const supabase = createClient();
-
-      // Remove existing major program entries for this student
-      if (currentMajorProgramId) {
-        const { error: deleteError } = await supabase
-          .from(DB_TABLES.studentPrograms)
-          .delete()
-          .eq("student_id", studentIdForReset)
-          .eq("program_id", currentMajorProgramId);
-        if (deleteError) throw deleteError;
-      }
-
-      // Insert the new major
-      const { error } = await supabase
-        .from(DB_TABLES.studentPrograms)
-        .insert({ student_id: studentIdForReset, program_id: selectedMajorId });
-
-      if (error) throw error;
-
-      setCurrentMajorProgramId(selectedMajorId);
-      const newMajor = majors.find((m) => m.id === selectedMajorId);
-      if (newMajor && student) {
-        setStudent({ ...student, major: newMajor.name });
-      }
-      toaster.create({ title: "Major updated", type: "success" });
-    } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : "Unknown error";
-      toaster.create({ title: "Failed to change major", description: msg, type: "error" });
-    } finally {
-      setChangingMajor(false);
-    }
+  const handleAddCourse = () => {
+    router.push("/dashboard/courses");
   };
 
 
   if (loadingStudent) {
-    return <Box p="8">Loading...</Box>;
+    return <DashboardSkeleton />;
   }
 
   if (!student) {
@@ -529,7 +558,7 @@ export default function Dashboard() {
         <Text fontSize="sm" color="fg.muted" fontWeight="500">
           Dashboard
         </Text>
-        <Heading size="lg" fontFamily="'DM Serif Display', serif" fontWeight="400">
+        <Heading size="lg" fontFamily="var(--font-dm-sans), sans-serif" fontWeight="400" letterSpacing="-0.02em">
           Grad Tracker
         </Heading>
       </Box>
@@ -630,7 +659,7 @@ export default function Dashboard() {
                     Overall Progress
                   </Text>
                   <Text fontSize="2xl" fontWeight="700">
-                    {loadingProgress ? "—" : `${progress.overall}%`}
+                    {loadingProgress ? <Skeleton height="8" width="50px" display="inline-block" /> : `${progress.overall}%`}
                   </Text>
                 </Box>
                 <ProgressCircleRoot value={progress.overall} size="md" colorPalette="blue">
@@ -731,7 +760,7 @@ export default function Dashboard() {
                         </ProgressLabel>
                         <HStack gap="2">
                           <Text fontSize="xs" color="fg.muted">
-                            {loadingRequirements ? "Loading..." : `${req.completed}/${req.total} credits`}
+                            {loadingRequirements ? <Skeleton height="3" width="70px" display="inline-block" /> : `${req.completed}/${req.total} credits`}
                           </Text>
                           <ProgressValueText fontWeight="600" fontSize="sm" />
                         </HStack>
@@ -763,11 +792,20 @@ export default function Dashboard() {
             <Card.Body p="5">
               <Stack gap="3">
                 {loadingCourses ? (
-                  <Box p="4" bg="bg.subtle" borderRadius="lg">
-                    <Text fontSize="sm" color="fg.muted">
-                      Loading current semester courses...
-                    </Text>
-                  </Box>
+                  <Stack gap="3">
+                    {[1, 2, 3].map((i) => (
+                      <HStack key={i} p="3" bg="bg.subtle" borderRadius="lg" justify="space-between">
+                        <HStack gap="3">
+                          <Skeleton height="10" width="10" borderRadius="lg" />
+                          <Box>
+                            <Skeleton height="4" width="80px" mb="1" />
+                            <Skeleton height="3" width="140px" />
+                          </Box>
+                        </HStack>
+                        <Skeleton height="6" width="60px" borderRadius="full" />
+                      </HStack>
+                    ))}
+                  </Stack>
                 ) : currentCourses.length === 0 ? (
                   <Box p="4" bg="bg.subtle" borderRadius="lg">
                     <Text fontWeight="600" fontSize="sm" mb="1">
@@ -830,7 +868,14 @@ export default function Dashboard() {
                   ))
                 )}
 
-                <Button variant="outline" size="sm" w="full" mt="2" borderStyle="dashed">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  w="full"
+                  mt="2"
+                  borderStyle="dashed"
+                  onClick={handleAddCourse}
+                >
                   <Icon mr="2">
                     <LuPlus />
                   </Icon>
@@ -881,59 +926,6 @@ export default function Dashboard() {
             </Card.Body>
           </Card.Root>
 
-          {/* Change Major */}
-          {majors.length > 0 && (
-            <Card.Root bg="bg" borderRadius="xl" borderWidth="1px" borderColor="border.subtle">
-              <Card.Header p="5" pb="3">
-                <Flex align="center" gap="2">
-                  <Icon color="blue.fg">
-                    <LuGraduationCap />
-                  </Icon>
-                  <Heading size="sm" fontWeight="600">
-                    Change Major
-                  </Heading>
-                </Flex>
-              </Card.Header>
-              <Card.Body p="5" pt="0">
-                <Stack gap="3">
-                  <chakra.select
-                    value={selectedMajorId ?? ""}
-                    onChange={(e) =>
-                      setSelectedMajorId(Number(e.target.value))
-                    }
-                    w="full"
-                    px="3"
-                    py="2"
-                    borderRadius="lg"
-                    borderWidth="1px"
-                    borderColor="border.subtle"
-                    bg="bg"
-                    fontSize="sm"
-                    color="fg"
-                    _focus={{ outline: "2px solid", outlineColor: "blue.fg", outlineOffset: "2px" }}
-                    cursor="pointer"
-                  >
-                    {majors.map((m) => (
-                      <option key={m.id} value={m.id}>
-                        {m.name}
-                      </option>
-                    ))}
-                  </chakra.select>
-                  <Button
-                    colorPalette="blue"
-                    size="sm"
-                    borderRadius="lg"
-                    loading={changingMajor}
-                    disabled={!selectedMajorId || selectedMajorId === currentMajorProgramId}
-                    onClick={handleChangeMajor}
-                  >
-                    Save Major
-                  </Button>
-                </Stack>
-              </Card.Body>
-            </Card.Root>
-          )}
-
           <Card.Root bg="bg" borderRadius="xl" borderWidth="1px" borderColor="border.subtle" className="animate-fade-up-delay-3">
             <Card.Header p="5" pb="0">
               <Heading size="md" fontWeight="600">
@@ -942,53 +934,56 @@ export default function Dashboard() {
             </Card.Header>
             <Card.Body p="5">
               <Stack gap="4">
-                {mockRecentActivity.map((activity, index) => (
-                  <HStack key={index} gap="3" align="start">
-                    <Flex
-                      align="center"
-                      justify="center"
-                      w="8"
-                      h="8"
-                      bg={
-                        activity.type === "alert"
-                          ? "orange.subtle"
-                          : activity.type === "requirement_met"
-                            ? "emerald.subtle"
-                            : "blue.subtle"
-                      }
-                      borderRadius="full"
-                      flexShrink={0}
-                    >
-                      <Icon
-                        boxSize="4"
-                        color={
-                          activity.type === "alert"
-                            ? "orange.fg"
-                            : activity.type === "requirement_met"
-                              ? "emerald.fg"
-                              : "blue.fg"
-                        }
+                {recentActivity.length === 0 ? (
+                  <Box p="4" bg="bg.subtle" borderRadius="lg">
+                    <Text fontSize="sm" color="fg.muted">
+                      No recent activity yet. Your actions will appear here once you start using Grad Tracker.
+                    </Text>
+                  </Box>
+                ) : recentActivity.map((activity) => {
+                  const visualType = getActivityVisualType(activity.activity_type);
+                  return (
+                    <HStack key={activity.id} gap="3" align="start">
+                      <Flex
+                        align="center"
+                        justify="center"
+                        w="8"
+                        h="8"
+                        bg={activityBgColor(visualType)}
+                        borderRadius="full"
+                        flexShrink={0}
                       >
-                        {activity.type === "alert" ? (
-                          <LuCircleAlert />
-                        ) : activity.type === "requirement_met" ? (
-                          <LuCircleCheck />
-                        ) : (
-                          <LuPlus />
-                        )}
-                      </Icon>
-                    </Flex>
+                        <Icon
+                          boxSize="4"
+                          color={
+                            visualType === "alert"
+                              ? "orange.fg"
+                              : visualType === "requirement_met"
+                                ? "emerald.fg"
+                                : "blue.fg"
+                          }
+                        >
+                          {visualType === "alert" ? (
+                            <LuCircleAlert />
+                          ) : visualType === "requirement_met" ? (
+                            <LuCircleCheck />
+                          ) : (
+                            <LuPlus />
+                          )}
+                        </Icon>
+                      </Flex>
 
-                    <Box flex="1">
-                      <Text fontSize="sm" fontWeight="500" lineHeight="short">
-                        {activity.message}
-                      </Text>
-                      <Text fontSize="xs" color="fg.muted" mt="0.5">
-                        {activity.time}
-                      </Text>
-                    </Box>
-                  </HStack>
-                ))}
+                      <Box flex="1">
+                        <Text fontSize="sm" fontWeight="500" lineHeight="short">
+                          {activity.message}
+                        </Text>
+                        <Text fontSize="xs" color="fg.muted" mt="0.5">
+                          {formatRelativeTime(activity.created_at)}
+                        </Text>
+                      </Box>
+                    </HStack>
+                  );
+                })}
               </Stack>
             </Card.Body>
           </Card.Root>

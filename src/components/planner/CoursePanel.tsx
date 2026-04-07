@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef, useMemo } from "react";
+import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { useDroppable } from "@dnd-kit/core";
 import {
@@ -21,9 +21,7 @@ import RequirementProgress from "./RequirementProgress";
 import GenEdProgress from "./GenEdProgress";
 import BreadthPackageSelector from "./BreadthPackageSelector";
 import GraduateTrackSelector from "./GraduateTrackSelector";
-
-const MIN_PANEL_WIDTH = 300;
-const MAX_PANEL_WIDTH = 550;
+import { MIN_PANEL_WIDTH, MAX_PANEL_WIDTH } from "@/constants/planner";
 
 interface CoursePanelProps {
   blocks: RequirementBlockWithCourses[];
@@ -156,13 +154,17 @@ export default function CoursePanel({
     overscan: 10,
   });
 
-  const totalAvailable = blocks.reduce(
-    (sum, b) =>
-      sum +
-      b.courses.filter(
-        (c) => !completedCourseIds.has(c.id) && !plannedCourseIds.has(c.id)
-      ).length,
-    0
+  const totalAvailable = useMemo(
+    () =>
+      blocks.reduce(
+        (sum, b) =>
+          sum +
+          b.courses.filter(
+            (c) => !completedCourseIds.has(c.id) && !plannedCourseIds.has(c.id)
+          ).length,
+        0
+      ),
+    [blocks, completedCourseIds, plannedCourseIds]
   );
 
   return (

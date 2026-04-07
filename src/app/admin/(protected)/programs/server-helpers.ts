@@ -287,10 +287,10 @@ export async function fetchProgramWithBlocks(
 
   return {
     program: {
-      id: Number((program as any).id),
-      name: (program as any).name,
-      catalog_year: (program as any).catalog_year,
-      program_type: (program as any).program_type,
+      id: Number(program.id),
+      name: program.name,
+      catalog_year: program.catalog_year,
+      program_type: program.program_type,
     },
     blocks,
   };

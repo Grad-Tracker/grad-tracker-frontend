@@ -97,8 +97,7 @@ describe("PlanCard", () => {
   it("calls onOpen(plan.id) when card body is clicked", () => {
     const plan = makePlan({ id: 42 });
     renderWithChakra(<PlanCard {...defaultProps} plan={plan} />);
-    // Click the outermost card element (role="group")
-    const card = screen.getByRole("group");
+    const card = screen.getByRole("button", { name: /open plan test plan/i });
     fireEvent.click(card);
     expect(defaultProps.onOpen).toHaveBeenCalledWith(42);
   });
@@ -152,7 +151,7 @@ describe("PlanCard", () => {
   });
 
   it("shows 'No changes yet' when updated_at is null", () => {
-    const plan = makePlan({ updated_at: null });
+    const plan = { ...makePlan(), updated_at: null } as unknown as PlanWithMeta;
     renderWithChakra(<PlanCard {...defaultProps} plan={plan} />);
     expect(screen.getAllByText("No changes yet").length).toBeGreaterThanOrEqual(1);
   });

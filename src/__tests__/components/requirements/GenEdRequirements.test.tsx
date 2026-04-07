@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, waitFor, act, fireEvent } from "@testing-library/react";
-import { ChakraProvider, defaultSystem } from "@chakra-ui/react";
+import { screen, waitFor, act, fireEvent } from "@testing-library/react";
+import { renderWithChakra } from "@/__tests__/helpers/mocks";
 
 import GenEdRequirements from "@/components/requirements/GenEdRequirements";
 import {
@@ -19,10 +19,6 @@ vi.mock("@/lib/prereq", () => ({
 
 const mockFetchGenEdBucketsWithCourses = vi.mocked(fetchGenEdBucketsWithCourses);
 const mockFetchStudentCourseProgress = vi.mocked(fetchStudentCourseProgress);
-
-function renderWithChakra(ui: React.ReactElement) {
-  return render(<ChakraProvider value={defaultSystem}>{ui}</ChakraProvider>);
-}
 
 function setupDefaultData() {
   mockFetchGenEdBucketsWithCourses.mockResolvedValue([
@@ -67,9 +63,7 @@ describe("GenEdRequirements", () => {
     mockFetchGenEdBucketsWithCourses.mockReturnValue(new Promise(() => {}) as any);
 
     renderWithChakra(<GenEdRequirements studentId={1} />);
-    expect(
-      screen.getAllByText(/Loading Gen Ed requirements/).length
-    ).toBeGreaterThanOrEqual(1);
+    expect(screen.getByTestId("gen-ed-skeleton")).toBeInTheDocument();
   });
 
   it("renders bucket names after data loads", async () => {

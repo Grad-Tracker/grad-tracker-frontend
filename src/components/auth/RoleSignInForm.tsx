@@ -21,6 +21,7 @@ import { Field } from "@/components/ui/field";
 import { PasswordInput } from "@/components/ui/password-input";
 import { toaster } from "@/components/ui/toaster";
 import { createClient } from "@/lib/supabase/client";
+import { validateEmailDomain, normalizeEmail } from "@/lib/email-validation";
 
 type Role = "student" | "advisor";
 
@@ -64,7 +65,7 @@ const roleContent: Record<
 export default function RoleSignInForm({
   defaultRole,
   hideRoleSelector = false,
-}: RoleSignInFormProps) {
+}: Readonly<RoleSignInFormProps>) {
   const router = useRouter();
   const [selectedRole, setSelectedRole] = useState<Role>(defaultRole);
   const [email, setEmail] = useState("");
@@ -83,16 +84,12 @@ export default function RoleSignInForm({
       return;
     }
 
-    const normalizedEmail = email.trim().toLowerCase();
-    const hasValidDomain =
-      selectedRole === "student"
-        ? normalizedEmail.endsWith("@rangers.uwp.edu")
-        : normalizedEmail.endsWith("@uwp.edu") &&
-          !normalizedEmail.endsWith("@rangers.uwp.edu");
+    const normalizedEmail = normalizeEmail(email);
+    const validation = validateEmailDomain(selectedRole, normalizedEmail);
 
-    if (!hasValidDomain) {
+    if (!validation.isValid) {
       toaster.create({
-        title: "Invalid email domain",
+        title: validation.errorTitle!,
         description:
           selectedRole === "student"
             ? "Student sign in requires a @rangers.uwp.edu email address."
@@ -196,7 +193,7 @@ export default function RoleSignInForm({
               <HStack gap="3" cursor="pointer">
                 <Box
                   p="2"
-                  bg="green.solid"
+                  bg="blue.solid"
                   borderRadius="lg"
                   className="animate-pulse-glow"
                 >
@@ -213,7 +210,7 @@ export default function RoleSignInForm({
                   GradTracker
                 </Text>
                 <Badge
-                  colorPalette="green"
+                  colorPalette="blue"
                   variant="surface"
                   size="sm"
                   fontWeight="500"
@@ -244,7 +241,7 @@ export default function RoleSignInForm({
           right="-10%"
           w="500px"
           h="500px"
-          bg="green.500"
+          bg="blue.500"
           opacity="0.02"
           borderRadius="full"
           filter="blur(100px)"
@@ -278,7 +275,7 @@ export default function RoleSignInForm({
             <Box
               position="absolute"
               inset="-4"
-              bg="green.500"
+              bg="blue.500"
               opacity="0.1"
               borderRadius="3xl"
               filter="blur(40px)"
@@ -299,8 +296,8 @@ export default function RoleSignInForm({
                 boxShadow: "0 24px 60px rgba(0, 0, 0, 0.22)",
               }}
               _focusWithin={{
-                borderColor: "green.400",
-                boxShadow: "0 0 0 1px rgba(34, 197, 94, 0.4), 0 16px 40px rgba(34, 197, 94, 0.12)",
+                borderColor: "blue.400",
+                boxShadow: "0 0 0 1px rgba(37, 99, 235, 0.4), 0 16px 40px rgba(37, 99, 235, 0.12)",
               }}
             >
               <Box
@@ -311,7 +308,7 @@ export default function RoleSignInForm({
                 h="1px"
                 bgGradient="to-r"
                 gradientFrom="transparent"
-                gradientVia="green.500"
+                gradientVia="blue.500"
                 gradientTo="transparent"
               />
 
@@ -335,8 +332,8 @@ export default function RoleSignInForm({
                         left="1"
                         width="calc(50% - 0.25rem)"
                         borderRadius="xl"
-                        bg="green.subtle"
-                        boxShadow="0 0 0 1px rgba(34, 197, 94, 0.18), 0 8px 18px rgba(34, 197, 94, 0.16)"
+                        bg="blue.subtle"
+                        boxShadow="0 0 0 1px rgba(37, 99, 235, 0.18), 0 8px 18px rgba(37, 99, 235, 0.16)"
                         transform={
                           selectedRole === "student"
                             ? "translateX(0%)"
@@ -355,24 +352,24 @@ export default function RoleSignInForm({
                             position="relative"
                             zIndex="1"
                             variant="ghost"
-                            colorPalette={active ? "green" : undefined}
+                            colorPalette={active ? "blue" : undefined}
                             px="4"
                             onClick={() => setSelectedRole(role)}
                             aria-pressed={active}
                             aria-label={role === "student" ? "Student" : "Advisor"}
                             transition="all 0.18s ease"
                             borderWidth="1px"
-                            borderColor={active ? "transparent" : "transparent"}
-                            bg={active ? "transparent" : "transparent"}
+                            borderColor="transparent"
+                            bg="transparent"
                             boxShadow={
                               active
-                                ? "0 0 0 1px rgba(34, 197, 94, 0.14), 0 6px 16px rgba(34, 197, 94, 0.14)"
+                                ? "0 0 0 1px rgba(37, 99, 235, 0.14), 0 6px 16px rgba(37, 99, 235, 0.14)"
                                 : "none"
                             }
                             _hover={{
                               transform: "translateY(-1px)",
-                              borderColor: active ? "transparent" : "green.200",
-                              bg: active ? "green.subtle" : "whiteAlpha.100",
+                              borderColor: active ? "transparent" : "blue.200",
+                              bg: active ? "blue.subtle" : "whiteAlpha.100",
                             }}
                             _active={{
                               transform: "scale(0.99)",
@@ -430,7 +427,7 @@ export default function RoleSignInForm({
                       <Link href="/forgot-password">
                         <Text
                           fontSize="sm"
-                          color="green.solid"
+                          color="blue.solid"
                           cursor="pointer"
                           fontWeight="600"
                           _hover={{ textDecoration: "underline" }}
@@ -443,7 +440,7 @@ export default function RoleSignInForm({
 
                   <Button
                     w="full"
-                    colorPalette="green"
+                    colorPalette="blue"
                     size="lg"
                     rounded="lg"
                     fontWeight="600"
@@ -487,7 +484,7 @@ export default function RoleSignInForm({
                     <Link href={currentRole.signupHref}>
                       <Text
                         as="span"
-                        color="green.solid"
+                        color="blue.solid"
                         cursor="pointer"
                         fontWeight="600"
                         _hover={{ textDecoration: "underline" }}

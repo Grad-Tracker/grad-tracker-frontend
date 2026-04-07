@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import {
   Box,
   Button,
@@ -9,10 +9,9 @@ import {
   HStack,
   Icon,
   IconButton,
-  Spinner,
   Text,
-  VStack,
 } from "@chakra-ui/react";
+import PlannerSkeleton, { PlannerPageSkeleton } from "@/components/planner/PlannerSkeleton";
 import { useRouter } from "next/navigation";
 import {
   DndContext,
@@ -53,6 +52,7 @@ import {
   updateBreadthPackageId,
 } from "@/lib/supabase/queries/planner";
 import { DB_TABLES, DB_VIEWS, PLANNED_COURSE_STATUS } from "@/lib/supabase/queries/schema";
+import { logStudentActivity } from "@/lib/supabase/queries/activity";
 
 import type {
   Term,
@@ -97,7 +97,7 @@ function getLegacyBreadthPackageFromStorage(studentId: number): string | null {
   const planScopedPrefix = `gradtracker:breadthPackage:${studentId}:`;
   for (let i = 0; i < localStorage.length; i += 1) {
     const key = localStorage.key(i);
-    if (!key || !key.startsWith(planScopedPrefix)) continue;
+    if (!key?.startsWith(planScopedPrefix)) continue;
     const value = localStorage.getItem(key);
     if (isValidBreadthPackageId(value)) return value;
   }
@@ -112,7 +112,7 @@ function clearLegacyBreadthPackageStorage(studentId: number): void {
 
   for (let i = 0; i < localStorage.length; i += 1) {
     const key = localStorage.key(i);
-    if (key && key.startsWith(planScopedPrefix)) {
+    if (key?.startsWith(planScopedPrefix)) {
       keysToRemove.push(key);
     }
   }
@@ -120,6 +120,10 @@ function clearLegacyBreadthPackageStorage(studentId: number): void {
   for (const key of keysToRemove) {
     localStorage.removeItem(key);
   }
+}
+
+function getCourseActivityLabel(course: Course): string {
+  return `${course.subject} ${course.number}`;
 }
 
 export default function PlannerPage() {
@@ -190,6 +194,9 @@ export default function PlannerPage() {
   // View state: hub (plan cards) or workspace (planner grid)
   const [view, setView] = useState<"hub" | "workspace">("hub");
 
+  // Mobile panel toggle (below lg breakpoint)
+  const [mobileTab, setMobileTab] = useState<"courses" | "grid">("grid");
+
   // UI state
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [createPlanDialogOpen, setCreatePlanDialogOpen] = useState(false);
@@ -202,6 +209,7 @@ export default function PlannerPage() {
     open: boolean;
     termId: number | null;
   }>({ open: false, termId: null });
+  const [removingCourseFromDrawer, setRemovingCourseFromDrawer] = useState(false);
   const [activeDrag, setActiveDrag] = useState<{
     course: Course;
     fromTermId?: number;
@@ -288,8 +296,16 @@ export default function PlannerPage() {
   );
 
   // ── Load plan-specific data ────────────────────────────
+  const loadAbortRef = useRef<AbortController | null>(null);
+
   const loadPlanData = useCallback(
     async (sid: number, planId: number, graduate = false) => {
+      // Cancel any in-flight load
+      loadAbortRef.current?.abort();
+      const controller = new AbortController();
+      loadAbortRef.current = controller;
+      const { signal } = controller;
+
       setPlanDataLoading(true);
       try {
         if (graduate) {
@@ -304,13 +320,15 @@ export default function PlannerPage() {
 
         const [termsData, coursesData, blocksData, completedData, genEdData, breadthPackageId] =
           await Promise.all([
-            fetchStudentTerms(sid, planId),
-            fetchPlannedCourses(sid, planId),
-            fetchAvailableCourses(sid, planId),
-            fetchCompletedCourseIds(sid),
+            fetchStudentTerms(sid, planId, signal),
+            fetchPlannedCourses(sid, planId, signal),
+            fetchAvailableCourses(sid, planId, signal),
+            fetchCompletedCourseIds(sid, signal),
             fetchGenEdBucketsWithCourses(),
             graduate ? Promise.resolve<string | null>(null) : fetchBreadthPackageId(sid),
           ]);
+
+        if (signal.aborted) return;
 
         setTerms(termsData);
         setPlannedCourses(coursesData);
@@ -323,6 +341,7 @@ export default function PlannerPage() {
           );
         }
       } catch (err) {
+        if (signal.aborted) return;
         console.error("Failed to load plan data:", err);
         toaster.create({
           title: "Failed to load plan",
@@ -336,7 +355,9 @@ export default function PlannerPage() {
         setCompletedIds(new Set());
         setGenEdBuckets([]);
       } finally {
-        setPlanDataLoading(false);
+        if (!signal.aborted) {
+          setPlanDataLoading(false);
+        }
       }
     },
     []
@@ -456,6 +477,7 @@ export default function PlannerPage() {
 
     return () => {
       alive = false;
+      loadAbortRef.current?.abort();
     };
   }, [router]);
 
@@ -518,10 +540,18 @@ export default function PlannerPage() {
   // ── Rename plan ────────────────────────────────────────
   const handleRenamePlan = useCallback(async (planId: number, newName: string) => {
     try {
+      const previousPlan = plans.find((p) => p.id === planId);
       await updatePlan(planId, { name: newName });
       setPlans((prev) =>
         prev.map((p) => (p.id === planId ? { ...p, name: newName } : p))
       );
+      if (studentId) {
+        await safeLogActivity(studentId, "plan_updated", `Renamed plan to ${newName}`, {
+          plan_id: planId,
+          previous_name: previousPlan?.name ?? null,
+          new_name: newName,
+        });
+      }
     } catch (err) {
       console.error("Rename plan failed:", err);
       toaster.create({
@@ -530,7 +560,7 @@ export default function PlannerPage() {
         type: "error",
       });
     }
-  }, []);
+  }, [plans, studentId]);
 
   // ── Delete plan ────────────────────────────────────────
   const handleDeletePlanRequest = useCallback((planId: number) => {
@@ -542,6 +572,7 @@ export default function PlannerPage() {
     if (!planId || !studentId) return;
 
     try {
+      const deletedPlan = plans.find((plan) => plan.id === planId);
       await deletePlan(planId);
       const refreshedPlans = await fetchPlans(studentId);
       setPlans(refreshedPlans);
@@ -557,6 +588,9 @@ export default function PlannerPage() {
         }
       }
 
+      await safeLogActivity(studentId, "plan_deleted", `Deleted plan ${deletedPlan?.name ?? "Untitled Plan"}`, {
+        plan_id: planId,
+      });
       toaster.create({ title: "Plan deleted", type: "info" });
     } catch (err) {
       console.error("Delete plan failed:", err);
@@ -566,7 +600,7 @@ export default function PlannerPage() {
         type: "error",
       });
     }
-  }, [deletePlanDialog.planId, studentId, activePlanId, view, loadPlanData]);
+  }, [deletePlanDialog.planId, studentId, activePlanId, view, loadPlanData, plans]);
 
   // ── Add semester ────────────────────────────────────────
   const handleAddSemester = useCallback(
@@ -645,6 +679,54 @@ export default function PlannerPage() {
     [studentId, activePlanId, removeDialog.termId, plannedCourses]
   );
 
+  const handleRemoveCourseFromTerm = useCallback(
+    async (course: Course, termId: number) => {
+      if (!studentId || !activePlanId || removingCourseFromDrawer) return;
+
+      setRemovingCourseFromDrawer(true);
+      try {
+        await removePlannedCourse(
+          studentId,
+          termId,
+          course.id,
+          activePlanId,
+          getCourseActivityLabel(course)
+        );
+        setPlannedCourses((prev) =>
+          prev.filter(
+            (pc) => !(pc.course_id === course.id && pc.term_id === termId)
+          )
+        );
+        setPlans((prev) =>
+          prev.map((p) =>
+            p.id === activePlanId
+              ? {
+                  ...p,
+                  course_count: Math.max(0, p.course_count - 1),
+                  total_credits: Math.max(0, p.total_credits - (course.credits ?? 0)),
+                }
+              : p
+          )
+        );
+        toaster.create({
+          title: "Course removed",
+          description: `${getCourseActivityLabel(course)} was removed from this semester.`,
+          type: "success",
+        });
+      } catch (err: any) {
+        toaster.create({
+          title: "Failed to remove course",
+          description: err?.message || "Please try again.",
+          type: "error",
+        });
+        throw err;
+      } finally {
+        setRemovingCourseFromDrawer(false);
+      }
+    },
+    [studentId, activePlanId, removingCourseFromDrawer]
+  );
+
   // ── Drag handlers ───────────────────────────────────────
   function handleDragStart(event: DragStartEvent) {
     const { course, fromTermId } = event.active.data.current as {
@@ -667,86 +749,111 @@ export default function PlannerPage() {
 
     const overId = String(over.id);
 
+    // Snapshot for rollback
+    const prevPlannedCourses = plannedCourses;
+    const prevPlans = plans;
+
     if (overId.startsWith("term-")) {
       const toTermId = over.data.current?.term?.id as number | undefined;
       if (!toTermId) return;
       if (fromTermId === toTermId) return;
 
-      try {
-        if (fromTermId) {
+      if (fromTermId) {
+        // MOVE: optimistic update
+        setPlannedCourses((prev) =>
+          prev.map((pc) =>
+            pc.course_id === course.id && pc.term_id === fromTermId
+              ? { ...pc, term_id: toTermId }
+              : pc
+          )
+        );
+
+        try {
           await movePlannedCourse(
             studentId,
             course.id,
             fromTermId,
             toTermId,
-            activePlanId
+            activePlanId,
+            getCourseActivityLabel(course)
           );
-          setPlannedCourses((prev) =>
-            prev.map((pc) =>
-              pc.course_id === course.id && pc.term_id === fromTermId
-                ? { ...pc, term_id: toTermId }
-                : pc
-            )
-          );
-        } else {
-          if (plannedCourseIds.has(course.id)) return;
-          await addPlannedCourse(studentId, toTermId, course.id, activePlanId);
-          setPlannedCourses((prev) => [
-            ...prev,
-            {
-              student_id: studentId,
-              term_id: toTermId,
-              course_id: course.id,
-              status: PLANNED_COURSE_STATUS.planned,
-              plan_id: activePlanId,
-              course,
-            },
-          ]);
-          setPlans((prev) =>
-            prev.map((p) =>
-              p.id === activePlanId
-                ? {
-                    ...p,
-                    course_count: p.course_count + 1,
-                    total_credits: p.total_credits + (course.credits ?? 0),
-                  }
-                : p
-            )
-          );
+        } catch (err: any) {
+          setPlannedCourses(prevPlannedCourses);
+          toaster.create({
+            title: "Failed to move course",
+            description: err?.message || "The change was reverted. Please try again.",
+            type: "error",
+          });
         }
-      } catch (err: any) {
-        toaster.create({
-          title: "Error",
-          description: err?.message || "Failed to update plan",
-          type: "error",
-        });
-      }
-      return;
-    }
+      } else {
+        // ADD: optimistic update
+        if (plannedCourseIds.has(course.id)) return;
 
-    if (fromTermId && (overId === "course-panel" || !overId.startsWith("term-"))) {
-      try {
-        await removePlannedCourse(studentId, fromTermId, course.id, activePlanId);
-        setPlannedCourses((prev) =>
-          prev.filter(
-            (pc) => !(pc.course_id === course.id && pc.term_id === fromTermId)
-          )
-        );
+        setPlannedCourses((prev) => [
+          ...prev,
+          {
+            student_id: studentId,
+            term_id: toTermId,
+            course_id: course.id,
+            status: PLANNED_COURSE_STATUS.planned,
+            plan_id: activePlanId,
+            course,
+          },
+        ]);
         setPlans((prev) =>
           prev.map((p) =>
             p.id === activePlanId
               ? {
                   ...p,
-                  course_count: Math.max(0, p.course_count - 1),
-                  total_credits: Math.max(0, p.total_credits - (course.credits ?? 0)),
+                  course_count: p.course_count + 1,
+                  total_credits: p.total_credits + (course.credits ?? 0),
                 }
               : p
           )
         );
+
+        try {
+          await addPlannedCourse(studentId, toTermId, course.id, activePlanId);
+        } catch (err: any) {
+          setPlannedCourses(prevPlannedCourses);
+          setPlans(prevPlans);
+          toaster.create({
+            title: "Failed to add course",
+            description: err?.message || "The change was reverted. Please try again.",
+            type: "error",
+          });
+        }
+      }
+      return;
+    }
+
+    if (fromTermId && (overId === "course-panel" || !overId.startsWith("term-"))) {
+      // REMOVE: optimistic update
+      setPlannedCourses((prev) =>
+        prev.filter(
+          (pc) => !(pc.course_id === course.id && pc.term_id === fromTermId)
+        )
+      );
+      setPlans((prev) =>
+        prev.map((p) =>
+          p.id === activePlanId
+            ? {
+                ...p,
+                course_count: Math.max(0, p.course_count - 1),
+                total_credits: Math.max(0, p.total_credits - (course.credits ?? 0)),
+              }
+            : p
+        )
+      );
+
+      try {
+        await removePlannedCourse(studentId, fromTermId, course.id, activePlanId);
       } catch (err: any) {
+        setPlannedCourses(prevPlannedCourses);
+        setPlans(prevPlans);
         toaster.create({
-          title: "Error",
-          description: err?.message || "Failed to remove course",
+          title: "Failed to remove course",
+          description: err?.message || "The change was reverted. Please try again.",
           type: "error",
         });
       }
@@ -755,14 +862,7 @@ export default function PlannerPage() {
 
   // ── Loading state ───────────────────────────────────────
   if (loading) {
-    return (
-      <Flex align="center" justify="center" minH="60vh">
-        <VStack gap="4">
-          <Spinner size="xl" color="blue.500" />
-          <Text color="fg.muted">Loading your planner...</Text>
-        </VStack>
-      </Flex>
-    );
+    return <PlannerPageSkeleton />;
   }
 
   // ── Render ──────────────────────────────────────────────
@@ -837,28 +937,8 @@ export default function PlannerPage() {
               </HStack>
 
               <HStack gap="2">
-                {/* Compact plan tabs for quick switching */}
-                {plans.length > 1 && (
-                  <HStack gap="0" bg="bg.subtle" borderRadius="lg" p="0.5" mr="1">
-                    {plans.map((p) => (
-                      <Button
-                        key={p.id}
-                        size="xs"
-                        variant={p.id === activePlanId ? "solid" : "ghost"}
-                        colorPalette={p.id === activePlanId ? "blue" : "gray"}
-                        borderRadius="md"
-                        fontSize="xs"
-                        fontWeight={p.id === activePlanId ? "600" : "500"}
-                        onClick={() => handleSwitchPlan(p.id)}
-                        px="3"
-                        transition="all 0.15s"
-                      >
-                        {p.name}
-                      </Button>
-                    ))}
-                  </HStack>
-                )}
                 <Button
+                  aria-label="Add a semester to the active plan"
                   size="sm"
                   variant="outline"
                   borderRadius="lg"
@@ -871,36 +951,68 @@ export default function PlannerPage() {
             </Flex>
           </Box>
 
-          {/* Plan data loading overlay */}
+          {/* Plan data loading */}
           {planDataLoading ? (
-            <Flex flex="1" align="center" justify="center">
-              <VStack gap="3">
-                <Spinner size="lg" color="blue.500" />
-                <Text fontSize="sm" color="fg.muted">
-                  Loading plan...
-                </Text>
-              </VStack>
-            </Flex>
+            <PlannerSkeleton />
           ) : (
             <>
+              {/* Mobile tab toggle */}
+              <HStack
+                display={{ base: "flex", lg: "none" }}
+                gap="0"
+                bg="bg.subtle"
+                borderRadius="lg"
+                p="0.5"
+                mx="4"
+                mt="2"
+              >
+                <Button
+                  size="sm"
+                  variant={mobileTab === "courses" ? "solid" : "ghost"}
+                  colorPalette={mobileTab === "courses" ? "blue" : "gray"}
+                  borderRadius="md"
+                  flex="1"
+                  onClick={() => setMobileTab("courses")}
+                >
+                  Courses
+                </Button>
+                <Button
+                  size="sm"
+                  variant={mobileTab === "grid" ? "solid" : "ghost"}
+                  colorPalette={mobileTab === "grid" ? "blue" : "gray"}
+                  borderRadius="md"
+                  flex="1"
+                  onClick={() => setMobileTab("grid")}
+                >
+                  Schedule
+                </Button>
+              </HStack>
+
               <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
                 <Flex flex="1" overflow="hidden" minH="0" className="animate-fade-up">
-                  <CoursePanel
-                    blocks={displayBlocks}
-                    allDedupedBlocks={allDedupedBlocks}
-                    completedCourseIds={completedIds}
-                    plannedCourseIds={plannedCourseIds}
-                    plannedCourses={plannedCourses}
-                    isDragActive={!!activeDrag}
-                    selectedBreadthPackageId={selectedBreadthPackageId}
-                    onBreadthPackageSelect={handleBreadthPackageSelect}
-                    isGraduatePlan={isGraduatePlan}
-                    graduateTracks={graduateTracks}
-                    selectedTrackId={selectedTrackId}
-                    onTrackSelect={handleTrackSelect}
-                    genEdBuckets={genEdBuckets}
-                  />
+                  <Box display={{ base: mobileTab === "courses" ? "block" : "none", lg: "block" }}>
+                    <CoursePanel
+                      blocks={displayBlocks}
+                      allDedupedBlocks={allDedupedBlocks}
+                      completedCourseIds={completedIds}
+                      plannedCourseIds={plannedCourseIds}
+                      plannedCourses={plannedCourses}
+                      isDragActive={!!activeDrag}
+                      selectedBreadthPackageId={selectedBreadthPackageId}
+                      onBreadthPackageSelect={handleBreadthPackageSelect}
+                      isGraduatePlan={isGraduatePlan}
+                      graduateTracks={graduateTracks}
+                      selectedTrackId={selectedTrackId}
+                      onTrackSelect={handleTrackSelect}
+                      genEdBuckets={genEdBuckets}
+                    />
+                  </Box>
 
+                  <Box
+                    display={{ base: mobileTab === "grid" ? "flex" : "none", lg: "flex" }}
+                    flex="1"
+                    minH="0"
+                  >
                   {terms.length === 0 ? (
                     <Flex
                       flex="1"
@@ -950,6 +1062,7 @@ export default function PlannerPage() {
                           Drag courses from the pool on the left into your semesters to build your plan.
                         </Text>
                         <Button
+                          aria-label="Add the first semester to this plan"
                           colorPalette="blue"
                           borderRadius="lg"
                           size="sm"
@@ -965,9 +1078,14 @@ export default function PlannerPage() {
                       terms={terms}
                       plannedCourses={plannedCourses}
                       onRemoveTerm={handleRemoveTermRequest}
+                      onRemoveCourse={async (course, termId) => {
+                        await handleRemoveCourseFromTerm(course, termId);
+                      }}
+                      isRemovingCourse={removingCourseFromDrawer}
                       isGraduatePlan={isGraduatePlan}
                     />
                   )}
+                  </Box>
                 </Flex>
 
                 <DragOverlay>
@@ -1050,4 +1168,17 @@ export default function PlannerPage() {
       )}
     </Box>
   );
+}
+
+async function safeLogActivity(
+  studentId: number,
+  activityType: Parameters<typeof logStudentActivity>[1],
+  message: string,
+  metadata: Record<string, unknown>
+) {
+  try {
+    await logStudentActivity(studentId, activityType, message, metadata);
+  } catch (error) {
+    console.error("Failed to log student activity:", error);
+  }
 }

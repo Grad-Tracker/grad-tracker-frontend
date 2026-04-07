@@ -2,12 +2,12 @@ import { createClient } from "@/lib/supabase/client";
 import { DB_TABLES, DB_VIEWS } from "./schema";
 import type {
   ViewCourseCatalogRow,
-  ViewProgramBlockCourseItem,
   ViewProgramBlockCoursesRow,
   ViewStudentCourseHistoryDetailRow,
   ViewStudentPrimaryMajorProgramRow,
 } from "./view-types";
 import type { CourseRow } from "@/types/onboarding";
+import { viewItemToCourse, safeLogActivity, formatActivityCourseLabel } from "./helpers";
 
 // --- Types ---
 
@@ -25,16 +25,6 @@ export interface MajorWithRequirements {
     name: string;
     courses: CourseRow[];
   }[];
-}
-
-function toCourseRow(course: ViewProgramBlockCourseItem): CourseRow {
-  return {
-    id: Number(course.course_id),
-    subject: String(course.subject ?? ""),
-    number: String(course.number ?? ""),
-    title: String(course.title ?? ""),
-    credits: Number(course.credits ?? 0),
-  };
 }
 
 // --- Queries ---
@@ -83,7 +73,7 @@ export async function fetchMajorRequirementCourses(
     blocks: ((blocks as ViewProgramBlockCoursesRow[] | null) ?? []).map((block) => ({
       id: Number(block.block_id),
       name: block.block_name,
-      courses: (block.courses ?? []).map(toCourseRow),
+      courses: (block.courses ?? []).map(viewItemToCourse),
     })),
   };
 }
@@ -119,7 +109,8 @@ export async function fetchStudentCourseHistory(
 export async function insertCourseHistory(
   studentId: number,
   courseId: number,
-  termId: number
+  termId: number,
+  courseLabel?: string
 ): Promise<void> {
   const supabase = createClient();
   const { error } = await supabase.from(DB_TABLES.studentCourseHistory).insert({
@@ -133,13 +124,27 @@ export async function insertCourseHistory(
     if (error.code === "23505") return;
     throw error;
   }
+
+  const activityCourseLabel = formatActivityCourseLabel(courseLabel);
+  await safeLogActivity(
+    studentId,
+    "course_added",
+    `Added ${activityCourseLabel} to completed history`,
+    {
+      course_id: courseId,
+      term_id: termId,
+      source: "class_history",
+      course_label: activityCourseLabel,
+    }
+  );
 }
 
 /** Delete a course from student_course_history by all 3 PK columns. */
 export async function deleteCourseHistory(
   studentId: number,
   courseId: number,
-  termId: number
+  termId: number,
+  courseLabel?: string
 ): Promise<void> {
   const supabase = createClient();
   const { error } = await supabase
@@ -149,13 +154,26 @@ export async function deleteCourseHistory(
     .eq("course_id", courseId)
     .eq("term_id", termId);
   if (error) throw error;
+
+  const activityCourseLabel = formatActivityCourseLabel(courseLabel);
+  await safeLogActivity(
+    studentId,
+    "course_removed",
+    `Removed ${activityCourseLabel} from completed history`,
+    {
+      course_id: courseId,
+      term_id: termId,
+      source: "class_history",
+      course_label: activityCourseLabel,
+    }
+  );
 }
 
 /** Search active course catalog by subject+number or title. Min 2 chars. Max 20 results. */
 export async function searchCourses(query: string): Promise<CourseRow[]> {
   if (query.length < 2) return [];
   const supabase = createClient();
-  const escaped = query.replace(/[%_]/g, "\\$&");
+  const escaped = query.replaceAll(/[%_]/g, "\\$&");
   const pattern = `%${escaped}%`;
 
   const { data, error } = await supabase

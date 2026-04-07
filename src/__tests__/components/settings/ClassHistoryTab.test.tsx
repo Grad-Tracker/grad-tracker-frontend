@@ -240,7 +240,7 @@ describe("ClassHistoryTab", () => {
       capturedGenEdToggle!(10, true);
     });
 
-    expect(insertCourseHistory).toHaveBeenCalledWith(1, 10, 1);
+    expect(insertCourseHistory).toHaveBeenCalledWith(1, 10, 1, "ENG 101");
 
     // Optimistic update should show 1 completed
     await waitFor(() => {
@@ -271,7 +271,7 @@ describe("ClassHistoryTab", () => {
     });
 
     // Should use the actual term_id (5), not defaultTermId (1)
-    expect(deleteCourseHistory).toHaveBeenCalledWith(1, 10, 5);
+    expect(deleteCourseHistory).toHaveBeenCalledWith(1, 10, 5, "ENG 101");
   });
 
   it("handleToggle rolls back on insert failure", async () => {
@@ -311,7 +311,7 @@ describe("ClassHistoryTab", () => {
       fireEvent.click(getByTestId("add-btn"));
     });
 
-    expect(insertCourseHistory).toHaveBeenCalledWith(1, 999, 1);
+    expect(insertCourseHistory).toHaveBeenCalledWith(1, 999, 1, "NEW 100");
 
     await waitFor(() => {
       expect(toaster.create).toHaveBeenCalledWith(
@@ -365,7 +365,7 @@ describe("ClassHistoryTab", () => {
       fireEvent.click(getByTestId("delete-99"));
     });
 
-    expect(deleteCourseHistory).toHaveBeenCalledWith(1, 99, 3);
+    expect(deleteCourseHistory).toHaveBeenCalledWith(1, 99, 3, "MUS 101");
 
     await waitFor(() => {
       expect(toaster.create).toHaveBeenCalledWith(

@@ -21,6 +21,10 @@ import { GenEdChecklist } from "./GenEdChecklist";
 import { MajorChecklist } from "./MajorChecklist";
 import { AdditionalCourses } from "./AdditionalCourses";
 
+function getCourseActivityLabel(course: CourseRow): string {
+  return `${course.subject} ${course.number}`;
+}
+
 export function ClassHistoryTab() {
   const [loading, setLoading] = useState(true);
   const [studentId, setStudentId] = useState<number | null>(null);
@@ -99,9 +103,10 @@ export function ClassHistoryTab() {
       if (!studentId || !defaultTermId) return;
 
       // Capture existing row before optimistic update (for delete path)
-      const existingRow = !checked
-        ? history.find((h) => h.course_id === courseId)
-        : undefined;
+      const existingRow = checked
+        ? undefined
+        : history.find((h) => h.course_id === courseId);
+      const existingCourse = existingRow?.course ?? findCourseById(courseId, buckets, major);
 
       // Optimistic update
       if (checked) {
@@ -126,11 +131,21 @@ export function ClassHistoryTab() {
 
       try {
         if (checked) {
-          await insertCourseHistory(studentId, courseId, defaultTermId);
+          await insertCourseHistory(
+            studentId,
+            courseId,
+            defaultTermId,
+            existingCourse ? getCourseActivityLabel(existingCourse) : undefined
+          );
         } else {
           // Use the actual term_id from the history row (may differ from defaultTermId)
           const termId = existingRow?.term_id ?? defaultTermId;
-          await deleteCourseHistory(studentId, courseId, termId);
+          await deleteCourseHistory(
+            studentId,
+            courseId,
+            termId,
+            existingCourse ? getCourseActivityLabel(existingCourse) : undefined
+          );
         }
       } catch (e: unknown) {
         // Rollback — re-fetch to get accurate state
@@ -154,7 +169,12 @@ export function ClassHistoryTab() {
       ]);
 
       try {
-        await insertCourseHistory(studentId, course.id, defaultTermId);
+        await insertCourseHistory(
+          studentId,
+          course.id,
+          defaultTermId,
+          getCourseActivityLabel(course)
+        );
         toaster.create({ title: "Course added to history", type: "success" });
       } catch (e: unknown) {
         // Rollback
@@ -177,7 +197,12 @@ export function ClassHistoryTab() {
       setHistory((prev) => prev.filter((h) => h.course_id !== courseId));
 
       try {
-        await deleteCourseHistory(studentId, courseId, removed.term_id);
+        await deleteCourseHistory(
+          studentId,
+          courseId,
+          removed.term_id,
+          getCourseActivityLabel(removed.course)
+        );
         toaster.create({ title: "Course removed", type: "success" });
       } catch (e: unknown) {
         // Rollback

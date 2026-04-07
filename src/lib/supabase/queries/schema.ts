@@ -11,6 +11,7 @@ export const DB_TABLES = {
   programRequirementCourses: "program_requirement_courses",
   programs: "programs",
   studentCourseHistory: "student_course_history",
+  studentActivityLog: "student_activity_log",
   studentPlannedCourses: "student_planned_courses",
   studentPrograms: "student_programs",
   studentTermPlan: "student_term_plan",
@@ -18,6 +19,8 @@ export const DB_TABLES = {
   terms: "terms",
   notificationPreferences: "notification_preferences",
   staff: "staff",
+  aiConversations: "ai_conversations",
+  aiMessages: "ai_messages",
 } as const;
 
 export const DB_VIEWS = {

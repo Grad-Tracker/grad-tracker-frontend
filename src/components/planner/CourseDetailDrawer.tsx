@@ -4,6 +4,7 @@ import { Drawer, Portal } from "@chakra-ui/react";
 import {
   Box,
   Badge,
+  Button,
   HStack,
   Icon,
   Text,
@@ -19,13 +20,17 @@ interface CourseDetailDrawerProps {
   course: Course | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onRemoveCourse?: () => void | Promise<void>;
+  isRemovingCourse?: boolean;
 }
 
 export default function CourseDetailDrawer({
   course,
   open,
   onOpenChange,
-}: CourseDetailDrawerProps) {
+  onRemoveCourse,
+  isRemovingCourse = false,
+}: Readonly<CourseDetailDrawerProps>) {
   return (
     <Drawer.Root
       open={open}
@@ -185,21 +190,34 @@ export default function CourseDetailDrawer({
                   borderTopWidth="1px"
                   borderColor="border.subtle"
                 >
-                  <Drawer.ActionTrigger asChild>
-                    <Box
-                      as="button"
-                      px="4"
-                      py="2"
-                      borderRadius="lg"
-                      fontWeight="500"
-                      fontSize="sm"
-                      bg="bg.subtle"
-                      _hover={{ bg: "bg.emphasized" }}
-                      transition="all 0.15s"
-                    >
-                      Close
-                    </Box>
-                  </Drawer.ActionTrigger>
+                  <HStack gap="2" w="full" justify="flex-end" flexWrap="wrap">
+                    {onRemoveCourse && (
+                      <Button
+                        size="sm"
+                        colorPalette="red"
+                        variant="outline"
+                        onClick={() => void onRemoveCourse()}
+                        loading={isRemovingCourse}
+                      >
+                        Remove Course
+                      </Button>
+                    )}
+                    <Drawer.ActionTrigger asChild>
+                      <Box
+                        as="button"
+                        px="4"
+                        py="2"
+                        borderRadius="lg"
+                        fontWeight="500"
+                        fontSize="sm"
+                        bg="bg.subtle"
+                        _hover={{ bg: "bg.emphasized" }}
+                        transition="all 0.15s"
+                      >
+                        Close
+                      </Box>
+                    </Drawer.ActionTrigger>
+                  </HStack>
                 </Drawer.Footer>
               </>
             )}

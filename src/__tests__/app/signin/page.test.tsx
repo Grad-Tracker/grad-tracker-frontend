@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, waitFor, act } from "@testing-library/react";
-import { ChakraProvider, defaultSystem } from "@chakra-ui/react";
+import { screen, fireEvent, waitFor, act } from "@testing-library/react";
+import { renderWithChakra } from "@/__tests__/helpers/mocks";
 
 const { mockPush, mockSignInWithPassword, mockGetUser, mockSignOut, mockToaster } = vi.hoisted(() => ({
   mockPush: vi.fn(),
@@ -34,10 +34,6 @@ vi.mock("@/components/ui/password-input", () => ({
 }));
 
 import SigninPage from "@/app/signin/page";
-
-function renderWithChakra(ui: React.ReactElement) {
-  return render(<ChakraProvider value={defaultSystem}>{ui}</ChakraProvider>);
-}
 
 describe("SigninPage", () => {
   beforeEach(() => {

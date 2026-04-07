@@ -71,3 +71,70 @@ export function createMockAuth(overrides: Record<string, unknown> = {}) {
     ...overrides,
   };
 }
+
+/**
+ * Mock next/navigation module.
+ */
+export function createMockNavigation(overrides: Record<string, unknown> = {}) {
+  return {
+    useRouter: () => createMockRouter(),
+    useSearchParams: () => ({ get: vi.fn().mockReturnValue(null) }),
+    redirect: vi.fn(),
+    usePathname: vi.fn().mockReturnValue("/"),
+    ...overrides,
+  };
+}
+
+/**
+ * Mock Supabase client with optional auth and from.
+ */
+export function createMockSupabaseClient(overrides: Record<string, unknown> = {}) {
+  return {
+    createClient: () => ({
+      auth: createMockAuth(),
+      from: vi.fn().mockReturnValue(createChainMock()),
+      storage: {
+        from: vi.fn().mockReturnValue({
+          upload: vi.fn().mockResolvedValue({ data: {}, error: null }),
+          createSignedUrl: vi.fn().mockResolvedValue({ data: { signedUrl: "" }, error: null }),
+        }),
+      },
+      ...overrides,
+    }),
+  };
+}
+
+/** Mock toaster with create/success/error methods. */
+export function createMockToaster() {
+  return { toaster: { create: vi.fn(), success: vi.fn(), error: vi.fn() } };
+}
+
+/** Mock next/link as a simple anchor tag. */
+export function createMockNextLink() {
+  return {
+    __esModule: true,
+    default: ({ href, children }: { href: string; children: React.ReactNode }) =>
+      React.createElement("a", { href }, children),
+  };
+}
+
+/** Mock ColorModeButton as null. */
+export function createMockColorMode() {
+  return { ColorModeButton: () => null };
+}
+
+/** Mock Field component for form tests. */
+export function createMockField() {
+  return {
+    Field: ({ label, children }: { label?: string; children?: React.ReactNode }) =>
+      React.createElement("div", null, label ? React.createElement("label", null, label) : null, children),
+  };
+}
+
+/** Mock PasswordInput as a simple password input. */
+export function createMockPasswordInput() {
+  return {
+    PasswordInput: (props: Record<string, unknown>) =>
+      React.createElement("input", { type: "password", ...props }),
+  };
+}

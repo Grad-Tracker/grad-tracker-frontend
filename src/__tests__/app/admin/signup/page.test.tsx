@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, waitFor, act } from "@testing-library/react";
-import { ChakraProvider, defaultSystem } from "@chakra-ui/react";
+import { screen, fireEvent, waitFor, act } from "@testing-library/react";
+import { renderWithChakra } from "@/__tests__/helpers/mocks";
 
 import { DB_TABLES } from "@/lib/supabase/queries/schema";
 import {
@@ -65,10 +65,6 @@ vi.mock("@/components/ui/password-input", () => ({
 
 import AdminSignupPage from "@/app/admin/(public)/signup/page";
 import AdvisorSignupClient from "@/app/admin/(public)/signup/AdvisorSignupClient";
-
-function renderWithChakra(ui: React.ReactElement) {
-  return render(<ChakraProvider value={defaultSystem}>{ui}</ChakraProvider>);
-}
 
 function fillForm(opts: {
   first?: string;

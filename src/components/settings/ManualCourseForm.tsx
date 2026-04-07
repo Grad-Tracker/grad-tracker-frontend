@@ -26,7 +26,7 @@ export function ManualCourseForm({ onCourseCreated, onBack }: ManualCourseFormPr
     if (!/^[0-9]{3,4}$/.test(n)) return "Number must be 3-4 digits (e.g. 101)";
     if (!title.trim()) return "Title is required";
     const c = parseFloat(credits);
-    if (isNaN(c) || c < 0) return "Credits must be a non-negative number";
+    if (Number.isNaN(c) || c < 0) return "Credits must be a non-negative number";
     return null;
   };
 
@@ -42,7 +42,7 @@ export function ManualCourseForm({ onCourseCreated, onBack }: ManualCourseFormPr
         subject.trim().toUpperCase(),
         number.trim(),
         title.trim(),
-        parseFloat(credits)
+        Number.parseFloat(credits)
       );
       toaster.create({ title: "Course added", type: "success" });
       onCourseCreated(course);
