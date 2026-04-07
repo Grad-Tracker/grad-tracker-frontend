@@ -33,6 +33,7 @@ function makePlan(overrides: Partial<PlanWithMeta> = {}): PlanWithMeta {
 }
 
 describe("PlansHub", () => {
+  const mockFetch = vi.fn();
   const defaultProps = {
     plans: [] as PlanWithMeta[],
     onOpenPlan: vi.fn(),
@@ -43,6 +44,11 @@ describe("PlansHub", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.stubGlobal("fetch", mockFetch);
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: vi.fn().mockResolvedValue({ plans: [] }),
+    });
   });
 
   it("renders 'Your Plans' heading", () => {
@@ -50,6 +56,12 @@ describe("PlansHub", () => {
     expect(
       screen.getAllByText("Your Plans").length
     ).toBeGreaterThanOrEqual(1);
+  });
+
+  it("shows shared plans CTA", () => {
+    renderWithChakra(<PlansHub {...defaultProps} />);
+    expect(screen.getByText("Shared Plans")).toBeInTheDocument();
+    expect(screen.getByText("View Shared Plans")).toBeInTheDocument();
   });
 
   it("shows empty state with create button when no plans", () => {
@@ -97,12 +109,12 @@ describe("PlansHub", () => {
     expect(screen.getByTestId("plan-card-3")).toBeTruthy();
   });
 
-  it("shows 'Create New Plan' dashed card at end of grid when plans exist", () => {
+  it("shows 'View Shared Plans' dashed card at end of grid when plans exist", () => {
     const plans = [makePlan({ id: 1 })];
     renderWithChakra(<PlansHub {...defaultProps} plans={plans} />);
 
     expect(
-      screen.getAllByText("Create New Plan").length
+      screen.getAllByText("View Shared Plans").length
     ).toBeGreaterThanOrEqual(1);
   });
 

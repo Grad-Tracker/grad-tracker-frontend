@@ -187,7 +187,7 @@ export default function AdvisorSignupClient() {
               <HStack gap="3" cursor="pointer">
                 <Box
                   p="2"
-                  bg="green.solid"
+                  bg="blue.solid"
                   borderRadius="lg"
                   className="animate-pulse-glow"
                 >
@@ -204,7 +204,7 @@ export default function AdvisorSignupClient() {
                   GradTracker
                 </Text>
                 <Badge
-                  colorPalette="green"
+                  colorPalette="blue"
                   variant="surface"
                   size="sm"
                   fontWeight="500"
@@ -235,7 +235,7 @@ export default function AdvisorSignupClient() {
           right="-10%"
           w="500px"
           h="500px"
-          bg="green.500"
+          bg="blue.500"
           opacity="0.05"
           borderRadius="full"
           filter="blur(100px)"
@@ -257,7 +257,7 @@ export default function AdvisorSignupClient() {
             <Box
               position="absolute"
               inset="-4"
-              bg="green.500"
+              bg="blue.500"
               opacity="0.15"
               borderRadius="3xl"
               filter="blur(40px)"
@@ -281,7 +281,7 @@ export default function AdvisorSignupClient() {
                 h="1px"
                 bgGradient="to-r"
                 gradientFrom="transparent"
-                gradientVia="green.500"
+                gradientVia="blue.500"
                 gradientTo="transparent"
               />
 
@@ -357,7 +357,7 @@ export default function AdvisorSignupClient() {
 
                   <Button
                     w="full"
-                    colorPalette="green"
+                    colorPalette="blue"
                     size="lg"
                     rounded="lg"
                     fontWeight="600"
@@ -391,7 +391,7 @@ export default function AdvisorSignupClient() {
                     <Link href="/signin">
                       <Text
                         as="span"
-                        color="green.solid"
+                        color="blue.solid"
                         cursor="pointer"
                         fontWeight="600"
                         _hover={{ textDecoration: "underline" }}

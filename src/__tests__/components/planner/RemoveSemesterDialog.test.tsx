@@ -102,4 +102,16 @@ describe("RemoveSemesterDialog", () => {
     const singularMatches = screen.queryAllByText(/0 course[^s]/);
     expect(singularMatches.length).toBe(0);
   });
+
+  it("shows singular messaging when exactly one course is planned", () => {
+    renderDialog({ courseCount: 1 });
+    const matches = screen.getAllByText(/1 course/);
+    expect(matches.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("renders nothing when no term is provided", () => {
+    renderDialog({ term: null });
+    expect(screen.queryByText(/Remove Fall 2025/)).not.toBeInTheDocument();
+    expect(screen.queryByText("Remove Semester")).not.toBeInTheDocument();
+  });
 });
