@@ -19,6 +19,7 @@ const {
   mockFetchRecentStudentActivity,
   mockLogStudentActivity,
   mockToasterCreate,
+  mockFetchGenEdBucketsWithCourses,
 } = vi.hoisted(() => ({
   mockPush: vi.fn(),
   mockReplace: vi.fn(),
@@ -35,6 +36,7 @@ const {
   mockFetchRecentStudentActivity: vi.fn(),
   mockLogStudentActivity: vi.fn(),
   mockToasterCreate: vi.fn(),
+  mockFetchGenEdBucketsWithCourses: vi.fn(),
 }));
 
 const mockRouter = { push: mockPush, replace: mockReplace, refresh: mockRefresh };
@@ -61,6 +63,7 @@ vi.mock("@/lib/supabase/queries/onboarding", () => ({
 }));
 vi.mock("@/lib/supabase/queries/planner", () => ({
   fetchStudentCourseProgress: (...args: any[]) => mockFetchStudentCourseProgress(...args),
+  fetchGenEdBucketsWithCourses: (...args: any[]) => mockFetchGenEdBucketsWithCourses(...args),
 }));
 vi.mock("@/lib/supabase/queries/activity", () => ({
   fetchRecentStudentActivity: (...args: any[]) => mockFetchRecentStudentActivity(...args),
@@ -172,6 +175,17 @@ function setupHappyPath(overrides?: {
     ] as any
   );
   mockLogStudentActivity.mockResolvedValue(undefined);
+  mockFetchGenEdBucketsWithCourses.mockResolvedValue([
+    {
+      bucket_id: 1,
+      bucket_code: "GE",
+      bucket_name: "General Education",
+      credits_required: 6,
+      courses: [
+        { id: 241, course_id: 241, subject: "ENGL", number: "101", title: "English Comp", credits: 3 },
+      ],
+    },
+  ]);
 
   mockFetchPrograms.mockResolvedValue(overrides?.majors ?? []);
   mockGetOrCreateStudent.mockResolvedValue({ id: 1 });
@@ -213,6 +227,9 @@ function setupHappyPath(overrides?: {
     ];
 
   mockFrom.mockImplementation((table: string) => {
+    if (table === "v_plan_terms") {
+      return createChainMock([{ term_id: 1 }]);
+    }
     if (table === "v_plan_courses") {
       return createChainMock(plannedRows);
     }
@@ -420,129 +437,14 @@ describe("Dashboard", () => {
     });
   });
 
-  describe("Change Major", () => {
-    it("shows Change Major card when majors are available", async () => {
+  describe("Change Major (removed from dashboard)", () => {
+    it("does not render Change Major card", async () => {
       setupHappyPath({
         majors: [
           { id: 10, name: "Computer Science", program_type: "MAJOR" },
           { id: 20, name: "Data Science", program_type: "MAJOR" },
         ],
       });
-
-      await act(async () => {
-        renderWithChakra(<Dashboard />);
-      });
-
-      await waitFor(() => {
-        expect(screen.getByText("Change Major")).toBeInTheDocument();
-        expect(screen.getByText("Save Major")).toBeInTheDocument();
-      });
-    });
-
-    it("Save Major button is disabled when same major is selected", async () => {
-      setupHappyPath({
-        majors: [{ id: 10, name: "Computer Science", program_type: "MAJOR" }],
-      });
-
-      await act(async () => {
-        renderWithChakra(<Dashboard />);
-      });
-
-      await waitFor(() => {
-        expect(screen.getByText("Change Major")).toBeInTheDocument();
-      });
-
-      expect(screen.getByText("Save Major")).toBeDisabled();
-    });
-
-    it("Save Major calls delete old major then insert new major", async () => {
-      let deleteCalled = false;
-      let insertPayload: any = null;
-
-      setupHappyPath({
-        majors: [
-          { id: 10, name: "Computer Science", program_type: "MAJOR" },
-          { id: 20, name: "Data Science", program_type: "MAJOR" },
-        ],
-      });
-
-      mockFrom.mockImplementation((table: string) => {
-        if (table === "v_plan_courses") {
-          return createChainMock([
-            {
-              student_id: 1,
-              course_id: 350,
-              status: "enrolled",
-              subject: "CS",
-              number: "350",
-              title: "Algorithms",
-              credits: 3,
-            },
-          ]);
-        }
-        if (table === "v_program_block_courses") {
-          return createChainMock([
-            {
-              block_id: 2,
-              block_name: "Major Core",
-              credits_required: 3,
-              courses: [
-                {
-                  course_id: 350,
-                  subject: "CS",
-                  number: "350",
-                  title: "Algorithms",
-                  credits: 3,
-                },
-              ],
-            },
-          ]);
-        }
-        if (table === "student_programs") {
-          const chain = createChainMock();
-          chain.delete = vi.fn(() => {
-            deleteCalled = true;
-            return chain;
-          });
-          chain.insert = vi.fn((payload: any) => {
-            insertPayload = payload;
-            return Promise.resolve({ data: null, error: null });
-          });
-          return chain;
-        }
-        return createChainMock();
-      });
-
-      await act(async () => {
-        renderWithChakra(<Dashboard />);
-      });
-
-      await waitFor(() => {
-        expect(screen.getByText("Change Major")).toBeInTheDocument();
-      });
-
-      const select = screen.getByRole("combobox");
-      await act(async () => {
-        fireEvent.change(select, { target: { value: "20" } });
-      });
-
-      // Wait for the select state update to enable the Save button
-      await waitFor(() => {
-        expect(screen.getByText("Save Major")).not.toBeDisabled();
-      });
-
-      await act(async () => {
-        fireEvent.click(screen.getByText("Save Major"));
-      });
-
-      await waitFor(() => {
-        expect(deleteCalled).toBe(true);
-        expect(insertPayload).toMatchObject({ student_id: 1, program_id: 20 });
-      });
-    });
-
-    it("hides Change Major card when no majors returned", async () => {
-      setupHappyPath({ majors: [] });
 
       await act(async () => {
         renderWithChakra(<Dashboard />);
@@ -554,5 +456,6 @@ describe("Dashboard", () => {
 
       expect(screen.queryByText("Change Major")).not.toBeInTheDocument();
     });
+
   });
 });

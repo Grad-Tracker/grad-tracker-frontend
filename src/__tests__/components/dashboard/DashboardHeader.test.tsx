@@ -3,15 +3,27 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { screen, waitFor, act } from "@testing-library/react";
 import { renderWithChakra } from "../../helpers/mocks";
 
-const { mockGetUser } = vi.hoisted(() => ({
+const {
+  mockGetUser,
+  mockPush,
+  mockCreateSignedUrl,
+  mockMaybeSingle,
+  mockEq,
+  mockSelect,
+  mockFrom,
+  mockSignOut,
+  mockToasterCreate,
+} = vi.hoisted(() => ({
   mockGetUser: vi.fn(),
+  mockPush: vi.fn(),
+  mockCreateSignedUrl: vi.fn(),
+  mockMaybeSingle: vi.fn(),
+  mockEq: vi.fn(),
+  mockSelect: vi.fn(),
+  mockFrom: vi.fn(),
+  mockSignOut: vi.fn().mockResolvedValue({ error: null }),
+  mockToasterCreate: vi.fn(),
 }));
-
-const mockCreateSignedUrl = vi.fn();
-const mockMaybeSingle = vi.fn();
-const mockEq = vi.fn();
-const mockSelect = vi.fn();
-const mockFrom = vi.fn();
 
 mockEq.mockImplementation(() => ({
   maybeSingle: mockMaybeSingle,
@@ -25,9 +37,13 @@ mockFrom.mockImplementation(() => ({
   select: mockSelect,
 }));
 
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: mockPush }),
+}));
+
 vi.mock("@/lib/supabase/client", () => ({
   createClient: vi.fn(() => ({
-    auth: { getUser: mockGetUser },
+    auth: { getUser: mockGetUser, signOut: mockSignOut },
     from: mockFrom,
     storage: {
       from: vi.fn(() => ({
@@ -37,8 +53,21 @@ vi.mock("@/lib/supabase/client", () => ({
   })),
 }));
 
-vi.mock("@/components/ui/color-mode", () => ({
-  ColorModeButton: () => <button data-testid="color-mode-btn">Theme</button>,
+vi.mock("@/components/ui/toaster", () => ({
+  toaster: { create: mockToasterCreate },
+}));
+
+vi.mock("@/components/ui/menu", () => ({
+  MenuContent: ({ children }: any) => <div data-testid="menu-content">{children}</div>,
+  MenuItem: ({ children, onClick, value }: any) => (
+    <button data-testid={`menu-item-${value}`} onClick={onClick}>
+      {children}
+    </button>
+  ),
+  MenuItemText: ({ children }: any) => <span>{children}</span>,
+  MenuRoot: ({ children }: any) => <div>{children}</div>,
+  MenuSeparator: () => <hr />,
+  MenuTrigger: ({ children }: any) => <div>{children}</div>,
 }));
 
 import DashboardHeader from "@/components/dashboard/DashboardHeader";
@@ -51,25 +80,19 @@ describe("DashboardHeader", () => {
     mockMaybeSingle.mockReset();
     mockMaybeSingle.mockResolvedValue({ data: null });
     mockCreateSignedUrl.mockReset();
+    mockSignOut.mockResolvedValue({ error: null });
   });
 
-  it("renders notification bell button", async () => {
+  it("renders avatar fallback when no user", async () => {
     mockGetUser.mockResolvedValue({ data: { user: null } });
     await act(async () => {
       renderWithChakra(<DashboardHeader />);
     });
-    expect(screen.getByLabelText("Notifications")).toBeInTheDocument();
+    // Fallback name is "User" when no userName is set
+    expect(screen.getAllByText("U").length).toBeGreaterThanOrEqual(1);
   });
 
-  it("renders color mode button", async () => {
-    mockGetUser.mockResolvedValue({ data: { user: null } });
-    await act(async () => {
-      renderWithChakra(<DashboardHeader />);
-    });
-    expect(screen.getByTestId("color-mode-btn")).toBeInTheDocument();
-  });
-
-  it("renders avatar with user name when loaded", async () => {
+  it("renders avatar with user initials when loaded", async () => {
     mockMaybeSingle.mockResolvedValueOnce({
       data: {
         first_name: "John",
@@ -91,15 +114,6 @@ describe("DashboardHeader", () => {
     await waitFor(() => {
       expect(screen.getAllByText("JD").length).toBeGreaterThanOrEqual(1);
     });
-  });
-
-  it("renders avatar fallback when no user metadata", async () => {
-    mockGetUser.mockResolvedValue({ data: { user: null } });
-    await act(async () => {
-      renderWithChakra(<DashboardHeader />);
-    });
-    // Fallback name is "User" when no userName is set
-    expect(screen.getAllByText("U").length).toBeGreaterThanOrEqual(1);
   });
 
   it("handles user with only first name", async () => {
@@ -274,5 +288,14 @@ describe("DashboardHeader", () => {
       expect(screen.getAllByText("JS").length).toBeGreaterThanOrEqual(1);
     });
     expect(screen.queryByAltText("Jamie Smith")).not.toBeInTheDocument();
+  });
+
+  it("renders Settings and Sign Out menu items", async () => {
+    mockGetUser.mockResolvedValue({ data: { user: null } });
+    await act(async () => {
+      renderWithChakra(<DashboardHeader />);
+    });
+    expect(screen.getAllByText("Settings").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("Sign Out").length).toBeGreaterThanOrEqual(1);
   });
 });
