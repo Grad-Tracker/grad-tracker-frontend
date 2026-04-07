@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import { useDroppable } from "@dnd-kit/core";
 import {
   Box,
@@ -53,7 +54,7 @@ function getCreditLoadInfo(
   return null;
 }
 
-export default function SemesterColumn({
+function SemesterColumn({
   term,
   courses,
   onRemoveTerm,
@@ -253,3 +254,5 @@ export default function SemesterColumn({
     </Box>
   );
 }
+
+export default memo(SemesterColumn);
