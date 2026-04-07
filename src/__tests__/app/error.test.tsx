@@ -1,11 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
-import { ChakraProvider, defaultSystem } from "@chakra-ui/react";
+import { screen, fireEvent } from "@testing-library/react";
+import { renderWithChakra } from "@/__tests__/helpers/mocks";
 import GlobalError from "@/app/error";
-
-function renderWithChakra(ui: React.ReactElement) {
-  return render(<ChakraProvider value={defaultSystem}>{ui}</ChakraProvider>);
-}
 
 describe("GlobalError", () => {
   const mockReset = vi.fn();

@@ -1,7 +1,7 @@
 import React from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
-import { ChakraProvider, defaultSystem } from "@chakra-ui/react";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
+import { renderWithChakra } from "@/__tests__/helpers/mocks";
 
 const { mockFrom, mockToaster } = vi.hoisted(() => ({
   mockFrom: vi.fn(),
@@ -48,10 +48,6 @@ vi.mock("@/components/ui/tooltip", () => ({
 }));
 
 import GenEdAdminClient from "@/app/admin/(protected)/gen-ed/GenEdAdminClient";
-
-function renderWithChakra(ui: React.ReactElement) {
-  return render(<ChakraProvider value={defaultSystem}>{ui}</ChakraProvider>);
-}
 
 function makeAwaitable(result: any) {
   return {

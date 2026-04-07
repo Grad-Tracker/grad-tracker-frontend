@@ -1,5 +1,6 @@
-import { render, cleanup, fireEvent } from "@testing-library/react";
-import { ChakraProvider, defaultSystem, Table } from "@chakra-ui/react";
+import { cleanup, fireEvent } from "@testing-library/react";
+import { Table } from "@chakra-ui/react";
+import { renderWithChakra } from "@/__tests__/helpers/mocks";
 import { describe, it, expect, afterEach, beforeEach, vi } from "vitest";
 import DraggableCourseRow from "@/components/planner/DraggableCourseRow";
 import { useDraggable } from "@dnd-kit/core";
@@ -25,10 +26,6 @@ beforeEach(() => {
     isDragging: false,
   } as never);
 });
-
-function renderWithChakra(ui: React.ReactElement) {
-  return render(<ChakraProvider value={defaultSystem}>{ui}</ChakraProvider>);
-}
 
 const mockCourse = {
   id: 1,
