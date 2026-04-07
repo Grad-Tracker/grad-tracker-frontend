@@ -27,6 +27,7 @@ import {
 import type { Course } from "@/types/course";
 import { BREADTH_PACKAGES, getPackageCourseKeys, courseKey } from "@/types/planner";
 import { getProgramColor, getProgramTypeLabel } from "@/lib/program-colors";
+import { getSubjectColor } from "@/lib/subject-colors";
 
 interface Program {
   id: string;
@@ -49,29 +50,6 @@ interface Block {
 interface ProgramDetailClientProps {
   program: Program;
   blocks: Block[];
-}
-
-
-function getSubjectColor(subject: string): string {
-  const colorMap: Record<string, string> = {
-    CS: "green",
-    CSCI: "green",
-    MATH: "blue",
-    ENGL: "purple",
-    COMM: "orange",
-    PHIL: "teal",
-    PSYC: "pink",
-    BUSI: "cyan",
-    BIOL: "emerald",
-    CHEM: "orange",
-    PHYS: "blue",
-    HIST: "yellow",
-    ECON: "cyan",
-    ART: "red",
-    MUSC: "purple",
-    SOCI: "pink",
-  };
-  return colorMap[subject] || "gray";
 }
 
 function isBreadthBlock(blockName: string): boolean {
