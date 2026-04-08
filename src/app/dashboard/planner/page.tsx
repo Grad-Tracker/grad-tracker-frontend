@@ -50,7 +50,10 @@ import {
   fetchGenEdBucketsWithCourses,
   fetchBreadthPackageId,
   updateBreadthPackageId,
+  fetchCourseOfferings,
 } from "@/lib/supabase/queries/planner";
+import { buildAvailabilityMap } from "@/lib/planner/auto-generate";
+import { extractPrereqEdges } from "@/lib/planner/prereq-graph";
 import { DB_TABLES, DB_VIEWS, PLANNED_COURSE_STATUS } from "@/lib/supabase/queries/schema";
 import { logStudentActivity } from "@/lib/supabase/queries/activity";
 
@@ -146,6 +149,8 @@ export default function PlannerPage() {
   const [blocks, setBlocks] = useState<RequirementBlockWithCourses[]>([]);
   const [completedIds, setCompletedIds] = useState<Set<number>>(new Set());
   const [genEdBuckets, setGenEdBuckets] = useState<GenEdBucketWithCourses[]>([]);
+  const [availabilityMap, setAvailabilityMap] = useState<Map<number, Set<string>>>(new Map());
+  const [prereqEdges, setPrereqEdges] = useState<Map<number, Set<number>>>(new Map());
 
   // Breadth package selection (persisted on students row)
   const [selectedBreadthPackageId, setSelectedBreadthPackageId] = useState<
@@ -330,11 +335,28 @@ export default function PlannerPage() {
 
         if (signal.aborted) return;
 
+        // Gather all course IDs (from blocks + already planned) for prereq/availability lookup
+        const allCourseIds = [
+          ...new Set([
+            ...blocksData.flatMap((b) => b.courses.map((c) => c.id)),
+            ...coursesData.map((pc) => pc.course_id),
+          ]),
+        ];
+
+        const [offerings, edges] = await Promise.all([
+          fetchCourseOfferings(allCourseIds),
+          extractPrereqEdges(allCourseIds),
+        ]);
+
+        if (signal.aborted) return;
+
         setTerms(termsData);
         setPlannedCourses(coursesData);
         setBlocks(blocksData);
         setCompletedIds(completedData);
         setGenEdBuckets(genEdData);
+        setAvailabilityMap(buildAvailabilityMap(offerings));
+        setPrereqEdges(edges);
         if (!graduate) {
           setSelectedBreadthPackageId(
             isValidBreadthPackageId(breadthPackageId) ? breadthPackageId : null
@@ -354,6 +376,8 @@ export default function PlannerPage() {
         setBlocks([]);
         setCompletedIds(new Set());
         setGenEdBuckets([]);
+        setAvailabilityMap(new Map());
+        setPrereqEdges(new Map());
       } finally {
         if (!signal.aborted) {
           setPlanDataLoading(false);

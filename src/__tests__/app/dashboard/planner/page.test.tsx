@@ -27,6 +27,7 @@ const {
   mockFetchGenEdBucketsWithCourses,
   mockFetchBreadthPackageId,
   mockUpdateBreadthPackageId,
+  mockFetchCourseOfferings,
   mockLogStudentActivity,
 
   // NEW: capture DnD handlers so tests can call them
@@ -62,6 +63,7 @@ const {
     mockFetchGenEdBucketsWithCourses: vi.fn().mockResolvedValue([]),
     mockFetchBreadthPackageId: vi.fn().mockResolvedValue(null),
     mockUpdateBreadthPackageId: vi.fn().mockResolvedValue(undefined),
+    mockFetchCourseOfferings: vi.fn().mockResolvedValue([]),
     mockLogStudentActivity: vi.fn().mockResolvedValue(undefined),
 
     mockDndHandlers: {
@@ -103,6 +105,15 @@ vi.mock("@/lib/supabase/queries/planner", () => ({
   movePlannedCourse: mockMovePlannedCourse,
   fetchBreadthPackageId: mockFetchBreadthPackageId,
   updateBreadthPackageId: mockUpdateBreadthPackageId,
+  fetchCourseOfferings: mockFetchCourseOfferings,
+}));
+
+vi.mock("@/lib/planner/auto-generate", () => ({
+  buildAvailabilityMap: vi.fn().mockReturnValue(new Map()),
+}));
+
+vi.mock("@/lib/planner/prereq-graph", () => ({
+  extractPrereqEdges: vi.fn().mockResolvedValue(new Map()),
 }));
 
 vi.mock("@/lib/supabase/queries/activity", () => ({
