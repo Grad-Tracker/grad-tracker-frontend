@@ -52,8 +52,14 @@ import {
   updateBreadthPackageId,
   fetchCourseOfferings,
 } from "@/lib/supabase/queries/planner";
-import { buildAvailabilityMap } from "@/lib/planner/auto-generate";
+import { buildAvailabilityMap, isAvailable } from "@/lib/planner/auto-generate";
 import { extractPrereqEdges } from "@/lib/planner/prereq-graph";
+import {
+  arePrereqsSatisfied,
+  findBrokenDependents,
+  buildCourseTermIndex,
+  termSortKey,
+} from "@/lib/planner/prereq-validation";
 import { DB_TABLES, DB_VIEWS, PLANNED_COURSE_STATUS } from "@/lib/supabase/queries/schema";
 import { logStudentActivity } from "@/lib/supabase/queries/activity";
 
@@ -233,6 +239,20 @@ export default function PlannerPage() {
     () => new Set(plannedCourses.map((pc) => pc.course_id)),
     [plannedCourses]
   );
+  const courseTermIndex = useMemo(
+    () => buildCourseTermIndex(plannedCourses, terms),
+    [plannedCourses, terms]
+  );
+  const courseById = useMemo(() => {
+    const map = new Map<number, Course>();
+    for (const b of blocks) {
+      for (const c of b.courses) map.set(c.id, c);
+    }
+    for (const pc of plannedCourses) {
+      if (pc.course) map.set(pc.course.id, pc.course);
+    }
+    return map;
+  }, [blocks, plannedCourses]);
   const graduateTracks: GraduateTrack[] = useMemo(
     () => (isGraduatePlan ? getGraduateTracks(blocks) : []),
     [blocks, isGraduatePlan]
@@ -784,7 +804,66 @@ export default function PlannerPage() {
       if (fromTermId === toTermId) return;
 
       if (fromTermId) {
-        // MOVE: optimistic update
+        // MOVE: validate then optimistic update
+        const toTerm = terms.find((t) => t.id === toTermId);
+        if (!toTerm) return;
+        const targetSortKey = termSortKey(toTerm);
+
+        // Prereq check — course's own prereqs at destination
+        const prereqResult = arePrereqsSatisfied(
+          course.id,
+          targetSortKey,
+          prereqEdges,
+          courseTermIndex,
+          completedIds,
+        );
+        if (!prereqResult.satisfied) {
+          const missingLabels = prereqResult.missing
+            .map((id) => {
+              const c = courseById.get(id);
+              return c ? `${c.subject} ${c.number}` : `Course #${id}`;
+            })
+            .join(", ");
+          toaster.create({
+            title: `Can't move ${getCourseActivityLabel(course)} there`,
+            description: `Requires: ${missingLabels}`,
+            type: "error",
+          });
+          return;
+        }
+
+        // Backward check — would moving this break dependents?
+        const broken = findBrokenDependents(
+          course.id,
+          targetSortKey,
+          prereqEdges,
+          courseTermIndex,
+          completedIds,
+        );
+        if (broken.length > 0) {
+          const brokenLabels = broken
+            .map((id) => {
+              const c = courseById.get(id);
+              return c ? `${c.subject} ${c.number}` : `Course #${id}`;
+            })
+            .join(", ");
+          toaster.create({
+            title: `Can't move ${getCourseActivityLabel(course)} there`,
+            description: `Would break prerequisites for: ${brokenLabels}`,
+            type: "error",
+          });
+          return;
+        }
+
+        // Availability check (soft warning)
+        if (!isAvailable(course.id, toTerm.season, toTerm.year, availabilityMap)) {
+          toaster.create({
+            title: `${getCourseActivityLabel(course)} may not be offered in ${toTerm.season} ${toTerm.year}`,
+            description: "Verify with your advisor that this section is being taught.",
+            type: "warning",
+          });
+        }
+
         setPlannedCourses((prev) =>
           prev.map((pc) =>
             pc.course_id === course.id && pc.term_id === fromTermId
@@ -811,8 +890,44 @@ export default function PlannerPage() {
           });
         }
       } else {
-        // ADD: optimistic update
+        // ADD: validate then optimistic update
         if (plannedCourseIds.has(course.id)) return;
+
+        const toTerm = terms.find((t) => t.id === toTermId);
+        if (!toTerm) return;
+        const targetSortKey = termSortKey(toTerm);
+
+        // Prereq check (hard block)
+        const prereqResult = arePrereqsSatisfied(
+          course.id,
+          targetSortKey,
+          prereqEdges,
+          courseTermIndex,
+          completedIds,
+        );
+        if (!prereqResult.satisfied) {
+          const missingLabels = prereqResult.missing
+            .map((id) => {
+              const c = courseById.get(id);
+              return c ? `${c.subject} ${c.number}` : `Course #${id}`;
+            })
+            .join(", ");
+          toaster.create({
+            title: `Can't add ${getCourseActivityLabel(course)}`,
+            description: `Requires: ${missingLabels}`,
+            type: "error",
+          });
+          return;
+        }
+
+        // Availability check (soft warning)
+        if (!isAvailable(course.id, toTerm.season, toTerm.year, availabilityMap)) {
+          toaster.create({
+            title: `${getCourseActivityLabel(course)} may not be offered in ${toTerm.season} ${toTerm.year}`,
+            description: "Verify with your advisor that this section is being taught.",
+            type: "warning",
+          });
+        }
 
         setPlannedCourses((prev) => [
           ...prev,
