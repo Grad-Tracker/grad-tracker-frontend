@@ -10,23 +10,18 @@ import type { Course } from "@/types/course";
 
 // ── Helpers ──────────────────────────────────────────────
 
-let _courseId = 100;
-let _termId = 1;
-
-function makeCourse(overrides: Partial<Course> = {}): Course {
-  const id = overrides.id ?? _courseId++;
+function makeCourse(overrides: Partial<Course> & { id: number }): Course {
   return {
-    id,
     subject: "CS",
-    number: `${id}`,
-    title: `Course ${id}`,
+    number: `${overrides.id}`,
+    title: `Course ${overrides.id}`,
     credits: 3,
     ...overrides,
   };
 }
 
-function makeTerm(season: Season, year: number, id?: number): Term {
-  return { id: id ?? _termId++, season, year };
+function makeTerm(season: Season, year: number, id: number = 0): Term {
+  return { id, season, year };
 }
 
 function makePlannedCourse(
@@ -264,7 +259,6 @@ describe("arePrereqsSatisfied", () => {
   it("handles multiple prerequisites with partial satisfaction", () => {
     const fallKey = termSortKey(makeTerm("Fall", 2024));
     const springKey = termSortKey(makeTerm("Spring", 2025));
-    const summerKey = termSortKey(makeTerm("Summer", 2025));
 
     // Course 10 requires courses 5, 6, and 7
     // 5 is completed, 6 is planned earlier (Fall), 7 is planned in same term (Spring)

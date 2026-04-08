@@ -1,16 +1,10 @@
-import type { Term, PlannedCourseWithDetails, Season } from "@/types/planner";
+import type { Term, PlannedCourseWithDetails } from "@/types/planner";
+import { SEASON_ORDER } from "@/types/planner";
 
 /**
  * Pure, synchronous validation helpers for the planner drag-and-drop UI.
  * No Supabase calls — operates entirely on in-memory data.
  */
-
-/** Season ranks: Spring=0, Summer=1, Fall=2 (chronological within a calendar year) */
-const SEASON_RANK: Record<Season, number> = {
-  Spring: 0,
-  Summer: 1,
-  Fall: 2,
-};
 
 /**
  * Returns a numeric sort key for a term.
@@ -18,7 +12,7 @@ const SEASON_RANK: Record<Season, number> = {
  * Lower value = earlier in time.
  */
 export function termSortKey(term: Pick<Term, "season" | "year">): number {
-  return term.year * 10 + SEASON_RANK[term.season];
+  return term.year * 10 + SEASON_ORDER[term.season];
 }
 
 /**
