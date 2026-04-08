@@ -5,11 +5,11 @@ import type { Term, PlannedCourseWithDetails, Season } from "@/types/planner";
  * No Supabase calls — operates entirely on in-memory data.
  */
 
-/** Season ranks: Fall=0, Spring=1, Summer=2 (chronological within an academic year) */
+/** Season ranks: Spring=0, Summer=1, Fall=2 (chronological within a calendar year) */
 const SEASON_RANK: Record<Season, number> = {
-  Fall: 0,
-  Spring: 1,
-  Summer: 2,
+  Spring: 0,
+  Summer: 1,
+  Fall: 2,
 };
 
 /**

@@ -48,18 +48,18 @@ function makePlannedCourse(
 // ── termSortKey ──────────────────────────────────────────
 
 describe("termSortKey", () => {
-  it("returns a lower value for Fall than Spring within the same year", () => {
-    const fall = makeTerm("Fall", 2024);
+  it("returns a lower value for Spring than Fall within the same year", () => {
     const spring = makeTerm("Spring", 2024);
-    expect(termSortKey(fall)).toBeLessThan(termSortKey(spring));
+    const fall = makeTerm("Fall", 2024);
+    expect(termSortKey(spring)).toBeLessThan(termSortKey(fall));
   });
 
-  it("orders Fall < Spring < Summer within the same year", () => {
-    const fall = makeTerm("Fall", 2024);
+  it("orders Spring < Summer < Fall within the same year", () => {
     const spring = makeTerm("Spring", 2024);
     const summer = makeTerm("Summer", 2024);
-    expect(termSortKey(fall)).toBeLessThan(termSortKey(spring));
+    const fall = makeTerm("Fall", 2024);
     expect(termSortKey(spring)).toBeLessThan(termSortKey(summer));
+    expect(termSortKey(summer)).toBeLessThan(termSortKey(fall));
   });
 
   it("returns a lower value for an earlier year than a later year", () => {
@@ -74,13 +74,13 @@ describe("termSortKey", () => {
     expect(termSortKey(a)).toBe(termSortKey(b));
   });
 
-  it("Fall 2023 is before Summer 2023 (Fall=0 < Summer=2 within a year)", () => {
+  it("Spring 2023 is before Fall 2023 (Spring=0 < Fall=2 within a year)", () => {
+    const spring2023 = makeTerm("Spring", 2023);
     const fall2023 = makeTerm("Fall", 2023);
-    const summer2023 = makeTerm("Summer", 2023);
-    expect(termSortKey(fall2023)).toBeLessThan(termSortKey(summer2023));
+    expect(termSortKey(spring2023)).toBeLessThan(termSortKey(fall2023));
   });
 
-  it("Fall 2022 is before Spring 2023", () => {
+  it("Fall 2022 is before Spring 2023 (cross-year)", () => {
     const fall2022 = makeTerm("Fall", 2022);
     const spring2023 = makeTerm("Spring", 2023);
     expect(termSortKey(fall2022)).toBeLessThan(termSortKey(spring2023));
