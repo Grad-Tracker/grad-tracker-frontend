@@ -335,10 +335,11 @@ export default function PlannerPage() {
 
         if (signal.aborted) return;
 
-        // Gather all course IDs (from blocks + already planned) for prereq/availability lookup
+        // Gather all course IDs (from blocks + gen-ed + already planned) for prereq/availability lookup
         const allCourseIds = [
           ...new Set([
             ...blocksData.flatMap((b) => b.courses.map((c) => c.id)),
+            ...genEdData.flatMap((bucket) => (bucket.courses ?? []).map((c) => c.id)),
             ...coursesData.map((pc) => pc.course_id),
           ]),
         ];
