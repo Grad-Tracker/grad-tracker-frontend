@@ -135,6 +135,18 @@ function getCourseActivityLabel(course: Course): string {
   return `${course.subject} ${course.number}`;
 }
 
+function formatCourseIdList(
+  ids: number[],
+  courseById: Map<number, Course>,
+): string {
+  return ids
+    .map((id) => {
+      const c = courseById.get(id);
+      return c ? `${c.subject} ${c.number}` : `Course #${id}`;
+    })
+    .join(", ");
+}
+
 export default function PlannerPage() {
   const router = useRouter();
 
@@ -818,15 +830,9 @@ export default function PlannerPage() {
           completedIds,
         );
         if (!prereqResult.satisfied) {
-          const missingLabels = prereqResult.missing
-            .map((id) => {
-              const c = courseById.get(id);
-              return c ? `${c.subject} ${c.number}` : `Course #${id}`;
-            })
-            .join(", ");
           toaster.create({
             title: `Can't move ${getCourseActivityLabel(course)} there`,
-            description: `Requires: ${missingLabels}`,
+            description: `Requires: ${formatCourseIdList(prereqResult.missing, courseById)}`,
             type: "error",
           });
           return;
@@ -841,15 +847,9 @@ export default function PlannerPage() {
           completedIds,
         );
         if (broken.length > 0) {
-          const brokenLabels = broken
-            .map((id) => {
-              const c = courseById.get(id);
-              return c ? `${c.subject} ${c.number}` : `Course #${id}`;
-            })
-            .join(", ");
           toaster.create({
             title: `Can't move ${getCourseActivityLabel(course)} there`,
-            description: `Would break prerequisites for: ${brokenLabels}`,
+            description: `Would break prerequisites for: ${formatCourseIdList(broken, courseById)}`,
             type: "error",
           });
           return;
@@ -906,15 +906,9 @@ export default function PlannerPage() {
           completedIds,
         );
         if (!prereqResult.satisfied) {
-          const missingLabels = prereqResult.missing
-            .map((id) => {
-              const c = courseById.get(id);
-              return c ? `${c.subject} ${c.number}` : `Course #${id}`;
-            })
-            .join(", ");
           toaster.create({
             title: `Can't add ${getCourseActivityLabel(course)}`,
-            description: `Requires: ${missingLabels}`,
+            description: `Requires: ${formatCourseIdList(prereqResult.missing, courseById)}`,
             type: "error",
           });
           return;
