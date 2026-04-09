@@ -106,7 +106,7 @@ describe("RoleSignInForm", () => {
   it("renders student email placeholder", () => {
     renderWithChakra(<RoleSignInForm defaultRole="student" />);
     expect(
-      screen.getByPlaceholderText("your.name@rangers.uwp.edu")
+      screen.getByPlaceholderText("you@example.com")
     ).toBeInTheDocument();
   });
 
@@ -157,7 +157,7 @@ describe("RoleSignInForm", () => {
   it("renders advisor email placeholder when defaultRole is advisor", () => {
     renderWithChakra(<RoleSignInForm defaultRole="advisor" />);
     expect(
-      screen.getByPlaceholderText("your.name@uwp.edu")
+      screen.getByPlaceholderText("you@example.com")
     ).toBeInTheDocument();
   });
 
@@ -200,7 +200,7 @@ describe("RoleSignInForm", () => {
       screen.getByRole("button", { name: "Advisor" })
     ).toHaveAttribute("aria-pressed", "true");
     expect(
-      screen.getByPlaceholderText("your.name@uwp.edu")
+      screen.getByPlaceholderText("you@example.com")
     ).toBeInTheDocument();
   });
 
@@ -220,7 +220,7 @@ describe("RoleSignInForm", () => {
       ).length
     ).toBeGreaterThanOrEqual(1);
     expect(
-      screen.getByPlaceholderText("your.name@rangers.uwp.edu")
+      screen.getByPlaceholderText("you@example.com")
     ).toBeInTheDocument();
   });
 
@@ -240,53 +240,6 @@ describe("RoleSignInForm", () => {
     );
   });
 
-  /* ===== Validation: email domain ===== */
-
-  it("student sign-in blocks advisor-domain emails", async () => {
-    renderWithChakra(<RoleSignInForm defaultRole="student" />);
-
-    fireEvent.change(
-      screen.getByPlaceholderText("your.name@rangers.uwp.edu"),
-      { target: { value: "advisor@uwp.edu" } }
-    );
-    fireEvent.change(screen.getByTestId("password-input"), {
-      target: { value: "password123" },
-    });
-
-    const buttons = screen.getAllByText("Sign In");
-    const btn = buttons.find((el) => el.closest("button") !== null);
-    await act(async () => {
-      fireEvent.click(btn!);
-    });
-
-    expect(mockSignInWithPassword).not.toHaveBeenCalled();
-    expect(mockToaster.create).toHaveBeenCalledWith(
-      expect.objectContaining({ title: "Invalid email domain" })
-    );
-  });
-
-  it("advisor sign-in blocks student-domain emails", async () => {
-    renderWithChakra(<RoleSignInForm defaultRole="advisor" />);
-
-    fireEvent.change(screen.getByPlaceholderText("your.name@uwp.edu"), {
-      target: { value: "student@rangers.uwp.edu" },
-    });
-    fireEvent.change(screen.getByTestId("password-input"), {
-      target: { value: "password123" },
-    });
-
-    const buttons = screen.getAllByText("Sign In");
-    const btn = buttons.find((el) => el.closest("button") !== null);
-    await act(async () => {
-      fireEvent.click(btn!);
-    });
-
-    expect(mockSignInWithPassword).not.toHaveBeenCalled();
-    expect(mockToaster.create).toHaveBeenCalledWith(
-      expect.objectContaining({ title: "Invalid email domain" })
-    );
-  });
-
   /* ===== Successful sign-in ===== */
 
   it("calls signInWithPassword with correct credentials", async () => {
@@ -294,7 +247,7 @@ describe("RoleSignInForm", () => {
     renderWithChakra(<RoleSignInForm defaultRole="student" />);
 
     fireEvent.change(
-      screen.getByPlaceholderText("your.name@rangers.uwp.edu"),
+      screen.getByPlaceholderText("you@example.com"),
       { target: { value: "test@rangers.uwp.edu" } }
     );
     fireEvent.change(screen.getByTestId("password-input"), {
@@ -320,7 +273,7 @@ describe("RoleSignInForm", () => {
     renderWithChakra(<RoleSignInForm defaultRole="student" />);
 
     fireEvent.change(
-      screen.getByPlaceholderText("your.name@rangers.uwp.edu"),
+      screen.getByPlaceholderText("you@example.com"),
       { target: { value: "test@rangers.uwp.edu" } }
     );
     fireEvent.change(screen.getByTestId("password-input"), {
@@ -346,7 +299,7 @@ describe("RoleSignInForm", () => {
     });
     renderWithChakra(<RoleSignInForm defaultRole="advisor" />);
 
-    fireEvent.change(screen.getByPlaceholderText("your.name@uwp.edu"), {
+    fireEvent.change(screen.getByPlaceholderText("you@example.com"), {
       target: { value: "advisor@uwp.edu" },
     });
     fireEvent.change(screen.getByTestId("password-input"), {
@@ -374,7 +327,7 @@ describe("RoleSignInForm", () => {
     renderWithChakra(<RoleSignInForm defaultRole="student" />);
 
     fireEvent.change(
-      screen.getByPlaceholderText("your.name@rangers.uwp.edu"),
+      screen.getByPlaceholderText("you@example.com"),
       { target: { value: "test@rangers.uwp.edu" } }
     );
     fireEvent.change(screen.getByTestId("password-input"), {
@@ -403,7 +356,7 @@ describe("RoleSignInForm", () => {
     renderWithChakra(<RoleSignInForm defaultRole="student" />);
 
     fireEvent.change(
-      screen.getByPlaceholderText("your.name@rangers.uwp.edu"),
+      screen.getByPlaceholderText("you@example.com"),
       { target: { value: "test@rangers.uwp.edu" } }
     );
     fireEvent.change(screen.getByTestId("password-input"), {
@@ -439,7 +392,7 @@ describe("RoleSignInForm", () => {
     renderWithChakra(<RoleSignInForm defaultRole="student" />);
 
     fireEvent.change(
-      screen.getByPlaceholderText("your.name@rangers.uwp.edu"),
+      screen.getByPlaceholderText("you@example.com"),
       { target: { value: "advisor@rangers.uwp.edu" } }
     );
     fireEvent.change(screen.getByTestId("password-input"), {
@@ -476,7 +429,7 @@ describe("RoleSignInForm", () => {
       fireEvent.click(screen.getByRole("button", { name: "Advisor" }));
     });
 
-    fireEvent.change(screen.getByPlaceholderText("your.name@uwp.edu"), {
+    fireEvent.change(screen.getByPlaceholderText("you@example.com"), {
       target: { value: "student@uwp.edu" },
     });
     fireEvent.change(screen.getByTestId("password-input"), {
