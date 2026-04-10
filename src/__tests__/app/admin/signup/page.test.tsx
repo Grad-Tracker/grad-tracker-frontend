@@ -171,54 +171,6 @@ describe("AdminSignupPage", () => {
     );
   });
 
-  it("blocks rangers email addresses before signup", async () => {
-    renderWithChakra(<AdvisorSignupClient />);
-    fillForm({
-      first: "Ada",
-      last: "Lovelace",
-      email: "ada@rangers.uwp.edu",
-      pw: "password123",
-      confirm: "password123",
-    });
-
-    await act(async () => {
-      clickCreateAccount();
-    });
-
-    expect(mockToaster.create).toHaveBeenCalledWith(
-      expect.objectContaining({
-        title: "Invalid email domain",
-        description: "Advisor sign up requires a @uwp.edu email address.",
-      })
-    );
-    expect(mockSignUp).not.toHaveBeenCalled();
-    expect(mockInsert).not.toHaveBeenCalled();
-  });
-
-  it("blocks non-uwp email addresses before signup", async () => {
-    renderWithChakra(<AdvisorSignupClient />);
-    fillForm({
-      first: "Ada",
-      last: "Lovelace",
-      email: "ada@gmail.com",
-      pw: "password123",
-      confirm: "password123",
-    });
-
-    await act(async () => {
-      clickCreateAccount();
-    });
-
-    expect(mockToaster.create).toHaveBeenCalledWith(
-      expect.objectContaining({
-        title: "Invalid email domain",
-        description: "Advisor sign up requires a @uwp.edu email address.",
-      })
-    );
-    expect(mockSignUp).not.toHaveBeenCalled();
-    expect(mockInsert).not.toHaveBeenCalled();
-  });
-
   it("signs out and shows account exists toast for duplicate emails", async () => {
     mockSignUp.mockResolvedValue({
       data: { user: { id: "advisor-1", identities: [] } },

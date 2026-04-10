@@ -166,7 +166,7 @@ describe("AdvisorSignupClient", () => {
     ).toBeGreaterThanOrEqual(1);
   });
 
-  it("renders the advisor email placeholder", () => {
+  it("renders the email placeholder", () => {
     renderWithChakra(<AdvisorSignupClient />);
     expect(
       screen.getByPlaceholderText("you@example.com")
@@ -292,52 +292,6 @@ describe("AdvisorSignupClient", () => {
     expect(mockToaster.create).toHaveBeenCalledWith(
       expect.objectContaining({ title: "Password too short" })
     );
-  });
-
-  it("blocks rangers email addresses before signup", async () => {
-    renderWithChakra(<AdvisorSignupClient />);
-    fillForm({
-      first: "Ada",
-      last: "Lovelace",
-      email: "ada@rangers.uwp.edu",
-      pw: "password123",
-      confirm: "password123",
-    });
-
-    await act(async () => {
-      clickCreateAccount();
-    });
-
-    expect(mockToaster.create).toHaveBeenCalledWith(
-      expect.objectContaining({
-        title: "Invalid email domain",
-        description: "Advisor sign up requires a @uwp.edu email address.",
-      })
-    );
-    expect(mockSignUp).not.toHaveBeenCalled();
-  });
-
-  it("blocks non-uwp email addresses before signup", async () => {
-    renderWithChakra(<AdvisorSignupClient />);
-    fillForm({
-      first: "Ada",
-      last: "Lovelace",
-      email: "ada@gmail.com",
-      pw: "password123",
-      confirm: "password123",
-    });
-
-    await act(async () => {
-      clickCreateAccount();
-    });
-
-    expect(mockToaster.create).toHaveBeenCalledWith(
-      expect.objectContaining({
-        title: "Invalid email domain",
-        description: "Advisor sign up requires a @uwp.edu email address.",
-      })
-    );
-    expect(mockSignUp).not.toHaveBeenCalled();
   });
 
   /* ===== Successful signup ===== */

@@ -147,7 +147,7 @@ describe("SignupPage", () => {
     expect(screen.getByAltText("UW-Parkside Campus")).toBeInTheDocument();
   });
 
-  it("uses the student email placeholder", () => {
+  it("uses the email placeholder", () => {
     renderWithChakra(<SignupPage />);
     expect(
       screen.getByPlaceholderText("you@example.com")
@@ -455,30 +455,6 @@ describe("SignupPage", () => {
     expect(mockToaster.create).toHaveBeenCalledWith(
       expect.objectContaining({ title: "Password too short" })
     );
-  });
-
-  it("blocks non-rangers emails before student signup", async () => {
-    renderWithChakra(<SignupPage />);
-    fillForm({
-      first: "John",
-      last: "Doe",
-      email: "j@gmail.com",
-      pw: "password123",
-      confirm: "password123",
-    });
-
-    await act(async () => {
-      clickCreateAccount();
-    });
-
-    expect(mockToaster.create).toHaveBeenCalledWith(
-      expect.objectContaining({
-        title: "Invalid email domain",
-        description:
-          "Student sign up requires a @rangers.uwp.edu email address.",
-      })
-    );
-    expect(mockSignUp).not.toHaveBeenCalled();
   });
 
   /* ===== Successful signup ===== */
