@@ -1,3 +1,4 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { DB_TABLES } from "./schema";
 
 export type GenEdCourse = {
@@ -21,7 +22,7 @@ function formatGenEdCourse(course: GenEdCourse): string {
 }
 
 export async function fetchGenEdBucketsWithCourses(
-  supabase: any,
+  supabase: SupabaseClient,
   opts?: { orderByName?: boolean }
 ): Promise<GenEdBucket[]> {
   let bucketsQuery = supabase

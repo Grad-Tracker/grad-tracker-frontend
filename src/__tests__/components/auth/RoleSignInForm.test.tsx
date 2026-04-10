@@ -261,7 +261,10 @@ describe("RoleSignInForm", () => {
 
     expect(mockSignInWithPassword).not.toHaveBeenCalled();
     expect(mockToaster.create).toHaveBeenCalledWith(
-      expect.objectContaining({ title: "Invalid email domain" })
+      expect.objectContaining({
+        title: "Invalid email domain",
+        description: "Student sign in requires a @rangers.uwp.edu email address.",
+      })
     );
   });
 
@@ -283,7 +286,10 @@ describe("RoleSignInForm", () => {
 
     expect(mockSignInWithPassword).not.toHaveBeenCalled();
     expect(mockToaster.create).toHaveBeenCalledWith(
-      expect.objectContaining({ title: "Invalid email domain" })
+      expect.objectContaining({
+        title: "Invalid email domain",
+        description: "Advisor sign in requires a @uwp.edu email address.",
+      })
     );
   });
 

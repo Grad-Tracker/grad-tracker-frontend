@@ -96,7 +96,7 @@ describe("SigninPage", () => {
     expect(mockToaster.create).toHaveBeenCalledWith(
       expect.objectContaining({
         title: "Invalid email domain",
-        description: "Student sign up requires a @rangers.uwp.edu email address.",
+        description: "Student sign in requires a @rangers.uwp.edu email address.",
       })
     );
   });
@@ -124,7 +124,7 @@ describe("SigninPage", () => {
     expect(mockToaster.create).toHaveBeenCalledWith(
       expect.objectContaining({
         title: "Invalid email domain",
-        description: "Advisor sign up requires a @uwp.edu email address.",
+        description: "Advisor sign in requires a @uwp.edu email address.",
       })
     );
   });

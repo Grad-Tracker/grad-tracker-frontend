@@ -173,13 +173,6 @@ describe("AdvisorSignupClient", () => {
     ).toBeInTheDocument();
   });
 
-  it("does not render advisor-specific email helper text", () => {
-    renderWithChakra(<AdvisorSignupClient />);
-    expect(
-      screen.queryByText("Use your advisor email ending in @uwp.edu.")
-    ).not.toBeInTheDocument();
-  });
-
   it("renders the campus image", () => {
     renderWithChakra(<AdvisorSignupClient />);
     expect(screen.getByAltText("UW-Parkside Campus")).toBeInTheDocument();

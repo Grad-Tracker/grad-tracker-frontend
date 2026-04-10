@@ -87,7 +87,7 @@ export default function RoleSignInForm({
     if (selectedRole === "student" && !isStudentEmail(normalized)) {
       toaster.create({
         title: "Invalid email domain",
-        description: "Student sign up requires a @rangers.uwp.edu email address.",
+        description: "Student sign in requires a @rangers.uwp.edu email address.",
         type: "error",
       });
       return;
@@ -96,7 +96,7 @@ export default function RoleSignInForm({
     if (selectedRole === "advisor" && !isAdvisorEmail(normalized)) {
       toaster.create({
         title: "Invalid email domain",
-        description: "Advisor sign up requires a @uwp.edu email address.",
+        description: "Advisor sign in requires a @uwp.edu email address.",
         type: "error",
       });
       return;
