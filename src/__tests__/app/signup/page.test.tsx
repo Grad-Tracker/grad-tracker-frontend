@@ -90,7 +90,7 @@ function fillForm(
   }
   if (opts.email) {
     fireEvent.change(
-      screen.getByPlaceholderText("your.name@rangers.uwp.edu"),
+      screen.getByPlaceholderText("you@example.com"),
       { target: { value: opts.email } }
     );
   }
@@ -150,7 +150,7 @@ describe("SignupPage", () => {
   it("uses the student email placeholder", () => {
     renderWithChakra(<SignupPage />);
     expect(
-      screen.getByPlaceholderText("your.name@rangers.uwp.edu")
+      screen.getByPlaceholderText("you@example.com")
     ).toBeInTheDocument();
   });
 

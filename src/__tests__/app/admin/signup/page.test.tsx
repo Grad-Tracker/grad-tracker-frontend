@@ -84,7 +84,7 @@ function fillForm(opts: {
     });
   }
   if (opts.email) {
-    fireEvent.change(screen.getByPlaceholderText("your.name@uwp.edu"), {
+    fireEvent.change(screen.getByPlaceholderText("you@example.com"), {
       target: { value: opts.email },
     });
   }
@@ -145,7 +145,7 @@ describe("AdminSignupPage", () => {
     ).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText("First Name").length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText("Last Name").length).toBeGreaterThanOrEqual(1);
-    expect(screen.getByPlaceholderText("your.name@uwp.edu")).toBeInTheDocument();
+    expect(screen.getByPlaceholderText("you@example.com")).toBeInTheDocument();
     expect(screen.getAllByText("Email").length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText("Password").length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText("Confirm Password").length).toBeGreaterThanOrEqual(1);

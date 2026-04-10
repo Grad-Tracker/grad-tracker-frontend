@@ -55,3 +55,7 @@ supabase/*
 !supabase/sql/
 !supabase/sql/*.sql
 supabase/.temp/
+
+.claude/worktrees/
+
+.claude/worktrees/

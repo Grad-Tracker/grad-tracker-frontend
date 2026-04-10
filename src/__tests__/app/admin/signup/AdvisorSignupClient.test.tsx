@@ -93,7 +93,7 @@ function fillForm(
     });
   }
   if (opts.email) {
-    fireEvent.change(screen.getByPlaceholderText("your.name@uwp.edu"), {
+    fireEvent.change(screen.getByPlaceholderText("you@example.com"), {
       target: { value: opts.email },
     });
   }
@@ -169,15 +169,15 @@ describe("AdvisorSignupClient", () => {
   it("renders the advisor email placeholder", () => {
     renderWithChakra(<AdvisorSignupClient />);
     expect(
-      screen.getByPlaceholderText("your.name@uwp.edu")
+      screen.getByPlaceholderText("you@example.com")
     ).toBeInTheDocument();
   });
 
-  it("renders the advisor email helper text", () => {
+  it("does not render advisor-specific email helper text", () => {
     renderWithChakra(<AdvisorSignupClient />);
     expect(
-      screen.getAllByText("Use your advisor email ending in @uwp.edu.").length
-    ).toBeGreaterThanOrEqual(1);
+      screen.queryByText("Use your advisor email ending in @uwp.edu.")
+    ).not.toBeInTheDocument();
   });
 
   it("renders the campus image", () => {

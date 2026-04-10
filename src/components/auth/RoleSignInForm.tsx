@@ -18,7 +18,7 @@ import { Field } from "@/components/ui/field";
 import { PasswordInput } from "@/components/ui/password-input";
 import { toaster } from "@/components/ui/toaster";
 import { createClient } from "@/lib/supabase/client";
-import { normalizeEmail } from "@/lib/email-validation";
+import { isAdvisorEmail, isStudentEmail, normalizeEmail } from "@/lib/email-validation";
 import AuthPageLayout from "./AuthPageLayout";
 
 type Role = "student" | "advisor";
@@ -83,6 +83,24 @@ export default function RoleSignInForm({
     }
 
     const normalized = normalizeEmail(email);
+
+    if (selectedRole === "student" && !isStudentEmail(normalized)) {
+      toaster.create({
+        title: "Invalid email domain",
+        description: "Student sign up requires a @rangers.uwp.edu email address.",
+        type: "error",
+      });
+      return;
+    }
+
+    if (selectedRole === "advisor" && !isAdvisorEmail(normalized)) {
+      toaster.create({
+        title: "Invalid email domain",
+        description: "Advisor sign up requires a @uwp.edu email address.",
+        type: "error",
+      });
+      return;
+    }
 
     setLoading(true);
 

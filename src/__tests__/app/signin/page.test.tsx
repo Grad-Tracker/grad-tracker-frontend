@@ -58,7 +58,7 @@ describe("SigninPage", () => {
     renderWithChakra(<SigninPage />);
     expect(screen.getAllByText("Email").length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText("Password").length).toBeGreaterThanOrEqual(1);
-    expect(screen.getByPlaceholderText("your.name@rangers.uwp.edu")).toBeInTheDocument();
+    expect(screen.getByPlaceholderText("you@example.com")).toBeInTheDocument();
   });
 
   it("switching to Advisor updates the heading and helper text", async () => {
@@ -72,13 +72,14 @@ describe("SigninPage", () => {
       screen.getAllByText("Manage programs, Gen-Ed buckets, and course catalog.").length
     ).toBeGreaterThanOrEqual(1);
     expect(screen.getByRole("button", { name: "Advisor" })).toHaveAttribute("aria-pressed", "true");
-    expect(screen.getByPlaceholderText("your.name@uwp.edu")).toBeInTheDocument();
+    expect(screen.getByPlaceholderText("you@example.com")).toBeInTheDocument();
+    expect(screen.getByText("You'll be taken to the advisor console.")).toBeInTheDocument();
   });
 
   it("student sign in blocks advisor-domain emails", async () => {
     renderWithChakra(<SigninPage />);
 
-    fireEvent.change(screen.getByPlaceholderText("your.name@rangers.uwp.edu"), {
+    fireEvent.change(screen.getByPlaceholderText("you@example.com"), {
       target: { value: "advisor@uwp.edu" },
     });
     fireEvent.change(screen.getByTestId("password-input"), {
@@ -106,7 +107,7 @@ describe("SigninPage", () => {
       fireEvent.click(screen.getByRole("button", { name: "Advisor" }));
     });
 
-    fireEvent.change(screen.getByPlaceholderText("your.name@uwp.edu"), {
+    fireEvent.change(screen.getByPlaceholderText("you@example.com"), {
       target: { value: "student@rangers.uwp.edu" },
     });
     fireEvent.change(screen.getByTestId("password-input"), {
@@ -144,7 +145,7 @@ describe("SigninPage", () => {
     mockSignInWithPassword.mockResolvedValue({ data: {}, error: null });
     renderWithChakra(<SigninPage />);
 
-    fireEvent.change(screen.getByPlaceholderText("your.name@rangers.uwp.edu"), {
+    fireEvent.change(screen.getByPlaceholderText("you@example.com"), {
       target: { value: "test@rangers.uwp.edu" },
     });
     fireEvent.change(screen.getByTestId("password-input"), {
@@ -172,7 +173,7 @@ describe("SigninPage", () => {
     });
     renderWithChakra(<SigninPage />);
 
-    fireEvent.change(screen.getByPlaceholderText("your.name@rangers.uwp.edu"), {
+    fireEvent.change(screen.getByPlaceholderText("you@example.com"), {
       target: { value: "test@rangers.uwp.edu" },
     });
     fireEvent.change(screen.getByTestId("password-input"), {
@@ -200,7 +201,7 @@ describe("SigninPage", () => {
     });
     renderWithChakra(<SigninPage />);
 
-    fireEvent.change(screen.getByPlaceholderText("your.name@rangers.uwp.edu"), {
+    fireEvent.change(screen.getByPlaceholderText("you@example.com"), {
       target: { value: "test@rangers.uwp.edu" },
     });
     fireEvent.change(screen.getByTestId("password-input"), {
@@ -229,7 +230,7 @@ describe("SigninPage", () => {
     mockSignInWithPassword.mockResolvedValue({ data: {}, error: null });
     renderWithChakra(<SigninPage />);
 
-    fireEvent.change(screen.getByPlaceholderText("your.name@rangers.uwp.edu"), {
+    fireEvent.change(screen.getByPlaceholderText("you@example.com"), {
       target: { value: "test@rangers.uwp.edu" },
     });
     fireEvent.change(screen.getByTestId("password-input"), {
@@ -261,7 +262,7 @@ describe("SigninPage", () => {
       fireEvent.click(screen.getByRole("button", { name: "Advisor" }));
     });
 
-    fireEvent.change(screen.getByPlaceholderText("your.name@uwp.edu"), {
+    fireEvent.change(screen.getByPlaceholderText("you@example.com"), {
       target: { value: "advisor@uwp.edu" },
     });
     fireEvent.change(screen.getByTestId("password-input"), {
@@ -287,7 +288,7 @@ describe("SigninPage", () => {
     });
     renderWithChakra(<SigninPage />);
 
-    fireEvent.change(screen.getByPlaceholderText("your.name@rangers.uwp.edu"), {
+    fireEvent.change(screen.getByPlaceholderText("you@example.com"), {
       target: { value: "advisor@rangers.uwp.edu" },
     });
     fireEvent.change(screen.getByTestId("password-input"), {
@@ -322,7 +323,7 @@ describe("SigninPage", () => {
       fireEvent.click(screen.getByRole("button", { name: "Advisor" }));
     });
 
-    fireEvent.change(screen.getByPlaceholderText("your.name@uwp.edu"), {
+    fireEvent.change(screen.getByPlaceholderText("you@example.com"), {
       target: { value: "student@uwp.edu" },
     });
     fireEvent.change(screen.getByTestId("password-input"), {
