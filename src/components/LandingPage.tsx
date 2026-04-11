@@ -132,7 +132,9 @@ export default function LandingPage() {
             <br />
             <Text
               as="span"
-              bgGradient="linear(135deg, blue.200, purple.200)"
+              bgGradient="to-r"
+              gradientFrom="blue.200"
+              gradientTo="purple.200"
               backgroundClip="text"
               color="transparent"
             >
@@ -342,7 +344,9 @@ export default function LandingPage() {
               left="calc(16.67% + 20px)"
               right="calc(16.67% + 20px)"
               h="2px"
-              bgGradient="linear(to-r, blue.500, purple.500)"
+              bgGradient="to-r"
+              gradientFrom="blue.500"
+              gradientTo="purple.500"
               opacity={0.2}
             />
 
@@ -511,7 +515,7 @@ export default function LandingPage() {
                   left="0"
                   right="0"
                   h="1px"
-                  bgGradient="linear(to-r, transparent, pink.500, purple.600, transparent)"
+                  bgImage="linear-gradient(to-r, var(--chakra-colors-transparent), var(--chakra-colors-pink-500), var(--chakra-colors-purple-600), var(--chakra-colors-transparent))"
                   opacity={0.4}
                 />
                 <VStack
@@ -558,7 +562,9 @@ export default function LandingPage() {
                       w="7"
                       h="7"
                       borderRadius="full"
-                      bgGradient="linear(135deg, pink.500, purple.600)"
+                      bgGradient="to-br"
+                      gradientFrom="pink.500"
+                      gradientTo="purple.600"
                       color="white"
                       fontSize="sm"
                       align="center"
@@ -602,7 +608,9 @@ export default function LandingPage() {
       <Box
         position="relative"
         overflow="hidden"
-        bgGradient="linear(to-b, gray.900, gray.950)"
+        bgGradient="to-b"
+        gradientFrom="gray.900"
+        gradientTo="gray.950"
       >
         {/* Background glow */}
         <Box
@@ -651,7 +659,9 @@ export default function LandingPage() {
                 <br />
                 <Text
                   as="span"
-                  bgGradient="linear(135deg, blue.200, purple.200)"
+                  bgGradient="to-r"
+                  gradientFrom="blue.200"
+                  gradientTo="purple.200"
                   backgroundClip="text"
                   color="transparent"
                 >
