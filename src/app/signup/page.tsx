@@ -245,7 +245,7 @@ export default function SignupPage() {
           {confirmPassword.length > 0 && (
             <Text
               fontSize="xs"
-              color={password === confirmPassword ? "green.500" : "red.500"}
+              color={password === confirmPassword ? "green.600" : "red.600"}
               mt="1"
             >
               {password === confirmPassword
