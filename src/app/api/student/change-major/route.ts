@@ -10,7 +10,7 @@ export async function POST(request: Request) {
   const body = await request.json().catch(() => null);
   const programId = Number(body?.programId);
 
-  if (Number.isNaN(programId)) {
+  if (!Number.isSafeInteger(programId) || programId <= 0) {
     return NextResponse.json({ error: "Invalid program id." }, { status: 400 });
   }
 
@@ -21,7 +21,11 @@ export async function POST(request: Request) {
     .maybeSingle();
 
   if (studentError) {
-    return NextResponse.json({ error: studentError.message }, { status: 500 });
+    console.error("Failed to fetch student for change-major", {
+      userId: user.id,
+      error: studentError,
+    });
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 
   if (!student) {
@@ -29,12 +33,17 @@ export async function POST(request: Request) {
   }
 
   const { error } = await supabase.rpc("change_student_major", {
-    p_student_id: Number(student.id),
     p_program_id: programId,
   });
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error("Failed to change student major", {
+      userId: user.id,
+      studentId: Number(student.id),
+      programId,
+      error,
+    });
+    return NextResponse.json({ error: "Unable to change major" }, { status: 500 });
   }
 
   return NextResponse.json({ ok: true });
