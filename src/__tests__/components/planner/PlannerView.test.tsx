@@ -1,6 +1,6 @@
 // src/__tests__/components/planner/PlannerView.test.tsx
 import { describe, it, expect, vi } from "vitest";
-import { screen } from "@testing-library/react";
+import { screen, waitFor } from "@testing-library/react";
 import React from "react";
 import { renderWithChakra } from "../../helpers/mocks";
 
@@ -25,5 +25,14 @@ describe("PlannerView", () => {
   it("mounts in readonly mode without throwing", () => {
     renderWithChakra(<PlannerView studentId={1} mode="readonly" />);
     expect(document.body).toBeTruthy();
+  });
+
+  it("readonly mode does not render Create Plan button", async () => {
+    renderWithChakra(<PlannerView studentId={1} mode="readonly" />);
+    await waitFor(() => {
+      expect(screen.queryByRole("button", { name: /create plan/i })).toBeNull();
+      expect(screen.queryByRole("button", { name: /add semester/i })).toBeNull();
+      expect(screen.queryByRole("button", { name: /delete plan/i })).toBeNull();
+    });
   });
 });

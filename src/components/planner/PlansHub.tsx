@@ -28,6 +28,7 @@ interface PlansHubProps {
   onCreatePlan: () => void;
   onRenamePlan: (planId: number, newName: string) => Promise<void>;
   onDeletePlan: (planId: number) => void;
+  canEdit?: boolean;
 }
 
 export default function PlansHub({
@@ -36,6 +37,7 @@ export default function PlansHub({
   onCreatePlan,
   onRenamePlan,
   onDeletePlan,
+  canEdit = true,
 }: PlansHubProps) {
   const totalCredits = plans.reduce((s, p) => s + p.total_credits, 0);
   const totalCourses = plans.reduce((s, p) => s + p.course_count, 0);
@@ -115,22 +117,24 @@ export default function PlansHub({
           </Text>
         </Box>
 
-        <Button
-          aria-label="Create a new plan"
-          colorPalette="blue"
-          borderRadius="xl"
-          size="lg"
-          onClick={onCreatePlan}
-          boxShadow="0 2px 12px rgba(37, 99, 235, 0.2)"
-          _hover={{
-            boxShadow: "0 4px 20px rgba(37, 99, 235, 0.3)",
-            transform: "translateY(-1px)",
-          }}
-          transition="all 0.2s"
-        >
-          <LuPlus size={18} />
-          New Plan
-        </Button>
+        {canEdit && (
+          <Button
+            aria-label="Create a new plan"
+            colorPalette="blue"
+            borderRadius="xl"
+            size="lg"
+            onClick={onCreatePlan}
+            boxShadow="0 2px 12px rgba(37, 99, 235, 0.2)"
+            _hover={{
+              boxShadow: "0 4px 20px rgba(37, 99, 235, 0.3)",
+              transform: "translateY(-1px)",
+            }}
+            transition="all 0.2s"
+          >
+            <LuPlus size={18} />
+            New Plan
+          </Button>
+        )}
       </Flex>
 
       {/* Quick stats */}
@@ -204,16 +208,18 @@ export default function PlansHub({
           <Text color="fg.muted" fontSize="sm" mb="6" textAlign="center" maxW="360px">
             Create your first graduation plan to start mapping out your semesters and courses.
           </Text>
-          <Button
-            aria-label="Create your first plan"
-            colorPalette="blue"
-            borderRadius="xl"
-            size="lg"
-            onClick={onCreatePlan}
-          >
-            <LuPlus size={18} />
-            Create Your First Plan
-          </Button>
+          {canEdit && (
+            <Button
+              aria-label="Create your first plan"
+              colorPalette="blue"
+              borderRadius="xl"
+              size="lg"
+              onClick={onCreatePlan}
+            >
+              <LuPlus size={18} />
+              Create Your First Plan
+            </Button>
+          )}
         </Flex>
       ) : (
         <Grid
@@ -233,61 +239,64 @@ export default function PlansHub({
               onDelete={onDeletePlan}
               canDelete={plans.length > 1}
               index={i}
+              canEdit={canEdit}
             />
           ))}
 
           {/* New Plan card */}
-          <Box
-            role="button"
-            tabIndex={0}
-            aria-label="Create a new plan"
-            borderRadius="2xl"
-            borderWidth="2px"
-            borderStyle="dashed"
-            borderColor="border.subtle"
-            display="flex"
-            flexDirection="column"
-            alignItems="center"
-            justifyContent="center"
-            minH="200px"
-            cursor="pointer"
-            transition="all 0.3s cubic-bezier(0.4, 0, 0.2, 1)"
-            _hover={{
-              borderColor: "blue.300",
-              bg: "blue.subtle",
-              transform: "translateY(-2px)",
-            }}
-            onClick={onCreatePlan}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
-                onCreatePlan();
-              }
-            }}
-            className="plan-card-enter"
-            style={{ animationDelay: `${plans.length * 80}ms` }}
-          >
+          {canEdit && (
             <Box
-              w="12"
-              h="12"
+              role="button"
+              tabIndex={0}
+              aria-label="Create a new plan"
               borderRadius="2xl"
-              bg="bg.subtle"
+              borderWidth="2px"
+              borderStyle="dashed"
+              borderColor="border.subtle"
               display="flex"
+              flexDirection="column"
               alignItems="center"
               justifyContent="center"
-              mb="3"
-              transition="all 0.2s"
-              _groupHover={{ bg: "blue.subtle" }}
+              minH="200px"
+              cursor="pointer"
+              transition="all 0.3s cubic-bezier(0.4, 0, 0.2, 1)"
+              _hover={{
+                borderColor: "blue.300",
+                bg: "blue.subtle",
+                transform: "translateY(-2px)",
+              }}
+              onClick={onCreatePlan}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  onCreatePlan();
+                }
+              }}
+              className="plan-card-enter"
+              style={{ animationDelay: `${plans.length * 80}ms` }}
             >
-              <LuPlus size={24} color="var(--chakra-colors-fg-muted)" />
+              <Box
+                w="12"
+                h="12"
+                borderRadius="2xl"
+                bg="bg.subtle"
+                display="flex"
+                alignItems="center"
+                justifyContent="center"
+                mb="3"
+                transition="all 0.2s"
+                _groupHover={{ bg: "blue.subtle" }}
+              >
+                <LuPlus size={24} color="var(--chakra-colors-fg-muted)" />
+              </Box>
+              <Text fontWeight="600" fontSize="sm" color="fg.muted">
+                Create New Plan
+              </Text>
+              <Text fontSize="xs" color="fg.subtle" mt="1">
+                Explore a different scenario
+              </Text>
             </Box>
-            <Text fontWeight="600" fontSize="sm" color="fg.muted">
-              Create New Plan
-            </Text>
-            <Text fontSize="xs" color="fg.subtle" mt="1">
-              Explore a different scenario
-            </Text>
-          </Box>
+          )}
         </Grid>
       )}
 

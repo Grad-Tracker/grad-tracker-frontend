@@ -190,14 +190,14 @@ export default function PlannerView({
   const handleTrackSelect = useCallback(
     (trackId: number) => {
       setSelectedTrackId(trackId);
-      if (studentId && activePlanId) {
+      if (studentId && activePlanId && canEdit) {
         localStorage.setItem(
           `gradtracker:track:${studentId}:${activePlanId}`,
           String(trackId)
         );
       }
     },
-    [studentId, activePlanId]
+    [studentId, activePlanId, canEdit]
   );
 
   // View state: hub (plan cards) or workspace (planner grid)
@@ -225,10 +225,11 @@ export default function PlannerView({
   } | null>(null);
 
   // DnD sensors
-  const sensors = useSensors(
+  const editSensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
     useSensor(KeyboardSensor)
   );
+  const sensors = canEdit ? editSensors : [];
 
   // Derived data
   const activePlan = plans.find((p) => p.id === activePlanId) ?? null;
@@ -536,7 +537,7 @@ export default function PlannerView({
       setPlans((prev) =>
         prev.map((p) => (p.id === planId ? { ...p, name: newName } : p))
       );
-      if (studentId) {
+      if (studentId && canEdit) {
         await safeLogActivity(studentId, "plan_updated", `Renamed plan to ${newName}`, {
           plan_id: planId,
           previous_name: previousPlan?.name ?? null,
@@ -579,9 +580,11 @@ export default function PlannerView({
         }
       }
 
-      await safeLogActivity(studentId, "plan_deleted", `Deleted plan ${deletedPlan?.name ?? "Untitled Plan"}`, {
-        plan_id: planId,
-      });
+      if (canEdit) {
+        await safeLogActivity(studentId, "plan_deleted", `Deleted plan ${deletedPlan?.name ?? "Untitled Plan"}`, {
+          plan_id: planId,
+        });
+      }
       toaster.create({ title: "Plan deleted", type: "info" });
     } catch (err) {
       console.error("Delete plan failed:", err);
@@ -866,6 +869,20 @@ export default function PlannerView({
       h="calc(100vh - 80px)"
       overflow="hidden"
     >
+      {!canEdit && (
+        <Box
+          bg="yellow.subtle"
+          color="yellow.fg"
+          px="4"
+          py="2"
+          borderRadius="md"
+          mb="2"
+        >
+          <Text fontSize="sm" fontWeight="500">
+            Viewing as advisor — read only.
+          </Text>
+        </Box>
+      )}
       {view === "hub" ? (
         <>
           <PlansHub
@@ -874,6 +891,7 @@ export default function PlannerView({
             onCreatePlan={() => setCreatePlanDialogOpen(true)}
             onRenamePlan={handleRenamePlan}
             onDeletePlan={handleDeletePlanRequest}
+            canEdit={canEdit}
           />
         </>
       ) : (
@@ -928,16 +946,18 @@ export default function PlannerView({
               </HStack>
 
               <HStack gap="2">
-                <Button
-                  aria-label="Add a semester to the active plan"
-                  size="sm"
-                  variant="outline"
-                  borderRadius="lg"
-                  onClick={() => setAddDialogOpen(true)}
-                >
-                  <LuPlus size={16} />
-                  Add Semester
-                </Button>
+                {canEdit && (
+                  <Button
+                    aria-label="Add a semester to the active plan"
+                    size="sm"
+                    variant="outline"
+                    borderRadius="lg"
+                    onClick={() => setAddDialogOpen(true)}
+                  >
+                    <LuPlus size={16} />
+                    Add Semester
+                  </Button>
+                )}
               </HStack>
             </Flex>
           </Box>
@@ -996,6 +1016,7 @@ export default function PlannerView({
                       selectedTrackId={selectedTrackId}
                       onTrackSelect={handleTrackSelect}
                       genEdBuckets={genEdBuckets}
+                      canEdit={canEdit}
                     />
                   </Box>
 
@@ -1052,16 +1073,18 @@ export default function PlannerView({
                         <Text fontSize="xs" color="fg.muted" mb="5">
                           Drag courses from the pool on the left into your semesters to build your plan.
                         </Text>
-                        <Button
-                          aria-label="Add the first semester to this plan"
-                          colorPalette="blue"
-                          borderRadius="lg"
-                          size="sm"
-                          onClick={() => setAddDialogOpen(true)}
-                        >
-                          <LuPlus size={16} />
-                          Add First Semester
-                        </Button>
+                        {canEdit && (
+                          <Button
+                            aria-label="Add the first semester to this plan"
+                            colorPalette="blue"
+                            borderRadius="lg"
+                            size="sm"
+                            onClick={() => setAddDialogOpen(true)}
+                          >
+                            <LuPlus size={16} />
+                            Add First Semester
+                          </Button>
+                        )}
                       </Box>
                     </Flex>
                   ) : (
@@ -1069,11 +1092,16 @@ export default function PlannerView({
                       terms={terms}
                       plannedCourses={plannedCourses}
                       onRemoveTerm={handleRemoveTermRequest}
-                      onRemoveCourse={async (course, termId) => {
-                        await handleRemoveCourseFromTerm(course, termId);
-                      }}
+                      onRemoveCourse={
+                        canEdit
+                          ? async (course, termId) => {
+                              await handleRemoveCourseFromTerm(course, termId);
+                            }
+                          : undefined
+                      }
                       isRemovingCourse={removingCourseFromDrawer}
                       isGraduatePlan={isGraduatePlan}
+                      canEdit={canEdit}
                     />
                   )}
                   </Box>
@@ -1101,40 +1129,48 @@ export default function PlannerView({
       )}
 
       {/* Dialogs */}
-      <AddSemesterDialog
-        open={addDialogOpen}
-        onOpenChange={setAddDialogOpen}
-        onAdd={handleAddSemester}
-        existingTerms={terms}
-      />
+      {canEdit && (
+        <AddSemesterDialog
+          open={addDialogOpen}
+          onOpenChange={setAddDialogOpen}
+          onAdd={handleAddSemester}
+          existingTerms={terms}
+        />
+      )}
 
-      <RemoveSemesterDialog
-        open={removeDialog.open}
-        onOpenChange={(open) => setRemoveDialog((prev) => ({ ...prev, open }))}
-        onConfirm={() => handleRemoveTermConfirmed()}
-        term={terms.find((t) => t.id === removeDialog.termId) ?? null}
-        courseCount={
-          removeDialog.termId
-            ? plannedCourses.filter((pc) => pc.term_id === removeDialog.termId).length
-            : 0
-        }
-      />
+      {canEdit && (
+        <RemoveSemesterDialog
+          open={removeDialog.open}
+          onOpenChange={(open) => setRemoveDialog((prev) => ({ ...prev, open }))}
+          onConfirm={() => handleRemoveTermConfirmed()}
+          term={terms.find((t) => t.id === removeDialog.termId) ?? null}
+          courseCount={
+            removeDialog.termId
+              ? plannedCourses.filter((pc) => pc.term_id === removeDialog.termId).length
+              : 0
+          }
+        />
+      )}
 
-      <CreatePlanDialog
-        open={createPlanDialogOpen}
-        onOpenChange={setCreatePlanDialogOpen}
-        onCreatePlan={handleCreatePlan}
-        existingPlanCount={plans.length}
-      />
+      {canEdit && (
+        <CreatePlanDialog
+          open={createPlanDialogOpen}
+          onOpenChange={setCreatePlanDialogOpen}
+          onCreatePlan={handleCreatePlan}
+          existingPlanCount={plans.length}
+        />
+      )}
 
-      <DeletePlanDialog
-        open={deletePlanDialog.open}
-        onOpenChange={(open) => setDeletePlanDialog((prev) => ({ ...prev, open }))}
-        onConfirm={handleDeletePlanConfirmed}
-        plan={plans.find((p) => p.id === deletePlanDialog.planId) ?? null}
-      />
+      {canEdit && (
+        <DeletePlanDialog
+          open={deletePlanDialog.open}
+          onOpenChange={(open) => setDeletePlanDialog((prev) => ({ ...prev, open }))}
+          onConfirm={handleDeletePlanConfirmed}
+          plan={plans.find((p) => p.id === deletePlanDialog.planId) ?? null}
+        />
+      )}
 
-      {studentId && (
+      {canEdit && studentId && (
         <AutoGenerateDialog
           open={autoGenerateDialogOpen}
           onOpenChange={setAutoGenerateDialogOpen}

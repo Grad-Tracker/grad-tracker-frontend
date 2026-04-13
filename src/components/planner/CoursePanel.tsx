@@ -37,6 +37,7 @@ interface CoursePanelProps {
   selectedTrackId?: number | null;
   onTrackSelect?: (trackId: number) => void;
   genEdBuckets?: GenEdBucketWithCourses[];
+  canEdit?: boolean;
 }
 
 export default function CoursePanel({
@@ -53,6 +54,7 @@ export default function CoursePanel({
   selectedTrackId = null,
   onTrackSelect,
   genEdBuckets = [],
+  canEdit = true,
 }: CoursePanelProps) {
   const { isOver, setNodeRef } = useDroppable({ id: "course-panel" });
   const [search, setSearch] = useState("");
@@ -350,6 +352,7 @@ export default function CoursePanel({
                       isCompleted={completedCourseIds.has(row.course.id)}
                       isPlanned={plannedCourseIds.has(row.course.id)}
                       dragContextId={row.blockId}
+                      dragDisabled={!canEdit}
                     />
                   </Box>
                 )}
