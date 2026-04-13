@@ -5,12 +5,13 @@ import { ChakraProvider, defaultSystem } from "@chakra-ui/react";
 
 /* ---------------- HOISTED MOCKS ---------------- */
 
-const { mockGetUser, mockUpdateUser, mockFrom, mockToasterCreate, mockPush } = vi.hoisted(() => ({
+const { mockGetUser, mockUpdateUser, mockFrom, mockToasterCreate, mockPush, mockFetch } = vi.hoisted(() => ({
   mockGetUser: vi.fn(),
   mockUpdateUser: vi.fn(),
   mockFrom: vi.fn(),
   mockToasterCreate: vi.fn(),
   mockPush: vi.fn(),
+  mockFetch: vi.fn(),
 }));
 
 vi.mock("next/navigation", () => ({
@@ -105,6 +106,11 @@ function setupMocks(
 describe("SettingsPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.stubGlobal("fetch", mockFetch);
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: vi.fn().mockResolvedValue({ success: true }),
+    });
   });
 
   /* ---- Loading ---- */
@@ -113,6 +119,22 @@ describe("SettingsPage", () => {
     mockGetUser.mockReturnValue(new Promise(() => {})); // never resolves
     renderSettings();
     expect(screen.getByTestId("settings-skeleton")).toBeInTheDocument();
+  });
+
+  it("shows an error toast when the initial settings load fails", async () => {
+    mockGetUser.mockRejectedValue(new Error("load failed"));
+
+    await act(async () => { renderSettings(); });
+
+    await waitFor(() => {
+      expect(mockToasterCreate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: "Failed to load settings",
+          description: "load failed",
+          type: "error",
+        })
+      );
+    });
   });
 
   /* ---- Profile section ---- */
@@ -354,10 +376,12 @@ describe("SettingsPage", () => {
 
     expect(mockToasterCreate).toHaveBeenCalledWith(
       expect.objectContaining({
-        title: "Verification email sent",
+        title: "Confirmation email sent",
         type: "success",
       })
     );
+    expect(screen.getByPlaceholderText("you@example.com")).toHaveValue("updated@uwp.edu");
+    expect(screen.getByText("Update Email")).toBeDisabled();
   });
 
   it("shows an error toast when updating the email fails", async () => {
@@ -469,38 +493,7 @@ describe("SettingsPage", () => {
   });
 
   it("resets progress successfully and routes back to the dashboard", async () => {
-    const studentEqFn = vi.fn().mockResolvedValue({ data: null, error: null });
-    const studentUpdateFn = vi.fn().mockReturnValue({ eq: studentEqFn });
-
-    mockGetUser.mockResolvedValue({
-      data: { user: { id: "auth-uuid", email: "test@uwp.edu" } },
-      error: null,
-    });
-
-    mockFrom.mockImplementation((table: string) => {
-      if (table === "students") {
-        const chain = createChainMock();
-        chain.maybeSingle = vi.fn().mockResolvedValue({ data: DEFAULT_STUDENT, error: null });
-        chain.update = studentUpdateFn;
-        return chain;
-      }
-      if (
-        table === "student_course_history" ||
-        table === "student_planned_courses" ||
-        table === "student_programs"
-      ) {
-        const chain = createChainMock();
-        chain.delete = vi.fn().mockReturnValue(chain);
-        chain.eq = vi.fn().mockResolvedValue({ data: null, error: null });
-        return chain;
-      }
-      if (table === "notification_preferences") {
-        const chain = createChainMock();
-        chain.maybeSingle = vi.fn().mockResolvedValue({ data: null, error: null });
-        return chain;
-      }
-      return createChainMock();
-    });
+    setupMocks();
 
     await act(async () => { renderSettings(); });
     await waitFor(() => screen.getByText("Reset All Progress"));
@@ -513,7 +506,7 @@ describe("SettingsPage", () => {
       fireEvent.click(screen.getByText("Yes, Reset"));
     });
 
-    expect(studentUpdateFn).toHaveBeenCalledWith({ has_completed_onboarding: false });
+    expect(mockFetch).toHaveBeenCalledWith("/api/student/reset-progress", { method: "POST" });
     expect(mockToasterCreate).toHaveBeenCalledWith(
       expect.objectContaining({ title: "Progress reset", type: "success" })
     );
@@ -521,35 +514,10 @@ describe("SettingsPage", () => {
   });
 
   it("shows an error toast when resetting progress fails", async () => {
-    mockGetUser.mockResolvedValue({
-      data: { user: { id: "auth-uuid", email: "test@uwp.edu" } },
-      error: null,
-    });
-
-    mockFrom.mockImplementation((table: string) => {
-      if (table === "students") {
-        const chain = createChainMock();
-        chain.maybeSingle = vi.fn().mockResolvedValue({ data: DEFAULT_STUDENT, error: null });
-        return chain;
-      }
-      if (table === "student_course_history") {
-        const chain = createChainMock();
-        chain.delete = vi.fn().mockReturnValue(chain);
-        chain.eq = vi.fn().mockResolvedValue({ data: null, error: new Error("reset failed") });
-        return chain;
-      }
-      if (table === "student_planned_courses" || table === "student_programs") {
-        const chain = createChainMock();
-        chain.delete = vi.fn().mockReturnValue(chain);
-        chain.eq = vi.fn().mockResolvedValue({ data: null, error: null });
-        return chain;
-      }
-      if (table === "notification_preferences") {
-        const chain = createChainMock();
-        chain.maybeSingle = vi.fn().mockResolvedValue({ data: null, error: null });
-        return chain;
-      }
-      return createChainMock();
+    setupMocks();
+    mockFetch.mockResolvedValueOnce({
+      ok: false,
+      json: vi.fn().mockResolvedValue({ error: "reset failed" }),
     });
 
     await act(async () => { renderSettings(); });

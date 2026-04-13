@@ -80,6 +80,7 @@ export default function SettingsPage() {
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [newEmail, setNewEmail] = useState("");
+  const [pendingEmail, setPendingEmail] = useState<string | null>(null);
   const [gradSemester, setGradSemester] = useState("");
   const [gradYear, setGradYear] = useState("");
   const [notifPrefs, setNotifPrefs] = useState<NotifPrefs>(DEFAULT_PREFS);
@@ -107,6 +108,7 @@ export default function SettingsPage() {
 
         setEmail(user.email ?? "");
         setNewEmail(user.email ?? "");
+        setPendingEmail(null);
 
         const { data: student } = await supabase
           .from(DB_TABLES.students)
@@ -150,6 +152,13 @@ export default function SettingsPage() {
           }
           setMajors(allMajors);
         }
+      } catch (e: unknown) {
+        const msg = e instanceof Error ? e.message : "Please try again.";
+        toaster.create({
+          title: "Failed to load settings",
+          description: msg,
+          type: "error",
+        });
       } finally {
         setLoading(false);
       }
@@ -187,10 +196,10 @@ export default function SettingsPage() {
       const supabase = createClient();
       const { error } = await supabase.auth.updateUser({ email: trimmed });
       if (error) throw error;
-      setEmail(trimmed);
+      setPendingEmail(trimmed);
       toaster.create({
-        title: "Verification email sent",
-        description: "Check your inbox to confirm the new email address.",
+        title: "Confirmation email sent",
+        description: "Please verify to complete the change.",
         type: "success",
       });
     } catch (e: unknown) {
@@ -251,19 +260,12 @@ export default function SettingsPage() {
     setSavingMajor(true);
     try {
       const supabase = createClient();
-
-      if (currentMajorProgramId) {
-        const { error: deleteError } = await supabase
-          .from(DB_TABLES.studentPrograms)
-          .delete()
-          .eq("student_id", studentId)
-          .eq("program_id", currentMajorProgramId);
-        if (deleteError) throw deleteError;
-      }
-
       const { error } = await supabase
         .from(DB_TABLES.studentPrograms)
-        .insert({ student_id: studentId, program_id: selectedMajorId });
+        .upsert(
+          { student_id: studentId, program_id: selectedMajorId },
+          { onConflict: "student_id" }
+        );
       if (error) throw error;
 
       setCurrentMajorProgramId(selectedMajorId);
@@ -280,20 +282,17 @@ export default function SettingsPage() {
     if (!studentId) return;
     setResetting(true);
     try {
-      const supabase = createClient();
-      const [historyResult, plannedResult, programsResult] = await Promise.all([
-        supabase.from(DB_TABLES.studentCourseHistory).delete().eq("student_id", studentId),
-        supabase.from(DB_TABLES.studentPlannedCourses).delete().eq("student_id", studentId),
-        supabase.from(DB_TABLES.studentPrograms).delete().eq("student_id", studentId),
-      ]);
-      if (historyResult.error) throw historyResult.error;
-      if (plannedResult.error) throw plannedResult.error;
-      if (programsResult.error) throw programsResult.error;
-      const { error: studentError } = await supabase
-        .from(DB_TABLES.students)
-        .update({ has_completed_onboarding: false })
-        .eq(STUDENT_COLUMNS.id, studentId);
-      if (studentError) throw studentError;
+      const response = await fetch("/api/student/reset-progress", {
+        method: "POST",
+      });
+      const payload = await response
+        .json()
+        .catch(() => ({ error: "Please try again." }));
+
+      if (!response.ok) {
+        throw new Error(payload.error ?? "Please try again.");
+      }
+
       toaster.create({ title: "Progress reset", description: "Your progress has been cleared. Use the setup wizard to start fresh.", type: "success" });
       router.push("/dashboard");
     } catch (e: unknown) {
@@ -453,7 +452,11 @@ export default function SettingsPage() {
                     colorPalette="blue"
                     onClick={handleSaveEmail}
                     loading={savingEmail}
-                    disabled={!newEmail.trim() || newEmail.trim() === email}
+                    disabled={
+                      !newEmail.trim() ||
+                      newEmail.trim() === email ||
+                      newEmail.trim() === pendingEmail
+                    }
                     alignSelf="flex-start"
                     borderRadius="lg"
                   >
@@ -646,14 +649,14 @@ export default function SettingsPage() {
                 </Text>
               </Card.Header>
               <Card.Body p="5" pt="2">
-                <Link href="/reset-password">
-                  <Button colorPalette="blue" alignSelf="flex-start" borderRadius="lg">
+                <Button asChild colorPalette="blue" alignSelf="flex-start" borderRadius="lg">
+                  <Link href="/reset-password">
                     <Icon mr="2">
                       <LuLock />
                     </Icon>
                     Reset Password
-                  </Button>
-                </Link>
+                  </Link>
+                </Button>
               </Card.Body>
             </Card.Root>
             {/* Danger Zone */}

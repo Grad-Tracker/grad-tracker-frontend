@@ -581,7 +581,7 @@ export default function PlannerPage() {
         if (view === "workspace" && refreshedPlans.length > 0) {
           const nextPlan = refreshedPlans[0];
           setActivePlanId(nextPlan.id);
-          await loadPlanData(studentId, nextPlan.id);
+          await loadPlanData(studentId, nextPlan.id, nextPlan.has_graduate_program ?? false);
         } else {
           setActivePlanId(null);
           setView("hub");

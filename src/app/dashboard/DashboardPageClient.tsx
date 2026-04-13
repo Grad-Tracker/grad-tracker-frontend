@@ -457,8 +457,10 @@ export default function Dashboard() {
               return sum + Number(r?.credits ?? 0);
             }, 0);
 
+            const completedCapped = Math.min(total, completed);
+
             agg[key].total += total;
-            agg[key].completed += completed;
+            agg[key].completed += completedCapped;
           }
         }
 
@@ -624,24 +626,25 @@ export default function Dashboard() {
                 </Box>
               </HStack>
 
-              <Link href="/dashboard/onboarding">
-                <Button
-                  bg="white"
-                  color="blue.700"
-                  size="lg"
-                  rounded="full"
-                  px="6"
-                  fontWeight="600"
-                  _hover={{ bg: "whiteAlpha.900", transform: "translateY(-1px)" }}
-                  transition="all 0.2s"
-                  flexShrink={0}
-                >
+              <Button
+                asChild
+                bg="white"
+                color="blue.700"
+                size="lg"
+                rounded="full"
+                px="6"
+                fontWeight="600"
+                _hover={{ bg: "whiteAlpha.900", transform: "translateY(-1px)" }}
+                transition="all 0.2s"
+                flexShrink={0}
+              >
+                <Link href="/dashboard/onboarding">
                   Start Setup
                   <Icon ml="2">
                     <LuArrowRight />
                   </Icon>
-                </Button>
-              </Link>
+                </Link>
+              </Button>
             </Flex>
           </Card.Body>
         </Card.Root>
@@ -738,14 +741,14 @@ export default function Dashboard() {
                 <Heading size="md" fontWeight="600">
                   Degree Requirements
                 </Heading>
-                <Link href="/dashboard/requirements">
-                  <Button variant="ghost" size="sm" fontWeight="500">
+                <Button asChild variant="ghost" size="sm" fontWeight="500">
+                  <Link href="/dashboard/requirements">
                     View All
                     <Icon ml="1">
                       <LuChevronRight />
                     </Icon>
-                  </Button>
-                </Link>
+                  </Link>
+                </Button>
               </Flex>
             </Card.Header>
             <Card.Body p="5">
@@ -778,14 +781,14 @@ export default function Dashboard() {
                 <Heading size="md" fontWeight="600">
                   Current Semester
                 </Heading>
-                <Link href="/dashboard/courses">
-                  <Button variant="ghost" size="sm" fontWeight="500">
+                <Button asChild variant="ghost" size="sm" fontWeight="500">
+                  <Link href="/dashboard/courses">
                     Manage Courses
                     <Icon ml="1">
                       <LuChevronRight />
                     </Icon>
-                  </Button>
-                </Link>
+                  </Link>
+                </Button>
               </Flex>
             </Card.Header>
             <Card.Body p="5">
@@ -995,14 +998,14 @@ export default function Dashboard() {
             </Card.Header>
             <Card.Body p="5">
               <Stack gap="2">
-                <Button variant="outline" justifyContent="start" size="sm" fontWeight="500">
-                  Generate Progress Report
+                <Button asChild variant="outline" justifyContent="start" size="sm" fontWeight="500">
+                  <Link href="/dashboard">Generate Progress Report</Link>
                 </Button>
-                <Button variant="outline" justifyContent="start" size="sm" fontWeight="500">
-                  Plan Next Semester
+                <Button asChild variant="outline" justifyContent="start" size="sm" fontWeight="500">
+                  <Link href="/dashboard/planner">Plan Next Semester</Link>
                 </Button>
-                <Button variant="outline" justifyContent="start" size="sm" fontWeight="500">
-                  Review Requirements
+                <Button asChild variant="outline" justifyContent="start" size="sm" fontWeight="500">
+                  <Link href="/dashboard/requirements">Review Requirements</Link>
                 </Button>
               </Stack>
             </Card.Body>
