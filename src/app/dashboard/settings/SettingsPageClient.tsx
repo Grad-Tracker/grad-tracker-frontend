@@ -259,14 +259,20 @@ export default function SettingsPage() {
     if (!selectedMajorId || !studentId || selectedMajorId === currentMajorProgramId) return;
     setSavingMajor(true);
     try {
-      const supabase = createClient();
-      const { error } = await supabase
-        .from(DB_TABLES.studentPrograms)
-        .upsert(
-          { student_id: studentId, program_id: selectedMajorId },
-          { onConflict: "student_id" }
-        );
-      if (error) throw error;
+      const response = await fetch("/api/student/change-major", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ programId: selectedMajorId }),
+      });
+      const payload = await response
+        .json()
+        .catch(() => ({ error: "Please try again." }));
+
+      if (!response.ok) {
+        throw new Error(payload.error ?? "Please try again.");
+      }
 
       setCurrentMajorProgramId(selectedMajorId);
       toaster.create({ title: "Major updated", type: "success" });

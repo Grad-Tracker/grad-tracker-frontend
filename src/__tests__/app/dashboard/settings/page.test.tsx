@@ -5,13 +5,24 @@ import { ChakraProvider, defaultSystem } from "@chakra-ui/react";
 
 /* ---------------- HOISTED MOCKS ---------------- */
 
-const { mockGetUser, mockUpdateUser, mockFrom, mockToasterCreate, mockPush, mockFetch } = vi.hoisted(() => ({
+const {
+  mockGetUser,
+  mockUpdateUser,
+  mockFrom,
+  mockToasterCreate,
+  mockPush,
+  mockFetch,
+  mockFetchPrograms,
+  mockFetchStudentMajorProgram,
+} = vi.hoisted(() => ({
   mockGetUser: vi.fn(),
   mockUpdateUser: vi.fn(),
   mockFrom: vi.fn(),
   mockToasterCreate: vi.fn(),
   mockPush: vi.fn(),
   mockFetch: vi.fn(),
+  mockFetchPrograms: vi.fn(),
+  mockFetchStudentMajorProgram: vi.fn(),
 }));
 
 vi.mock("next/navigation", () => ({
@@ -27,6 +38,11 @@ vi.mock("@/lib/supabase/client", () => ({
 
 vi.mock("@/components/ui/toaster", () => ({
   toaster: { create: mockToasterCreate },
+}));
+
+vi.mock("@/lib/supabase/queries/onboarding", () => ({
+  fetchPrograms: mockFetchPrograms,
+  fetchStudentMajorProgram: mockFetchStudentMajorProgram,
 }));
 
 vi.mock("next/link", () => ({
@@ -83,6 +99,8 @@ function setupMocks(
     error: null,
   });
   mockUpdateUser.mockResolvedValue({ data: {}, error: null });
+  mockFetchPrograms.mockResolvedValue([]);
+  mockFetchStudentMajorProgram.mockResolvedValue(null);
 
   const studentData = { ...DEFAULT_STUDENT, ...studentOverrides };
 
@@ -399,6 +417,75 @@ describe("SettingsPage", () => {
 
     expect(mockToasterCreate).toHaveBeenCalledWith(
       expect.objectContaining({ title: "Failed to update email", description: "email failed", type: "error" })
+    );
+  });
+
+  it("calls the change-major API and shows success when saving a new major", async () => {
+    setupMocks();
+    mockFetchPrograms.mockResolvedValueOnce([
+      { id: 10, name: "Computer Science", program_type: "MAJOR" },
+      { id: 20, name: "Data Science", program_type: "MAJOR" },
+    ]);
+    mockFetchStudentMajorProgram.mockResolvedValueOnce({
+      program_id: 10,
+      program_name: "Computer Science",
+      catalog_year: "2025-2026",
+      program_type: "MAJOR",
+      student_id: 1,
+    });
+
+    await act(async () => { renderSettings(); });
+    await waitFor(() => screen.getByLabelText("Select major"));
+
+    fireEvent.change(screen.getByLabelText("Select major"), {
+      target: { value: "20" },
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByText("Save Major"));
+    });
+
+    expect(mockFetch).toHaveBeenCalledWith("/api/student/change-major", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ programId: 20 }),
+    });
+    expect(mockToasterCreate).toHaveBeenCalledWith(
+      expect.objectContaining({ title: "Major updated", type: "success" })
+    );
+  });
+
+  it("shows an error toast when saving a new major fails", async () => {
+    setupMocks();
+    mockFetchPrograms.mockResolvedValueOnce([
+      { id: 10, name: "Computer Science", program_type: "MAJOR" },
+      { id: 20, name: "Data Science", program_type: "MAJOR" },
+    ]);
+    mockFetchStudentMajorProgram.mockResolvedValueOnce({
+      program_id: 10,
+      program_name: "Computer Science",
+      catalog_year: "2025-2026",
+      program_type: "MAJOR",
+      student_id: 1,
+    });
+    mockFetch.mockResolvedValueOnce({
+      ok: false,
+      json: vi.fn().mockResolvedValue({ error: "major failed" }),
+    });
+
+    await act(async () => { renderSettings(); });
+    await waitFor(() => screen.getByLabelText("Select major"));
+
+    fireEvent.change(screen.getByLabelText("Select major"), {
+      target: { value: "20" },
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByText("Save Major"));
+    });
+
+    expect(mockToasterCreate).toHaveBeenCalledWith(
+      expect.objectContaining({ title: "Failed to change major", description: "major failed", type: "error" })
     );
   });
 
