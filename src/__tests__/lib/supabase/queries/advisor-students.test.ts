@@ -110,3 +110,63 @@ describe("listStudentsForAdvisor", () => {
     expect(rows[1].majorProgressPct).toBe(0); // Alan has no completed courses
   });
 });
+
+import { getStudentOverview } from "@/lib/supabase/queries/advisor-students";
+
+describe("getStudentOverview", () => {
+  it("returns profile, programs, gen-ed progress and plans", async () => {
+    const supabase = makeSupabase({
+      students: () =>
+        chain([
+          {
+            id: 1,
+            first_name: "Ada",
+            last_name: "Lovelace",
+            email: "ada@example.com",
+            expected_graduation_semester: "Spring",
+            expected_graduation_year: 2027,
+            breadth_package_id: "PKG_A",
+          },
+        ]),
+      student_programs: () =>
+        chain([{ student_id: 1, program_id: 10 }]),
+      programs: () =>
+        chain([{ id: 10, name: "CS", program_type: "MAJOR" }]),
+      program_requirement_blocks: () =>
+        chain([{ id: 100, program_id: 10 }]),
+      program_requirement_courses: () =>
+        chain([
+          { block_id: 100, course_id: 1000 },
+          { block_id: 100, course_id: 1001 },
+        ]),
+      student_course_history: () =>
+        chain([{ student_id: 1, course_id: 1000, completed: true }]),
+      student_planned_courses: () => chain([]),
+      gen_ed_bucket_courses: () => chain([]),
+      plans: () =>
+        chain([
+          {
+            id: 50,
+            name: "Plan A",
+            description: "first try",
+            created_at: "2026-04-01",
+            updated_at: "2026-04-10",
+          },
+        ]),
+      student_term_plan: () => chain([{ plan_id: 50, term_id: 7 }]),
+    });
+
+    const result = await getStudentOverview(supabase as any, 1, 1);
+    expect(result.profile.firstName).toBe("Ada");
+    expect(result.programs).toHaveLength(1);
+    expect(result.programs[0]).toMatchObject({
+      id: 10,
+      name: "CS",
+      progressPct: 50,
+      completedReqs: 1,
+      totalReqs: 2,
+    });
+    expect(result.plans).toHaveLength(1);
+    expect(result.plans[0]).toMatchObject({ id: 50, name: "Plan A" });
+  });
+});
