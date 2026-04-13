@@ -134,7 +134,7 @@ Compute the percentages in-memory in the helper. No N+1.
 
 ### Primary program
 
-`primary program` for the list view = first row in `student_programs` ordered by `is_primary DESC NULLS LAST, id ASC`. Multi-program handling on the overview page is richer (one progress card per enrolled program). If the demo reveals advisors care about explicit primary selection, revisit in a follow-up.
+`primary program` for the list view = first row in `student_programs` ordered by `program_id ASC` (the schema has no `is_primary` flag — keep it deterministic, revisit if advisors need explicit primary selection). Multi-program handling on the overview page is richer (one progress card per enrolled program).
 
 ## UI
 
