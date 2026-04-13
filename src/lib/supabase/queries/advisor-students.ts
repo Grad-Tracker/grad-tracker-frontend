@@ -1,3 +1,7 @@
+import { DB_TABLES } from "@/lib/supabase/queries/schema";
+
+type SupabaseLike = { from: (t: string) => any };
+
 export function computeProgressPct(
   completed: Set<number>,
   required: Set<number>
@@ -7,10 +11,6 @@ export function computeProgressPct(
   for (const id of required) if (completed.has(id)) hit++;
   return Math.round((hit / required.size) * 100);
 }
-
-import { DB_TABLES } from "@/lib/supabase/queries/schema";
-
-type SupabaseLike = { from: (t: string) => any };
 
 export type AdvisorStudentRow = {
   id: number;
