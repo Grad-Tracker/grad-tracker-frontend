@@ -58,7 +58,7 @@ describe("SigninPage", () => {
     renderWithChakra(<SigninPage />);
     expect(screen.getAllByText("Email").length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText("Password").length).toBeGreaterThanOrEqual(1);
-    expect(screen.getByPlaceholderText("your.name@rangers.uwp.edu")).toBeInTheDocument();
+    expect(screen.getByPlaceholderText("you@example.com")).toBeInTheDocument();
   });
 
   it("switching to Advisor updates the heading and helper text", async () => {
@@ -72,60 +72,7 @@ describe("SigninPage", () => {
       screen.getAllByText("Manage programs, Gen-Ed buckets, and course catalog.").length
     ).toBeGreaterThanOrEqual(1);
     expect(screen.getByRole("button", { name: "Advisor" })).toHaveAttribute("aria-pressed", "true");
-    expect(screen.getByPlaceholderText("your.name@uwp.edu")).toBeInTheDocument();
-  });
-
-  it("student sign in blocks advisor-domain emails", async () => {
-    renderWithChakra(<SigninPage />);
-
-    fireEvent.change(screen.getByPlaceholderText("your.name@rangers.uwp.edu"), {
-      target: { value: "advisor@uwp.edu" },
-    });
-    fireEvent.change(screen.getByTestId("password-input"), {
-      target: { value: "password123" },
-    });
-
-    const buttons = screen.getAllByText("Sign In");
-    const btn = buttons.find((el) => el.closest("button") !== null);
-    await act(async () => {
-      fireEvent.click(btn!);
-    });
-
-    expect(mockSignInWithPassword).not.toHaveBeenCalled();
-    expect(mockToaster.create).toHaveBeenCalledWith(
-      expect.objectContaining({
-        title: "Invalid email domain",
-        description: "Student sign up requires a @rangers.uwp.edu email address.",
-      })
-    );
-  });
-
-  it("advisor sign in blocks student-domain emails", async () => {
-    renderWithChakra(<SigninPage />);
-    await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: "Advisor" }));
-    });
-
-    fireEvent.change(screen.getByPlaceholderText("your.name@uwp.edu"), {
-      target: { value: "student@rangers.uwp.edu" },
-    });
-    fireEvent.change(screen.getByTestId("password-input"), {
-      target: { value: "password123" },
-    });
-
-    const buttons = screen.getAllByText("Sign In");
-    const btn = buttons.find((el) => el.closest("button") !== null);
-    await act(async () => {
-      fireEvent.click(btn!);
-    });
-
-    expect(mockSignInWithPassword).not.toHaveBeenCalled();
-    expect(mockToaster.create).toHaveBeenCalledWith(
-      expect.objectContaining({
-        title: "Invalid email domain",
-        description: "Advisor sign up requires a @uwp.edu email address.",
-      })
-    );
+    expect(screen.getByPlaceholderText("you@example.com")).toBeInTheDocument();
   });
 
   it("shows error toast for empty fields", async () => {
@@ -144,7 +91,7 @@ describe("SigninPage", () => {
     mockSignInWithPassword.mockResolvedValue({ data: {}, error: null });
     renderWithChakra(<SigninPage />);
 
-    fireEvent.change(screen.getByPlaceholderText("your.name@rangers.uwp.edu"), {
+    fireEvent.change(screen.getByPlaceholderText("you@example.com"), {
       target: { value: "test@rangers.uwp.edu" },
     });
     fireEvent.change(screen.getByTestId("password-input"), {
@@ -172,7 +119,7 @@ describe("SigninPage", () => {
     });
     renderWithChakra(<SigninPage />);
 
-    fireEvent.change(screen.getByPlaceholderText("your.name@rangers.uwp.edu"), {
+    fireEvent.change(screen.getByPlaceholderText("you@example.com"), {
       target: { value: "test@rangers.uwp.edu" },
     });
     fireEvent.change(screen.getByTestId("password-input"), {
@@ -200,7 +147,7 @@ describe("SigninPage", () => {
     });
     renderWithChakra(<SigninPage />);
 
-    fireEvent.change(screen.getByPlaceholderText("your.name@rangers.uwp.edu"), {
+    fireEvent.change(screen.getByPlaceholderText("you@example.com"), {
       target: { value: "test@rangers.uwp.edu" },
     });
     fireEvent.change(screen.getByTestId("password-input"), {
@@ -229,7 +176,7 @@ describe("SigninPage", () => {
     mockSignInWithPassword.mockResolvedValue({ data: {}, error: null });
     renderWithChakra(<SigninPage />);
 
-    fireEvent.change(screen.getByPlaceholderText("your.name@rangers.uwp.edu"), {
+    fireEvent.change(screen.getByPlaceholderText("you@example.com"), {
       target: { value: "test@rangers.uwp.edu" },
     });
     fireEvent.change(screen.getByTestId("password-input"), {
@@ -261,7 +208,7 @@ describe("SigninPage", () => {
       fireEvent.click(screen.getByRole("button", { name: "Advisor" }));
     });
 
-    fireEvent.change(screen.getByPlaceholderText("your.name@uwp.edu"), {
+    fireEvent.change(screen.getByPlaceholderText("you@example.com"), {
       target: { value: "advisor@uwp.edu" },
     });
     fireEvent.change(screen.getByTestId("password-input"), {
@@ -287,7 +234,7 @@ describe("SigninPage", () => {
     });
     renderWithChakra(<SigninPage />);
 
-    fireEvent.change(screen.getByPlaceholderText("your.name@rangers.uwp.edu"), {
+    fireEvent.change(screen.getByPlaceholderText("you@example.com"), {
       target: { value: "advisor@rangers.uwp.edu" },
     });
     fireEvent.change(screen.getByTestId("password-input"), {
@@ -322,7 +269,7 @@ describe("SigninPage", () => {
       fireEvent.click(screen.getByRole("button", { name: "Advisor" }));
     });
 
-    fireEvent.change(screen.getByPlaceholderText("your.name@uwp.edu"), {
+    fireEvent.change(screen.getByPlaceholderText("you@example.com"), {
       target: { value: "student@uwp.edu" },
     });
     fireEvent.change(screen.getByTestId("password-input"), {
