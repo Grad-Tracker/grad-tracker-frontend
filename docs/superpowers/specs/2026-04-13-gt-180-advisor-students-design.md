@@ -97,7 +97,6 @@ type StudentOverview = {
     updatedAt: string;
     totalCredits: number;
     termCount: number;
-    isActive: boolean;
   }[];
 };
 
@@ -166,7 +165,9 @@ Layout:
 - Breadcrumbs: Admin › Students › {Name}
 - Header card: name, email, program badges, expected graduation
 - Progress section: row of cards, one per enrolled program plus one for gen-ed. Each card shows `X of Y requirements complete` + a ring or bar visualization
-- "Plans" section: heading + grid of plan cards. Each plan card shows name, description, term range, total credits, and an active/draft badge. Whole card is a `<Link>` to `/admin/students/[studentId]/planner?planId=…`. Empty state: "{First name} hasn't created a plan yet."
+- "Plans" section: heading + grid of plan cards, sorted by `updated_at DESC`. Each plan card shows name, description, term range, total credits, and a "Last updated …" timestamp. The most recently updated plan gets a subtle "Latest" badge to draw the eye. Whole card is a `<Link>` to `/admin/students/[studentId]/planner?planId=…`. Empty state: "{First name} hasn't created a plan yet."
+
+(The `plans` table has no `is_active` column — "current plan" is a UI concept on the student side, not a DB property. The "Latest" badge is a derived label, not a stored flag.)
 
 ### `/admin/students/[studentId]/planner` — read-only planner
 
