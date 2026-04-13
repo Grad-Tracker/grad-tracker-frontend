@@ -12,12 +12,14 @@ import {
   LuLayoutDashboard,
   LuLogOut,
   LuShield,
+  LuUsers,
 } from "react-icons/lu";
 
 const navItems: NavItem[] = [
   { icon: LuLayoutDashboard, label: "Dashboard", href: "/admin" },
   { icon: LuBookOpen,        label: "Courses",   href: "/admin/courses" },
   { icon: LuBookMarked,      label: "Programs",  href: "/admin/programs" },
+  { icon: LuUsers,           label: "Students",  href: "/admin/students" },
   { icon: LuBlocks,          label: "Gen-Ed",    href: "/admin/gen-ed" },
 ];
 
