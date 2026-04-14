@@ -9,7 +9,8 @@ begin
   select id
   into v_student_id
   from public.students
-  where auth_user_id = auth.uid();
+  where auth_user_id = auth.uid()
+  for update;
 
   if v_student_id is null then
     raise exception 'Student profile not found for authenticated user.';
