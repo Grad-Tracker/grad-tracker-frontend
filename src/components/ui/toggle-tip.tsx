@@ -69,7 +69,7 @@ export const InfoTip = React.forwardRef<HTMLDivElement, InfoTipProps>(
       <ToggleTip content={children} {...rest} ref={ref}>
         <IconButton
           variant="ghost"
-          aria-label="info"
+          aria-label="More information"
           size="2xs"
           colorPalette="gray"
           {...buttonProps}
