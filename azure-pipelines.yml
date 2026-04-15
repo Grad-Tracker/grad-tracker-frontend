@@ -54,7 +54,7 @@ stages:
         pool:
           name: gradtracker-agents
           demands:
-            - agent.name -equals gradtracker-dev-agent
+            - agent.name -equals GradTracker-dev-vm
         strategy:
           runOnce:
             deploy:
