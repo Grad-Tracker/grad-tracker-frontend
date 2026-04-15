@@ -4,28 +4,8 @@ trigger:
       - main
       - dev
 
-variables:
-  ${{ if eq(variables['Build.SourceBranchName'], 'main') }}:
-    - group: gradtracker-prod-vars
-    - name: ENV
-      value: prod
-    - name: VAULT
-      value: GradTracker-prod-kv
-    - name: AGENT
-      value: gradtracker-prod-agent
-  ${{ if eq(variables['Build.SourceBranchName'], 'dev') }}:
-    - group: gradtracker-dev-vars
-    - name: ENV
-      value: dev
-    - name: VAULT
-      value: GradTracker-dev-kv
-    - name: AGENT
-      value: gradtracker-dev-agent
-
 pool:
   name: gradtracker-agents
-  demands:
-    - agent.name -equals $(AGENT)
 
 stages:
 
@@ -44,9 +24,6 @@ stages:
 
           - script: npm run build
             displayName: 'Build app'
-            env:
-              NEXT_PUBLIC_SUPABASE_URL: $(SUPABASE-URL)
-              NEXT_PUBLIC_SUPABASE_ANON_KEY: $(SUPABASE-ANON-KEY)
 
           - task: CopyFiles@2
             displayName: 'Stage build artifacts'
@@ -64,36 +41,92 @@ stages:
             inputs:
               artifactName: 'gradtracker-build'
 
-  - stage: Deploy
-    displayName: 'Deploy to $(ENV)'
+  - stage: Deploy_Dev
+    displayName: 'Deploy to Dev'
     dependsOn: Build
-    condition: succeeded()
+    condition: and(succeeded(), eq(variables['Build.SourceBranchName'], 'dev'))
+    variables:
+      - group: gradtracker-dev-vars
     jobs:
-      - deployment: DeployJob
-        displayName: 'Deploy to $(ENV) VM'
-        environment: $(ENV)
+      - deployment: DeployDev
+        displayName: 'Deploy to Dev VM'
+        environment: dev
+        pool:
+          name: gradtracker-agents
+          demands:
+            - agent.name -equals gradtracker-dev-agent
         strategy:
           runOnce:
             deploy:
               steps:
                 - script: |
                     export SUPABASE_URL=$(az keyvault secret show \
-                      --vault-name $(VAULT) \
+                      --vault-name GradTracker-dev-kv \
                       --name SUPABASE-URL \
                       --query value -o tsv)
 
                     export SUPABASE_ANON_KEY=$(az keyvault secret show \
-                      --vault-name $(VAULT) \
+                      --vault-name GradTracker-dev-kv \
                       --name SUPABASE-ANON-KEY \
                       --query value -o tsv)
 
                     export ANTHROPIC_API_KEY=$(az keyvault secret show \
-                      --vault-name $(VAULT) \
+                      --vault-name GradTracker-dev-kv \
                       --name ANTHROPIC-API-KEY \
                       --query value -o tsv)
 
                     export NEXTAUTH_SECRET=$(az keyvault secret show \
-                      --vault-name $(VAULT) \
+                      --vault-name GradTracker-dev-kv \
+                      --name NEXTAUTH-SECRET \
+                      --query value -o tsv)
+
+                    sudo mkdir -p /var/www/gradtracker
+                    sudo cp -r $(Pipeline.Workspace)/gradtracker-build/. /var/www/gradtracker/
+                    cd /var/www/gradtracker
+                    npm ci --omit=dev
+
+                    pm2 stop gradtracker || true
+                    pm2 delete gradtracker || true
+                    pm2 start npm --name "gradtracker" -- start
+                    pm2 save
+                  displayName: 'Deploy and restart app'
+
+  - stage: Deploy_Prod
+    displayName: 'Deploy to Prod'
+    dependsOn: Build
+    condition: and(succeeded(), eq(variables['Build.SourceBranchName'], 'main'))
+    variables:
+      - group: gradtracker-prod-vars
+    jobs:
+      - deployment: DeployProd
+        displayName: 'Deploy to Prod VM'
+        environment: prod
+        pool:
+          name: gradtracker-agents
+          demands:
+            - agent.name -equals gradtracker-prod-agent
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - script: |
+                    export SUPABASE_URL=$(az keyvault secret show \
+                      --vault-name GradTracker-prod-kv \
+                      --name SUPABASE-URL \
+                      --query value -o tsv)
+
+                    export SUPABASE_ANON_KEY=$(az keyvault secret show \
+                      --vault-name GradTracker-prod-kv \
+                      --name SUPABASE-ANON-KEY \
+                      --query value -o tsv)
+
+                    export ANTHROPIC_API_KEY=$(az keyvault secret show \
+                      --vault-name GradTracker-prod-kv \
+                      --name ANTHROPIC-API-KEY \
+                      --query value -o tsv)
+
+                    export NEXTAUTH_SECRET=$(az keyvault secret show \
+                      --vault-name GradTracker-prod-kv \
                       --name NEXTAUTH-SECRET \
                       --query value -o tsv)
 
