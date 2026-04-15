@@ -58,14 +58,19 @@ stages:
             deploy:
               steps:
                 - script: |
-                    export SUPABASE_URL=$(az keyvault secret show \
+                    export NEXT_PUBLIC_SUPABASE_URL=$(az keyvault secret show \
                       --vault-name GradTracker-dev-kv \
-                      --name SUPABASE-URL \
+                      --name NEXT-PUBLIC-SUPABASE-URL \
                       --query value -o tsv)
 
-                    export SUPABASE_ANON_KEY=$(az keyvault secret show \
+                    export NEXT_PUBLIC_SUPABASE_ANON_KEY=$(az keyvault secret show \
                       --vault-name GradTracker-dev-kv \
-                      --name SUPABASE-ANON-KEY \
+                      --name NEXT-PUBLIC-SUPABASE-ANON-KEY \
+                      --query value -o tsv)
+
+                    export NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY=$(az keyvault secret show \
+                      --vault-name GradTracker-dev-kv \
+                      --name NEXT-PUBLIC-SUPABASE-PUBLISHABLE-DEFAULT-KEY \
                       --query value -o tsv)
 
                     export ANTHROPIC_API_KEY=$(az keyvault secret show \
@@ -73,9 +78,9 @@ stages:
                       --name ANTHROPIC-API-KEY \
                       --query value -o tsv)
 
-                    export NEXTAUTH_SECRET=$(az keyvault secret show \
+                    export DB_PASSWORD=$(az keyvault secret show \
                       --vault-name GradTracker-dev-kv \
-                      --name NEXTAUTH-SECRET \
+                      --name DB-PASSWORD \
                       --query value -o tsv)
 
                     sudo mkdir -p /var/www/gradtracker
@@ -108,14 +113,19 @@ stages:
             deploy:
               steps:
                 - script: |
-                    export SUPABASE_URL=$(az keyvault secret show \
+                    export NEXT_PUBLIC_SUPABASE_URL=$(az keyvault secret show \
                       --vault-name GradTracker-prod-kv \
-                      --name SUPABASE-URL \
+                      --name NEXT-PUBLIC-SUPABASE-URL \
                       --query value -o tsv)
 
-                    export SUPABASE_ANON_KEY=$(az keyvault secret show \
+                    export NEXT_PUBLIC_SUPABASE_ANON_KEY=$(az keyvault secret show \
                       --vault-name GradTracker-prod-kv \
-                      --name SUPABASE-ANON-KEY \
+                      --name NEXT-PUBLIC-SUPABASE-ANON-KEY \
+                      --query value -o tsv)
+
+                    export NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY=$(az keyvault secret show \
+                      --vault-name GradTracker-prod-kv \
+                      --name NEXT-PUBLIC-SUPABASE-PUBLISHABLE-DEFAULT-KEY \
                       --query value -o tsv)
 
                     export ANTHROPIC_API_KEY=$(az keyvault secret show \
@@ -123,9 +133,9 @@ stages:
                       --name ANTHROPIC-API-KEY \
                       --query value -o tsv)
 
-                    export NEXTAUTH_SECRET=$(az keyvault secret show \
+                    export DB_PASSWORD=$(az keyvault secret show \
                       --vault-name GradTracker-prod-kv \
-                      --name NEXTAUTH-SECRET \
+                      --name DB-PASSWORD \
                       --query value -o tsv)
 
                     sudo mkdir -p /var/www/gradtracker
