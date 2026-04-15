@@ -243,7 +243,7 @@ vi.mock("@dnd-kit/core", () => ({
   useSensors: vi.fn(() => []),
 }));
 
-import PlannerPage from "@/app/dashboard/planner/page";
+import PlannerView from "@/components/planner/PlannerView";
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -255,14 +255,9 @@ function mockStudentRow(studentRow: { id: number } | null, error = null) {
   mockFrom.mockReturnValue(chain);
 }
 
-function mockStudentAndPrograms(studentId: number, programIds: number[] = []) {
-  // First call: students table
-  const studentChain: Record<string, any> = {};
-  studentChain.select = vi.fn().mockReturnValue(studentChain);
-  studentChain.eq = vi.fn().mockReturnValue(studentChain);
-  studentChain.maybeSingle = vi.fn().mockResolvedValue({ data: { id: studentId }, error: null });
-
-  // Second call: student_programs table
+function mockStudentAndPrograms(_studentId: number, programIds: number[] = []) {
+  // After the PlannerView refactor, only the student_programs table is queried
+  // from inside the component (the student row resolution moved to the server page).
   const programsChain: Record<string, any> = {};
   programsChain.select = vi.fn().mockReturnValue(programsChain);
   programsChain.eq = vi.fn().mockReturnValue(programsChain);
@@ -273,7 +268,7 @@ function mockStudentAndPrograms(studentId: number, programIds: number[] = []) {
     })
   );
 
-  mockFrom.mockReturnValueOnce(studentChain).mockReturnValueOnce(programsChain);
+  mockFrom.mockReturnValue(programsChain);
 }
 
 /** Set up mocks so the component loads fully with a plan in hub view */
@@ -310,7 +305,7 @@ const COURSE: any = {
 
 // ── Tests ────────────────────────────────────────────────────────────────────
 
-describe("PlannerPage", () => {
+describe("PlannerView", () => {
   beforeEach(() => {
     vi.clearAllMocks();
 
@@ -331,37 +326,12 @@ describe("PlannerPage", () => {
     localStorage.clear();
   });
 
-  it("shows skeleton loading state initially", () => {
-    mockGetUser.mockReturnValue(new Promise(() => {}));
-    renderWithChakra(<PlannerPage />);
-    expect(screen.getByTestId("planner-page-skeleton")).toBeInTheDocument();
-  });
-
-  it("redirects to signin when no user", async () => {
-    mockGetUser.mockResolvedValue({ data: { user: null } });
-    await act(async () => {
-      renderWithChakra(<PlannerPage />);
-    });
-    await waitFor(() => {
-      expect(mockPush).toHaveBeenCalledWith("/signin");
-    });
-  });
-
-  it("redirects to dashboard when student profile not found", async () => {
-    mockGetUser.mockResolvedValue({ data: { user: { id: "user-1" } } });
-    mockStudentRow(null);
-    await act(async () => {
-      renderWithChakra(<PlannerPage />);
-    });
-    await waitFor(() => {
-      expect(mockToaster.create).toHaveBeenCalledWith(expect.objectContaining({ type: "error" }));
-      expect(mockPush).toHaveBeenCalledWith("/dashboard");
-    });
-  });
+  // Note: auth-resolution tests (skeleton-on-pending-auth, redirect-to-signin,
+  // redirect-to-dashboard) were moved to the server component `page.tsx` after
+  // the PlannerView extraction. This suite tests the client component only,
+  // which now receives `studentId` as a prop.
 
   it("renders PlansHub with existing plans", async () => {
-    mockGetUser.mockResolvedValue({ data: { user: { id: "user-1" } } });
-    mockStudentRow({ id: 1 });
     mockFetchPlans.mockResolvedValue([
       {
         id: 1,
@@ -375,7 +345,7 @@ describe("PlannerPage", () => {
     ]);
 
     await act(async () => {
-      renderWithChakra(<PlannerPage />);
+      renderWithChakra(<PlannerView studentId={1} mode="edit" />);
     });
     await waitFor(() => {
       expect(screen.getByTestId("plans-hub")).toBeInTheDocument();
@@ -400,28 +370,15 @@ describe("PlannerPage", () => {
       ]);
 
     await act(async () => {
-      renderWithChakra(<PlannerPage />);
+      renderWithChakra(<PlannerView studentId={1} mode="edit" />);
     });
     await waitFor(() => {
       expect(mockCreatePlan).toHaveBeenCalledWith(1, "My Plan", null, [10]);
     });
   });
 
-  it("shows error toaster when student query errors", async () => {
-    mockGetUser.mockResolvedValue({ data: { user: { id: "user-1" } } });
-    const chain: Record<string, any> = {};
-    chain.select = vi.fn().mockReturnValue(chain);
-    chain.eq = vi.fn().mockReturnValue(chain);
-    chain.maybeSingle = vi.fn().mockResolvedValue({ data: null, error: new Error("DB error") });
-    mockFrom.mockReturnValue(chain);
-
-    await act(async () => {
-      renderWithChakra(<PlannerPage />);
-    });
-    await waitFor(() => {
-      expect(mockToaster.create).toHaveBeenCalledWith(expect.objectContaining({ type: "error" }));
-    });
-  });
+  // (Removed: "shows error toaster when student query errors" — the `students`
+  // table lookup lives in the server `page.tsx` now, not inside PlannerView.)
 
   it("shows plans count in PlansHub mock", async () => {
     mockGetUser.mockResolvedValue({ data: { user: { id: "user-1" } } });
@@ -432,7 +389,7 @@ describe("PlannerPage", () => {
     ]);
 
     await act(async () => {
-      renderWithChakra(<PlannerPage />);
+      renderWithChakra(<PlannerView studentId={1} mode="edit" />);
     });
     await waitFor(() => {
       expect(screen.getAllByText("2 plans").length).toBeGreaterThanOrEqual(1);
@@ -441,7 +398,7 @@ describe("PlannerPage", () => {
 
   it("opens plan workspace when onOpenPlan is called", async () => {
     setupAuthenticatedState();
-    await act(async () => renderWithChakra(<PlannerPage />));
+    await act(async () => renderWithChakra(<PlannerView studentId={1} mode="edit" />));
     await waitFor(() => expect(screen.getByTestId("plans-hub")).toBeInTheDocument());
 
     await act(async () => {
@@ -465,7 +422,7 @@ describe("PlannerPage", () => {
       },
     ]);
 
-    await act(async () => renderWithChakra(<PlannerPage />));
+    await act(async () => renderWithChakra(<PlannerView studentId={1} mode="edit" />));
     await waitFor(() => expect(screen.getByTestId("plans-hub")).toBeInTheDocument());
 
     await act(async () => fireEvent.click(screen.getByTestId("open-plan")));
@@ -478,7 +435,7 @@ describe("PlannerPage", () => {
   it("shows 'No semesters yet' when plan has zero terms", async () => {
     setupAuthenticatedState();
     mockFetchTerms.mockResolvedValue([]);
-    await act(async () => renderWithChakra(<PlannerPage />));
+    await act(async () => renderWithChakra(<PlannerView studentId={1} mode="edit" />));
     await waitFor(() => expect(screen.getByTestId("plans-hub")).toBeInTheDocument());
 
     await act(async () => fireEvent.click(screen.getByTestId("open-plan")));
@@ -491,7 +448,7 @@ describe("PlannerPage", () => {
   it("shows SemesterGrid when plan has terms", async () => {
     setupAuthenticatedState();
     mockFetchTerms.mockResolvedValue([{ id: 1, season: "Fall", year: 2025 }]);
-    await act(async () => renderWithChakra(<PlannerPage />));
+    await act(async () => renderWithChakra(<PlannerView studentId={1} mode="edit" />));
     await waitFor(() => expect(screen.getByTestId("plans-hub")).toBeInTheDocument());
 
     await act(async () => fireEvent.click(screen.getByTestId("open-plan")));
@@ -502,7 +459,7 @@ describe("PlannerPage", () => {
   it("handles add semester", async () => {
     setupAuthenticatedState();
     mockFetchTerms.mockResolvedValue([]);
-    await act(async () => renderWithChakra(<PlannerPage />));
+    await act(async () => renderWithChakra(<PlannerView studentId={1} mode="edit" />));
     await waitFor(() => expect(screen.getByTestId("plans-hub")).toBeInTheDocument());
 
     await act(async () => fireEvent.click(screen.getByTestId("open-plan")));
@@ -522,7 +479,7 @@ describe("PlannerPage", () => {
 
   it("handles create plan", async () => {
     setupAuthenticatedState();
-    await act(async () => renderWithChakra(<PlannerPage />));
+    await act(async () => renderWithChakra(<PlannerView studentId={1} mode="edit" />));
     await waitFor(() => expect(screen.getByTestId("plans-hub")).toBeInTheDocument());
 
     await act(async () => fireEvent.click(screen.getByTestId("create-plan-btn")));
@@ -537,7 +494,7 @@ describe("PlannerPage", () => {
 
   it("handles rename plan", async () => {
     setupAuthenticatedState();
-    await act(async () => renderWithChakra(<PlannerPage />));
+    await act(async () => renderWithChakra(<PlannerView studentId={1} mode="edit" />));
     await waitFor(() => expect(screen.getByTestId("plans-hub")).toBeInTheDocument());
 
     await act(async () => fireEvent.click(screen.getByTestId("rename-plan")));
@@ -558,7 +515,7 @@ describe("PlannerPage", () => {
       },
     ]).mockResolvedValue([]);
 
-    await act(async () => renderWithChakra(<PlannerPage />));
+    await act(async () => renderWithChakra(<PlannerView studentId={1} mode="edit" />));
     await waitFor(() => expect(screen.getByTestId("plans-hub")).toBeInTheDocument());
 
     await act(async () => fireEvent.click(screen.getByTestId("delete-plan")));
@@ -578,7 +535,7 @@ describe("PlannerPage", () => {
     setupAuthenticatedState();
     mockFetchTerms.mockReturnValue(new Promise(() => {}));
 
-    await act(async () => renderWithChakra(<PlannerPage />));
+    await act(async () => renderWithChakra(<PlannerView studentId={1} mode="edit" />));
     await waitFor(() => expect(screen.getByTestId("plans-hub")).toBeInTheDocument());
 
     await act(async () => fireEvent.click(screen.getByTestId("open-plan")));
@@ -595,7 +552,7 @@ describe("PlannerPage", () => {
     mockStudentRow({ id: 1 });
     mockFetchPlans.mockRejectedValueOnce(new Error("fail"));
 
-    await act(async () => renderWithChakra(<PlannerPage />));
+    await act(async () => renderWithChakra(<PlannerView studentId={1} mode="edit" />));
 
     await waitFor(() => {
       expect(mockToaster.create).toHaveBeenCalledWith(expect.objectContaining({ type: "error" }));
@@ -606,7 +563,7 @@ describe("PlannerPage", () => {
     setupAuthenticatedState();
     mockCreatePlan.mockRejectedValueOnce(new Error("fail create"));
 
-    await act(async () => renderWithChakra(<PlannerPage />));
+    await act(async () => renderWithChakra(<PlannerView studentId={1} mode="edit" />));
     await waitFor(() => expect(screen.getByTestId("plans-hub")).toBeInTheDocument());
 
     await act(async () => fireEvent.click(screen.getByTestId("create-plan-btn")));
@@ -624,7 +581,7 @@ describe("PlannerPage", () => {
     mockFetchTerms.mockResolvedValue([]);
     mockGetOrCreateTerm.mockRejectedValueOnce(new Error("fail term"));
 
-    await act(async () => renderWithChakra(<PlannerPage />));
+    await act(async () => renderWithChakra(<PlannerView studentId={1} mode="edit" />));
     await waitFor(() => expect(screen.getByTestId("plans-hub")).toBeInTheDocument());
 
     await act(async () => fireEvent.click(screen.getByTestId("open-plan")));
@@ -650,7 +607,7 @@ describe("PlannerPage", () => {
     setupAuthenticatedState();
     mockFetchTerms.mockResolvedValue([{ id: 1, season: "Fall", year: 2025 }]);
 
-    await act(async () => renderWithChakra(<PlannerPage />));
+    await act(async () => renderWithChakra(<PlannerView studentId={1} mode="edit" />));
     await waitFor(() => expect(screen.getByTestId("plans-hub")).toBeInTheDocument());
 
     await act(async () => fireEvent.click(screen.getByTestId("open-plan")));
@@ -671,7 +628,7 @@ describe("PlannerPage", () => {
     mockFetchTerms.mockResolvedValue([{ id: 1, season: "Fall", year: 2025 }]);
     mockFetchPlannedCourses.mockResolvedValue([]); // empty term
 
-    await act(async () => renderWithChakra(<PlannerPage />));
+    await act(async () => renderWithChakra(<PlannerView studentId={1} mode="edit" />));
     await waitFor(() => expect(screen.getByTestId("plans-hub")).toBeInTheDocument());
 
     await act(async () => fireEvent.click(screen.getByTestId("open-plan")));
@@ -692,7 +649,7 @@ describe("PlannerPage", () => {
       { student_id: 1, term_id: 1, course_id: 777, status: "planned", plan_id: 1, course: COURSE },
     ]);
 
-    await act(async () => renderWithChakra(<PlannerPage />));
+    await act(async () => renderWithChakra(<PlannerView studentId={1} mode="edit" />));
     await waitFor(() => expect(screen.getByTestId("plans-hub")).toBeInTheDocument());
 
     await act(async () => fireEvent.click(screen.getByTestId("open-plan")));
@@ -720,7 +677,7 @@ describe("PlannerPage", () => {
     // Use a real package ID that exists
     const pkg = BREADTH_PACKAGES[0]?.id ?? "BREADTH";
 
-    await act(async () => renderWithChakra(<PlannerPage />));
+    await act(async () => renderWithChakra(<PlannerView studentId={1} mode="edit" />));
     await waitFor(() => expect(screen.getByTestId("plans-hub")).toBeInTheDocument());
 
     await act(async () => fireEvent.click(screen.getByTestId("open-plan")));
@@ -738,7 +695,7 @@ describe("PlannerPage", () => {
     const pkg = BREADTH_PACKAGES[1]?.id ?? "math-physics";
     localStorage.setItem("gradtracker:breadthPackage:1", pkg);
 
-    await act(async () => renderWithChakra(<PlannerPage />));
+    await act(async () => renderWithChakra(<PlannerView studentId={1} mode="edit" />));
 
     await waitFor(() => {
       expect(mockUpdateBreadthPackageId).toHaveBeenCalledWith(1, pkg);
@@ -758,7 +715,7 @@ describe("PlannerPage", () => {
       { student_id: 1, term_id: 1, course_id: 777, status: "planned", plan_id: 1, course: COURSE },
     ]);
 
-    await act(async () => renderWithChakra(<PlannerPage />));
+    await act(async () => renderWithChakra(<PlannerView studentId={1} mode="edit" />));
     await waitFor(() => expect(screen.getByTestId("plans-hub")).toBeInTheDocument());
 
     await act(async () => fireEvent.click(screen.getByTestId("open-plan")));
@@ -817,7 +774,7 @@ describe("PlannerPage", () => {
 
     const setItemSpy = vi.spyOn(window.localStorage.__proto__, "setItem");
 
-    await act(async () => renderWithChakra(<PlannerPage />));
+    await act(async () => renderWithChakra(<PlannerView studentId={1} mode="edit" />));
     await waitFor(() => expect(screen.getByTestId("plans-hub")).toBeInTheDocument());
     await act(async () => fireEvent.click(screen.getByTestId("open-plan")));
     await waitFor(() => expect(screen.getByTestId("course-panel")).toBeInTheDocument());
@@ -839,7 +796,7 @@ describe("PlannerPage", () => {
     ]);
     mockFetchTerms.mockRejectedValueOnce(new Error("terms fail"));
 
-    await act(async () => renderWithChakra(<PlannerPage />));
+    await act(async () => renderWithChakra(<PlannerView studentId={1} mode="edit" />));
     await waitFor(() => expect(screen.getByTestId("plans-hub")).toBeInTheDocument());
     await act(async () => fireEvent.click(screen.getByTestId("open-plan")));
 
@@ -851,24 +808,16 @@ describe("PlannerPage", () => {
   });
 
   it("shows toaster when fetching student programs fails during auto-create", async () => {
-    mockGetUser.mockResolvedValue({ data: { user: { id: "user-1" } } });
-
-    const studentChain: Record<string, any> = {};
-    studentChain.select = vi.fn().mockReturnValue(studentChain);
-    studentChain.eq = vi.fn().mockReturnValue(studentChain);
-    studentChain.maybeSingle = vi.fn().mockResolvedValue({ data: { id: 1 }, error: null });
-
     const programsChain: Record<string, any> = {};
     programsChain.select = vi.fn().mockReturnValue(programsChain);
     programsChain.eq = vi.fn().mockReturnValue(programsChain);
     programsChain.then = vi.fn().mockImplementation((resolve: (v: unknown) => void) =>
       resolve({ data: null, error: new Error("program query failed") })
     );
-
-    mockFrom.mockReturnValueOnce(studentChain).mockReturnValueOnce(programsChain);
+    mockFrom.mockReturnValue(programsChain);
     mockFetchPlans.mockResolvedValueOnce([]);
 
-    await act(async () => renderWithChakra(<PlannerPage />));
+    await act(async () => renderWithChakra(<PlannerView studentId={1} mode="edit" />));
 
     await waitFor(() => {
       expect(mockToaster.create).toHaveBeenCalledWith(
@@ -882,7 +831,7 @@ describe("PlannerPage", () => {
     setupAuthenticatedState();
     mockUpdatePlan.mockRejectedValueOnce(new Error("rename fail"));
 
-    await act(async () => renderWithChakra(<PlannerPage />));
+    await act(async () => renderWithChakra(<PlannerView studentId={1} mode="edit" />));
     await waitFor(() => expect(screen.getByTestId("plans-hub")).toBeInTheDocument());
     await act(async () => fireEvent.click(screen.getByTestId("rename-plan")));
 
@@ -900,7 +849,7 @@ describe("PlannerPage", () => {
       { student_id: 1, term_id: 1, course_id: 777, status: "planned", plan_id: 1, course: COURSE },
     ]);
 
-    await act(async () => renderWithChakra(<PlannerPage />));
+    await act(async () => renderWithChakra(<PlannerView studentId={1} mode="edit" />));
     await waitFor(() => expect(screen.getByTestId("plans-hub")).toBeInTheDocument());
     await act(async () => fireEvent.click(screen.getByTestId("open-plan")));
     await waitFor(() => expect(screen.getByTestId("semester-grid")).toBeInTheDocument());
@@ -961,7 +910,7 @@ describe("PlannerPage", () => {
     setupAuthenticatedState();
     mockDeletePlan.mockRejectedValueOnce(new Error("delete failed"));
 
-    await act(async () => renderWithChakra(<PlannerPage />));
+    await act(async () => renderWithChakra(<PlannerView studentId={1} mode="edit" />));
     await waitFor(() => expect(screen.getByTestId("plans-hub")).toBeInTheDocument());
 
     fireEvent.click(screen.getByTestId("delete-plan"));
@@ -982,7 +931,7 @@ describe("PlannerPage", () => {
       { student_id: 1, term_id: 1, course_id: 777, status: "planned", plan_id: 1, course: COURSE },
     ]);
 
-    await act(async () => renderWithChakra(<PlannerPage />));
+    await act(async () => renderWithChakra(<PlannerView studentId={1} mode="edit" />));
     await waitFor(() => expect(screen.getByTestId("plans-hub")).toBeInTheDocument());
     await act(async () => fireEvent.click(screen.getByTestId("open-plan")));
     await waitFor(() => expect(screen.getByTestId("semester-grid")).toBeInTheDocument());
@@ -1056,7 +1005,7 @@ describe("PlannerPage", () => {
       },
     ]);
 
-    await act(async () => renderWithChakra(<PlannerPage />));
+    await act(async () => renderWithChakra(<PlannerView studentId={1} mode="edit" />));
     await waitFor(() => expect(screen.getByTestId("plans-hub")).toBeInTheDocument());
 
     await act(async () => fireEvent.click(screen.getByTestId("open-plan")));

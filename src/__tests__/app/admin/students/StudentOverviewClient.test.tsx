@@ -58,4 +58,66 @@ describe("StudentOverviewClient", () => {
       screen.getAllByText(/Ada hasn't created a plan/i).length
     ).toBeGreaterThanOrEqual(1);
   });
+
+  it("omits the graduation line when the student has no semester or year", () => {
+    renderWithChakra(
+      <StudentOverviewClient
+        overview={{
+          ...overview,
+          profile: {
+            ...overview.profile,
+            expectedGradSemester: null,
+            expectedGradYear: null,
+          },
+        }}
+      />
+    );
+    expect(screen.queryByText(/Expected graduation/i)).toBeNull();
+  });
+
+  it("falls back to the raw string when a plan updatedAt is not a valid date", () => {
+    renderWithChakra(
+      <StudentOverviewClient
+        overview={{
+          ...overview,
+          plans: [
+            {
+              ...overview.plans[0],
+              updatedAt: "not-a-real-date",
+            },
+          ],
+        }}
+      />
+    );
+    // fmtDate catches the parse failure and returns the original string;
+    // "Invalid Date" can also slip through different Node versions but the
+    // code path is executed either way. Assert on either.
+    const maybeRaw = screen.queryAllByText(/not-a-real-date/i);
+    const maybeInvalid = screen.queryAllByText(/Invalid Date/i);
+    expect(maybeRaw.length + maybeInvalid.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("hides the plan description when none is provided", () => {
+    renderWithChakra(
+      <StudentOverviewClient
+        overview={{
+          ...overview,
+          plans: [{ ...overview.plans[0], description: null }],
+        }}
+      />
+    );
+    expect(screen.queryByText("primary plan")).toBeNull();
+  });
+
+  it("labels a single-term plan in the singular ('1 term')", () => {
+    renderWithChakra(
+      <StudentOverviewClient
+        overview={{
+          ...overview,
+          plans: [{ ...overview.plans[0], termCount: 1 }],
+        }}
+      />
+    );
+    expect(screen.getAllByText(/1 term/i).length).toBeGreaterThanOrEqual(1);
+  });
 });

@@ -67,4 +67,60 @@ describe("requireAdvisorCanViewStudent", () => {
       requireAdvisorCanViewStudent(supabase as any, 1, 42)
     ).rejects.toThrow("REDIRECT:/admin/students");
   });
+
+  it("falls back to the legacy advisor_id column when staff_id query errors", async () => {
+    // Primary staff_id query returns an error; the helper must retry against
+    // the legacy advisor_id column and succeed.
+    let call = 0;
+    const createChain = (resolveValue: unknown[], error: unknown = null) => {
+      const chain: any = {
+        select: vi.fn(() => chain),
+        eq: vi.fn(() => chain),
+        in: vi.fn(() => chain),
+        limit: vi.fn(() => chain),
+        then: (onFulfilled: any) =>
+          Promise.resolve({ data: resolveValue, error }).then(onFulfilled),
+      };
+      return chain;
+    };
+    const supabase = {
+      from: vi.fn((table: string) => {
+        if (table === "program_advisors") {
+          call++;
+          if (call === 1) return createChain([], new Error("missing staff_id column"));
+          return createChain([{ program_id: 7 }]);
+        }
+        // student_programs: confirm overlap
+        return createChain([{ student_id: 42, program_id: 7 }]);
+      }),
+    };
+    await requireAdvisorCanViewStudent(supabase as any, 1, 42);
+    expect(redirect).not.toHaveBeenCalled();
+    expect(call).toBeGreaterThanOrEqual(2);
+  });
+
+  it("redirects when both staff_id and advisor_id legacy query return no programs", async () => {
+    const createChain = (resolveValue: unknown[], error: unknown = null) => {
+      const chain: any = {
+        select: vi.fn(() => chain),
+        eq: vi.fn(() => chain),
+        in: vi.fn(() => chain),
+        limit: vi.fn(() => chain),
+        then: (onFulfilled: any) =>
+          Promise.resolve({ data: resolveValue, error }).then(onFulfilled),
+      };
+      return chain;
+    };
+    const supabase = {
+      from: vi.fn((table: string) => {
+        if (table === "program_advisors") {
+          return createChain([], new Error("missing column"));
+        }
+        return createChain([]);
+      }),
+    };
+    await expect(
+      requireAdvisorCanViewStudent(supabase as any, 1, 42)
+    ).rejects.toThrow("REDIRECT:/admin/students");
+  });
 });

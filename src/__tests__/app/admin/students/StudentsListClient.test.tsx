@@ -54,4 +54,43 @@ describe("StudentsListClient", () => {
       screen.getAllByText(/no students enrolled/i).length
     ).toBeGreaterThanOrEqual(1);
   });
+
+  it("renders a dash when the student has no expected graduation semester or year", () => {
+    renderWithChakra(
+      <StudentsListClient
+        students={[
+          {
+            ...fixtures[0],
+            expectedGradSemester: null,
+            expectedGradYear: null,
+          },
+        ]}
+      />
+    );
+    expect(screen.getAllByText("—").length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("renders 'No students match your search' when the filter excludes every row", () => {
+    renderWithChakra(<StudentsListClient students={fixtures} />);
+    const input = screen.getByPlaceholderText(/search/i) as HTMLInputElement;
+    fireEvent.change(input, { target: { value: "no-such-student" } });
+    expect(
+      screen.getAllByText(/No students match your search/i).length
+    ).toBeGreaterThanOrEqual(1);
+  });
+
+  it("hides the primary program badge when program name is null", () => {
+    renderWithChakra(
+      <StudentsListClient
+        students={[
+          {
+            ...fixtures[0],
+            primaryProgramName: null,
+            primaryProgramType: null,
+          },
+        ]}
+      />
+    );
+    expect(screen.queryByText("Computer Science")).toBeNull();
+  });
 });
