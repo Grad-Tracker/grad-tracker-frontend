@@ -30,6 +30,7 @@ vi.mock("@/lib/planner/auto-generate", () => ({
   scheduleCourses: vi.fn(),
   fillExistingPlan: vi.fn(),
   buildAvailabilityMap: vi.fn(),
+  rebalanceSemesters: vi.fn(),
 }));
 
 vi.mock("@/lib/planner/validate-plan", () => ({
@@ -80,6 +81,9 @@ beforeEach(() => {
     semesters: [],
     unscheduledCourseIds: [],
   });
+  vi.mocked(autoGenerateLib.rebalanceSemesters).mockImplementation(
+    (semesters) => semesters as any
+  );
 
   vi.mocked(validatePlanLib.validatePlan).mockReturnValue({
     valid: true,
@@ -186,7 +190,6 @@ describe("autoGeneratePlan orchestrator", () => {
     ]);
     vi.mocked(plannerQueries.fetchStudentTerms).mockResolvedValue([]);
     vi.mocked(plannerQueries.fetchPlannedCourses).mockResolvedValue([]);
-    vi.mocked(plannerQueries.fetchPlanPrograms).mockResolvedValue([9]);
     vi.mocked(autoGenerateLib.scheduleCourses).mockReturnValue({
       semesters: [
         {
@@ -258,7 +261,7 @@ describe("autoGeneratePlan orchestrator", () => {
     });
 
     expect(plannerQueries.createPlan).not.toHaveBeenCalled();
-    expect(plannerQueries.fetchPlanPrograms).toHaveBeenCalledWith(55);
+    expect(plannerQueries.fetchPlanPrograms).not.toHaveBeenCalled();
     expect(autoGenerateLib.selectCoursesForBlock).toHaveBeenCalled();
     expect(autoGenerateLib.fillExistingPlan).toHaveBeenCalled();
     expect(plannerQueries.batchSavePlanCourses).toHaveBeenCalled();

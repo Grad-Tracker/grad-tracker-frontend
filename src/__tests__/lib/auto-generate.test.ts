@@ -8,6 +8,7 @@ import {
   computeTopologicalLevels,
   scheduleCourses,
   fillExistingPlan,
+  rebalanceSemesters,
 } from "@/lib/planner/auto-generate";
 
 // ---------------------------------------------------------------------------
@@ -402,6 +403,30 @@ describe("selectCoursesForBlock", () => {
     expect(result).toHaveLength(3);
   });
 
+  it("N_OF with credits_required → returns courses until credit target is met", () => {
+    const c1 = makeCourse({ credits: 5, number: "101" });
+    const c2 = makeCourse({ credits: 4, number: "102" });
+    const c3 = makeCourse({ credits: 3, number: "103" });
+    const block = makeBlock({
+      rule: "N_OF",
+      n_required: 9,
+      credits_required: 9,
+      courses: [c1, c2, c3],
+    });
+
+    const result = selectCoursesForBlock(
+      block,
+      new Set<number>(),
+      new Set<number>(),
+      new Set<number>(),
+      new Map<number, number>()
+    );
+
+    const totalCredits = result.reduce((sum, c) => sum + c.credits, 0);
+    expect(totalCredits).toBeGreaterThanOrEqual(9);
+    expect(result).toHaveLength(2);
+  });
+
   it("CREDITS_OF → returns courses until credits_required is met", () => {
     const c1 = makeCourse({ credits: 3 });
     const c2 = makeCourse({ credits: 3 });
@@ -733,6 +758,42 @@ describe("scheduleCourses", () => {
     expect(dependentSemIdx).toBeGreaterThan(prereqSemIdx);
   });
 
+  it("does not allow prereq and dependent in the same semester even when capacity allows", () => {
+    const prereq = makeCourse({ id: 900, credits: 3, number: "100" });
+    const dependent = makeCourse({ id: 901, credits: 3, number: "200" });
+    const filler = makeCourse({ id: 902, credits: 3, number: "110" });
+
+    const levels = new Map<number, number>([
+      [prereq.id, 0],
+      [filler.id, 0],
+      [dependent.id, 1],
+    ]);
+    const prereqEdges = new Map<number, Set<number>>([
+      [dependent.id, new Set([prereq.id])],
+    ]);
+
+    const result = scheduleCourses(
+      [prereq, dependent, filler],
+      levels,
+      prereqEdges,
+      "Fall",
+      2026,
+      false,
+      18
+    );
+
+    let prereqSemIdx = -1;
+    let dependentSemIdx = -1;
+    result.semesters.forEach((sem, idx) => {
+      if (sem.courses.some((c) => c.id === prereq.id)) prereqSemIdx = idx;
+      if (sem.courses.some((c) => c.id === dependent.id)) dependentSemIdx = idx;
+    });
+
+    expect(prereqSemIdx).toBeGreaterThanOrEqual(0);
+    expect(dependentSemIdx).toBeGreaterThanOrEqual(0);
+    expect(prereqSemIdx).toBeLessThan(dependentSemIdx);
+  });
+
   it("does not place a spring-only course in a fall semester", () => {
     const springCourse = makeCourse({ credits: 3 });
 
@@ -902,5 +963,577 @@ describe("fillExistingPlan", () => {
       (s) => !(s.season === "Fall" && s.year === 2026)
     );
     expect(newSemesters.length).toBeGreaterThanOrEqual(1);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// rebalanceSemesters
+// ---------------------------------------------------------------------------
+describe("rebalanceSemesters", () => {
+  it("moves lab/lecture co-req pairs together when rebalancing", () => {
+    const chemLecture = makeCourse({
+      id: 400,
+      subject: "CHEM",
+      number: "101",
+      title: "General Chemistry I",
+      credits: 4,
+    });
+    const chemLab = makeCourse({
+      id: 401,
+      subject: "CHEM",
+      number: "103",
+      title: "General Chemistry Lab I",
+      credits: 1,
+    });
+    const donorFill = [
+      makeCourse({ id: 402, subject: "CS", number: "201", credits: 3 }),
+      makeCourse({ id: 403, subject: "CS", number: "202", credits: 3 }),
+      makeCourse({ id: 404, subject: "CS", number: "203", credits: 3 }),
+    ];
+
+    const semesters = [
+      {
+        season: "Fall" as const,
+        year: 2026,
+        courses: [chemLecture, chemLab, ...donorFill],
+        totalCredits: 14,
+      },
+      {
+        season: "Spring" as const,
+        year: 2027,
+        courses: [makeCourse({ id: 405, subject: "MATH", number: "110", credits: 3 })],
+        totalCredits: 3,
+      },
+    ];
+
+    const result = rebalanceSemesters(
+      semesters,
+      new Map<number, Set<number>>(),
+      new Map<number, Set<string>>(),
+      new Set<number>(),
+      15,
+      8
+    );
+
+    const donorHasLecture = result[0].courses.some((c) => c.id === chemLecture.id);
+    const donorHasLab = result[0].courses.some((c) => c.id === chemLab.id);
+    const targetHasLecture = result[1].courses.some((c) => c.id === chemLecture.id);
+    const targetHasLab = result[1].courses.some((c) => c.id === chemLab.id);
+
+    expect(donorHasLecture).toBe(donorHasLab);
+    expect(targetHasLecture).toBe(targetHasLab);
+  });
+
+  it("can rebalance from 14-credit donor terms (not only cap-full terms)", () => {
+    const donorCourses = [
+      makeCourse({ id: 300, credits: 3, number: "300" }),
+      makeCourse({ id: 301, credits: 3, number: "301" }),
+      makeCourse({ id: 302, credits: 3, number: "302" }),
+      makeCourse({ id: 303, credits: 3, number: "303" }),
+      makeCourse({ id: 304, credits: 2, number: "304" }),
+    ];
+    const tailCourses = [
+      makeCourse({ id: 310, credits: 3, number: "310" }),
+      makeCourse({ id: 311, credits: 3, number: "311" }),
+      makeCourse({ id: 312, credits: 3, number: "312" }),
+    ];
+
+    const semesters = [
+      {
+        season: "Fall" as const,
+        year: 2026,
+        courses: donorCourses,
+        totalCredits: 14,
+      },
+      {
+        season: "Spring" as const,
+        year: 2027,
+        courses: tailCourses,
+        totalCredits: 9,
+      },
+    ];
+
+    const result = rebalanceSemesters(
+      semesters,
+      new Map<number, Set<number>>(),
+      new Map<number, Set<string>>(),
+      new Set<number>(),
+      15,
+      12
+    );
+
+    const totalBefore = semesters.reduce((sum, sem) => sum + sem.totalCredits, 0);
+    const totalAfter = result.reduce((sum, sem) => sum + sem.totalCredits, 0);
+    expect(totalAfter).toBe(totalBefore);
+    result.forEach((sem) => expect(sem.totalCredits).toBeLessThanOrEqual(15));
+  });
+
+  it("reduces trailing underfilled tail terms without breaking credit caps", () => {
+    const makeSem = (season: Season, year: number, courses: Course[]) => ({
+      season,
+      year,
+      courses,
+      totalCredits: courses.reduce((sum, c) => sum + c.credits, 0),
+    });
+
+    const donorA = [
+      makeCourse({ id: 100, credits: 3, number: "100" }),
+      makeCourse({ id: 101, credits: 3, number: "101" }),
+      makeCourse({ id: 102, credits: 3, number: "102" }),
+      makeCourse({ id: 103, credits: 3, number: "103" }),
+      makeCourse({ id: 104, credits: 3, number: "104" }),
+    ];
+    const donorB = [
+      makeCourse({ id: 110, credits: 3, number: "110" }),
+      makeCourse({ id: 111, credits: 3, number: "111" }),
+      makeCourse({ id: 112, credits: 3, number: "112" }),
+      makeCourse({ id: 113, credits: 3, number: "113" }),
+      makeCourse({ id: 114, credits: 3, number: "114" }),
+    ];
+    const tailA = [
+      makeCourse({ id: 120, credits: 3, number: "120" }),
+      makeCourse({ id: 121, credits: 3, number: "121" }),
+      makeCourse({ id: 122, credits: 3, number: "122" }),
+    ];
+    const tailB = [
+      makeCourse({ id: 130, credits: 3, number: "130" }),
+      makeCourse({ id: 131, credits: 3, number: "131" }),
+      makeCourse({ id: 132, credits: 3, number: "132" }),
+    ];
+
+    const semesters = [
+      makeSem("Fall", 2026, donorA),    // 15
+      makeSem("Spring", 2027, donorB),  // 15
+      makeSem("Fall", 2027, tailA),     // 9
+      makeSem("Spring", 2028, tailB),   // 9
+    ];
+
+    const countTailUnderfilled = (input: typeof semesters): number => {
+      let count = 0;
+      for (let i = input.length - 1; i >= 0; i--) {
+        if (input[i].totalCredits < 12) {
+          count++;
+          continue;
+        }
+        break;
+      }
+      return count;
+    };
+
+    const beforeCount = countTailUnderfilled(semesters);
+
+    const result = rebalanceSemesters(
+      semesters,
+      new Map<number, Set<number>>(),
+      new Map<number, Set<string>>(),
+      new Set<number>(),
+      15,
+      12
+    );
+
+    const afterCount = countTailUnderfilled(result);
+    expect(afterCount).toBeLessThan(beforeCount);
+    result.forEach((sem) => expect(sem.totalCredits).toBeLessThanOrEqual(15));
+  });
+
+  it("does not move a prerequisite after its dependent", () => {
+    const prereq = makeCourse({ id: 200, subject: "CS", number: "101", credits: 3 });
+    const filler = [
+      makeCourse({ id: 201, subject: "CS", number: "102", credits: 3, title: "Filler Lab" }),
+      makeCourse({ id: 202, subject: "CS", number: "103", credits: 3, title: "Filler Lab" }),
+      makeCourse({ id: 203, subject: "CS", number: "104", credits: 3, title: "Filler Lab" }),
+      makeCourse({ id: 204, subject: "CS", number: "105", credits: 3, title: "Filler Lab" }),
+    ];
+    const dependent = makeCourse({ id: 205, subject: "CS", number: "201", credits: 3 });
+    const tailCourse = makeCourse({ id: 206, subject: "MATH", number: "101", credits: 3 });
+
+    const semesters = [
+      {
+        season: "Fall" as const,
+        year: 2026,
+        courses: [prereq, ...filler],
+        totalCredits: 15,
+      },
+      {
+        season: "Spring" as const,
+        year: 2027,
+        courses: [dependent],
+        totalCredits: 3,
+      },
+      {
+        season: "Fall" as const,
+        year: 2027,
+        courses: [tailCourse],
+        totalCredits: 3,
+      },
+    ];
+
+    const prereqEdges = new Map<number, Set<number>>([
+      [dependent.id, new Set([prereq.id])],
+    ]);
+
+    const availabilityMap = new Map<number, Set<string>>([
+      [filler[0].id, new Set(["SPRING"])],
+      [filler[1].id, new Set(["SPRING"])],
+      [filler[2].id, new Set(["SPRING"])],
+      [filler[3].id, new Set(["SPRING"])],
+    ]);
+
+    const result = rebalanceSemesters(
+      semesters,
+      prereqEdges,
+      availabilityMap,
+      new Set<number>(),
+      15,
+      12
+    );
+
+    const prereqSemIdx = result.findIndex((sem) =>
+      sem.courses.some((course) => course.id === prereq.id)
+    );
+    const dependentSemIdx = result.findIndex((sem) =>
+      sem.courses.some((course) => course.id === dependent.id)
+    );
+
+    expect(prereqSemIdx).toBeGreaterThanOrEqual(0);
+    expect(dependentSemIdx).toBeGreaterThanOrEqual(0);
+    expect(prereqSemIdx).toBeLessThan(dependentSemIdx);
+  });
+
+  it("drops an unnecessary trailing semester when its courses fit earlier terms", () => {
+    const makeSem = (season: Season, year: number, courses: Course[]) => ({
+      season,
+      year,
+      courses,
+      totalCredits: courses.reduce((sum, c) => sum + c.credits, 0),
+    });
+
+    const fallFull = [
+      makeCourse({ id: 500, credits: 3 }),
+      makeCourse({ id: 501, credits: 3 }),
+      makeCourse({ id: 502, credits: 3 }),
+      makeCourse({ id: 503, credits: 3 }),
+      makeCourse({ id: 504, credits: 3 }),
+    ]; // 15
+
+    const springTwelve = [
+      makeCourse({ id: 510, credits: 3 }),
+      makeCourse({ id: 511, credits: 3 }),
+      makeCourse({ id: 512, credits: 3 }),
+      makeCourse({ id: 513, credits: 3 }),
+    ]; // 12
+
+    const lateThree = [makeCourse({ id: 520, credits: 3 })]; // 3
+
+    const semesters = [
+      makeSem("Fall", 2026, fallFull),
+      makeSem("Spring", 2027, springTwelve),
+      makeSem("Fall", 2027, lateThree),
+    ];
+
+    const result = rebalanceSemesters(
+      semesters,
+      new Map<number, Set<number>>(),
+      new Map<number, Set<string>>(),
+      new Set<number>(),
+      15,
+      15,
+      12
+    );
+
+    expect(result).toHaveLength(2);
+    expect(result[0].totalCredits).toBe(15);
+    expect(result[1].totalCredits).toBe(15);
+    expect(
+      result.some((sem) => sem.courses.some((course) => course.id === 520))
+    ).toBe(true);
+  });
+
+  it("front-loads movable prerequisite courses into earlier valid terms", () => {
+    const c231 = makeCourse({ id: 800, subject: "CSCI", number: "231", credits: 3 });
+    const c245 = makeCourse({ id: 801, subject: "CSCI", number: "245", credits: 3 });
+    const c355 = makeCourse({ id: 802, subject: "CSCI", number: "355", credits: 3 });
+    const c370 = makeCourse({ id: 803, subject: "CSCI", number: "370", credits: 3 });
+
+    const fillerA = [
+      makeCourse({ id: 810, credits: 3 }),
+      makeCourse({ id: 811, credits: 3 }),
+      makeCourse({ id: 812, credits: 3 }),
+    ];
+    const fillerB = [
+      makeCourse({ id: 820, credits: 3 }),
+      makeCourse({ id: 821, credits: 3 }),
+      makeCourse({ id: 822, credits: 3 }),
+      makeCourse({ id: 823, credits: 3 }),
+    ];
+    const fillerC = [
+      makeCourse({ id: 830, credits: 3 }),
+      makeCourse({ id: 831, credits: 3 }),
+      makeCourse({ id: 832, credits: 3 }),
+    ];
+    const fillerD = [
+      makeCourse({ id: 840, credits: 3 }),
+      makeCourse({ id: 841, credits: 3 }),
+      makeCourse({ id: 842, credits: 3 }),
+    ];
+
+    const semesters = [
+      { season: "Fall" as const, year: 2027, courses: [c231, ...fillerA], totalCredits: 12 },
+      { season: "Spring" as const, year: 2028, courses: fillerB, totalCredits: 12 },
+      { season: "Fall" as const, year: 2028, courses: [c245, ...fillerC], totalCredits: 12 },
+      { season: "Spring" as const, year: 2029, courses: [c355, ...fillerD], totalCredits: 12 },
+      { season: "Fall" as const, year: 2029, courses: [c370], totalCredits: 3 },
+    ];
+
+    const prereqEdges = new Map<number, Set<number>>([
+      [c355.id, new Set([c245.id])],
+      [c370.id, new Set([c355.id])],
+    ]);
+    const availabilityMap = new Map<number, Set<string>>([
+      [c355.id, new Set(["SPRING"])],
+      [c370.id, new Set(["FALL"])],
+    ]);
+
+    const result = rebalanceSemesters(
+      semesters,
+      prereqEdges,
+      availabilityMap,
+      new Set<number>(),
+      18,
+      15,
+      12
+    );
+
+    const semIdxOf = (courseId: number) =>
+      result.findIndex((sem) => sem.courses.some((c) => c.id === courseId));
+
+    expect(semIdxOf(c245.id)).toBeLessThan(2);
+  });
+
+  it("can free capacity via intermediate terms when front-loading into a full earlier term", () => {
+    const blocker = makeCourse({ id: 901, subject: "GEN", number: "101", credits: 3 });
+    const t0Fill = [
+      blocker,
+      makeCourse({ id: 902, credits: 3 }),
+      makeCourse({ id: 903, credits: 3 }),
+      makeCourse({ id: 904, credits: 3 }),
+      makeCourse({ id: 905, credits: 3 }),
+    ]; // 15
+
+    const intermediate = [
+      makeCourse({ id: 906, credits: 3 }),
+      makeCourse({ id: 907, credits: 3 }),
+      makeCourse({ id: 908, credits: 3 }),
+      makeCourse({ id: 909, credits: 3 }),
+    ]; // 12
+
+    const springOnlyDependent = makeCourse({
+      id: 910,
+      subject: "CSCI",
+      number: "355",
+      credits: 3,
+    });
+    const donorCourse = makeCourse({
+      id: 911,
+      subject: "CSCI",
+      number: "242",
+      credits: 4,
+    });
+
+    const semesters = [
+      { season: "Fall" as const, year: 2027, courses: t0Fill, totalCredits: 15 },
+      { season: "Spring" as const, year: 2028, courses: intermediate, totalCredits: 12 },
+      { season: "Fall" as const, year: 2028, courses: [donorCourse], totalCredits: 4 },
+      { season: "Fall" as const, year: 2029, courses: [springOnlyDependent], totalCredits: 3 },
+    ];
+
+    const prereqEdges = new Map<number, Set<number>>([
+      [springOnlyDependent.id, new Set([donorCourse.id])],
+    ]);
+
+    const availabilityMap = new Map<number, Set<string>>([
+      [blocker.id, new Set(["SPRING"])],   // can only be evicted into the intermediate Spring term
+      [donorCourse.id, new Set(["FALL"])], // donor course can move to earlier Fall
+    ]);
+
+    const result = rebalanceSemesters(
+      semesters,
+      prereqEdges,
+      availabilityMap,
+      new Set<number>(),
+      18,
+      15,
+      12
+    );
+
+    const semIdxOf = (courseId: number) =>
+      result.findIndex((sem) => sem.courses.some((c) => c.id === courseId));
+
+    expect(semIdxOf(donorCourse.id)).toBeLessThan(2);
+  });
+
+  it("eliminates an out-of-horizon singleton by swapping flexible courses", () => {
+    const flex = makeCourse({ id: 950, subject: "ART", number: "100", credits: 3 });
+    const req = makeCourse({ id: 951, subject: "PHYS", number: "202", credits: 4 });
+
+    const t0Courses = [
+      makeCourse({ id: 952, credits: 3 }),
+      makeCourse({ id: 953, credits: 3 }),
+      makeCourse({ id: 954, credits: 3 }),
+      makeCourse({ id: 955, credits: 3 }),
+      makeCourse({ id: 956, credits: 3 }),
+      flex,
+    ]; // 18
+
+    const t1Courses = [
+      makeCourse({ id: 957, credits: 3 }),
+      makeCourse({ id: 958, credits: 3 }),
+      makeCourse({ id: 959, credits: 3 }),
+      makeCourse({ id: 960, credits: 3 }),
+    ]; // 12
+
+    const semesters = [
+      { season: "Fall" as const, year: 2026, courses: t0Courses, totalCredits: 18 },
+      { season: "Spring" as const, year: 2027, courses: t1Courses, totalCredits: 12 },
+      { season: "Fall" as const, year: 2027, courses: [req], totalCredits: 4 },
+    ];
+
+    const availability = new Map<number, Set<string>>([
+      [req.id, new Set(["FALL"])],
+      [flex.id, new Set(["YEARLY"])],
+    ]);
+
+    const result = rebalanceSemesters(
+      semesters,
+      new Map<number, Set<number>>(),
+      availability,
+      new Set<number>(),
+      18,
+      12,
+      12,
+      new Set<number>([flex.id]),
+      { season: "Spring", year: 2027 }
+    );
+
+    const hasOutOfHorizon = result.some(
+      (sem) => sem.year > 2027 || (sem.year === 2027 && sem.season === "Fall")
+    );
+    expect(hasOutOfHorizon).toBe(false);
+    expect(
+      result.some((sem) => sem.courses.some((course) => course.id === req.id))
+    ).toBe(true);
+  });
+
+  it("can absorb a terminal singleton by freeing capacity in an earlier term", () => {
+    const donorCourse = makeCourse({ id: 980, subject: "CSCI", number: "405", credits: 3 });
+    const moveableFlex = makeCourse({ id: 981, subject: "BUS", number: "100", credits: 3 });
+
+    const fallA = [
+      makeCourse({ id: 982, credits: 3 }),
+      makeCourse({ id: 983, credits: 3 }),
+      makeCourse({ id: 984, credits: 3 }),
+      makeCourse({ id: 985, credits: 3 }),
+      makeCourse({ id: 986, credits: 3 }),
+    ]; // 15
+
+    const springB = [
+      moveableFlex,
+      makeCourse({ id: 987, credits: 3 }),
+      makeCourse({ id: 988, credits: 3 }),
+      makeCourse({ id: 989, credits: 3 }),
+      makeCourse({ id: 990, credits: 5 }),
+    ]; // 17
+
+    const fallC = [
+      makeCourse({ id: 991, credits: 3 }),
+      makeCourse({ id: 992, credits: 3 }),
+      makeCourse({ id: 993, credits: 3 }),
+      makeCourse({ id: 994, credits: 3 }),
+      makeCourse({ id: 995, credits: 3 }),
+    ]; // 15
+
+    const semesters = [
+      { season: "Fall" as const, year: 2028, courses: fallA, totalCredits: 15 },
+      { season: "Spring" as const, year: 2029, courses: springB, totalCredits: 17 },
+      { season: "Fall" as const, year: 2029, courses: fallC, totalCredits: 15 },
+      { season: "Spring" as const, year: 2030, courses: [donorCourse], totalCredits: 3 },
+    ];
+
+    const availability = new Map<number, Set<string>>([
+      [donorCourse.id, new Set(["SPRING"])],
+      [moveableFlex.id, new Set(["YEARLY"])],
+    ]);
+
+    const result = rebalanceSemesters(
+      semesters,
+      new Map<number, Set<number>>(),
+      availability,
+      new Set<number>(),
+      18,
+      12,
+      12,
+      new Set<number>([moveableFlex.id]),
+      { season: "Spring", year: 2030 }
+    );
+
+    expect(result.length).toBeLessThanOrEqual(3);
+    expect(
+      result.some((sem) => sem.courses.some((course) => course.id === donorCourse.id))
+    ).toBe(true);
+  });
+
+  it("improves an underfilled final semester by pulling flexible courses from heavier donors", () => {
+    const flexA = makeCourse({ id: 996, subject: "ART", number: "100", credits: 3 });
+    const flexB = makeCourse({ id: 997, subject: "BUS", number: "100", credits: 3 });
+    const flexC = makeCourse({ id: 998, subject: "MUSI", number: "100", credits: 3 });
+
+    const semesters = [
+      {
+        season: "Fall" as const,
+        year: 2027,
+        courses: [flexA, makeCourse({ id: 999, credits: 3 }), makeCourse({ id: 1000, credits: 3 }), makeCourse({ id: 1001, credits: 3 }), makeCourse({ id: 1002, credits: 3 }), makeCourse({ id: 1003, credits: 3 })],
+        totalCredits: 18,
+      },
+      {
+        season: "Spring" as const,
+        year: 2028,
+        courses: [flexB, makeCourse({ id: 1004, credits: 3 }), makeCourse({ id: 1005, credits: 3 }), makeCourse({ id: 1006, credits: 3 }), makeCourse({ id: 1007, credits: 3 }), makeCourse({ id: 1008, credits: 2 })],
+        totalCredits: 17,
+      },
+      {
+        season: "Fall" as const,
+        year: 2028,
+        courses: [flexC, makeCourse({ id: 1009, credits: 3 }), makeCourse({ id: 1010, credits: 3 }), makeCourse({ id: 1011, credits: 3 }), makeCourse({ id: 1012, credits: 3 }), makeCourse({ id: 1013, credits: 1 })],
+        totalCredits: 16,
+      },
+      {
+        season: "Spring" as const,
+        year: 2029,
+        courses: [makeCourse({ id: 1014, credits: 3 }), makeCourse({ id: 1015, credits: 3 })],
+        totalCredits: 6,
+      },
+    ];
+
+    const result = rebalanceSemesters(
+      semesters,
+      new Map<number, Set<number>>(),
+      new Map<number, Set<string>>(),
+      new Set<number>(),
+      18,
+      12,
+      12,
+      new Set<number>([flexA.id, flexB.id, flexC.id]),
+      null,
+      15
+    );
+
+    const finalSemester = result[result.length - 1];
+    expect(finalSemester.totalCredits).toBeGreaterThan(6);
+    expect(finalSemester.totalCredits).toBeLessThanOrEqual(18);
+    expect(
+      finalSemester.courses.some((course) =>
+        [flexA.id, flexB.id, flexC.id].includes(course.id)
+      )
+    ).toBe(true);
   });
 });
