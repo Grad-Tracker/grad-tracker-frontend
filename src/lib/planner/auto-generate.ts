@@ -1460,6 +1460,118 @@ export function rebalanceSemesters(
     }
   }
 
+  // Final smoothing pass: reduce max/min semester credit spread as much as
+  // possible without violating prereqs, offerings, coreqs, or credit cap.
+  if (rebalanced.length > 1) {
+    const totalCredits = rebalanced.reduce((sum, sem) => sum + sem.totalCredits, 0);
+    const avgFloor = Math.floor(totalCredits / rebalanced.length);
+    const avgCeil = Math.ceil(totalCredits / rebalanced.length);
+    const smoothingOpLimit = Math.max(1, allCourses.length * 10);
+    let smoothingOps = 0;
+
+    const computeSpread = (): number => {
+      let min = Number.POSITIVE_INFINITY;
+      let max = Number.NEGATIVE_INFINITY;
+      for (const sem of rebalanced) {
+        if (sem.totalCredits < min) min = sem.totalCredits;
+        if (sem.totalCredits > max) max = sem.totalCredits;
+      }
+      return max - min;
+    };
+
+    while (smoothingOps < smoothingOpLimit) {
+      const currentSpread = computeSpread();
+      if (currentSpread <= 1) break;
+
+      const donorIndices = Array.from({ length: rebalanced.length }, (_, i) => i).sort(
+        (a, b) => rebalanced[b].totalCredits - rebalanced[a].totalCredits
+      );
+      let moved = false;
+
+      for (const donorIdx of donorIndices) {
+        const donor = rebalanced[donorIdx];
+        const donorFloor = Math.max(donorFloorCredits, avgFloor);
+        if (donor.totalCredits <= donorFloor) continue;
+
+        const recipientIndices = Array.from({ length: rebalanced.length }, (_, i) => i)
+          .filter((idx) => idx !== donorIdx)
+          .sort((a, b) => rebalanced[a].totalCredits - rebalanced[b].totalCredits);
+
+        const seenGroups = new Set<string>();
+        const donorCandidates = [...donor.courses]
+          .filter((course) => {
+            const groupIds = coreqGroups.get(course.id) ?? new Set([course.id]);
+            const key = [...groupIds].sort((x, y) => x - y).join(",");
+            if (seenGroups.has(key)) return false;
+            seenGroups.add(key);
+            return true;
+          })
+          .sort((a, b) => {
+            const flexA = flexibleCourseIds.has(a.id) ? 0 : 1;
+            const flexB = flexibleCourseIds.has(b.id) ? 0 : 1;
+            if (flexA !== flexB) return flexA - flexB;
+            const depA = dependentCounts.get(a.id) ?? 0;
+            const depB = dependentCounts.get(b.id) ?? 0;
+            if (depA !== depB) return depA - depB;
+            if (a.credits !== b.credits) return b.credits - a.credits;
+            return a.id - b.id;
+          });
+
+        for (const candidate of donorCandidates) {
+          const group = getGroupInSemester(candidate.id, donorIdx);
+          if (!group) continue;
+          if (donor.totalCredits - group.groupCredits < donorFloor) continue;
+
+          for (const recipientIdx of recipientIndices) {
+            const recipient = rebalanced[recipientIdx];
+            if (recipient.totalCredits + group.groupCredits > creditCap) continue;
+            if (recipient.totalCredits >= avgCeil && donor.totalCredits <= avgCeil + 1) continue;
+
+            const canMoveGroup = group.groupCourses.every((member) =>
+              canMoveCourseToSemester(
+                member,
+                recipientIdx,
+                recipient,
+                courseToSemester,
+                prereqEdges,
+                dependentsMap,
+                availabilityMap,
+                completedIds,
+                group.groupIds
+              )
+            );
+            if (!canMoveGroup) continue;
+
+            const donorAfter = donor.totalCredits - group.groupCredits;
+            const recipientAfter = recipient.totalCredits + group.groupCredits;
+
+            let nextMin = Number.POSITIVE_INFINITY;
+            let nextMax = Number.NEGATIVE_INFINITY;
+            for (let i = 0; i < rebalanced.length; i++) {
+              const credits =
+                i === donorIdx ? donorAfter : i === recipientIdx ? recipientAfter : rebalanced[i].totalCredits;
+              if (credits < nextMin) nextMin = credits;
+              if (credits > nextMax) nextMax = credits;
+            }
+            const nextSpread = nextMax - nextMin;
+            if (nextSpread >= currentSpread) continue;
+
+            moveGroup(donorIdx, recipientIdx, group.groupIds, group.groupCourses, group.groupCredits);
+            smoothingOps++;
+            moved = true;
+            break;
+          }
+
+          if (moved) break;
+        }
+
+        if (moved) break;
+      }
+
+      if (!moved) break;
+    }
+  }
+
   return rebalanced;
 }
 

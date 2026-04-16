@@ -52,6 +52,39 @@ function blockCreditTarget(blocks: RequirementBlockWithCourses[]): number {
   }, 0);
 }
 
+function isElectiveLikeBlock(block: RequirementBlockWithCourses): boolean {
+  return /elective/i.test(block.name);
+}
+
+function isBlockSatisfiedForTopUp(
+  block: RequirementBlockWithCourses,
+  coveredIds: Set<number>
+): boolean {
+  let coveredCount = 0;
+  let coveredCredits = 0;
+  for (const course of block.courses) {
+    if (!coveredIds.has(course.id)) continue;
+    coveredCount++;
+    coveredCredits += course.credits;
+  }
+
+  switch (block.rule) {
+    case "ALL_OF":
+      return coveredCount >= block.courses.length;
+    case "ANY_OF":
+      return coveredCount >= 1;
+    case "N_OF":
+      if (block.credits_required != null) {
+        return coveredCredits >= block.credits_required;
+      }
+      return coveredCount >= (block.n_required ?? 1);
+    case "CREDITS_OF":
+      return coveredCredits >= (block.credits_required ?? 0);
+    default:
+      return coveredCount >= block.courses.length;
+  }
+}
+
 function rankTopUpCandidates(
   courses: Course[],
   prereqCounts: Map<number, number>,
@@ -430,7 +463,12 @@ export async function autoGeneratePlan(
   let selectedCredits = selectedCourses.reduce((sum, course) => sum + course.credits, 0);
   if (selectedCredits < targetCredits) {
     const candidateById = new Map<number, Course>();
+    const coveredIds = new Set<number>([...completedIds, ...selectedIds]);
     for (const block of plannableBlocks) {
+      const satisfied = isBlockSatisfiedForTopUp(block, coveredIds);
+      if (satisfied && !isElectiveLikeBlock(block)) {
+        continue;
+      }
       for (const course of block.courses) {
         if (completedIds.has(course.id) || selectedIds.has(course.id)) continue;
         if (!candidateById.has(course.id)) candidateById.set(course.id, course);

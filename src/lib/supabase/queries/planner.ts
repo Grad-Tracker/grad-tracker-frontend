@@ -9,6 +9,7 @@ import type {
 } from "@/types/planner";
 import type { Course } from "@/types/course";
 import type { GenEdBucketWithCourses, ScheduledSemester } from "@/types/auto-generate";
+import type { ViewStudentCourseProgressRow } from "./view-types";
 import {
   DB_TABLES,
   DB_VIEWS,
@@ -241,6 +242,27 @@ export async function setPlanPrograms(
       .insert(rows);
     if (insError) throw insError;
   }
+}
+
+export async function fetchStudentCourseProgress(
+  studentId: number
+): Promise<ViewStudentCourseProgressRow[]> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from(DB_VIEWS.studentCourseProgress)
+    .select(`
+      student_id,
+      course_id,
+      plan_id,
+      term_id,
+      completed,
+      grade,
+      progress_status
+    `)
+    .eq("student_id", studentId);
+
+  if (error) throw error;
+  return (data ?? []) as ViewStudentCourseProgressRow[];
 }
 
 // ── Term & course queries (plan-scoped) ──────────────────

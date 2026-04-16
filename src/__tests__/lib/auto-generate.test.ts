@@ -1536,4 +1536,73 @@ describe("rebalanceSemesters", () => {
       )
     ).toBe(true);
   });
+
+  it("smooths semester credits by reducing max/min spread when legal moves exist", () => {
+    const flexA = makeCourse({ id: 1100, subject: "ART", number: "100", credits: 3 });
+    const flexB = makeCourse({ id: 1101, subject: "MUSI", number: "100", credits: 3 });
+    const flexC = makeCourse({ id: 1102, subject: "BUS", number: "100", credits: 3 });
+
+    const semesters = [
+      {
+        season: "Fall" as const,
+        year: 2026,
+        courses: [
+          flexA,
+          makeCourse({ id: 1103, credits: 3 }),
+          makeCourse({ id: 1104, credits: 3 }),
+          makeCourse({ id: 1105, credits: 3 }),
+          makeCourse({ id: 1106, credits: 3 }),
+          makeCourse({ id: 1107, credits: 3 }),
+        ],
+        totalCredits: 18,
+      },
+      {
+        season: "Spring" as const,
+        year: 2027,
+        courses: [
+          flexB,
+          makeCourse({ id: 1108, credits: 3 }),
+          makeCourse({ id: 1109, credits: 3 }),
+          makeCourse({ id: 1110, credits: 3 }),
+          makeCourse({ id: 1111, credits: 3 }),
+          makeCourse({ id: 1112, credits: 3 }),
+        ],
+        totalCredits: 18,
+      },
+      {
+        season: "Fall" as const,
+        year: 2027,
+        courses: [flexC, makeCourse({ id: 1113, credits: 3 })],
+        totalCredits: 6,
+      },
+      {
+        season: "Spring" as const,
+        year: 2028,
+        courses: [makeCourse({ id: 1114, credits: 3 }), makeCourse({ id: 1115, credits: 3 })],
+        totalCredits: 6,
+      },
+    ];
+
+    const spread = (input: typeof semesters): number => {
+      const credits = input.map((sem) => sem.totalCredits);
+      return Math.max(...credits) - Math.min(...credits);
+    };
+
+    const beforeSpread = spread(semesters);
+
+    const result = rebalanceSemesters(
+      semesters,
+      new Map<number, Set<number>>(),
+      new Map<number, Set<string>>(),
+      new Set<number>(),
+      18,
+      12,
+      12,
+      new Set<number>([flexA.id, flexB.id, flexC.id])
+    );
+
+    const afterSpread = spread(result);
+    expect(afterSpread).toBeLessThan(beforeSpread);
+    result.forEach((sem) => expect(sem.totalCredits).toBeLessThanOrEqual(18));
+  });
 });
