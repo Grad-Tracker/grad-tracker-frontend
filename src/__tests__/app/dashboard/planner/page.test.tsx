@@ -334,7 +334,7 @@ describe("PlannerPage", () => {
   it("shows skeleton loading state initially", () => {
     mockGetUser.mockReturnValue(new Promise(() => {}));
     renderWithChakra(<PlannerPage />);
-    expect(screen.getByTestId("planner-page-skeleton")).toBeInTheDocument();
+    expect(screen.getByText("Loading your planner...")).toBeInTheDocument();
   });
 
   it("redirects to signin when no user", async () => {
@@ -584,7 +584,7 @@ describe("PlannerPage", () => {
     await act(async () => fireEvent.click(screen.getByTestId("open-plan")));
 
     await waitFor(() => {
-      expect(screen.getByTestId("planner-skeleton")).toBeInTheDocument();
+      expect(screen.getByText("Loading plan...")).toBeInTheDocument();
     });
   });
 
@@ -713,12 +713,13 @@ describe("PlannerPage", () => {
     });
   });
 
-  it("selects breadth package and persists to students.breadth_package_id", async () => {
+  it("selects breadth package and persists to per-plan localStorage", async () => {
     setupAuthenticatedState();
     mockFetchTerms.mockResolvedValue([{ id: 1, season: "Fall", year: 2025 }]);
 
     // Use a real package ID that exists
     const pkg = BREADTH_PACKAGES[0]?.id ?? "BREADTH";
+    const setItemSpy = vi.spyOn(window.localStorage.__proto__, "setItem");
 
     await act(async () => renderWithChakra(<PlannerPage />));
     await waitFor(() => expect(screen.getByTestId("plans-hub")).toBeInTheDocument());
@@ -729,21 +730,31 @@ describe("PlannerPage", () => {
     fireEvent.click(screen.getByTestId("mock-select-breadth"));
 
     await waitFor(() => {
-      expect(mockUpdateBreadthPackageId).toHaveBeenCalledWith(1, pkg);
+      expect(setItemSpy).toHaveBeenCalledWith(
+        "gradtracker:breadthPackage:1:1",
+        pkg
+      );
     });
+    setItemSpy.mockRestore();
   });
 
-  it("migrates legacy breadth package from localStorage when DB value is null", async () => {
+  it("loads breadth package from per-plan localStorage key", async () => {
     setupAuthenticatedState();
     const pkg = BREADTH_PACKAGES[1]?.id ?? "math-physics";
-    localStorage.setItem("gradtracker:breadthPackage:1", pkg);
+    localStorage.setItem("gradtracker:breadthPackage:1:1", pkg);
+    const setItemSpy = vi.spyOn(window.localStorage.__proto__, "setItem");
 
     await act(async () => renderWithChakra(<PlannerPage />));
+    await waitFor(() => expect(screen.getByTestId("plans-hub")).toBeInTheDocument());
+    await act(async () => fireEvent.click(screen.getByTestId("open-plan")));
+    await waitFor(() => expect(screen.getByTestId("course-panel")).toBeInTheDocument());
+
+    fireEvent.click(screen.getByTestId("mock-select-breadth"));
 
     await waitFor(() => {
-      expect(mockUpdateBreadthPackageId).toHaveBeenCalledWith(1, pkg);
+      expect(setItemSpy).toHaveBeenCalledWith("gradtracker:breadthPackage:1:1", pkg);
     });
-    expect(localStorage.getItem("gradtracker:breadthPackage:1")).toBeNull();
+    setItemSpy.mockRestore();
   });
 
   it("executes drag handlers: add, move, remove (handleDragStart/handleDragEnd branches)", async () => {
@@ -952,7 +963,7 @@ describe("PlannerPage", () => {
 
     await waitFor(() => {
       expect(mockToaster.create).toHaveBeenCalledWith(
-        expect.objectContaining({ title: "Failed to move course", type: "error" })
+        expect.objectContaining({ title: "Error", description: "move fail", type: "error" })
       );
     });
   });
@@ -1009,7 +1020,8 @@ describe("PlannerPage", () => {
     await waitFor(() => {
       expect(mockToaster.create).toHaveBeenCalledWith(
         expect.objectContaining({
-          title: "Failed to move course",
+          title: "Error",
+          description: "Failed to update plan",
           type: "error",
         })
       );

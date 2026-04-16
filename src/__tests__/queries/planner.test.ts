@@ -13,6 +13,7 @@ import {
   deletePlan,
   fetchPlanPrograms,
   setPlanPrograms,
+  fetchStudentCourseProgress,
   fetchStudentTerms,
   fetchPlannedCourses,
   fetchAvailableCourses,
@@ -973,6 +974,44 @@ describe("planner queries", () => {
   // ─────────────────────────────────────────────────────────────────────────
   // fetchCompletedCourseIds
   // ─────────────────────────────────────────────────────────────────────────
+  // -------------------------------------------------------------------------
+  // fetchStudentCourseProgress
+  // -------------------------------------------------------------------------
+  describe("fetchStudentCourseProgress", () => {
+    it("returns rows from v_student_course_progress for the student", async () => {
+      const rows = [
+        {
+          student_id: 1,
+          course_id: 100,
+          plan_id: 10,
+          term_id: 20,
+          completed: false,
+          grade: null,
+          progress_status: "planned",
+        },
+      ];
+      mockFrom.mockReturnValueOnce(mockChain(rows));
+
+      const result = await fetchStudentCourseProgress(1);
+
+      expect(result).toEqual(rows);
+      expect(mockFrom).toHaveBeenCalledWith("v_student_course_progress");
+    });
+
+    it("returns [] when the view returns null/empty", async () => {
+      mockFrom.mockReturnValueOnce(mockChain(null));
+      const result = await fetchStudentCourseProgress(1);
+      expect(result).toEqual([]);
+    });
+
+    it("throws on view error", async () => {
+      const err = { message: "progress view error" };
+      mockFrom.mockReturnValueOnce(mockChain(null, err));
+
+      await expect(fetchStudentCourseProgress(1)).rejects.toEqual(err);
+    });
+  });
+
   // -------------------------------------------------------------------------
   // fetchGenEdBucketsWithCourses
   // -------------------------------------------------------------------------
