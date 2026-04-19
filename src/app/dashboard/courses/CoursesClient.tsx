@@ -79,9 +79,6 @@ interface CoursesClientProps {
   subjects: string[];
 }
 
-function getCourseActivityLabel(course: Course): string {
-  return `${course.subject} ${course.number}`;
-}
 
 export default function CoursesClient({
   initialCourses,
@@ -258,8 +255,7 @@ export default function CoursesClient({
         studentId,
         term.id,
         selectedCourse.id,
-        planId,
-        getCourseActivityLabel(selectedCourse)
+        planId
       );
       toaster.create({
         title: "Added to plan",
@@ -311,8 +307,7 @@ export default function CoursesClient({
         studentId,
         currentTerm.id,
         selectedCourse.id,
-        planId,
-        getCourseActivityLabel(selectedCourse)
+        planId
       );
       toaster.create({
         title: "Added to current semester",
