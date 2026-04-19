@@ -259,10 +259,10 @@ export default function AdvisorSignupClient() {
           size="lg"
           rounded="full"
           fontWeight="600"
-          bg="#1E3A5F"
+          bg="blue.800"
           color="white"
           _hover={{
-            bg: "#162d4a",
+            bg: "blue.900",
             transform: "translateY(-2px)",
             boxShadow: "0 8px 24px rgba(30,58,95,0.3)",
           }}
@@ -292,7 +292,7 @@ export default function AdvisorSignupClient() {
           <Link href="/signin">
             <Text
               as="span"
-              color="#3B82F6"
+              color="blue.500"
               cursor="pointer"
               fontWeight="600"
               _hover={{ textDecoration: "underline" }}
