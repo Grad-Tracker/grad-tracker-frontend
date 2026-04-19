@@ -108,11 +108,9 @@ export default function AuthPageLayout({
               <br />
               <Text
                 as="span"
-                style={{
-                  background: "linear-gradient(135deg, #93C5FD, #C4B5FD)",
-                  WebkitBackgroundClip: "text",
-                  WebkitTextFillColor: "transparent",
-                }}
+                bgGradient="linear(135deg, blue.200, purple.200)"
+                backgroundClip="text"
+                color="transparent"
               >
                 {highlightWord}
               </Text>
