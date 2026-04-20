@@ -34,7 +34,7 @@ export async function listStudentsForAdvisor(
   const { data: assignments } = await supabase
     .from(DB_TABLES.programAdvisors)
     .select("program_id")
-    .eq("staff_id", staffId);
+    .eq("advisor_id", staffId);
   const programIds: number[] = (assignments ?? [])
     .map((r: any) => Number(r.program_id))
     .filter((n: number) => !Number.isNaN(n));
