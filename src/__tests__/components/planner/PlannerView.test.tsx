@@ -24,6 +24,26 @@ vi.mock("@/lib/supabase/client", () => ({
   }),
 }));
 
+vi.mock("@/lib/supabase/queries/planner", () => ({
+  fetchPlans: vi.fn().mockResolvedValue([]),
+  fetchStudentTerms: vi.fn().mockResolvedValue([]),
+  fetchPlannedCourses: vi.fn().mockResolvedValue([]),
+  fetchAvailableCourses: vi.fn().mockResolvedValue([]),
+  fetchCompletedCourseIds: vi.fn().mockResolvedValue([]),
+  fetchGenEdBucketsWithCourses: vi.fn().mockResolvedValue([]),
+  fetchBreadthPackageId: vi.fn().mockResolvedValue(null),
+  updateBreadthPackageId: vi.fn().mockResolvedValue(undefined),
+  createPlan: vi.fn(),
+  updatePlan: vi.fn(),
+  deletePlan: vi.fn(),
+  getOrCreateTerm: vi.fn(),
+  addTermPlan: vi.fn(),
+  removeTermPlan: vi.fn(),
+  addPlannedCourse: vi.fn(),
+  removePlannedCourse: vi.fn(),
+  movePlannedCourse: vi.fn(),
+}));
+
 import PlannerView from "@/components/planner/PlannerView";
 
 describe("PlannerView", () => {
