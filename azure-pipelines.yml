@@ -22,6 +22,22 @@ stages:
           - script: npm ci
             displayName: 'Install dependencies'
 
+          - script: |
+              SUPABASE_URL=$(az keyvault secret show --vault-name GradTracker-dev-kv --name NEXT-PUBLIC-SUPABASE-URL --query value -o tsv)
+              SUPABASE_ANON_KEY=$(az keyvault secret show --vault-name GradTracker-dev-kv --name NEXT-PUBLIC-SUPABASE-ANON-KEY --query value -o tsv)
+              SUPABASE_PUBLISHABLE_KEY=$(az keyvault secret show --vault-name GradTracker-dev-kv --name NEXT-PUBLIC-SUPABASE-PUBLISHABLE-DEFAULT-KEY --query value -o tsv)
+              ANTHROPIC_KEY=$(az keyvault secret show --vault-name GradTracker-dev-kv --name ANTHROPIC-API-KEY --query value -o tsv)
+              DB_PASS=$(az keyvault secret show --vault-name GradTracker-dev-kv --name DB-PASSWORD --query value -o tsv)
+
+              cat > .env.local << EOF
+              NEXT_PUBLIC_SUPABASE_URL=$SUPABASE_URL
+              NEXT_PUBLIC_SUPABASE_ANON_KEY=$SUPABASE_ANON_KEY
+              NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY=$SUPABASE_PUBLISHABLE_KEY
+              ANTHROPIC_API_KEY=$ANTHROPIC_KEY
+              DB_PASSWORD=$DB_PASS
+              EOF
+            displayName: 'Write .env.local from Key Vault'
+
           - script: npm run build
             displayName: 'Build app'
 
