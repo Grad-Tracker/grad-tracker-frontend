@@ -1009,7 +1009,6 @@ export default function PlannerPage() {
           programIds={
             plans.find((p) => p.id === activePlanId)?.program_ids ?? []
           }
-          degreeCreditTarget={degreeCreditTarget}
           plans={plans}
           activePlanId={activePlanId}
           existingPlanCount={plans.length}
