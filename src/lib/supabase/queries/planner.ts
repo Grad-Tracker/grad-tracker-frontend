@@ -513,7 +513,8 @@ export async function addPlannedCourse(
   studentId: number,
   termId: number,
   courseId: number,
-  planId: number
+  planId: number,
+  _activityLabel?: string
 ): Promise<void> {
   const supabase = createClient();
   const { error } = await supabase

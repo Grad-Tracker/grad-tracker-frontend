@@ -741,18 +741,85 @@ function canMoveCourseToSemester(
  * Move eligible courses from earlier loaded semesters into trailing underfilled
  * semesters while preserving prerequisite and offering constraints.
  */
+export interface RebalanceSemestersOptions {
+  creditCap?: number;
+  minTailCredits?: number;
+  donorFloorCredits?: number;
+  flexibleCourseIds?: Set<number>;
+  horizonEndTerm?: { season: Season; year: number } | null;
+  minLastSemesterCredits?: number;
+}
+
 export function rebalanceSemesters(
   semesters: ScheduledSemester[],
   prereqEdges: Map<number, Set<number>>,
   availabilityMap: Map<number, Set<string>>,
-  completedIds: Set<number> = new Set(),
-  creditCap: number = DEFAULT_CREDIT_CAP,
-  minTailCredits: number = Math.min(12, DEFAULT_CREDIT_CAP),
-  donorFloorCredits: number = Math.max(0, minTailCredits - 3),
-  flexibleCourseIds: Set<number> = new Set(),
-  horizonEndTerm: { season: Season; year: number } | null = null,
-  minLastSemesterCredits: number = Math.min(15, creditCap)
+  completedIds?: Set<number>,
+  options?: RebalanceSemestersOptions
+): ScheduledSemester[];
+export function rebalanceSemesters(
+  semesters: ScheduledSemester[],
+  prereqEdges: Map<number, Set<number>>,
+  availabilityMap: Map<number, Set<string>>,
+  completedIds?: Set<number>,
+  creditCap?: number,
+  minTailCredits?: number,
+  donorFloorCredits?: number,
+  flexibleCourseIds?: Set<number>,
+  horizonEndTerm?: { season: Season; year: number } | null,
+  minLastSemesterCredits?: number
+): ScheduledSemester[];
+export function rebalanceSemesters(
+  semesters: ScheduledSemester[],
+  prereqEdges: Map<number, Set<number>>,
+  availabilityMap: Map<number, Set<string>>,
+  completedIdsArg?: Set<number>,
+  creditCapOrOptions?: number | RebalanceSemestersOptions,
+  minTailCreditsArg?: number,
+  donorFloorCreditsArg?: number,
+  flexibleCourseIdsArg?: Set<number>,
+  horizonEndTermArg?: { season: Season; year: number } | null,
+  minLastSemesterCreditsArg?: number
 ): ScheduledSemester[] {
+  const resolvedCompletedIds = completedIdsArg ?? new Set<number>();
+  const optionsArg =
+    typeof creditCapOrOptions === "object" && creditCapOrOptions !== null
+      ? (creditCapOrOptions as RebalanceSemestersOptions)
+      : null;
+
+  const resolvedCreditCap =
+    optionsArg?.creditCap ??
+    (typeof creditCapOrOptions === "number" ? creditCapOrOptions : DEFAULT_CREDIT_CAP);
+  const resolvedMinTailCredits =
+    optionsArg?.minTailCredits ??
+    (typeof minTailCreditsArg === "number"
+      ? minTailCreditsArg
+      : Math.min(12, resolvedCreditCap));
+  const resolvedDonorFloorCredits =
+    optionsArg?.donorFloorCredits ??
+    (typeof donorFloorCreditsArg === "number"
+      ? donorFloorCreditsArg
+      : Math.max(0, resolvedMinTailCredits - 3));
+  const resolvedFlexibleCourseIds =
+    optionsArg?.flexibleCourseIds ??
+    (flexibleCourseIdsArg ?? new Set<number>());
+  const resolvedHorizonEndTerm =
+    optionsArg?.horizonEndTerm ??
+    (horizonEndTermArg ?? null);
+  const resolvedMinLastSemesterCredits =
+    optionsArg?.minLastSemesterCredits ??
+    (typeof minLastSemesterCreditsArg === "number"
+      ? minLastSemesterCreditsArg
+      : Math.min(15, resolvedCreditCap));
+
+  const completedIds = resolvedCompletedIds;
+  const creditCap = resolvedCreditCap;
+  const minTailCredits = resolvedMinTailCredits;
+  const donorFloorCredits = resolvedDonorFloorCredits;
+  const flexibleCourseIds = resolvedFlexibleCourseIds;
+  const horizonEndTerm = resolvedHorizonEndTerm;
+  const minLastSemesterCredits = resolvedMinLastSemesterCredits;
+
   if (semesters.length < 2) return semesters;
 
   const rebalanced = semesters.map((sem) => ({

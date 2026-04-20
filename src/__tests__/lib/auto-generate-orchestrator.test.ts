@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { BREADTH_PACKAGES } from "@/types/planner";
+import type { Course } from "@/types/course";
+import type { ScheduledSemester } from "@/types/auto-generate";
 import { autoGeneratePlan } from "@/lib/planner/auto-generate-orchestrator";
 import * as plannerQueries from "@/lib/supabase/queries/planner";
 import * as prereqGraph from "@/lib/planner/prereq-graph";
@@ -82,7 +84,7 @@ beforeEach(() => {
     unscheduledCourseIds: [],
   });
   vi.mocked(autoGenerateLib.rebalanceSemesters).mockImplementation(
-    (semesters) => semesters as any
+    (semesters) => semesters
   );
 
   vi.mocked(validatePlanLib.validatePlan).mockReturnValue({
@@ -354,20 +356,24 @@ describe("autoGeneratePlan orchestrator", () => {
       ])
     );
     vi.mocked(autoGenerateLib.selectCoursesForBlock).mockImplementation((block) => {
-      if (block.name === "Math & Chemistry") return [math221 as any, chem215 as any];
+      if (block.name === "Math & Chemistry") return [math221, chem215];
       return [];
     });
-    vi.mocked(autoGenerateLib.scheduleCourses).mockImplementation((courses) => ({
-      semesters: [
+    vi.mocked(autoGenerateLib.scheduleCourses).mockImplementation((courses) => {
+      const selectedCourses = courses as Course[];
+      const semesters: ScheduledSemester[] = [
         {
           season: "Fall",
           year: 2026,
-          courses: courses as any[],
-          totalCredits: (courses as any[]).reduce((sum, c) => sum + c.credits, 0),
+          courses: selectedCourses,
+          totalCredits: selectedCourses.reduce((sum, c) => sum + c.credits, 0),
         },
-      ],
-      unscheduledCourseIds: [],
-    }));
+      ];
+      return {
+        semesters,
+        unscheduledCourseIds: [],
+      };
+    });
 
     await autoGeneratePlan(1, [9], {
       mode: "new",

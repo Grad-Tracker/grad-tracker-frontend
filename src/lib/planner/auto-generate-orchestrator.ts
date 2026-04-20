@@ -603,12 +603,14 @@ export async function autoGeneratePlan(
     prereqEdges,
     availabilityMap,
     completedIds,
-    DEFAULT_CREDIT_CAP,
-    REBALANCE_TARGET_CREDITS,
-    REBALANCE_DONOR_FLOOR_CREDITS,
-    flexibleCourseIds,
-    targetHorizon,
-    FULL_TIME_CREDIT_FLOOR
+    {
+      creditCap: DEFAULT_CREDIT_CAP,
+      minTailCredits: REBALANCE_TARGET_CREDITS,
+      donorFloorCredits: REBALANCE_DONOR_FLOOR_CREDITS,
+      flexibleCourseIds,
+      horizonEndTerm: targetHorizon,
+      minLastSemesterCredits: FULL_TIME_CREDIT_FLOOR,
+    }
   );
 
   const overflowSemesters = semesters.filter((sem) => termCompare(sem, targetHorizon) > 0);

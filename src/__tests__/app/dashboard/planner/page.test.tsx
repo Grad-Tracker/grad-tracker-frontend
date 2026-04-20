@@ -334,7 +334,7 @@ describe("PlannerPage", () => {
   it("shows skeleton loading state initially", () => {
     mockGetUser.mockReturnValue(new Promise(() => {}));
     renderWithChakra(<PlannerPage />);
-    expect(screen.getByText("Loading your planner...")).toBeInTheDocument();
+    expect(screen.getByTestId("planner-page-skeleton")).toBeInTheDocument();
   });
 
   it("redirects to signin when no user", async () => {
@@ -584,7 +584,7 @@ describe("PlannerPage", () => {
     await act(async () => fireEvent.click(screen.getByTestId("open-plan")));
 
     await waitFor(() => {
-      expect(screen.getByText("Loading plan...")).toBeInTheDocument();
+      expect(screen.getByTestId("planner-skeleton")).toBeInTheDocument();
     });
   });
 
