@@ -18,7 +18,7 @@ import { Field } from "@/components/ui/field";
 import { PasswordInput } from "@/components/ui/password-input";
 import { toaster } from "@/components/ui/toaster";
 import { createClient } from "@/lib/supabase/client";
-import { normalizeEmail } from "@/lib/email-validation";
+import { isAdvisorEmail, isStudentEmail, normalizeEmail } from "@/lib/email-validation";
 import AuthPageLayout from "./AuthPageLayout";
 
 type Role = "student" | "advisor";
@@ -83,6 +83,24 @@ export default function RoleSignInForm({
     }
 
     const normalized = normalizeEmail(email);
+
+    if (selectedRole === "student" && !isStudentEmail(normalized)) {
+      toaster.create({
+        title: "Invalid email domain",
+        description: "Student sign in requires a @rangers.uwp.edu email address.",
+        type: "error",
+      });
+      return;
+    }
+
+    if (selectedRole === "advisor" && !isAdvisorEmail(normalized)) {
+      toaster.create({
+        title: "Invalid email domain",
+        description: "Advisor sign in requires a @uwp.edu email address.",
+        type: "error",
+      });
+      return;
+    }
 
     setLoading(true);
 
@@ -196,7 +214,7 @@ export default function RoleSignInForm({
               left="1"
               width="calc(50% - 0.25rem)"
               borderRadius="lg"
-              bg="#1E3A5F"
+              bg="blue.800"
               boxShadow="0 2px 8px rgba(30,58,95,0.3)"
               transform={
                 selectedRole === "student"
@@ -269,7 +287,7 @@ export default function RoleSignInForm({
             <Link href="/forgot-password">
               <Text
                 fontSize="sm"
-                color="#3B82F6"
+                color="blue.500"
                 cursor="pointer"
                 fontWeight="600"
                 _hover={{ textDecoration: "underline" }}
@@ -285,10 +303,10 @@ export default function RoleSignInForm({
           size="lg"
           rounded="full"
           fontWeight="600"
-          bg="#1E3A5F"
+          bg="blue.800"
           color="white"
           _hover={{
-            bg: "#162d4a",
+            bg: "blue.900",
             transform: "translateY(-2px)",
             boxShadow: "0 8px 24px rgba(30,58,95,0.3)",
           }}
@@ -322,7 +340,7 @@ export default function RoleSignInForm({
           <Link href={currentRole.signupHref}>
             <Text
               as="span"
-              color="#3B82F6"
+              color="blue.500"
               cursor="pointer"
               fontWeight="600"
               _hover={{ textDecoration: "underline" }}

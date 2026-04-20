@@ -135,11 +135,11 @@ export default function LandingPage() {
             <br />
             <Text
               as="span"
-              style={{
-                background: "linear-gradient(135deg, #93C5FD, #C4B5FD)",
-                WebkitBackgroundClip: "text",
-                WebkitTextFillColor: "transparent",
-              }}
+              bgGradient="to-r"
+              gradientFrom="blue.200"
+              gradientTo="purple.200"
+              backgroundClip="text"
+              color="transparent"
             >
               Your future.
             </Text>
@@ -162,7 +162,7 @@ export default function LandingPage() {
               <Button
                 size="lg"
                 bg="white"
-                color="#1E3A5F"
+                color="blue.800"
                 rounded="full"
                 px="8"
                 fontWeight="600"
@@ -347,10 +347,10 @@ export default function LandingPage() {
               left="calc(16.67% + 20px)"
               right="calc(16.67% + 20px)"
               h="2px"
-              style={{
-                background: "linear-gradient(90deg, #3B82F6, #8B5CF6)",
-                opacity: 0.2,
-              }}
+              bgGradient="to-r"
+              gradientFrom="blue.500"
+              gradientTo="purple.500"
+              opacity={0.2}
             />
 
             {[
@@ -359,21 +359,21 @@ export default function LandingPage() {
                 step: "01",
                 title: "Create your account",
                 desc: "Sign up free with your Parkside email. Takes less than a minute.",
-                color: "#3B82F6",
+                color: "blue.500",
               },
               {
                 icon: LuMousePointerClick,
                 step: "02",
                 title: "Select your program",
                 desc: "Choose your major, minor, or certificates from 40+ Parkside programs.",
-                color: "#6366F1",
+                color: "purple.500",
               },
               {
                 icon: LuTrendingUp,
                 step: "03",
                 title: "Track your progress",
                 desc: "See exactly where you stand and what you need to graduate on time.",
-                color: "#8B5CF6",
+                color: "purple.600",
               },
             ].map((item, i) => (
               <FadeIn key={item.step} delay={i * 0.12}>
@@ -457,7 +457,7 @@ export default function LandingPage() {
             {/* 1. Semester Planner — wide */}
             <BentoCard
               icon={LuCalendarRange}
-              iconColor="#3B82F6"
+              iconColor="blue.500"
               title="Semester Planner"
               description="Build your path to graduation semester by semester. Drag courses, track credits, and see your degree progress update in real time."
               wide
@@ -471,7 +471,7 @@ export default function LandingPage() {
             {/* 2. Course Catalog */}
             <BentoCard
               icon={LuBookOpen}
-              iconColor="#6366F1"
+              iconColor="purple.500"
               title="Course Catalog"
               description="Browse 2,200+ courses with credits, prerequisites, and requirement mapping."
             >
@@ -484,7 +484,7 @@ export default function LandingPage() {
             {/* 3. Requirement Breakdown */}
             <BentoCard
               icon={LuLayoutGrid}
-              iconColor="#8B5CF6"
+              iconColor="purple.600"
               title="Requirement Breakdown"
               description="Every gen-ed bucket and major block mapped to your program — 106+ programs tracked."
             >
@@ -497,7 +497,7 @@ export default function LandingPage() {
             {/* 4. AI Advisor — wide */}
             <BentoCard
               icon={LuSparkles}
-              iconColor="#EC4899"
+              iconColor="pink.500"
               title="AI Academic Advisor"
               description="Get instant, personalized guidance. Knows your progress, your requirements, and your program."
               wide
@@ -518,10 +518,8 @@ export default function LandingPage() {
                   left="0"
                   right="0"
                   h="1px"
-                  style={{
-                    background: "linear-gradient(90deg, transparent, #EC4899, #8B5CF6, transparent)",
-                    opacity: 0.4,
-                  }}
+                  bgImage="linear-gradient(to-r, var(--chakra-colors-transparent), var(--chakra-colors-pink-500), var(--chakra-colors-purple-600), var(--chakra-colors-transparent))"
+                  opacity={0.4}
                 />
                 <VStack
                   gap="3"
@@ -536,7 +534,7 @@ export default function LandingPage() {
                         w="7"
                         h="7"
                         borderRadius="full"
-                        bg="#1E3A5F"
+                        bg="blue.800"
                         color="white"
                         fontWeight="600"
                         fontSize="2xs"
@@ -547,7 +545,7 @@ export default function LandingPage() {
                         JM
                       </Flex>
                       <Box
-                        bg="#1E3A5F"
+                        bg="blue.800"
                         color="white"
                         px="3.5"
                         py="2.5"
@@ -567,9 +565,9 @@ export default function LandingPage() {
                       w="7"
                       h="7"
                       borderRadius="full"
-                      style={{
-                        background: "linear-gradient(135deg, #EC4899, #8B5CF6)",
-                      }}
+                      bgGradient="to-br"
+                      gradientFrom="pink.500"
+                      gradientTo="purple.600"
                       color="white"
                       fontSize="sm"
                       align="center"
@@ -714,9 +712,9 @@ export default function LandingPage() {
       <Box
         position="relative"
         overflow="hidden"
-        style={{
-          background: "linear-gradient(to bottom, #0F172A 0%, #0B1120 100%)",
-        }}
+        bgGradient="to-b"
+        gradientFrom="gray.900"
+        gradientTo="gray.950"
       >
         {/* Background glow */}
         <Box
