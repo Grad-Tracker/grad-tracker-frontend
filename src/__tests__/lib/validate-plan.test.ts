@@ -163,6 +163,43 @@ describe("validatePlan", () => {
     expect(violation!.courseId).toBe(21);
   });
 
+  it("allows lab/lecture co-req pairs in the same semester", () => {
+    const lecture = makeCourse({
+      id: 22,
+      subject: "CHEM",
+      number: "101",
+      title: "General Chemistry I",
+      credits: 4,
+    });
+    const lab = makeCourse({
+      id: 23,
+      subject: "CHEM",
+      number: "103",
+      title: "General Chemistry Lab I",
+      credits: 1,
+    });
+
+    const semesters = [makeSemester("Fall", 2026, [lecture, lab])];
+
+    const prereqEdges = new Map<number, Set<number>>([
+      [22, new Set([23])],
+      [23, new Set([22])],
+    ]);
+
+    const result = validatePlan(
+      semesters,
+      [lecture, lab],
+      prereqEdges,
+      new Map(),
+      new Set(),
+      [],
+      [],
+      18
+    );
+
+    expect(result.issues.find((i) => i.code === "PREREQ_VIOLATION")).toBeUndefined();
+  });
+
   // ── 4. Prereq in later semester ──────────────────────
 
   it("reports PREREQ_VIOLATION when a prereq is scheduled after the course", () => {
@@ -355,6 +392,47 @@ describe("validatePlan", () => {
     expect(result.blockStatuses[0].blockName).toBe("Core Requirements");
   });
 
+  it("treats cross-listed ALL_OF duplicates as one required course", () => {
+    const csci231 = makeCourse({
+      id: 82,
+      subject: "CSCI",
+      number: "231",
+      title: "Discrete Mathematics",
+      credits: 3,
+    });
+    const math231 = makeCourse({
+      id: 99,
+      subject: "MATH",
+      number: "231",
+      title: "Discrete Mathematics",
+      credits: 3,
+    });
+
+    const semesters = [makeSemester("Fall", 2026, [csci231])];
+
+    const block = makeBlock({
+      id: 11,
+      rule: "ALL_OF",
+      name: "Required Courses",
+      courses: [csci231, math231],
+    });
+
+    const result = validatePlan(
+      semesters,
+      [csci231],
+      new Map(),
+      new Map(),
+      new Set(),
+      [block],
+      [],
+      18
+    );
+
+    expect(result.blockStatuses[0].requiredCredits).toBe(3);
+    expect(result.blockStatuses[0].satisfied).toBe(true);
+    expect(result.issues.find((i) => i.code === "BLOCK_UNSATISFIED")).toBeUndefined();
+  });
+
   // ── 10. Block unsatisfied: CREDITS_OF short ──────────
 
   it("reports BLOCK_UNSATISFIED when a CREDITS_OF block is short on credits", () => {
@@ -393,6 +471,39 @@ describe("validatePlan", () => {
     expect(status.scheduledCredits).toBe(3);
     expect(status.requiredCredits).toBe(9);
     expect(status.missingCredits).toBe(6);
+  });
+
+  it("treats N_OF with credits_required as credit-based satisfaction", () => {
+    const c1 = makeCourse({ id: 92, credits: 5 });
+    const c2 = makeCourse({ id: 93, credits: 4 });
+    const c3 = makeCourse({ id: 94, credits: 3 });
+
+    const semesters = [makeSemester("Fall", 2026, [c1, c2])];
+
+    const block = makeBlock({
+      id: 21,
+      rule: "N_OF",
+      name: "Breadth Requirements",
+      n_required: 9,
+      credits_required: 9,
+      courses: [c1, c2, c3],
+    });
+
+    const result = validatePlan(
+      semesters,
+      [c1, c2],
+      new Map(),
+      new Map(),
+      new Set(),
+      [block],
+      [],
+      18
+    );
+
+    expect(result.issues.find((i) => i.code === "BLOCK_UNSATISFIED")).toBeUndefined();
+    expect(result.blockStatuses[0].satisfied).toBe(true);
+    expect(result.blockStatuses[0].requiredCredits).toBe(9);
+    expect(result.blockStatuses[0].scheduledCredits).toBe(9);
   });
 
   // ── 11. Gen ed bucket short ──────────────────────────

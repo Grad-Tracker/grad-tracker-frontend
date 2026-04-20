@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { BREADTH_PACKAGES } from "@/types/planner";
+import type { Course } from "@/types/course";
+import type { ScheduledSemester } from "@/types/auto-generate";
 import { autoGeneratePlan } from "@/lib/planner/auto-generate-orchestrator";
 import * as plannerQueries from "@/lib/supabase/queries/planner";
 import * as prereqGraph from "@/lib/planner/prereq-graph";
@@ -30,6 +32,7 @@ vi.mock("@/lib/planner/auto-generate", () => ({
   scheduleCourses: vi.fn(),
   fillExistingPlan: vi.fn(),
   buildAvailabilityMap: vi.fn(),
+  rebalanceSemesters: vi.fn(),
 }));
 
 vi.mock("@/lib/planner/validate-plan", () => ({
@@ -80,6 +83,9 @@ beforeEach(() => {
     semesters: [],
     unscheduledCourseIds: [],
   });
+  vi.mocked(autoGenerateLib.rebalanceSemesters).mockImplementation(
+    (semesters) => semesters
+  );
 
   vi.mocked(validatePlanLib.validatePlan).mockReturnValue({
     valid: true,
@@ -186,7 +192,6 @@ describe("autoGeneratePlan orchestrator", () => {
     ]);
     vi.mocked(plannerQueries.fetchStudentTerms).mockResolvedValue([]);
     vi.mocked(plannerQueries.fetchPlannedCourses).mockResolvedValue([]);
-    vi.mocked(plannerQueries.fetchPlanPrograms).mockResolvedValue([9]);
     vi.mocked(autoGenerateLib.scheduleCourses).mockReturnValue({
       semesters: [
         {
@@ -258,12 +263,131 @@ describe("autoGeneratePlan orchestrator", () => {
     });
 
     expect(plannerQueries.createPlan).not.toHaveBeenCalled();
-    expect(plannerQueries.fetchPlanPrograms).toHaveBeenCalledWith(55);
+    expect(plannerQueries.fetchPlanPrograms).not.toHaveBeenCalled();
     expect(autoGenerateLib.selectCoursesForBlock).toHaveBeenCalled();
     expect(autoGenerateLib.fillExistingPlan).toHaveBeenCalled();
     expect(plannerQueries.batchSavePlanCourses).toHaveBeenCalled();
     expect(result.planId).toBe(55);
     expect(result.totalCourses).toBe(1);
     expect(result.totalCredits).toBe(5);
+  });
+
+  it("does not top-up from already satisfied non-elective blocks", async () => {
+    const math221 = {
+      id: 201,
+      subject: "MATH",
+      number: "221",
+      title: "Calculus I",
+      credits: 5,
+      description: null,
+      prereq_text: null,
+    };
+    const chem215 = {
+      id: 202,
+      subject: "CHEM",
+      number: "215",
+      title: "Organic Chemistry",
+      credits: 5,
+      description: null,
+      prereq_text: null,
+    };
+    const chem101 = {
+      id: 203,
+      subject: "CHEM",
+      number: "101",
+      title: "General Chemistry I",
+      credits: 4,
+      description: null,
+      prereq_text: null,
+    };
+    const chem102 = {
+      id: 204,
+      subject: "CHEM",
+      number: "102",
+      title: "General Chemistry II",
+      credits: 5,
+      description: null,
+      prereq_text: null,
+    };
+    const electiveA = {
+      id: 205,
+      subject: "CSCI",
+      number: "323",
+      title: "Software Design",
+      credits: 3,
+      description: null,
+      prereq_text: null,
+    };
+    const electiveB = {
+      id: 206,
+      subject: "CSCI",
+      number: "333",
+      title: "Databases",
+      credits: 3,
+      description: null,
+      prereq_text: null,
+    };
+
+    vi.mocked(plannerQueries.createPlan).mockResolvedValue({ id: 77 } as never);
+    vi.mocked(plannerQueries.fetchAvailableCourses).mockResolvedValue([
+      {
+        id: 10,
+        program_id: 9,
+        name: "Math & Chemistry",
+        rule: "CREDITS_OF",
+        n_required: null,
+        credits_required: 10,
+        courses: [math221, chem215, chem101, chem102],
+      },
+      {
+        id: 11,
+        program_id: 9,
+        name: "Electives",
+        rule: "N_OF",
+        n_required: 2,
+        credits_required: null,
+        courses: [electiveA, electiveB],
+      },
+    ]);
+    vi.mocked(prereqGraph.extractPrereqEdges).mockResolvedValue(
+      new Map<number, Set<number>>([
+        [chem215.id, new Set([chem102.id])],
+        [chem102.id, new Set([chem101.id])],
+      ])
+    );
+    vi.mocked(autoGenerateLib.selectCoursesForBlock).mockImplementation((block) => {
+      if (block.name === "Math & Chemistry") return [math221, chem215];
+      return [];
+    });
+    vi.mocked(autoGenerateLib.scheduleCourses).mockImplementation((courses) => {
+      const selectedCourses = courses as Course[];
+      const semesters: ScheduledSemester[] = [
+        {
+          season: "Fall",
+          year: 2026,
+          courses: selectedCourses,
+          totalCredits: selectedCourses.reduce((sum, c) => sum + c.credits, 0),
+        },
+      ];
+      return {
+        semesters,
+        unscheduledCourseIds: [],
+      };
+    });
+
+    await autoGeneratePlan(1, [9], {
+      mode: "new",
+      includeSummers: false,
+      startSeason: "Fall",
+      startYear: 2026,
+      targetCredits: 13,
+    });
+
+    const scheduleArgs = vi.mocked(autoGenerateLib.scheduleCourses).mock.calls[0]?.[0] ?? [];
+    const scheduledIds = new Set((scheduleArgs as Array<{ id: number }>).map((c) => c.id));
+
+    expect(scheduledIds.has(electiveA.id) || scheduledIds.has(electiveB.id)).toBe(true);
+    expect(scheduledIds.has(chem101.id)).toBe(false);
+    expect(scheduledIds.has(chem102.id)).toBe(false);
   });
 });

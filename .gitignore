@@ -23,12 +23,17 @@
 # misc
 .DS_Store
 *.pem
+supabase/.temp/
 
 # debug
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
+.tmp-dev-*.log
+
+# local browser automation artifacts
+.playwright-cli/
 
 # env files (can opt-in for committing if needed)
 .env*
