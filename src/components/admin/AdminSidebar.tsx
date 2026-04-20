@@ -13,6 +13,7 @@ import {
   LuLogOut,
   LuShield,
   LuUsers,
+  LuSettings2,
 } from "react-icons/lu";
 
 const navItems: NavItem[] = [
@@ -21,6 +22,7 @@ const navItems: NavItem[] = [
   { icon: LuBookMarked,      label: "Programs",  href: "/admin/programs" },
   { icon: LuUsers,           label: "Students",  href: "/admin/students" },
   { icon: LuBlocks,          label: "Gen-Ed",    href: "/admin/gen-ed" },
+  { icon: LuSettings2,       label: "My Programs", href: "/admin/assignments" },
 ];
 
 function adminIsActive(href: string, pathname: string): boolean {
