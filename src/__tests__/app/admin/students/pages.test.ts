@@ -61,8 +61,19 @@ import AdminStudentOverviewPage from "@/app/admin/(protected)/students/[studentI
 import AdvisorStudentPlannerPage from "@/app/admin/(protected)/students/[studentId]/planner/page";
 import DashboardPlannerPage from "@/app/dashboard/planner/page";
 
+function mockAdvisorStudentNameQuery(
+  studentRow: { first_name: string; last_name: string } | null
+) {
+  const chain: any = {};
+  chain.select = vi.fn().mockReturnValue(chain);
+  chain.eq = vi.fn().mockReturnValue(chain);
+  chain.single = vi.fn().mockResolvedValue({ data: studentRow, error: null });
+  mockSupabaseClient.from.mockReturnValue(chain);
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
+  mockAdvisorStudentNameQuery({ first_name: "Ada", last_name: "Lovelace" });
   mockRequireAdvisorAccess.mockResolvedValue({ staffId: 1 });
   mockRequireAdvisorCanViewStudent.mockResolvedValue(undefined);
   mockListStudents.mockResolvedValue([]);

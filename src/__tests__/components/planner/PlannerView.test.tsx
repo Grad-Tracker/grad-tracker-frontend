@@ -4,6 +4,17 @@ import { screen, waitFor } from "@testing-library/react";
 import React from "react";
 import { renderWithChakra } from "../../helpers/mocks";
 
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({
+    push: vi.fn(),
+    replace: vi.fn(),
+    refresh: vi.fn(),
+    back: vi.fn(),
+    forward: vi.fn(),
+    prefetch: vi.fn(),
+  }),
+}));
+
 vi.mock("@/lib/supabase/client", () => ({
   createClient: () => ({
     auth: { getUser: vi.fn().mockResolvedValue({ data: { user: null } }) },
