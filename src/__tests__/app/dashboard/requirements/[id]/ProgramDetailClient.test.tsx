@@ -151,11 +151,11 @@ describe("ProgramDetailClient", () => {
     expect(screen.getAllByText("Description coming soon.").length).toBeGreaterThanOrEqual(1);
   });
 
-  it("renders back link to /dashboard/requirements", () => {
+  it("renders breadcrumb link to /dashboard/requirements", () => {
     renderWithChakra(
       <ProgramDetailClient program={mockProgram} blocks={[]} />
     );
-    const link = screen.getByRole("link", { name: /all programs/i });
+    const link = screen.getAllByRole("link", { name: /^requirements$/i })[0];
     expect(link).toHaveAttribute("href", "/dashboard/requirements");
   });
 

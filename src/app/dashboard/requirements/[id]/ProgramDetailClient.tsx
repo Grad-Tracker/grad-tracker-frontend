@@ -18,12 +18,12 @@ import {
   VStack,
 } from "@chakra-ui/react";
 import Link from "next/link";
+import { LuBookMarked, LuCircleAlert, LuClock } from "react-icons/lu";
 import {
-  LuArrowLeft,
-  LuBookMarked,
-  LuCircleAlert,
-  LuClock,
-} from "react-icons/lu";
+  BreadcrumbCurrentLink,
+  BreadcrumbLink,
+  BreadcrumbRoot,
+} from "@/components/ui/breadcrumb";
 import type { Course } from "@/types/course";
 import { BREADTH_PACKAGES, getPackageCourseKeys, courseKey } from "@/types/planner";
 import { getProgramColor, getProgramTypeLabel } from "@/lib/program-colors";
@@ -312,24 +312,16 @@ export default function ProgramDetailClient({
   return (
     <Box className="mesh-gradient-subtle">
       <VStack align="stretch" gap="6">
-        {/* Back link */}
-        <Box>
-          <Link href="/dashboard/requirements">
-            <HStack
-              gap="1"
-              color="fg.muted"
-              _hover={{ color: "fg" }}
-              transition="color 0.15s"
-              display="inline-flex"
-              fontSize="sm"
-            >
-              <Icon boxSize="4">
-                <LuArrowLeft />
-              </Icon>
-              <Text>All Programs</Text>
-            </HStack>
-          </Link>
-        </Box>
+        {/* Breadcrumbs */}
+        <BreadcrumbRoot size="sm">
+          <BreadcrumbLink asChild>
+            <Link href="/dashboard">Dashboard</Link>
+          </BreadcrumbLink>
+          <BreadcrumbLink asChild>
+            <Link href="/dashboard/requirements">Requirements</Link>
+          </BreadcrumbLink>
+          <BreadcrumbCurrentLink>{program.name}</BreadcrumbCurrentLink>
+        </BreadcrumbRoot>
 
         {/* Header */}
         <VStack align="start" gap="3" className="animate-fade-up">
