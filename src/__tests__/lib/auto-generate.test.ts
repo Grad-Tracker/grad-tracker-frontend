@@ -1605,4 +1605,59 @@ describe("rebalanceSemesters", () => {
     expect(afterSpread).toBeLessThan(beforeSpread);
     result.forEach((sem) => expect(sem.totalCredits).toBeLessThanOrEqual(18));
   });
+
+  it("supports options-object overload for rebalanceSemesters", () => {
+    const flex = makeCourse({ id: 1200, credits: 3, subject: "ART", number: "100" });
+    const donorOnly = makeCourse({ id: 1201, credits: 3 });
+    const requiredTail = makeCourse({ id: 1202, credits: 3, subject: "CSCI", number: "370" });
+
+    const semesters = [
+      {
+        season: "Fall" as const,
+        year: 2028,
+        courses: [
+          flex,
+          donorOnly,
+          makeCourse({ id: 1203, credits: 3 }),
+          makeCourse({ id: 1204, credits: 3 }),
+          makeCourse({ id: 1205, credits: 3 }),
+          makeCourse({ id: 1206, credits: 3 }),
+        ],
+        totalCredits: 18,
+      },
+      {
+        season: "Spring" as const,
+        year: 2029,
+        courses: [makeCourse({ id: 1207, credits: 3 }), makeCourse({ id: 1208, credits: 3 })],
+        totalCredits: 6,
+      },
+      {
+        season: "Fall" as const,
+        year: 2029,
+        courses: [requiredTail],
+        totalCredits: 3,
+      },
+    ];
+
+    const result = rebalanceSemesters(
+      semesters,
+      new Map<number, Set<number>>(),
+      new Map<number, Set<string>>(),
+      new Set<number>(),
+      {
+        creditCap: 18,
+        minTailCredits: 12,
+        donorFloorCredits: 12,
+        flexibleCourseIds: new Set<number>([flex.id]),
+        horizonEndTerm: { season: "Spring", year: 2029 },
+        minLastSemesterCredits: 15,
+      }
+    );
+
+    const hasFall2029 = result.some((sem) => sem.year === 2029 && sem.season === "Fall");
+    expect(hasFall2029).toBe(false);
+    expect(
+      result.some((sem) => sem.courses.some((course) => course.id === requiredTail.id))
+    ).toBe(true);
+  });
 });
