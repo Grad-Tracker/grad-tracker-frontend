@@ -1,20 +1,39 @@
-import GenEdAdminClient, { type GenEdBucket } from "@/app/admin/(protected)/gen-ed/GenEdAdminClient";
-import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
-import { DB_TABLES } from "@/lib/supabase/queries/schema";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import { DB_TABLES } from "./schema";
 
-export const metadata = {
-  title: "Gen-Ed | Admin | GradTracker",
-  description: "Manage general education buckets and course mappings in the GradTracker admin workspace.",
+export type GenEdCourse = {
+  id: number;
+  subject: string | null;
+  number: string | null;
+  title: string | null;
+  credits: number | null;
 };
 
-async function fetchInitialBuckets(): Promise<GenEdBucket[]> {
-  const supabase = await createClient();
+export type GenEdBucket = {
+  id: number;
+  code: string | null;
+  name: string;
+  credits_required: number;
+  courses: GenEdCourse[];
+};
 
-  const { data: bucketRows, error: bucketsError } = await supabase
+function formatGenEdCourse(course: GenEdCourse): string {
+  return `${course.subject ?? ""} ${course.number ?? ""} - ${course.title ?? ""}`;
+}
+
+export async function fetchGenEdBucketsWithCourses(
+  supabase: SupabaseClient,
+  opts?: { orderByName?: boolean }
+): Promise<GenEdBucket[]> {
+  let bucketsQuery = supabase
     .from(DB_TABLES.genEdBuckets)
-    .select("id, code, name, credits_required")
-    .order("name");
+    .select("id, code, name, credits_required");
+
+  if (opts?.orderByName ?? true) {
+    bucketsQuery = bucketsQuery.order("name");
+  }
+
+  const { data: bucketRows, error: bucketsError } = await bucketsQuery;
 
   if (bucketsError) {
     throw new Error(`Failed to load Gen-Ed buckets: ${bucketsError.message}`);
@@ -43,7 +62,7 @@ async function fetchInitialBuckets(): Promise<GenEdBucket[]> {
     throw new Error(`Failed to load Gen-Ed courses: ${coursesResult.error.message}`);
   }
 
-  const coursesById = new Map<number, GenEdBucket["courses"][number]>();
+  const coursesById = new Map<number, GenEdCourse>();
   for (const course of coursesResult.data ?? []) {
     coursesById.set(Number((course as any).id), {
       id: Number((course as any).id),
@@ -54,7 +73,7 @@ async function fetchInitialBuckets(): Promise<GenEdBucket[]> {
     });
   }
 
-  const bucketToCourses = new Map<number, GenEdBucket["courses"]>();
+  const bucketToCourses = new Map<number, GenEdCourse[]>();
   for (const row of mappingRows ?? []) {
     const bucketId = Number((row as any).bucket_id);
     const course = coursesById.get(Number((row as any).course_id));
@@ -69,25 +88,7 @@ async function fetchInitialBuckets(): Promise<GenEdBucket[]> {
     name: bucket.name,
     credits_required: Number(bucket.credits_required ?? 12),
     courses: (bucketToCourses.get(Number(bucket.id)) ?? []).sort((a, b) =>
-      `${a.subject ?? ""} ${a.number ?? ""}`.localeCompare(`${b.subject ?? ""} ${b.number ?? ""}`)
+      formatGenEdCourse(a).localeCompare(formatGenEdCourse(b))
     ),
   }));
-}
-
-export default async function AdminGenEdPage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    redirect("/signin");
-  }
-
-  if (user.user_metadata?.role !== "advisor") {
-    redirect("/dashboard");
-  }
-
-  const initialBuckets: GenEdBucket[] = await fetchGenEdBucketsWithCourses(supabase);
-  return <GenEdAdminClient initialBuckets={initialBuckets} />;
 }
