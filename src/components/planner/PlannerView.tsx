@@ -168,7 +168,7 @@ export default function PlannerView({
 
   const handleBreadthPackageSelect = useCallback(
     async (packageId: string) => {
-      if (!studentId) return;
+      if (!studentId || !canEdit) return;
       try {
         await updateBreadthPackageId(studentId, packageId);
         setSelectedBreadthPackageId(packageId);
@@ -181,7 +181,7 @@ export default function PlannerView({
         });
       }
     },
-    [studentId]
+    [studentId, canEdit]
   );
 
   // Graduate track selection (persisted per plan)

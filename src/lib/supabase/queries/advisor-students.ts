@@ -46,7 +46,7 @@ export async function listStudentsForAdvisor(
     .select("student_id, program_id")
     .in("program_id", programIds)
     .order("program_id");
-  const studentIds = Array.from(
+  const studentIds: number[] = Array.from(
     new Set((enrollments ?? []).map((r: any) => Number(r.student_id)))
   );
   if (studentIds.length === 0) return [];
@@ -156,7 +156,7 @@ export async function listStudentsForAdvisor(
     const pid = primaryByStudent.get(sid) ?? null;
     const meta = pid != null ? programById.get(pid) ?? null : null;
     const completed = completedByStudent.get(sid) ?? new Set<number>();
-    const required = pid != null ? requiredByProgram.get(pid) ?? new Set() : new Set();
+    const required = pid != null ? requiredByProgram.get(pid) ?? new Set<number>() : new Set<number>();
     return {
       id: sid,
       firstName: s.first_name,
