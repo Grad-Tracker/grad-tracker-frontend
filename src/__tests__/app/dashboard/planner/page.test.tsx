@@ -27,6 +27,7 @@ const {
   mockFetchGenEdBucketsWithCourses,
   mockFetchBreadthPackageId,
   mockUpdateBreadthPackageId,
+  mockFetchCourseOfferings,
   mockLogStudentActivity,
 
   // NEW: capture DnD handlers so tests can call them
@@ -62,6 +63,7 @@ const {
     mockFetchGenEdBucketsWithCourses: vi.fn().mockResolvedValue([]),
     mockFetchBreadthPackageId: vi.fn().mockResolvedValue(null),
     mockUpdateBreadthPackageId: vi.fn().mockResolvedValue(undefined),
+    mockFetchCourseOfferings: vi.fn().mockResolvedValue([]),
     mockLogStudentActivity: vi.fn().mockResolvedValue(undefined),
 
     mockDndHandlers: {
@@ -103,6 +105,23 @@ vi.mock("@/lib/supabase/queries/planner", () => ({
   movePlannedCourse: mockMovePlannedCourse,
   fetchBreadthPackageId: mockFetchBreadthPackageId,
   updateBreadthPackageId: mockUpdateBreadthPackageId,
+  fetchCourseOfferings: mockFetchCourseOfferings,
+}));
+
+vi.mock("@/lib/planner/auto-generate", () => ({
+  buildAvailabilityMap: vi.fn().mockReturnValue(new Map()),
+  isAvailable: vi.fn().mockReturnValue(true),
+}));
+
+vi.mock("@/lib/planner/prereq-graph", () => ({
+  extractPrereqEdges: vi.fn().mockResolvedValue(new Map()),
+}));
+
+vi.mock("@/lib/planner/prereq-validation", () => ({
+  arePrereqsSatisfied: vi.fn().mockReturnValue({ satisfied: true, missing: [] }),
+  findBrokenDependents: vi.fn().mockReturnValue([]),
+  buildCourseTermIndex: vi.fn().mockReturnValue(new Map()),
+  termSortKey: vi.fn().mockReturnValue(0),
 }));
 
 vi.mock("@/lib/supabase/queries/activity", () => ({
@@ -974,7 +993,10 @@ describe("PlannerPage", () => {
 
   it("handles drag guard branches and drag failures", async () => {
     setupAuthenticatedState();
-    mockFetchTerms.mockResolvedValue([{ id: 1, season: "Fall", year: 2025 }]);
+    mockFetchTerms.mockResolvedValue([
+      { id: 1, season: "Fall", year: 2025 },
+      { id: 2, season: "Spring", year: 2026 },
+    ]);
     mockFetchPlannedCourses.mockResolvedValue([
       { student_id: 1, term_id: 1, course_id: 777, status: "planned", plan_id: 1, course: COURSE },
     ]);
@@ -1056,7 +1078,10 @@ describe("PlannerPage", () => {
 
   it("handles remove-term fallback and drag update fallback errors", async () => {
     setupAuthenticatedState();
-    mockFetchTerms.mockResolvedValue([{ id: 1, season: "Fall", year: 2025 }]);
+    mockFetchTerms.mockResolvedValue([
+      { id: 1, season: "Fall", year: 2025 },
+      { id: 2, season: "Spring", year: 2026 },
+    ]);
     mockFetchPlannedCourses.mockResolvedValue([
       { student_id: 1, term_id: 1, course_id: 777, status: "planned", plan_id: 1, course: COURSE },
     ]);

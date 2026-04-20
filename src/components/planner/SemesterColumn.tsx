@@ -117,7 +117,7 @@ function SemesterColumn({
       w="full"
       overflow="hidden"
       borderWidth="1px"
-      borderColor={isOver ? "blue.400" : "border.subtle"}
+      borderColor={isOver ? "blue.600" : "border.subtle"}
       boxShadow={isOver ? "0 0 0 2px var(--chakra-colors-blue-200)" : "none"}
       bg="bg"
       transition="all 0.2s"
