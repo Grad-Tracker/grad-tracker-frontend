@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { useRouter } from "next/navigation";
 import {
   Box,
   Button,
@@ -129,14 +130,21 @@ export interface PlannerViewProps {
   studentId: number;
   mode: "edit" | "readonly";
   initialPlanId?: number;
+  /** URL to navigate back to in readonly mode (e.g., /admin/students/5) */
+  backHref?: string;
+  /** Label for the back breadcrumb in readonly mode (e.g., "Jack Miller") */
+  backLabel?: string;
 }
 
 export default function PlannerView({
   studentId: propStudentId,
   mode,
   initialPlanId,
+  backHref,
+  backLabel,
 }: PlannerViewProps) {
   const canEdit = mode === "edit";
+  const router = useRouter();
 
   // Auth + student
   const studentId: number = propStudentId;
@@ -498,8 +506,12 @@ export default function PlannerView({
 
   // ── Back to hub ───────────────────────────────────────
   const handleBackToHub = useCallback(() => {
+    if (!canEdit && backHref) {
+      router.push(backHref);
+      return;
+    }
     setView("hub");
-  }, []);
+  }, [canEdit, backHref, router]);
 
   // ── Create plan ────────────────────────────────────────
   const handleCreatePlan = useCallback(
@@ -911,7 +923,7 @@ export default function PlannerView({
               {/* Breadcrumb navigation */}
               <HStack gap="2">
                 <IconButton
-                  aria-label="Back to plans"
+                  aria-label={backHref ? "Back to student" : "Back to plans"}
                   variant="ghost"
                   size="sm"
                   borderRadius="lg"
@@ -929,7 +941,7 @@ export default function PlannerView({
                     fontWeight="500"
                     transition="color 0.15s"
                   >
-                    Plans
+                    {backLabel ?? "Plans"}
                   </Text>
                   <Icon color="fg.subtle" boxSize="3.5">
                     <LuChevronRight />
