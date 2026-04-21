@@ -27,6 +27,8 @@ import {
 import { compareTerms } from "@/types/planner";
 import ComparePlanPicker from "@/components/shared-plans/ComparePlanPicker";
 import SharedPlanComparePicker from "@/components/shared-plans/SharedPlanComparePicker";
+import { EmptyState } from "@/components/ui/empty-state";
+import { Tooltip } from "@/components/ui/tooltip";
 import type {
   ComparablePlanDetail,
   OwnPlanSummary,
@@ -72,11 +74,8 @@ function renderCourseList(
         borderColor="border.subtle"
         borderRadius="xl"
         p="5"
-        textAlign="center"
       >
-        <Text fontSize="sm" color="fg.muted">
-          {emptyLabel}
-        </Text>
+        <EmptyState title={emptyLabel} />
       </Box>
     );
   }
@@ -135,14 +134,11 @@ function SinglePlanGrid({ plan }: Readonly<{ plan: SharedPlanDetail }>) {
     return (
       <Card.Root borderRadius="2xl" borderWidth="1px" borderColor="border.subtle">
         <Card.Body py="14">
-          <VStack gap="3">
-            <Heading size="md" fontFamily="var(--font-outfit), sans-serif" fontWeight="400">
-              No semesters have been added yet
-            </Heading>
-            <Text color="fg.muted" textAlign="center" maxW="lg">
-              This shared plan exists, but there are not any semesters or courses to display yet.
-            </Text>
-          </VStack>
+          <EmptyState
+            icon={<LuCalendar />}
+            title="No semesters have been added yet"
+            description="This shared plan is available, but the owner has not added any semesters or courses yet."
+          />
         </Card.Body>
       </Card.Root>
     );
@@ -413,31 +409,14 @@ export function SharedPlanUnavailable({
     <Flex minH="100vh" bg="bg.subtle" align="center" justify="center" px="4" py="10">
       <Card.Root maxW="xl" w="full" borderRadius="3xl" borderWidth="1px" borderColor="border.subtle">
         <Card.Body p={{ base: "6", md: "8" }}>
-          <VStack align="start" gap="5">
-            <Box
-              w="14"
-              h="14"
-              borderRadius="2xl"
-              bg="orange.subtle"
-              display="flex"
-              alignItems="center"
-              justifyContent="center"
-            >
-              <Icon color="orange.fg" boxSize="6">
-                <LuCircleAlert />
-              </Icon>
-            </Box>
-            <Stack gap="2">
-              <Heading
-                size="lg"
-                fontFamily="var(--font-outfit), sans-serif"
-                fontWeight="400"
-                letterSpacing="-0.02em"
-              >
-                {title}
-              </Heading>
-              <Text color="fg.muted">{description}</Text>
-            </Stack>
+          <VStack align="stretch" gap="5">
+            <EmptyState
+              alignItems="flex-start"
+              textAlign="left"
+              icon={<LuCircleAlert />}
+              title={title}
+              description={description}
+            />
             <Button asChild colorPalette="blue" borderRadius="xl" aria-label="Browse shared plans">
               <Link href="/shared/plans">Browse Shared Plans</Link>
             </Button>
@@ -508,28 +487,11 @@ export function SharedPlansIndex({
         {plans.length === 0 ? (
           <Card.Root borderRadius="3xl" borderWidth="1px" borderColor="border.subtle">
             <Card.Body py="16" px="8">
-              <VStack gap="4" textAlign="center">
-                <Box
-                  w="16"
-                  h="16"
-                  borderRadius="3xl"
-                  bg="blue.subtle"
-                  display="flex"
-                  alignItems="center"
-                  justifyContent="center"
-                >
-                  <Icon color="blue.fg" boxSize="7">
-                    <LuCompass />
-                  </Icon>
-                </Box>
-                <Heading size="lg" fontFamily="var(--font-outfit), sans-serif" fontWeight="400">
-                  No shared plans yet
-                </Heading>
-                <Text color="fg.muted" maxW="lg">
-                  Shared plans will show up here once students or advisors start publishing public
-                  planning links.
-                </Text>
-              </VStack>
+              <EmptyState
+                icon={<LuCompass />}
+                title="No shared plans yet"
+                description="Shared plans will show up here once students or advisors start publishing public planning links."
+              />
             </Card.Body>
           </Card.Root>
         ) : (
@@ -677,17 +639,26 @@ export function SharedPlanView({
                       Back to Shared Plans
                     </Link>
                   </Button>
-                  {showPlannerCta && ownPlans.length > 0 && (
-                    <ComparePlanPicker
-                      plans={ownPlans}
-                      selectedPlanId={comparisonPlan?.planId ?? null}
-                    />
-                  )}
-                  {showPlannerCta && ownPlans.length === 0 && (
-                    <Button disabled borderRadius="xl">
-                      Compare with My Plan
-                    </Button>
-                  )}
+                  {showPlannerCta ? (
+                    ownPlans.length > 0 ? (
+                      <ComparePlanPicker
+                        plans={ownPlans}
+                        selectedPlanId={comparisonPlan?.planId ?? null}
+                      />
+                    ) : (
+                      <Tooltip
+                        content="Create a plan first to compare"
+                        showArrow
+                        positioning={{ placement: "top" }}
+                      >
+                        <Box as="span" display="inline-block" w={{ base: "full", lg: "auto" }}>
+                          <Button disabled borderRadius="xl" w="full">
+                            Compare with My Plan
+                          </Button>
+                        </Box>
+                      </Tooltip>
+                    )
+                  ) : null}
                   {showPlannerCta ? (
                     <Button asChild colorPalette="blue" borderRadius="xl" aria-label="Open planner">
                       <Link href="/dashboard/planner">
@@ -700,12 +671,32 @@ export function SharedPlanView({
                       <Link href="/shared/plans">View More Shared Plans</Link>
                     </Button>
                   )}
-                  <Text fontSize="xs" color="fg.muted" maxW="xs">
-                    This version is view-only. No drag-and-drop, editing, or plan changes are
-                    available from a shared link.
-                  </Text>
                 </Stack>
               </Flex>
+            </Card.Body>
+          </Card.Root>
+
+          <Card.Root
+            borderRadius="2xl"
+            borderWidth="1px"
+            borderColor="blue.muted"
+            bg="blue.subtle"
+          >
+            <Card.Body p={{ base: "4", md: "5" }}>
+              <HStack align="start" gap="3">
+                <Icon color="blue.fg" boxSize="5" mt="0.5">
+                  <LuCircleAlert />
+                </Icon>
+                <Box>
+                  <Text fontSize="sm" fontWeight="700" color="blue.fg" mb="1">
+                    View-only shared plan
+                  </Text>
+                  <Text fontSize="sm" color="fg.muted">
+                    You can review semesters, courses, and progress here, but editing, drag-and-drop,
+                    and plan changes are only available in your own planner.
+                  </Text>
+                </Box>
+              </HStack>
             </Card.Body>
           </Card.Root>
 

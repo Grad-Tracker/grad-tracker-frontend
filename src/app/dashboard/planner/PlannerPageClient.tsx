@@ -77,6 +77,7 @@ import CreatePlanDrawer from "@/components/planner/CreatePlanDrawer";
 import DeletePlanDialog from "@/components/planner/DeletePlanDialog";
 import PlansHub from "@/components/planner/PlansHub";
 import PlannerSkeleton, { PlannerPageSkeleton } from "@/components/planner/PlannerSkeleton";
+import { EmptyState } from "@/components/ui/empty-state";
 
 function inferBreadthPackageIdFromPlannedCourses(
   plannedCourses: PlannedCourseWithDetails[]
@@ -904,34 +905,16 @@ export default function PlannerPage() {
                         maxW="420px"
                         bg="bg"
                       >
-                        <Box
-                          w="16"
-                          h="16"
-                          borderRadius="2xl"
-                          bg="green.subtle"
-                          display="flex"
-                          alignItems="center"
-                          justifyContent="center"
-                          mx="auto"
-                          mb="4"
+                        <EmptyState
+                          icon={<LuCalendar />}
+                          title="No semesters yet"
+                          description="Add your first semester to start planning your courses."
+                          mb="5"
                         >
-                          <LuCalendar size={32} color="var(--chakra-colors-green-fg)" />
-                        </Box>
-                        <Heading
-                          size="md"
-                          mb="2"
-                          fontFamily="var(--font-outfit), sans-serif"
-                          fontWeight="400"
-                          letterSpacing="-0.02em"
-                        >
-                          No semesters yet
-                        </Heading>
-                        <Text fontSize="sm" color="fg.muted" mb="2">
-                          Add your first semester to start planning your courses.
-                        </Text>
-                        <Text fontSize="xs" color="fg.muted" mb="5">
-                          Drag courses from the pool on the left into your semesters to build your plan.
-                        </Text>
+                          <Text fontSize="xs" color="fg.muted">
+                            Drag courses from the pool on the left into your semesters to build your plan.
+                          </Text>
+                        </EmptyState>
                         <Button
                           colorPalette="green"
                           borderRadius="lg"

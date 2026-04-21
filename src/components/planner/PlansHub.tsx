@@ -21,6 +21,7 @@ import Link from "next/link";
 import { LuArrowRight, LuPlus, LuSparkles, LuLayoutGrid, LuShare2 } from "react-icons/lu";
 import type { PlanWithMeta } from "@/types/planner";
 import type { SharedPlanSummary } from "@/types/shared-plan";
+import { EmptyState } from "@/components/ui/empty-state";
 import PlanCard from "./PlanCard";
 
 interface PlansHubProps {
@@ -191,30 +192,12 @@ export default function PlansHub({
           py="20"
           className="plan-card-enter"
         >
-          <Box
-            w="20"
-            h="20"
-            borderRadius="3xl"
-            bg="blue.subtle"
-            display="flex"
-            alignItems="center"
-            justifyContent="center"
+          <EmptyState
+            icon={<LuSparkles />}
+            title="No plans yet"
+            description="Create your first graduation plan to start mapping out your semesters and courses."
             mb="6"
-          >
-            <LuSparkles size={40} color="var(--chakra-colors-blue-fg)" />
-          </Box>
-          <Heading
-            size="lg"
-            mb="3"
-            fontFamily="var(--font-outfit), sans-serif"
-            fontWeight="400"
-            letterSpacing="-0.02em"
-          >
-            No plans yet
-          </Heading>
-          <Text color="fg.muted" fontSize="sm" mb="6" textAlign="center" maxW="360px">
-            Create your first graduation plan to start mapping out your semesters and courses.
-          </Text>
+          />
           <Button
             aria-label="Create your first plan"
             colorPalette="blue"

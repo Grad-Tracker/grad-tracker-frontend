@@ -64,6 +64,7 @@ import {
 } from "@/lib/supabase/queries/planner";
 import { DB_TABLES, DB_VIEWS } from "@/lib/supabase/queries/schema";
 import { compareTerms, type Term } from "@/types/planner";
+import { EmptyState } from "@/components/ui/empty-state";
 import { getCurrentAcademicTerm } from "@/lib/academic-term";
 import { COURSES_PAGE_SIZE } from "@/lib/constants";
 
@@ -415,9 +416,11 @@ export default function CoursesClient({
     if (availablePlans.length === 0) {
       return (
         <Flex minH="240px" align="center" justify="center">
-          <Text fontSize="sm" color="fg.muted">
-            No plans available yet.
-          </Text>
+          <EmptyState
+            icon={<LuCalendar />}
+            title="No plans available yet"
+            description="Create a plan in the planner first, then you can add this course to a semester."
+          />
         </Flex>
       );
     }
@@ -775,33 +778,15 @@ export default function CoursesClient({
             className="animate-fade-up"
           >
             <Card.Body p="12">
-              <VStack gap="4" textAlign="center">
-                <Box
-                  w="16"
-                  h="16"
-                  bg="gray.subtle"
-                  borderRadius="full"
-                  display="flex"
-                  alignItems="center"
-                  justifyContent="center"
-                >
-                  <Icon color="fg.muted" boxSize="8">
-                    <LuBookOpen />
-                  </Icon>
-                </Box>
-                <Heading
-                  size="md"
-                  fontFamily="var(--font-dm-sans), sans-serif"
-                  fontWeight="400"
-                >
-                  No courses found
-                </Heading>
-                <Text color="fg.muted" fontSize="sm" maxW="sm">
-                  {initialCourses.length === 0
+              <EmptyState
+                icon={<LuBookOpen />}
+                title="No courses found"
+                description={
+                  initialCourses.length === 0
                     ? "No courses have been added to the database yet."
-                    : "Try adjusting your search or filter criteria to find courses."}
-                </Text>
-              </VStack>
+                    : "Try adjusting your search or filter criteria to find courses."
+                }
+              />
             </Card.Body>
           </Card.Root>
         )}

@@ -52,6 +52,10 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
+      "@tanstack/react-virtual": path.resolve(
+        __dirname,
+        "./src/__tests__/mocks/tanstack-react-virtual.ts"
+      ),
       "server-only": path.resolve(
         __dirname,
         "./src/__tests__/mocks/server-only.ts"

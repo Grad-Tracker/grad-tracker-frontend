@@ -328,6 +328,7 @@ describe("Dashboard", () => {
     await waitFor(() => {
       expect(screen.getAllByText("General Education").length).toBeGreaterThanOrEqual(1);
       expect(screen.getAllByText("Major Core").length).toBeGreaterThanOrEqual(1);
+      expect(screen.getByText("/ 9")).toBeInTheDocument();
     });
   });
 
@@ -339,6 +340,35 @@ describe("Dashboard", () => {
     await waitFor(() => {
       expect(screen.getAllByText(/Added CS 350 to a semester plan/).length).toBeGreaterThanOrEqual(1);
     });
+  });
+
+  it("shows recent activity timestamps as past times", async () => {
+    const dateNowSpy = vi
+      .spyOn(Date, "now")
+      .mockReturnValue(new Date("2026-04-20T12:00:00.000Z").getTime());
+
+    mockFetchRecentStudentActivity.mockResolvedValue([
+      {
+        id: 1,
+        student_id: 1,
+        activity_type: "course_added",
+        message: "Added CS 350 to a semester plan",
+        metadata: {},
+        created_at: "2026-04-20T10:00:00.000Z",
+      },
+    ] as any);
+
+    try {
+      await act(async () => {
+        renderWithChakra(<Dashboard />);
+      });
+
+      await waitFor(() => {
+        expect(screen.getByText("2 hours ago")).toBeInTheDocument();
+      });
+    } finally {
+      dateNowSpy.mockRestore();
+    }
   });
 
   it("navigates to course management when Add Course is clicked", async () => {
@@ -442,6 +472,8 @@ describe("Dashboard", () => {
 
     await waitFor(() => {
       expect(screen.getAllByText("Unknown").length).toBeGreaterThanOrEqual(1);
+      expect(screen.getByText("No degree requirements yet")).toBeInTheDocument();
+      expect(screen.getByText("Select a program to see required credits")).toBeInTheDocument();
     });
   });
 

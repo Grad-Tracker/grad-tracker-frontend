@@ -62,6 +62,7 @@ import {
 
 import DashboardSkeleton from "@/components/dashboard/DashboardSkeleton";
 import { Skeleton } from "@/components/ui/skeleton";
+import { EmptyState } from "@/components/ui/empty-state";
 import { getCurrentAcademicTerm } from "@/lib/academic-term";
 import type { ViewPlanTermRow, ViewPlanCourseRow, ViewStudentCourseProgressRow } from "@/lib/supabase/queries/view-types";
 
@@ -206,14 +207,12 @@ export default function Dashboard() {
     remainingCredits: number;
   };
 
-  const TOTAL_REQUIRED_CREDITS = 120;
-
   const [progress, setProgress] = React.useState<ProgressSummary>({
     overall: 0,
-    totalCredits: TOTAL_REQUIRED_CREDITS,
+    totalCredits: 0,
     completedCredits: 0,
     inProgressCredits: 0,
-    remainingCredits: TOTAL_REQUIRED_CREDITS,
+    remainingCredits: 0,
   });
 
   const [loadingProgress, setLoadingProgress] = React.useState(true);
@@ -226,14 +225,7 @@ export default function Dashboard() {
     color: "violet" | "emerald" | "blue" | "amber";
   };
 
-  const DEFAULT_REQUIREMENTS: RequirementBar[] = [
-    { name: "General Education", completed: 0, total: 0, percentage: 0, color: "violet" },
-    { name: "Major Core", completed: 0, total: 0, percentage: 0, color: "emerald" },
-    { name: "Major Electives", completed: 0, total: 0, percentage: 0, color: "blue" },
-    { name: "Free Electives", completed: 0, total: 0, percentage: 0, color: "amber" },
-  ];
-
-  const [requirements, setRequirements] = React.useState<RequirementBar[]>(DEFAULT_REQUIREMENTS);
+  const [requirements, setRequirements] = React.useState<RequirementBar[]>([]);
   const [loadingRequirements, setLoadingRequirements] = React.useState(true);
 
   type PlannedCourseCard = {
@@ -399,33 +391,49 @@ export default function Dashboard() {
           "Free Electives": { completed: 0, total: 0, color: "amber" },
         };
 
-        // Gen ed from gen_ed_buckets (separate from major program)
-        try {
-          const genEdBuckets = await fetchGenEdBucketsWithCourses();
-          for (const bucket of genEdBuckets) {
-            agg["General Education"].total += bucket.credits_required;
-            const bucketCompleted = bucket.courses.reduce((sum, c) => {
-              if (!completedCourseIds.has(c.id)) return sum;
-              return sum + c.credits;
-            }, 0);
-            agg["General Education"].completed += bucketCompleted;
+        const programBlocks =
+          majorProgramId && !(blocksResult as any)?.error
+            ? ((blocksResult as any)?.data ?? [])
+            : [];
+
+        // Gen ed from gen_ed_buckets (only when the major doesn't already
+        // provide a General Education block, to avoid double-counting).
+        if (
+          majorProgramId &&
+          !programBlocks.some((block: any) =>
+            String(block?.block_name ?? "").toLowerCase().includes("general education")
+          )
+        ) {
+          try {
+            const genEdBuckets = await fetchGenEdBucketsWithCourses();
+            for (const bucket of genEdBuckets) {
+              agg["General Education"].total += bucket.credits_required;
+              const bucketCompleted = bucket.courses.reduce((sum, c) => {
+                if (!completedCourseIds.has(c.id)) return sum;
+                return sum + c.credits;
+              }, 0);
+              agg["General Education"].completed += bucketCompleted;
+            }
+          } catch {
+            // Non-critical — gen ed bar will show 0/0
           }
-        } catch {
-          // Non-critical — gen ed bar will show 0/0
         }
 
         // Major program blocks
         if (majorProgramId && !(blocksResult as any)?.error) {
-          const blocks = ((blocksResult as any)?.data ?? []) as any[];
-
-          for (const b of blocks) {
+          for (const b of programBlocks) {
             const blockCourseRows = b?.courses ?? [];
             // Skip parent blocks with no courses (their sub-blocks have the actual courses)
             if (blockCourseRows.length === 0) continue;
 
             const name = String(b?.block_name ?? "").toLowerCase();
+            const isGeneralEducation = name.includes("general education");
             const isElective = name.includes("elective");
-            const key = isElective ? "Major Electives" : "Major Core";
+            const key = isGeneralEducation
+              ? "General Education"
+              : isElective
+                ? "Major Electives"
+                : "Major Core";
 
             const rule = String(b?.rule ?? "ALL_OF");
             const nRequired = Number(b?.n_required ?? 0);
@@ -491,9 +499,9 @@ export default function Dashboard() {
         }
 
         // Progress summary (reused completedCredits + inProgressCredits)
-        const totalCredits = TOTAL_REQUIRED_CREDITS;
+        const totalCredits = bars.reduce((sum, bar) => sum + bar.total, 0);
         const remainingCredits = Math.max(totalCredits - completedCredits, 0);
-        const overall = Math.min(100, Math.round((completedCredits / totalCredits) * 100));
+        const overall = totalCredits === 0 ? 0 : Math.min(100, Math.round((completedCredits / totalCredits) * 100));
 
         setProgress({
           overall,
@@ -686,7 +694,7 @@ export default function Dashboard() {
                       {progress.completedCredits}
                     </Text>
                     <Text fontSize="sm" color="fg.muted">
-                      / {progress.totalCredits}
+                      / {progress.totalCredits || "—"}
                     </Text>
                   </HStack>
                 </Box>
@@ -697,7 +705,9 @@ export default function Dashboard() {
                 </Flex>
               </HStack>
               <HStack gap="1" fontSize="xs" color="fg.muted">
-                <Text>{progress.remainingCredits} credits remaining</Text>
+                <Text>
+                  {progress.totalCredits > 0 ? `${progress.remainingCredits} credits remaining` : "Select a program to see required credits"}
+                </Text>
               </HStack>
             </Card.Body>
           </Card.Root>
@@ -752,26 +762,47 @@ export default function Dashboard() {
               </Flex>
             </Card.Header>
             <Card.Body p="5">
-              <Stack gap="5">
-                {requirements.map((req) => (
-                  <Box key={req.name}>
-                    <ProgressRoot value={req.percentage} colorPalette={req.color} size="sm">
+              {loadingRequirements ? (
+                <Stack gap="5">
+                  {[1, 2, 3].map((item) => (
+                    <Box key={item}>
                       <HStack justify="space-between" mb="2">
-                        <ProgressLabel fontWeight="500" fontSize="sm">
-                          {req.name}
-                        </ProgressLabel>
-                        <HStack gap="2">
-                          <Text fontSize="xs" color="fg.muted">
-                            {loadingRequirements ? <Skeleton height="3" width="70px" display="inline-block" /> : `${req.completed}/${req.total} credits`}
-                          </Text>
-                          <ProgressValueText fontWeight="600" fontSize="sm" />
-                        </HStack>
+                        <Skeleton height="4" width="130px" />
+                        <Skeleton height="3" width="70px" />
                       </HStack>
-                      <ProgressBar borderRadius="full" />
-                    </ProgressRoot>
-                  </Box>
-                ))}
-              </Stack>
+                      <Skeleton height="2" width="100%" borderRadius="full" />
+                    </Box>
+                  ))}
+                </Stack>
+              ) : requirements.length === 0 ? (
+                <EmptyState
+                  py="6"
+                  icon={<LuGraduationCap />}
+                  title="No degree requirements yet"
+                  description="Select a program during onboarding to see your real requirement blocks and required credits."
+                />
+              ) : (
+                <Stack gap="5">
+                  {requirements.map((req) => (
+                    <Box key={req.name}>
+                      <ProgressRoot value={req.percentage} colorPalette={req.color} size="sm">
+                        <HStack justify="space-between" mb="2">
+                          <ProgressLabel fontWeight="500" fontSize="sm">
+                            {req.name}
+                          </ProgressLabel>
+                          <HStack gap="2">
+                            <Text fontSize="xs" color="fg.muted">
+                              {`${req.completed}/${req.total} credits`}
+                            </Text>
+                            <ProgressValueText fontWeight="600" fontSize="sm" />
+                          </HStack>
+                        </HStack>
+                        <ProgressBar borderRadius="full" />
+                      </ProgressRoot>
+                    </Box>
+                  ))}
+                </Stack>
+              )}
             </Card.Body>
           </Card.Root>
 
