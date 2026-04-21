@@ -1,0 +1,1018 @@
+"use client";
+
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import {
+  Box,
+  Button,
+  Flex,
+  Heading,
+  HStack,
+  Icon,
+  IconButton,
+  Text,
+} from "@chakra-ui/react";
+import { useRouter } from "next/navigation";
+import {
+  DndContext,
+  DragOverlay,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragStartEvent,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import { createClient } from "@/lib/supabase/client";
+import { toaster } from "@/components/ui/toaster";
+import {
+  LuCalendar,
+  LuPlus,
+  LuArrowLeft,
+  LuChevronRight,
+} from "react-icons/lu";
+
+import {
+  fetchStudentTerms,
+  fetchPlannedCourses,
+  fetchAvailableCourses,
+  fetchCompletedCourseIds,
+  fetchPlans,
+  createPlan,
+  updatePlan,
+  deletePlan,
+  getOrCreateTerm,
+  addTermPlan,
+  removeTermPlan,
+  addPlannedCourse,
+  removePlannedCourse,
+  movePlannedCourse,
+  fetchGenEdBucketsWithCourses,
+} from "@/lib/supabase/queries/planner";
+import { DB_TABLES, PLANNED_COURSE_STATUS } from "@/lib/supabase/queries/schema";
+
+import type {
+  Term,
+  PlanWithMeta,
+  PlannedCourseWithDetails,
+  RequirementBlockWithCourses,
+  BreadthPackage,
+  GraduateTrack,
+} from "@/types/planner";
+import {
+  computePerProgramCreditTarget,
+  deduplicateBlocks,
+  getGraduateTracks,
+  BREADTH_PACKAGES,
+} from "@/types/planner";
+import type { Course } from "@/types/course";
+import type { GenEdBucketWithCourses } from "@/types/auto-generate";
+
+import CoursePanel from "@/components/planner/CoursePanel";
+import SemesterGrid from "@/components/planner/SemesterGrid";
+import PlannerSummary from "@/components/planner/PlannerSummary";
+import AddSemesterDialog from "@/components/planner/AddSemesterDialog";
+import RemoveSemesterDialog from "@/components/planner/RemoveSemesterDialog";
+import CourseCardGhost from "@/components/planner/CourseCardGhost";
+import CreatePlanDrawer from "@/components/planner/CreatePlanDrawer";
+import DeletePlanDialog from "@/components/planner/DeletePlanDialog";
+import PlansHub from "@/components/planner/PlansHub";
+import PlannerSkeleton, { PlannerPageSkeleton } from "@/components/planner/PlannerSkeleton";
+import { EmptyState } from "@/components/ui/empty-state";
+
+function inferBreadthPackageIdFromPlannedCourses(
+  plannedCourses: PlannedCourseWithDetails[]
+): string | null {
+  if (plannedCourses.length === 0) return null;
+
+  const plannedKeys = new Set(
+    plannedCourses.map((pc) => `${pc.course.subject} ${pc.course.number}`)
+  );
+
+  let bestPackageId: string | null = null;
+  let bestMatchedCourses = -1;
+
+  for (const pkg of BREADTH_PACKAGES) {
+    let allGroupsSatisfied = true;
+    let matchedCourses = 0;
+
+    for (const group of pkg.groups) {
+      const groupMatches = group.courses.filter((courseKey) =>
+        plannedKeys.has(courseKey)
+      );
+      matchedCourses += groupMatches.length;
+      if (groupMatches.length < group.nRequired) {
+        allGroupsSatisfied = false;
+        break;
+      }
+    }
+
+    if (allGroupsSatisfied && matchedCourses > bestMatchedCourses) {
+      bestMatchedCourses = matchedCourses;
+      bestPackageId = pkg.id;
+    }
+  }
+
+  return bestPackageId;
+}
+
+function breadthPackageStorageKey(studentId: number, planId: number): string {
+  return `gradtracker:breadthPackage:${studentId}:${planId}`;
+}
+
+function trackStorageKey(studentId: number, planId: number): string {
+  return `gradtracker:track:${studentId}:${planId}`;
+}
+
+export default function PlannerPage() {
+  const router = useRouter();
+  const latestPlanLoadRequestRef = useRef(0);
+
+  // Auth + student
+  const [studentId, setStudentId] = useState<number | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  // Plan state
+  const [plans, setPlans] = useState<PlanWithMeta[]>([]);
+  const [activePlanId, setActivePlanId] = useState<number | null>(null);
+  const [planDataLoading, setPlanDataLoading] = useState(false);
+
+  // Planner data (scoped to active plan)
+  const [terms, setTerms] = useState<Term[]>([]);
+  const [plannedCourses, setPlannedCourses] = useState<
+    PlannedCourseWithDetails[]
+  >([]);
+  const [blocks, setBlocks] = useState<RequirementBlockWithCourses[]>([]);
+  const [completedIds, setCompletedIds] = useState<Set<number>>(new Set());
+  const [genEdBuckets, setGenEdBuckets] = useState<GenEdBucketWithCourses[]>([]);
+
+  // Breadth package selection (persisted per plan)
+  const [selectedBreadthPackageId, setSelectedBreadthPackageId] = useState<
+    string | null
+  >(null);
+
+  const selectedBreadthPackage: BreadthPackage | null = useMemo(
+    () => BREADTH_PACKAGES.find((p) => p.id === selectedBreadthPackageId) ?? null,
+    [selectedBreadthPackageId]
+  );
+
+  const handleBreadthPackageSelect = useCallback(
+    (packageId: string) => {
+      setSelectedBreadthPackageId(packageId);
+      if (studentId && activePlanId) {
+        localStorage.setItem(
+          breadthPackageStorageKey(studentId, activePlanId),
+          packageId
+        );
+      }
+    },
+    [studentId, activePlanId]
+  );
+
+  // Graduate track selection (persisted per plan)
+  const [selectedTrackId, setSelectedTrackId] = useState<number | null>(null);
+
+  const handleTrackSelect = useCallback(
+    (trackId: number) => {
+      setSelectedTrackId(trackId);
+      if (studentId && activePlanId) {
+        localStorage.setItem(trackStorageKey(studentId, activePlanId), String(trackId));
+      }
+    },
+    [studentId, activePlanId]
+  );
+
+  // View state: hub (plan cards) or workspace (planner grid)
+  const [view, setView] = useState<"hub" | "workspace">("hub");
+
+  // UI state
+  const [addDialogOpen, setAddDialogOpen] = useState(false);
+  const [createDrawerOpen, setCreateDrawerOpen] = useState(false);
+  const [deletePlanDialog, setDeletePlanDialog] = useState<{
+    open: boolean;
+    planId: number | null;
+  }>({ open: false, planId: null });
+  const [removeDialog, setRemoveDialog] = useState<{
+    open: boolean;
+    termId: number | null;
+  }>({ open: false, termId: null });
+  const [activeDrag, setActiveDrag] = useState<{
+    course: Course;
+    fromTermId?: number;
+  } | null>(null);
+  const [isRemovingCourse, setIsRemovingCourse] = useState(false);
+
+  // DnD sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor)
+  );
+
+  // Derived data
+  const activePlan = plans.find((p) => p.id === activePlanId) ?? null;
+  const isGraduatePlan = activePlan?.has_graduate_program ?? false;
+  const plannedCourseIds = useMemo(
+    () => new Set(plannedCourses.map((pc) => pc.course_id)),
+    [plannedCourses]
+  );
+  const graduateTracks: GraduateTrack[] = useMemo(
+    () => (isGraduatePlan ? getGraduateTracks(blocks) : []),
+    [blocks, isGraduatePlan]
+  );
+
+  // Auto-select first concentration track when a graduate plan loads
+  useEffect(() => {
+    if (isGraduatePlan && graduateTracks.length >= 2 && selectedTrackId === null) {
+      handleTrackSelect(graduateTracks[0].blockId);
+    }
+  }, [isGraduatePlan, graduateTracks, selectedTrackId, handleTrackSelect]);
+
+  const allDedupedBlocks = useMemo(
+    () => deduplicateBlocks(blocks, { isGraduate: isGraduatePlan }),
+    [blocks, isGraduatePlan]
+  );
+
+  const displayBlocks = useMemo(
+    () =>
+      deduplicateBlocks(blocks, {
+        selectedPackage: isGraduatePlan ? null : selectedBreadthPackage,
+        isGraduate: isGraduatePlan,
+        selectedTrackId: isGraduatePlan ? selectedTrackId : null,
+      }),
+    [blocks, selectedBreadthPackage, isGraduatePlan, selectedTrackId]
+  );
+
+  const degreeCreditTarget = useMemo(
+    () =>
+      computePerProgramCreditTarget(blocks, {
+        selectedPackage: isGraduatePlan ? null : selectedBreadthPackage,
+        isGraduate: isGraduatePlan,
+        selectedTrackId: isGraduatePlan ? selectedTrackId : null,
+        minimumUndergradCredits: isGraduatePlan ? 0 : 120,
+        useLegacyElectivePoolForTotal: !isGraduatePlan,
+      }),
+    [blocks, selectedBreadthPackage, isGraduatePlan, selectedTrackId]
+  );
+
+  // ── Load plan-specific data ────────────────────────────
+  const loadPlanData = useCallback(
+    async (sid: number, planId: number, graduate = false) => {
+      const requestId = ++latestPlanLoadRequestRef.current;
+      setPlanDataLoading(true);
+      try {
+        setSelectedBreadthPackageId(null);
+        if (graduate) {
+          const savedTrack = localStorage.getItem(trackStorageKey(sid, planId));
+          setSelectedTrackId(savedTrack ? Number(savedTrack) : null);
+        } else {
+          setSelectedTrackId(null);
+        }
+
+        const [termsData, coursesData, blocksData, completedData, genEdData] =
+          await Promise.all([
+            fetchStudentTerms(sid, planId),
+            fetchPlannedCourses(sid, planId),
+            fetchAvailableCourses(sid, planId),
+            fetchCompletedCourseIds(sid),
+            fetchGenEdBucketsWithCourses(),
+          ]);
+
+        if (requestId !== latestPlanLoadRequestRef.current) return;
+
+        setTerms(termsData);
+        setPlannedCourses(coursesData);
+        setBlocks(blocksData);
+        setCompletedIds(completedData);
+        setGenEdBuckets(genEdData);
+
+        if (!graduate) {
+          const savedPkg = localStorage.getItem(breadthPackageStorageKey(sid, planId));
+          const validSavedPkg =
+            savedPkg && BREADTH_PACKAGES.some((p) => p.id === savedPkg)
+              ? savedPkg
+              : null;
+
+          if (validSavedPkg) {
+            setSelectedBreadthPackageId(validSavedPkg);
+          } else {
+            const inferredPkg = inferBreadthPackageIdFromPlannedCourses(coursesData);
+            setSelectedBreadthPackageId(inferredPkg);
+            if (inferredPkg) {
+              localStorage.setItem(breadthPackageStorageKey(sid, planId), inferredPkg);
+            }
+          }
+        }
+      } catch (err) {
+        if (requestId !== latestPlanLoadRequestRef.current) return;
+        console.error("Failed to load plan data:", err);
+        toaster.create({
+          title: "Failed to load plan",
+          description: "Please try again.",
+          type: "error",
+        });
+        // Ensure we don't keep stale data around on failure
+        setTerms([]);
+        setPlannedCourses([]);
+        setBlocks([]);
+        setCompletedIds(new Set());
+        setGenEdBuckets([]);
+      } finally {
+        if (requestId === latestPlanLoadRequestRef.current) {
+          setPlanDataLoading(false);
+        }
+      }
+    },
+    []
+  );
+
+  // ── Initial load ───────────────────────────────────────
+  useEffect(() => {
+    let alive = true;
+
+    async function init() {
+      setLoading(true);
+
+      try {
+        const supabase = createClient();
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+
+        if (!alive) return;
+
+        if (!user) {
+          setLoading(false);
+          router.push("/signin");
+          return;
+        }
+
+        const { data: studentRow, error: studentErr } = await supabase
+          .from(DB_TABLES.students)
+          .select("id")
+          .eq("auth_user_id", user.id)
+          .maybeSingle();
+
+        if (!alive) return;
+
+        if (studentErr || !studentRow) {
+          toaster.create({
+            title: "Profile not found",
+            description: "Complete onboarding first.",
+            type: "error",
+          });
+          setLoading(false);
+          router.push("/dashboard");
+          return;
+        }
+
+        const sid = studentRow.id;
+        setStudentId(sid);
+
+        // Fetch plans (can fail — must be caught to avoid unhandled rejection)
+        let plansData: PlanWithMeta[] = await fetchPlans(sid);
+
+        // Auto-create default plan if none exist
+        if (plansData.length === 0) {
+          const { data: studentPrograms, error: spErr } = await supabase
+            .from(DB_TABLES.studentPrograms)
+            .select("program_id")
+            .eq("student_id", sid);
+
+          if (spErr) {
+            toaster.create({
+              title: "Failed to load programs",
+              description: "Please try again.",
+              type: "error",
+            });
+            if (alive) setPlans([]);
+            return;
+          }
+
+          const programIds = (studentPrograms ?? []).map(
+            (sp: any) => sp.program_id
+          );
+
+          // createPlan can fail too — allow outer catch to handle
+          await createPlan(sid, "My Plan", null, programIds);
+          plansData = await fetchPlans(sid);
+        }
+
+        if (!alive) return;
+
+        setPlans(plansData);
+      } catch (err) {
+        console.error("Planner init failed:", err);
+        toaster.create({
+          title: "Failed to load planner",
+          description: "Please try again.",
+          type: "error",
+        });
+        if (alive) setPlans([]);
+      } finally {
+        if (alive) setLoading(false);
+      }
+    }
+
+    init();
+
+    return () => {
+      alive = false;
+    };
+  }, [router]);
+
+  // ── Open plan from hub ──────────────────────────────────
+  const handleOpenPlan = useCallback(
+    async (planId: number) => {
+      if (!studentId) return;
+      setActivePlanId(planId);
+      setView("workspace");
+      const plan = plans.find((p) => p.id === planId);
+      await loadPlanData(studentId, planId, plan?.has_graduate_program ?? false);
+    },
+    [studentId, plans, loadPlanData]
+  );
+
+  // ── Switch plan (within workspace) ────────────────────
+  const handleSwitchPlan = useCallback(
+    async (planId: number) => {
+      if (planId === activePlanId || !studentId) return;
+      setActivePlanId(planId);
+      const plan = plans.find((p) => p.id === planId);
+      await loadPlanData(studentId, planId, plan?.has_graduate_program ?? false);
+    },
+    [activePlanId, studentId, plans, loadPlanData]
+  );
+
+  // ── Back to hub ───────────────────────────────────────
+  const handleBackToHub = useCallback(() => {
+    setView("hub");
+  }, []);
+
+  // ── Create plan ────────────────────────────────────────
+  const handleCreatePlan = useCallback(
+    async (name: string, description: string | null, programIds: number[], _autoGenerate = false) => {
+      if (!studentId) return;
+      try {
+        const newPlan = await createPlan(studentId, name, description, programIds);
+        const refreshedPlans = await fetchPlans(studentId);
+        setPlans(refreshedPlans);
+        setActivePlanId(newPlan.id);
+        setView("workspace");
+        const created = refreshedPlans.find((p) => p.id === newPlan.id);
+        await loadPlanData(studentId, newPlan.id, created?.has_graduate_program ?? false);
+        toaster.create({ title: `"${name}" created`, type: "success" });
+      } catch (err) {
+        console.error("Create plan failed:", err);
+        toaster.create({
+          title: "Failed to create plan",
+          description: "Please try again.",
+          type: "error",
+        });
+      }
+    },
+    [studentId, loadPlanData]
+  );
+
+  // ── Rename plan ────────────────────────────────────────
+  const handleRenamePlan = useCallback(async (planId: number, newName: string) => {
+    try {
+      await updatePlan(planId, { name: newName });
+      setPlans((prev) =>
+        prev.map((p) => (p.id === planId ? { ...p, name: newName } : p))
+      );
+    } catch (err) {
+      console.error("Rename plan failed:", err);
+      toaster.create({
+        title: "Failed to rename plan",
+        description: "Please try again.",
+        type: "error",
+      });
+    }
+  }, []);
+
+  // ── Delete plan ────────────────────────────────────────
+  const handleDeletePlanRequest = useCallback((planId: number) => {
+    setDeletePlanDialog({ open: true, planId });
+  }, []);
+
+  const handleDeletePlanConfirmed = useCallback(async () => {
+    const planId = deletePlanDialog.planId;
+    if (!planId || !studentId) return;
+
+    try {
+      await deletePlan(planId);
+      const refreshedPlans = await fetchPlans(studentId);
+      setPlans(refreshedPlans);
+
+      if (activePlanId === planId) {
+        if (view === "workspace" && refreshedPlans.length > 0) {
+          const nextPlan = refreshedPlans[0];
+          setActivePlanId(nextPlan.id);
+          await loadPlanData(
+            studentId,
+            nextPlan.id,
+            nextPlan.has_graduate_program ?? false
+          );
+        } else {
+          setActivePlanId(null);
+          setView("hub");
+        }
+      }
+
+      toaster.create({ title: "Plan deleted", type: "info" });
+    } catch (err) {
+      console.error("Delete plan failed:", err);
+      toaster.create({
+        title: "Failed to delete plan",
+        description: "Please try again.",
+        type: "error",
+      });
+    }
+  }, [deletePlanDialog.planId, studentId, activePlanId, view, loadPlanData]);
+
+  // ── Add semester ────────────────────────────────────────
+  const handleAddSemester = useCallback(
+    async (season: Term["season"], year: number) => {
+      if (!studentId || !activePlanId) return;
+
+      try {
+        const term = await getOrCreateTerm(season, year);
+        await addTermPlan(studentId, term.id, activePlanId);
+        setTerms((prev) => [...prev, term]);
+        setPlans((prev) =>
+          prev.map((p) =>
+            p.id === activePlanId ? { ...p, term_count: p.term_count + 1 } : p
+          )
+        );
+        toaster.create({
+          title: `${season} ${year} added`,
+          type: "success",
+        });
+      } catch (err) {
+        console.error("Add semester failed:", err);
+        toaster.create({
+          title: "Failed to add semester",
+          description: "Please try again.",
+          type: "error",
+        });
+      }
+    },
+    [studentId, activePlanId]
+  );
+
+  // ── Remove semester ─────────────────────────────────────
+  const handleRemoveTermRequest = useCallback(
+    (termId: number) => {
+      const coursesInTerm = plannedCourses.filter((pc) => pc.term_id === termId);
+      if (coursesInTerm.length > 0) {
+        setRemoveDialog({ open: true, termId });
+      } else {
+        handleRemoveTermConfirmed(termId);
+      }
+    },
+    [plannedCourses]
+  );
+
+  const handleRemoveTermConfirmed = useCallback(
+    async (termId?: number) => {
+      const id = termId ?? removeDialog.termId;
+      if (!studentId || !id || !activePlanId) return;
+
+      const removedCourseCount = plannedCourses.filter((pc) => pc.term_id === id).length;
+
+      try {
+        await removeTermPlan(studentId, id, activePlanId);
+        setTerms((prev) => prev.filter((t) => t.id !== id));
+        setPlannedCourses((prev) => prev.filter((pc) => pc.term_id !== id));
+        setPlans((prev) =>
+          prev.map((p) =>
+            p.id === activePlanId
+              ? {
+                  ...p,
+                  term_count: Math.max(0, p.term_count - 1),
+                  course_count: Math.max(0, p.course_count - removedCourseCount),
+                }
+              : p
+          )
+        );
+        toaster.create({ title: "Semester removed", type: "info" });
+      } catch (err: any) {
+        toaster.create({
+          title: "Error",
+          description: err?.message || "Failed to remove semester",
+          type: "error",
+        });
+      }
+    },
+    [studentId, activePlanId, removeDialog.termId, plannedCourses]
+  );
+
+  const handleRemoveCourseFromTerm = useCallback(
+    async (course: Course, termId: number) => {
+      if (!studentId || !activePlanId) return;
+      setIsRemovingCourse(true);
+      try {
+        await removePlannedCourse(studentId, termId, course.id, activePlanId);
+        setPlannedCourses((prev) =>
+          prev.filter(
+            (pc) => !(pc.course_id === course.id && pc.term_id === termId)
+          )
+        );
+        setPlans((prev) =>
+          prev.map((p) =>
+            p.id === activePlanId
+              ? {
+                  ...p,
+                  course_count: Math.max(0, p.course_count - 1),
+                  total_credits: Math.max(0, p.total_credits - (course.credits ?? 0)),
+                }
+              : p
+          )
+        );
+        toaster.create({ title: "Course removed", type: "info" });
+      } catch (err: any) {
+        toaster.create({
+          title: "Error",
+          description: err?.message || "Failed to remove course",
+          type: "error",
+        });
+      } finally {
+        setIsRemovingCourse(false);
+      }
+    },
+    [studentId, activePlanId]
+  );
+
+  // ── Drag handlers ───────────────────────────────────────
+  function handleDragStart(event: DragStartEvent) {
+    const { course, fromTermId } = event.active.data.current as {
+      course: Course;
+      fromTermId?: number;
+    };
+    setActiveDrag({ course, fromTermId });
+  }
+
+  async function handleDragEnd(event: DragEndEvent) {
+    setActiveDrag(null);
+
+    const { active, over } = event;
+    if (!over || !studentId || !activePlanId) return;
+
+    const { course, fromTermId } = active.data.current as {
+      course: Course;
+      fromTermId?: number;
+    };
+
+    const overId = String(over.id);
+
+    if (overId.startsWith("term-")) {
+      const toTermId = over.data.current?.term?.id as number | undefined;
+      if (!toTermId) return;
+      if (fromTermId === toTermId) return;
+
+      try {
+        if (fromTermId) {
+          await movePlannedCourse(
+            studentId,
+            course.id,
+            fromTermId,
+            toTermId,
+            activePlanId
+          );
+          setPlannedCourses((prev) =>
+            prev.map((pc) =>
+              pc.course_id === course.id && pc.term_id === fromTermId
+                ? { ...pc, term_id: toTermId }
+                : pc
+            )
+          );
+        } else {
+          if (plannedCourseIds.has(course.id)) return;
+          await addPlannedCourse(studentId, toTermId, course.id, activePlanId);
+          setPlannedCourses((prev) => [
+            ...prev,
+            {
+              student_id: studentId,
+              term_id: toTermId,
+              course_id: course.id,
+              status: PLANNED_COURSE_STATUS.planned,
+              plan_id: activePlanId,
+              course,
+            },
+          ]);
+          setPlans((prev) =>
+            prev.map((p) =>
+              p.id === activePlanId
+                ? {
+                    ...p,
+                    course_count: p.course_count + 1,
+                    total_credits: p.total_credits + (course.credits ?? 0),
+                  }
+                : p
+            )
+          );
+        }
+      } catch (err: any) {
+        toaster.create({
+          title: "Error",
+          description: err?.message || "Failed to update plan",
+          type: "error",
+        });
+      }
+      return;
+    }
+
+    if (fromTermId && (overId === "course-panel" || !overId.startsWith("term-"))) {
+      try {
+        await removePlannedCourse(studentId, fromTermId, course.id, activePlanId);
+        setPlannedCourses((prev) =>
+          prev.filter(
+            (pc) => !(pc.course_id === course.id && pc.term_id === fromTermId)
+          )
+        );
+        setPlans((prev) =>
+          prev.map((p) =>
+            p.id === activePlanId
+              ? {
+                  ...p,
+                  course_count: Math.max(0, p.course_count - 1),
+                  total_credits: Math.max(0, p.total_credits - (course.credits ?? 0)),
+                }
+              : p
+          )
+        );
+      } catch (err: any) {
+        toaster.create({
+          title: "Error",
+          description: err?.message || "Failed to remove course",
+          type: "error",
+        });
+      }
+    }
+  }
+
+  // ── Loading state ───────────────────────────────────────
+  if (loading) {
+    return <PlannerPageSkeleton />;
+  }
+
+  // ── Render ──────────────────────────────────────────────
+  return (
+    <Box
+      mx={{ base: "-4", md: "-8" }}
+      mt="-6"
+      display="flex"
+      flexDirection="column"
+      h="calc(100vh - 80px)"
+      overflow="hidden"
+    >
+      {view === "hub" ? (
+        <>
+          <PlansHub
+            plans={plans}
+            onOpenPlan={handleOpenPlan}
+            onCreatePlan={() => setCreateDrawerOpen(true)}
+            onRenamePlan={handleRenamePlan}
+            onDeletePlan={handleDeletePlanRequest}
+          />
+        </>
+      ) : (
+        <>
+          {/* Workspace header */}
+          <Box
+            as="header"
+            position="sticky"
+            top="0"
+            bg="bg"
+            borderBottomWidth="1px"
+            borderColor="border.subtle"
+            zIndex="sticky"
+            className="glass-card"
+          >
+            <Flex justify="space-between" align="center" px={{ base: "4", md: "6" }} py="3">
+              {/* Breadcrumb navigation */}
+              <HStack gap="2">
+                <IconButton
+                  aria-label="Back to plans"
+                  variant="ghost"
+                  size="sm"
+                  borderRadius="lg"
+                  onClick={handleBackToHub}
+                  _hover={{ bg: "bg.subtle" }}
+                >
+                  <LuArrowLeft />
+                </IconButton>
+                <HStack gap="1.5" fontSize="sm">
+                  <Text
+                    color="fg.muted"
+                    cursor="pointer"
+                    _hover={{ color: "green.fg" }}
+                    onClick={handleBackToHub}
+                    fontWeight="500"
+                    transition="color 0.15s"
+                  >
+                    Plans
+                  </Text>
+                  <Icon color="fg.subtle" boxSize="3.5">
+                    <LuChevronRight />
+                  </Icon>
+                  <Heading
+                    size="md"
+                    fontFamily="var(--font-outfit), sans-serif"
+                    fontWeight="400"
+                    letterSpacing="-0.02em"
+                  >
+                    {activePlan?.name ?? "Plan"}
+                  </Heading>
+                </HStack>
+              </HStack>
+
+              <HStack gap="2">
+                {/* Compact plan tabs for quick switching */}
+                {plans.length > 1 && (
+                  <HStack gap="0" bg="bg.subtle" borderRadius="lg" p="0.5" mr="1">
+                    {plans.map((p) => (
+                      <Button
+                        key={p.id}
+                        size="xs"
+                        variant={p.id === activePlanId ? "solid" : "ghost"}
+                        colorPalette={p.id === activePlanId ? "green" : "gray"}
+                        borderRadius="md"
+                        fontSize="xs"
+                        fontWeight={p.id === activePlanId ? "600" : "500"}
+                        onClick={() => handleSwitchPlan(p.id)}
+                        px="3"
+                        transition="all 0.15s"
+                      >
+                        {p.name}
+                      </Button>
+                    ))}
+                  </HStack>
+                )}
+                <Button
+                  size="sm"
+                  variant="outline"
+                  borderRadius="lg"
+                  onClick={() => setAddDialogOpen(true)}
+                >
+                  <LuPlus size={16} />
+                  Add Semester
+                </Button>
+              </HStack>
+            </Flex>
+          </Box>
+
+          {/* Plan data loading overlay */}
+          {planDataLoading ? (
+            <PlannerSkeleton />
+          ) : (
+            <>
+              <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+                <Flex flex="1" overflow="hidden" minH="0" className="animate-fade-up">
+                  <CoursePanel
+                    blocks={displayBlocks}
+                    allDedupedBlocks={allDedupedBlocks}
+                    degreeCreditTarget={degreeCreditTarget}
+                    completedCourseIds={completedIds}
+                    plannedCourseIds={plannedCourseIds}
+                    plannedCourses={plannedCourses}
+                    isDragActive={!!activeDrag}
+                    selectedBreadthPackageId={selectedBreadthPackageId}
+                    onBreadthPackageSelect={handleBreadthPackageSelect}
+                    isGraduatePlan={isGraduatePlan}
+                    graduateTracks={graduateTracks}
+                    selectedTrackId={selectedTrackId}
+                    onTrackSelect={handleTrackSelect}
+                    genEdBuckets={genEdBuckets}
+                  />
+
+                  {terms.length === 0 ? (
+                    <Flex
+                      flex="1"
+                      align="center"
+                      justify="center"
+                      direction="column"
+                      gap="4"
+                      p="8"
+                      className="animate-fade-up-delay-1"
+                    >
+                      <Box
+                        p="8"
+                        borderWidth="2px"
+                        borderStyle="dashed"
+                        borderColor="border.subtle"
+                        borderRadius="2xl"
+                        textAlign="center"
+                        maxW="420px"
+                        bg="bg"
+                      >
+                        <EmptyState
+                          icon={<LuCalendar />}
+                          title="No semesters yet"
+                          description="Add your first semester to start planning your courses."
+                          mb="5"
+                        >
+                          <Text fontSize="xs" color="fg.muted">
+                            Drag courses from the pool on the left into your semesters to build your plan.
+                          </Text>
+                        </EmptyState>
+                        <Button
+                          colorPalette="green"
+                          borderRadius="lg"
+                          size="sm"
+                          onClick={() => setAddDialogOpen(true)}
+                        >
+                          <LuPlus size={16} />
+                          Add First Semester
+                        </Button>
+                      </Box>
+                    </Flex>
+                  ) : (
+                    <SemesterGrid
+                      terms={terms}
+                      plannedCourses={plannedCourses}
+                      onRemoveTerm={handleRemoveTermRequest}
+                      onRemoveCourse={handleRemoveCourseFromTerm}
+                      isRemovingCourse={isRemovingCourse}
+                      isGraduatePlan={isGraduatePlan}
+                    />
+                  )}
+                </Flex>
+
+                <DragOverlay>
+                  {activeDrag ? (
+                    <Box w="260px" opacity={0.9}>
+                      <CourseCardGhost course={activeDrag.course} />
+                    </Box>
+                  ) : null}
+                </DragOverlay>
+              </DndContext>
+
+              <PlannerSummary
+                terms={terms}
+                plannedCourses={plannedCourses}
+                blocks={displayBlocks}
+                completedCourseIds={completedIds}
+                degreeCreditTarget={degreeCreditTarget}
+                isGraduatePlan={isGraduatePlan}
+                hasBreadthPackageSelected={isGraduatePlan ? true : !!selectedBreadthPackageId}
+              />
+            </>
+          )}
+        </>
+      )}
+
+      {/* Dialogs */}
+      <AddSemesterDialog
+        open={addDialogOpen}
+        onOpenChange={setAddDialogOpen}
+        onAdd={handleAddSemester}
+        existingTerms={terms}
+      />
+
+      <RemoveSemesterDialog
+        open={removeDialog.open}
+        onOpenChange={(open) => setRemoveDialog((prev) => ({ ...prev, open }))}
+        onConfirm={() => handleRemoveTermConfirmed()}
+        term={terms.find((t) => t.id === removeDialog.termId) ?? null}
+        courseCount={
+          removeDialog.termId
+            ? plannedCourses.filter((pc) => pc.term_id === removeDialog.termId).length
+            : 0
+        }
+      />
+
+      <DeletePlanDialog
+        open={deletePlanDialog.open}
+        onOpenChange={(open) => setDeletePlanDialog((prev) => ({ ...prev, open }))}
+        onConfirm={handleDeletePlanConfirmed}
+        plan={plans.find((p) => p.id === deletePlanDialog.planId) ?? null}
+      />
+
+      {studentId && (
+        <CreatePlanDrawer
+          open={createDrawerOpen}
+          onOpenChange={setCreateDrawerOpen}
+          studentId={studentId}
+          programIds={
+            plans.find((p) => p.id === activePlanId)?.program_ids ?? []
+          }
+          plans={plans}
+          activePlanId={activePlanId}
+          existingPlanCount={plans.length}
+          onCreatePlan={handleCreatePlan}
+          onAutoFillComplete={async (planId) => {
+            const refreshed = await fetchPlans(studentId);
+            setPlans(refreshed);
+            setActivePlanId(planId);
+            setView("workspace");
+            await loadPlanData(
+              studentId,
+              planId,
+              refreshed.find((p) => p.id === planId)?.has_graduate_program
+            );
+          }}
+        />
+      )}
+    </Box>
+  );
+}
