@@ -53,6 +53,52 @@ const TYPE_META: Record<string, { label: string; color: string; icon: typeof LuT
 
 const TYPE_ORDER = ["MAJOR", "MINOR", "CERTIFICATE", "GRADUATE"];
 
+function isMissingColumnError(error: unknown, columnName: string): boolean {
+  if (!error || typeof error !== "object") return false;
+  const message = String((error as { message?: unknown }).message ?? "");
+  return message.includes(columnName) && message.includes("column");
+}
+
+async function insertAdvisorAssignment(
+  advisorId: number,
+  programId: number
+): Promise<unknown> {
+  const supabase = createClient();
+  const insertWithColumn = (column: "staff_id" | "advisor_id") =>
+    supabase
+      .from(DB_TABLES.programAdvisors)
+      .insert({ [column]: advisorId, program_id: programId });
+
+  const primary = await insertWithColumn("staff_id");
+  if (!primary.error || !isMissingColumnError(primary.error, "staff_id")) {
+    return primary.error;
+  }
+
+  const fallback = await insertWithColumn("advisor_id");
+  return fallback.error;
+}
+
+async function deleteAdvisorAssignment(
+  advisorId: number,
+  programId: number
+): Promise<unknown> {
+  const supabase = createClient();
+  const deleteWithColumn = (column: "staff_id" | "advisor_id") =>
+    supabase
+      .from(DB_TABLES.programAdvisors)
+      .delete()
+      .eq(column, advisorId)
+      .eq("program_id", programId);
+
+  const primary = await deleteWithColumn("staff_id");
+  if (!primary.error || !isMissingColumnError(primary.error, "staff_id")) {
+    return primary.error;
+  }
+
+  const fallback = await deleteWithColumn("advisor_id");
+  return fallback.error;
+}
+
 export default function AssignmentsClient({
   programs,
   initialAssignedIds,
@@ -103,10 +149,7 @@ export default function AssignmentsClient({
     if (loadingIds.has(programId)) return;
     startLoading(programId);
     try {
-      const supabase = createClient();
-      const { error } = await supabase
-        .from(DB_TABLES.programAdvisors)
-        .insert({ advisor_id: advisorId, program_id: programId });
+      const error = await insertAdvisorAssignment(advisorId, programId);
 
       if (error) throw error;
 
@@ -132,12 +175,7 @@ export default function AssignmentsClient({
     if (loadingIds.has(programId)) return;
     startLoading(programId);
     try {
-      const supabase = createClient();
-      const { error } = await supabase
-        .from(DB_TABLES.programAdvisors)
-        .delete()
-        .eq("advisor_id", advisorId)
-        .eq("program_id", programId);
+      const error = await deleteAdvisorAssignment(advisorId, programId);
 
       if (error) throw error;
 

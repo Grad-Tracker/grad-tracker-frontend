@@ -3,6 +3,12 @@ import { requireAdvisorAccess } from "@/app/admin/(protected)/programs/server-he
 import { DB_TABLES } from "@/lib/supabase/queries/schema";
 import AssignmentsClient, { type Program } from "./AssignmentsClient";
 
+function isMissingColumnError(error: unknown, columnName: string): boolean {
+  if (!error || typeof error !== "object") return false;
+  const message = String((error as { message?: unknown }).message ?? "");
+  return message.includes(columnName) && message.includes("column");
+}
+
 export default async function AssignmentsPage() {
   const supabase = await createClient();
   const { staffId } = await requireAdvisorAccess(supabase);
@@ -20,10 +26,23 @@ export default async function AssignmentsPage() {
   }
 
   // Fetch current advisor's assignments
-  const { data: assignments, error: assignmentsError } = await supabase
+  const primaryAssignments = await supabase
     .from(DB_TABLES.programAdvisors)
     .select("program_id")
-    .eq("advisor_id", staffId);
+    .eq("staff_id", staffId);
+
+  const fallbackAssignments =
+    primaryAssignments.error &&
+    isMissingColumnError(primaryAssignments.error, "staff_id")
+      ? await supabase
+          .from(DB_TABLES.programAdvisors)
+          .select("program_id")
+          .eq("advisor_id", staffId)
+      : null;
+
+  const assignments = fallbackAssignments?.data ?? primaryAssignments.data;
+  const assignmentsError =
+    fallbackAssignments?.error ?? primaryAssignments.error;
 
   if (assignmentsError) {
     console.error("Failed to load advisor assignments:", assignmentsError);
