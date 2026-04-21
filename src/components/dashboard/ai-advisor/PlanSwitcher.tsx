@@ -108,7 +108,7 @@ export function PlanSwitcher({ activePlanId, onPlanChange, refreshTrigger }: Pla
       {open && (
         <Box
           position="absolute"
-          bottom="calc(100% + 4px)"
+          top="calc(100% + 4px)"
           left="0"
           zIndex="popover"
           bg="bg"

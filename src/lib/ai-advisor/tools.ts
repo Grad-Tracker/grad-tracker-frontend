@@ -3713,12 +3713,31 @@ const CLAUDE_TOOL_DEFINITIONS: ClaudeToolDefinition[] = [
   },
 ];
 
+const CATALOG_TOOL_NAMES = new Set<string>([
+  TOOL_NAMES.searchCourses,
+  TOOL_NAMES.getCourseDetails,
+  TOOL_NAMES.getCoursePrerequisites,
+  TOOL_NAMES.getFullPrereqChain,
+  TOOL_NAMES.findShortestPrereqPath,
+  TOOL_NAMES.findCoursesUnlockedBy,
+  TOOL_NAMES.getProgramRequirements,
+  TOOL_NAMES.findCoursesSatisfyingBlock,
+  TOOL_NAMES.findCommonRequirements,
+  TOOL_NAMES.getGenEdOptions,
+  TOOL_NAMES.checkDoubleMajorOverlap,
+]);
+
+const CATALOG_TOOL_DEFINITIONS = CLAUDE_TOOL_DEFINITIONS.filter(
+  (def) => CATALOG_TOOL_NAMES.has(def.name)
+);
+
 async function runClaudeToolCalling(args: {
   message: string;
   history: AdvisorChatHistoryItem[];
   profile: AdvisorStudentProfile;
   activePlanId?: number | null;
   activePlanName?: string | null;
+  toolDefinitions?: typeof CLAUDE_TOOL_DEFINITIONS;
   executeTool: (name: AdvisorToolName, toolArgs: Record<string, unknown>) => Promise<ToolExecutionResult>;
   onSideEffect: (effect: AdvisorSideEffect) => void;
 }): Promise<AdvisorChatResponse | null> {
@@ -3746,13 +3765,13 @@ async function runClaudeToolCalling(args: {
     { role: "user" as const, content: args.message },
   ];
 
-  const maxTurns = 6;
+  const maxTurns = 20;
   for (let turn = 0; turn < maxTurns; turn += 1) {
     const response = await client.messages.create({
       model,
-      max_tokens: 1024,
+      max_tokens: 5000,
       system: `${systemPrompt}\n\nReturn strict JSON with keys: answer, recommendations, risks, missingData, citations.`,
-      tools: CLAUDE_TOOL_DEFINITIONS,
+      tools: args.toolDefinitions ?? CLAUDE_TOOL_DEFINITIONS,
       messages,
     });
 
@@ -4092,6 +4111,7 @@ export interface GenerateAdvisorResponseInput {
   activePlanName?: string | null;
   profile: AdvisorStudentProfile;
   dependencies: AdvisorToolDependencies;
+  toolDefinitions?: typeof CLAUDE_TOOL_DEFINITIONS;
 }
 
 export async function generateAdvisorResponse(
@@ -4125,6 +4145,7 @@ export async function generateAdvisorResponse(
       profile: input.profile,
       activePlanId: input.activePlanId ?? null,
       activePlanName: input.activePlanName ?? null,
+      toolDefinitions: input.toolDefinitions,
       executeTool,
       onSideEffect: (effect) => sideEffects.push(effect),
     });
@@ -4153,6 +4174,7 @@ export async function generateAdvisorResponse(
 
 export {
   CLAUDE_TOOL_DEFINITIONS,
+  CATALOG_TOOL_DEFINITIONS,
   executeToolByName,
   normalizeAdvisorResponse,
   tryParseJson,
