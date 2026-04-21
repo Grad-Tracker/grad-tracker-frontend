@@ -1,4 +1,4 @@
-import { Box, Card, HStack, Stack, VStack } from "@chakra-ui/react";
+import { Box, Card, HStack, Stack } from "@chakra-ui/react";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export default function CoursesLoading() {
