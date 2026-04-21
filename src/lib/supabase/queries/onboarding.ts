@@ -233,11 +233,28 @@ export async function saveOnboardingSelections(
     program_id: programId,
   }));
 
+  let defaultTermId: number | null = null;
+  if (courseIds.length > 0) {
+    const { data: defaultTerm, error: defaultTermError } = await supabase
+      .from(DB_VIEWS.termsChronological)
+      .select("term_id")
+      .order("chronological_rank", { ascending: true })
+      .limit(1)
+      .single();
+
+    if (defaultTermError) throw defaultTermError;
+    defaultTermId = Number((defaultTerm as { term_id: number | string }).term_id);
+    if (!Number.isFinite(defaultTermId)) {
+      throw new Error("Unable to resolve a default term for onboarding course history");
+    }
+  }
+
   const courseRows =
     courseIds.length > 0
       ? courseIds.map((courseId) => ({
           student_id: studentId,
           course_id: courseId,
+          term_id: defaultTermId,
           completed: true,
         }))
       : [];
@@ -270,7 +287,7 @@ export async function saveOnboardingSelections(
       const { error: coursesError } = await supabase
         .from(DB_TABLES.studentCourseHistory)
         .upsert(courseRows, {
-          onConflict: "student_id,course_id",
+          onConflict: "student_id,course_id,term_id",
           ignoreDuplicates: false,
         });
 
