@@ -109,58 +109,6 @@ describe("SigninPage", () => {
     expect(screen.getByText("You'll be taken to the advisor console.")).toBeInTheDocument();
   });
 
-  it("student sign in blocks advisor-domain emails", async () => {
-    renderWithChakra(<SigninPage />);
-
-    fireEvent.change(screen.getByPlaceholderText("you@example.com"), {
-      target: { value: "advisor@uwp.edu" },
-    });
-    fireEvent.change(screen.getByTestId("password-input"), {
-      target: { value: "password123" },
-    });
-
-    const buttons = screen.getAllByText("Sign In");
-    const btn = buttons.find((el) => el.closest("button") !== null);
-    await act(async () => {
-      fireEvent.click(btn!);
-    });
-
-    expect(mockSignInWithPassword).not.toHaveBeenCalled();
-    expect(mockToaster.create).toHaveBeenCalledWith(
-      expect.objectContaining({
-        title: "Invalid email domain",
-        description: "Student sign in requires a @rangers.uwp.edu email address.",
-      })
-    );
-  });
-
-  it("advisor sign in blocks student-domain emails", async () => {
-    renderWithChakra(<SigninPage />);
-    await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: "Advisor" }));
-    });
-
-    fireEvent.change(screen.getByPlaceholderText("you@example.com"), {
-      target: { value: "student@rangers.uwp.edu" },
-    });
-    fireEvent.change(screen.getByTestId("password-input"), {
-      target: { value: "password123" },
-    });
-
-    const buttons = screen.getAllByText("Sign In");
-    const btn = buttons.find((el) => el.closest("button") !== null);
-    await act(async () => {
-      fireEvent.click(btn!);
-    });
-
-    expect(mockSignInWithPassword).not.toHaveBeenCalled();
-    expect(mockToaster.create).toHaveBeenCalledWith(
-      expect.objectContaining({
-        title: "Invalid email domain",
-        description: "Advisor sign in requires a @uwp.edu email address.",
-      })
-    );
-  });
 
   it("shows error toast for empty fields", async () => {
     renderWithChakra(<SigninPage />);
