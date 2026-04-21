@@ -1087,16 +1087,20 @@ describe("planner queries", () => {
   // -------------------------------------------------------------------------
   describe("fetchCompletedCourseIds", () => {
     it("returns a Set of course_id numbers", async () => {
-      const data = [{ course_id: 100 }, { course_id: 200 }, { course_id: 300 }];
+      const data = [
+        { course_id: 100, completed: true, progress_status: "IN_PROGRESS" },
+        { course_id: 200, completed: false, progress_status: "COMPLETED" },
+        { course_id: 300, completed: false, progress_status: "IN_PROGRESS" },
+      ];
       mockFrom.mockReturnValueOnce(mockChain(data));
 
       const result = await fetchCompletedCourseIds(1);
 
       expect(result).toBeInstanceOf(Set);
-      expect(result.size).toBe(3);
+      expect(result.size).toBe(2);
       expect(result.has(100)).toBe(true);
       expect(result.has(200)).toBe(true);
-      expect(result.has(300)).toBe(true);
+      expect(result.has(300)).toBe(false);
     });
 
     it("returns empty Set when no data", async () => {
@@ -1126,7 +1130,10 @@ describe("planner queries", () => {
 
     it("converts course_id values to numbers via Number()", async () => {
       // Simulate bigint-like string values coming from DB
-      const data = [{ course_id: "100" }, { course_id: "200" }];
+      const data = [
+        { course_id: "100", completed: true, progress_status: "IN_PROGRESS" },
+        { course_id: "200", completed: false, progress_status: "COMPLETED" },
+      ];
       mockFrom.mockReturnValueOnce(mockChain(data));
 
       const result = await fetchCompletedCourseIds(1);
