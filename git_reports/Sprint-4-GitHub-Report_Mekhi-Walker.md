@@ -36,7 +36,7 @@ _Total PRs merged: 10_
 | Metric | Value |
 |--------|-------|
 | Total Commits | 21 |
-| First Commit | 2026-04-02 |
+| First Commit | 2026-03-29 |
 | Last Commit | 2026-04-07 |
 
 ---

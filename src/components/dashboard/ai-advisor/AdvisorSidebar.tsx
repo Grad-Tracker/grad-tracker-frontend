@@ -97,29 +97,23 @@ export function AdvisorSidebar() {
 
   if (loading) {
     return (
-      <Box
-        w="280px"
-        flexShrink={0}
-        display={{ base: "none", xl: "block" }}
-      >
-        <VStack align="stretch" gap="3">
-          {[1, 2, 3].map((i) => (
-            <Box
-              key={i}
-              bg="bg.subtle"
-              borderWidth="1px"
-              borderColor="border.subtle"
-              borderRadius="xl"
-              h="80px"
-              display="flex"
-              alignItems="center"
-              justifyContent="center"
-            >
-              <Text fontSize="xs" color="fg.subtle">Loading context...</Text>
-            </Box>
-          ))}
-        </VStack>
-      </Box>
+      <VStack align="stretch" gap="3" w="100%">
+        {[1, 2, 3].map((i) => (
+          <Box
+            key={i}
+            bg="bg.subtle"
+            borderWidth="1px"
+            borderColor="border.subtle"
+            borderRadius="xl"
+            h="80px"
+            display="flex"
+            alignItems="center"
+            justifyContent="center"
+          >
+            <Text fontSize="xs" color="fg.subtle">Loading context...</Text>
+          </Box>
+        ))}
+      </VStack>
     );
   }
 
@@ -128,11 +122,7 @@ export function AdvisorSidebar() {
   }
 
   return (
-    <Box
-      w="280px"
-      flexShrink={0}
-      display={{ base: "none", xl: "block" }}
-    >
+    <Box w="100%">
       <VStack align="stretch" gap="3">
         {/* Student Info */}
         <SidebarCard icon={<LuBookOpen size={14} />} title="Student">

@@ -63,6 +63,7 @@ export default function PlannerSummary({
       ? GRADUATE_TOTAL_CREDITS
       : (degreeCreditTarget ?? summedCredits);
 
+    const countedIds = new Set<number>();
     let completedCredits = 0;
     const countedCompletedIds = new Set<number>();
     for (const block of blocks) {

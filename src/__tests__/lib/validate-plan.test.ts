@@ -621,4 +621,36 @@ describe("validatePlan", () => {
     expect(result.unscheduledCourses).toHaveLength(1);
     expect(result.unscheduledCourses[0].id).toBe(202);
   });
+
+  it("uses inferNOfRequiredCredits for N_OF block without credits_required", () => {
+    const c1 = makeCourse({ id: 210, credits: 3 });
+    const c2 = makeCourse({ id: 211, credits: 3 });
+    const c3 = makeCourse({ id: 212, credits: 3 });
+
+    const semesters = [makeSemester("Fall", 2026, [c1, c2])];
+
+    const block = makeBlock({
+      id: 30,
+      rule: "N_OF",
+      name: "Elective Group",
+      n_required: 2,
+      credits_required: null,
+      courses: [c1, c2, c3],
+    });
+
+    const result = validatePlan(
+      semesters,
+      [c1, c2],
+      new Map(),
+      new Map(),
+      new Set(),
+      [block],
+      [],
+      18,
+    );
+
+    const status = result.blockStatuses[0];
+    expect(status.satisfied).toBe(true);
+    expect(status.requiredCredits).toBe(6); // 2 courses × 3 credits each
+  });
 });

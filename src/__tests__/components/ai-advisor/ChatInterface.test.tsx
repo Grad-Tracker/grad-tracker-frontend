@@ -9,7 +9,11 @@ global.fetch = mockFetch;
 function renderChat() {
   return render(
     <ChakraProvider value={defaultSystem}>
-      <ChatInterface />
+      <ChatInterface
+        conversationId={null}
+        onConversationCreated={() => {}}
+        activePlanId={null}
+      />
     </ChakraProvider>
   );
 }

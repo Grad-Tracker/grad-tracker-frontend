@@ -1,7 +1,7 @@
 import "server-only";
 
 import { compareTerms } from "@/types/planner";
-import { DB_VIEWS, PROGRAM_TYPES } from "@/lib/supabase/queries/schema";
+import { DB_VIEWS, DB_TABLES, PROGRAM_TYPES } from "@/lib/supabase/queries/schema";
 import type {
   ViewStudentProfileRow,
   ViewStudentMajorProgramRow,
@@ -119,6 +119,10 @@ type CourseRecord = {
 type RequirementBlockRecord = {
   id: number;
   name: string;
+  program_id: number;
+  program_name: string;
+  rule: string;
+  n_required: number | null;
   credits_required: number | null;
   courses: CourseRecord[];
 };
@@ -274,6 +278,10 @@ async function fetchRequirementBlocks(
     return {
       id: Number(row.block_id),
       name: String(row.block_name ?? "Requirement Block"),
+      program_id: Number(row.program_id ?? 0),
+      program_name: String(row.program_name ?? ""),
+      rule: String(row.rule ?? "ALL_OF"),
+      n_required: row.n_required == null ? null : Number(row.n_required),
       credits_required: row.credits_required == null ? null : Number(row.credits_required),
       courses,
     };
@@ -321,6 +329,20 @@ function totalCreditsForBlock(block: RequirementBlockRecord): number {
   if (block.credits_required != null && Number.isFinite(Number(block.credits_required))) {
     return Number(block.credits_required);
   }
+
+  const rule = (block.rule ?? "ALL_OF").toUpperCase();
+
+  if (rule === "N_OF" && block.n_required != null && block.courses.length > 0) {
+    const avg =
+      block.courses.reduce((s, c) => s + Number(c.credits ?? 0), 0) / block.courses.length;
+    return Math.round(block.n_required * avg);
+  }
+
+  if (rule === "ANY_OF" && block.courses.length > 0) {
+    return Math.min(...block.courses.map((c) => Number(c.credits ?? 3)));
+  }
+
+  // ALL_OF or CREDITS_OF without explicit credits_required — sum all courses
   return block.courses.reduce((sum, c) => sum + Number(c.credits ?? 0), 0);
 }
 
@@ -561,6 +583,153 @@ export async function getRemainingRequirements(
   };
 }
 
+// ── Course history ─────────────────────────────────────────
+
+export interface AdvisorCourseHistoryEntry {
+  courseId: number;
+  courseCode: string;
+  title: string;
+  credits: number;
+  grade: string | null;
+  completed: boolean;
+  term: string | null; // e.g. "Fall 2024", null if term unknown
+}
+
+export interface GetCourseHistoryOptions {
+  subject?: string | null;
+  completedOnly?: boolean;
+  minLevel?: number | null; // e.g. 300 → only 300+ courses
+}
+
+export async function getCourseHistory(
+  supabase: SupabaseTableClient,
+  studentId: number,
+  options: GetCourseHistoryOptions = {}
+): Promise<AdvisorCourseHistoryEntry[]> {
+  let q = supabase
+    .from(DB_VIEWS.studentCourseHistoryDetail)
+    .select("course_id, term_id, completed, grade, subject, number, title, credits")
+    .eq("student_id", studentId);
+
+  if (options.completedOnly) {
+    q = q.eq("completed", true);
+  }
+
+  if (options.subject) {
+    q = q.ilike("subject", options.subject.trim());
+  }
+
+  const { data, error } = await q;
+  if (error) throw new Error(`Failed to fetch course history: ${error.message}`);
+
+  let rows = (data ?? []) as Array<{
+    course_id: number;
+    term_id: number;
+    completed: boolean;
+    grade: string | null;
+    subject: string;
+    number: string;
+    title: string;
+    credits: number;
+  }>;
+
+  // Apply minLevel filter (course number prefix as integer).
+  if (options.minLevel != null) {
+    const min = Number(options.minLevel);
+    rows = rows.filter((row) => {
+      const level = parseInt(String(row.number), 10);
+      return Number.isFinite(level) && level >= min;
+    });
+  }
+
+  // Resolve term_ids → season/year in a single batch query.
+  const termIds = Array.from(new Set(rows.map((r) => r.term_id).filter(Boolean)));
+  const termMap = new Map<number, string>();
+
+  if (termIds.length > 0) {
+    const { data: termRows } = await supabase
+      .from(DB_TABLES.terms)
+      .select("id, season, year")
+      .in("id", termIds);
+
+    for (const t of termRows ?? []) {
+      termMap.set(Number(t.id), `${t.season} ${t.year}`);
+    }
+  }
+
+  return rows.map((row) => {
+    const sub = String(row.subject ?? "").trim().toUpperCase();
+    const num = String(row.number ?? "").trim().toUpperCase();
+    return {
+      courseId: Number(row.course_id),
+      courseCode: `${sub} ${num}`.trim(),
+      title: String(row.title ?? ""),
+      credits: Number(row.credits ?? 0),
+      grade: row.grade ?? null,
+      completed: Boolean(row.completed),
+      term: termMap.get(Number(row.term_id)) ?? null,
+    };
+  });
+}
+
+// ── Course search ──────────────────────────────────────────
+
+export interface AdvisorCourseSearchResult {
+  courseId: number;
+  courseCode: string;
+  title: string;
+  credits: number;
+}
+
+// Matches "CIS 570", "CSCI 340L", "MATH 280" — subject letters + space + course number.
+const COURSE_CODE_RE = /^([A-Za-z]{2,8})\s+(\S+)$/;
+
+export async function searchCourses(
+  supabase: SupabaseTableClient,
+  query: string,
+  subject?: string | null,
+  limit = 15
+): Promise<AdvisorCourseSearchResult[]> {
+  const trimmed = query.trim();
+  const cap = Math.min(Math.max(1, limit), 25);
+
+  let q = supabase
+    .from(DB_VIEWS.courseCatalog)
+    .select("course_id, subject, number, title, credits");
+
+  // When the query looks like a course code (e.g. "CIS 570") split it into
+  // subject + number so each column is matched individually. A full-string
+  // ILIKE against individual columns would never match because no single
+  // column contains the full "SUBJ NUM" string.
+  const codeMatch = !subject ? trimmed.match(COURSE_CODE_RE) : null;
+  if (codeMatch) {
+    q = q.ilike("subject", codeMatch[1]!).ilike("number", codeMatch[2]!);
+  } else {
+    if (subject) {
+      q = q.ilike("subject", subject.trim());
+    }
+    if (trimmed) {
+      const escaped = trimmed.replace(/%/g, "\\%").replace(/_/g, "\\_");
+      const pattern = `%${escaped}%`;
+      q = q.or(`title.ilike.${pattern},subject.ilike.${pattern},number.ilike.${pattern}`);
+    }
+  }
+
+  const { data, error } = await q.order("subject").order("number").limit(cap);
+  if (error) throw new Error(`Course search failed: ${error.message}`);
+
+  return (data ?? []).map((row: any) => {
+    const sub = String(row.subject ?? "").trim().toUpperCase();
+    const num = String(row.number ?? "").trim().toUpperCase();
+    return {
+      courseId: Number(row.course_id),
+      courseCode: `${sub} ${num}`.trim(),
+      title: String(row.title ?? ""),
+      credits: Number(row.credits ?? 0),
+    };
+  });
+}
+
 // ── Course code resolution ─────────────────────────────────
 
 export async function resolveCourseIdsByCodes(
@@ -630,4 +799,252 @@ export async function resolveCourseIdsByCodes(
     unresolvedCodes: Array.from(new Set(unresolvedCodes)),
     resolvedCodes: Array.from(new Set(resolvedCodes)),
   };
+}
+
+// ── Course lookup by IDs ──────────────────────────────────
+
+export interface AdvisorCourseDetail {
+  courseId: number;
+  courseCode: string;
+  title: string;
+  credits: number;
+  description: string | null;
+  prereqText: string | null;
+  isActive: boolean;
+}
+
+export async function getCourseDetails(
+  supabase: SupabaseTableClient,
+  courseIds: number[]
+): Promise<Map<number, AdvisorCourseDetail>> {
+  if (courseIds.length === 0) return new Map();
+  const { data, error } = await supabase
+    .from(DB_VIEWS.courseCatalog)
+    .select("course_id, subject, number, title, credits, description, prereq_text, is_active")
+    .in("course_id", courseIds);
+  if (error) throw new Error(`Course details lookup failed: ${error.message}`);
+
+  const map = new Map<number, AdvisorCourseDetail>();
+  for (const row of data ?? []) {
+    const sub = String(row.subject ?? "").trim().toUpperCase();
+    const num = String(row.number ?? "").trim().toUpperCase();
+    map.set(Number(row.course_id), {
+      courseId: Number(row.course_id),
+      courseCode: `${sub} ${num}`.trim(),
+      title: String(row.title ?? ""),
+      credits: Number(row.credits ?? 0),
+      description: row.description ?? null,
+      prereqText: row.prereq_text ?? null,
+      isActive: Boolean(row.is_active),
+    });
+  }
+  return map;
+}
+
+export async function getCoursesByIds(
+  supabase: SupabaseTableClient,
+  courseIds: number[]
+): Promise<Map<number, AdvisorCourseSearchResult>> {
+  if (courseIds.length === 0) return new Map();
+  const { data, error } = await supabase
+    .from(DB_VIEWS.courseCatalog)
+    .select("course_id, subject, number, title, credits")
+    .in("course_id", courseIds);
+  if (error) throw new Error(`Course lookup failed: ${error.message}`);
+
+  const map = new Map<number, AdvisorCourseSearchResult>();
+  for (const row of data ?? []) {
+    const sub = String(row.subject ?? "").trim().toUpperCase();
+    const num = String(row.number ?? "").trim().toUpperCase();
+    map.set(Number(row.course_id), {
+      courseId: Number(row.course_id),
+      courseCode: `${sub} ${num}`.trim(),
+      title: String(row.title ?? ""),
+      credits: Number(row.credits ?? 0),
+    });
+  }
+  return map;
+}
+
+// ── Gen-ed options ────────────────────────────────────────
+
+export interface AdvisorGenEdBucket {
+  bucketId: number;
+  bucketCode: string;
+  bucketName: string;
+  creditsRequired: number;
+  courses: AdvisorRequirementCourse[];
+}
+
+export async function getGenEdOptions(
+  supabase: SupabaseTableClient,
+  bucketFilter?: string | null,
+  bucketId?: number | null
+): Promise<AdvisorGenEdBucket[]> {
+  let q = supabase
+    .from(DB_VIEWS.genEdBucketCourses)
+    .select("bucket_id, bucket_code, bucket_name, bucket_credits_required, courses");
+
+  if (bucketId != null) {
+    q = q.eq("bucket_id", bucketId);
+  } else if (bucketFilter) {
+    q = q.ilike("bucket_name", `%${bucketFilter.trim()}%`);
+  }
+
+  const { data, error } = await q.order("bucket_name");
+  if (error) throw new Error(`Failed to fetch gen-ed options: ${error.message}`);
+
+  return (data ?? []).map((row: any) => ({
+    bucketId: Number(row.bucket_id),
+    bucketCode: String(row.bucket_code ?? ""),
+    bucketName: String(row.bucket_name ?? ""),
+    creditsRequired: Number(row.bucket_credits_required ?? 0),
+    courses: ((row.courses ?? []) as Array<{ course_id: number; subject: string | null; number: string | null; title: string | null; credits: number | null }>).map((c) => {
+      const sub = String(c.subject ?? "").trim().toUpperCase();
+      const num = String(c.number ?? "").trim().toUpperCase();
+      return {
+        courseId: Number(c.course_id),
+        courseCode: `${sub} ${num}`.trim(),
+        title: String(c.title ?? ""),
+        credits: Number(c.credits ?? 0),
+      };
+    }),
+  }));
+}
+
+// ── Reverse prereq lookup ─────────────────────────────────
+
+export async function getDirectDependentCourseIds(
+  supabase: SupabaseTableClient,
+  courseIds: number[]
+): Promise<Map<number, number[]>> {
+  // Returns: prerequisiteId → array of course IDs that directly require it
+  if (courseIds.length === 0) return new Map();
+
+  const { data: atomRows, error: atomErr } = await supabase
+    .from("course_req_atoms")
+    .select("required_course_id, node_id")
+    .in("required_course_id", courseIds);
+
+  if (atomErr) throw new Error(`Failed to fetch reverse prereqs: ${atomErr.message}`);
+  if (!atomRows?.length) return new Map(courseIds.map((id) => [id, []]));
+
+  const nodeIds = Array.from(new Set((atomRows as Array<{ required_course_id: number; node_id: number }>).map((r) => Number(r.node_id))));
+
+  const { data: nodeRows, error: nodeErr } = await supabase
+    .from("course_req_nodes")
+    .select("id, req_set_id")
+    .in("id", nodeIds);
+
+  if (nodeErr) throw new Error(`Failed to fetch req nodes: ${nodeErr.message}`);
+
+  const nodeToSetId = new Map<number, number>();
+  for (const node of nodeRows ?? []) {
+    nodeToSetId.set(Number(node.id), Number(node.req_set_id));
+  }
+
+  const setIds = Array.from(new Set(Array.from(nodeToSetId.values())));
+  const { data: setRows, error: setErr } = await supabase
+    .from("course_req_sets")
+    .select("id, course_id")
+    .in("id", setIds)
+    .eq("set_type", "PREREQ");
+
+  if (setErr) throw new Error(`Failed to fetch req sets: ${setErr.message}`);
+
+  const setToCourseId = new Map<number, number>();
+  for (const s of setRows ?? []) {
+    setToCourseId.set(Number(s.id), Number(s.course_id));
+  }
+
+  const result = new Map<number, number[]>(courseIds.map((id) => [id, []]));
+  for (const atom of atomRows as Array<{ required_course_id: number; node_id: number }>) {
+    const reqId = Number(atom.required_course_id);
+    const nodeId = Number(atom.node_id);
+    const setId = nodeToSetId.get(nodeId);
+    if (setId == null) continue;
+    const dependentCourseId = setToCourseId.get(setId);
+    if (dependentCourseId == null) continue;
+    result.get(reqId)?.push(dependentCourseId);
+  }
+
+  // Deduplicate
+  for (const [id, deps] of result) {
+    result.set(id, Array.from(new Set(deps)));
+  }
+
+  return result;
+}
+
+// ── Program requirements ───────────────────────────────────
+
+export interface AdvisorRequirementCourse {
+  courseId: number;
+  courseCode: string;
+  title: string;
+  credits: number;
+}
+
+export interface AdvisorRequirementBlock {
+  blockId: number;
+  blockName: string;
+  programId: number;
+  programName: string;
+  rule: string;
+  nRequired: number | null;
+  creditsRequired: number | null;
+  courses: AdvisorRequirementCourse[];
+}
+
+export async function getProgramRequirements(
+  supabase: SupabaseTableClient,
+  programIds: number[]
+): Promise<AdvisorRequirementBlock[]> {
+  const blocks = await fetchRequirementBlocks(supabase, programIds);
+  return blocks.map((block) => ({
+    blockId: block.id,
+    blockName: block.name,
+    programId: block.program_id,
+    programName: block.program_name,
+    rule: block.rule,
+    nRequired: block.n_required,
+    creditsRequired: block.credits_required,
+    courses: block.courses.map((c) => ({
+      courseId: c.id,
+      courseCode: `${c.subject} ${c.number}`.trim(),
+      title: c.title,
+      credits: c.credits,
+    })),
+  }));
+}
+
+export interface AdvisorProgramSummary {
+  id: number;
+  name: string;
+  programType: string;
+  catalogYear: string | null;
+}
+
+export async function getAvailablePrograms(
+  supabase: SupabaseTableClient,
+  programType?: string | null
+): Promise<AdvisorProgramSummary[]> {
+  let q = supabase
+    .from(DB_VIEWS.programCatalog)
+    .select("program_id, program_name, catalog_year, program_type")
+    .order("program_name");
+
+  if (programType) {
+    q = q.eq("program_type", programType);
+  }
+
+  const { data, error } = await q;
+  if (error) throw error;
+
+  return (data ?? []).map((row: { program_id: number; program_name: string; catalog_year: string | null; program_type: string }) => ({
+    id: Number(row.program_id),
+    name: String(row.program_name ?? ""),
+    programType: String(row.program_type ?? ""),
+    catalogYear: row.catalog_year ? String(row.catalog_year) : null,
+  }));
 }
