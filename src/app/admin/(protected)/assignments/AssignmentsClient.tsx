@@ -18,7 +18,6 @@ import {
   VStack,
 } from "@chakra-ui/react";
 import {
-  LuCheck,
   LuPlus,
   LuSearch,
   LuTarget,
