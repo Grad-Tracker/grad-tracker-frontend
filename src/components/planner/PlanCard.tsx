@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import type * as React from "react";
 import {
   Box,
   Badge,
@@ -45,6 +46,16 @@ interface PlanCardProps {
   canDelete: boolean;
   index: number;
   canEdit?: boolean;
+}
+
+function handleKeyboardActivate(
+  e: React.KeyboardEvent,
+  onActivate: () => void
+) {
+  if (e.key === "Enter" || e.key === " ") {
+    e.preventDefault();
+    onActivate();
+  }
 }
 
 export default function PlanCard({
@@ -100,10 +111,7 @@ export default function PlanCard({
       }}
       onKeyDown={(e) => {
         if (isRenaming) return;
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          onOpen(plan.id);
-        }
+        handleKeyboardActivate(e, () => onOpen(plan.id));
       }}
       style={{
         animationDelay: `${index * 80}ms`,

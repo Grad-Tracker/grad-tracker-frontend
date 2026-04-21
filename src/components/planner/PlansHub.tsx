@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import type * as React from "react";
 import {
   Badge,
   Box,
@@ -29,6 +30,16 @@ interface PlansHubProps {
   onRenamePlan: (planId: number, newName: string) => Promise<void>;
   onDeletePlan: (planId: number) => void;
   canEdit?: boolean;
+}
+
+function handleKeyboardActivate(
+  e: React.KeyboardEvent,
+  onActivate: () => void
+) {
+  if (e.key === "Enter" || e.key === " ") {
+    e.preventDefault();
+    onActivate();
+  }
 }
 
 export default function PlansHub({
