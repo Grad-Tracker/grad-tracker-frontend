@@ -26,6 +26,7 @@ import { MIN_PANEL_WIDTH, MAX_PANEL_WIDTH } from "@/constants/planner";
 interface CoursePanelProps {
   blocks: RequirementBlockWithCourses[];
   allDedupedBlocks: RequirementBlockWithCourses[];
+  degreeCreditTarget?: number;
   completedCourseIds: Set<number>;
   plannedCourseIds: Set<number>;
   plannedCourses: PlannedCourseWithDetails[];
@@ -42,6 +43,7 @@ interface CoursePanelProps {
 export default function CoursePanel({
   blocks,
   allDedupedBlocks,
+  degreeCreditTarget,
   completedCourseIds,
   plannedCourseIds,
   plannedCourses,
@@ -259,6 +261,7 @@ export default function CoursePanel({
         blocks={blocks}
         plannedCourses={plannedCourses}
         completedCourseIds={completedCourseIds}
+        degreeCreditTarget={degreeCreditTarget}
         hasBreadthPackageSelected={!!selectedBreadthPackageId}
         isGraduatePlan={isGraduatePlan}
       />
