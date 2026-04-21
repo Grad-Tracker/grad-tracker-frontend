@@ -2,19 +2,10 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { createChainMock } from "../../../helpers/mocks";
 
 const mockFrom = vi.hoisted(() => vi.fn());
-const mockSafeLogActivity = vi.hoisted(() => vi.fn().mockResolvedValue(undefined));
 
 vi.mock("@/lib/supabase/client", () => ({
   createClient: () => ({ from: mockFrom }),
 }));
-
-vi.mock("@/lib/supabase/queries/helpers", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@/lib/supabase/queries/helpers")>();
-  return {
-    ...actual,
-    safeLogActivity: mockSafeLogActivity,
-  };
-});
 
 import {
   fetchPlans,
@@ -33,8 +24,6 @@ import {
   movePlannedCourse,
   fetchCompletedCourseIds,
   fetchStudentCourseProgress,
-  fetchBreadthPackageId,
-  updateBreadthPackageId,
   fetchCourseOfferings,
   fetchCrossListings,
   fetchGenEdBucketsWithCourses,
@@ -110,7 +99,6 @@ describe("createPlan", () => {
 
     const result = await createPlan(1, "New Plan", null, []);
     expect(result).toEqual(planData);
-    expect(mockSafeLogActivity).toHaveBeenCalledWith(1, "plan_created", "Created plan New Plan", expect.any(Object));
   });
 
   it("creates a plan and links programs", async () => {
@@ -407,27 +395,10 @@ describe("removeTermPlan", () => {
 // ---------------------------------------------------------------------------
 
 describe("addPlannedCourse", () => {
-  it("inserts planned course and logs activity", async () => {
+  it("inserts planned course", async () => {
     mockFrom.mockReturnValue(makeChain(null));
     await expect(addPlannedCourse(1, 5, 100, 10, "CSCI 101")).resolves.toBeUndefined();
     expect(mockFrom).toHaveBeenCalledWith("student_planned_courses");
-    expect(mockSafeLogActivity).toHaveBeenCalledWith(
-      1,
-      "course_added",
-      "Added CSCI 101 to a semester plan",
-      expect.any(Object)
-    );
-  });
-
-  it("uses 'a course' label when not provided", async () => {
-    mockFrom.mockReturnValue(makeChain(null));
-    await addPlannedCourse(1, 5, 100, 10);
-    expect(mockSafeLogActivity).toHaveBeenCalledWith(
-      1,
-      "course_added",
-      "Added a course to a semester plan",
-      expect.any(Object)
-    );
   });
 
   it("throws when insert errors", async () => {
@@ -445,15 +416,10 @@ describe("addPlannedCourse", () => {
 // ---------------------------------------------------------------------------
 
 describe("removePlannedCourse", () => {
-  it("deletes planned course and logs activity", async () => {
+  it("deletes planned course", async () => {
     mockFrom.mockReturnValue(makeChain(null));
-    await expect(removePlannedCourse(1, 5, 100, 10, "CSCI 101")).resolves.toBeUndefined();
-    expect(mockSafeLogActivity).toHaveBeenCalledWith(
-      1,
-      "course_removed",
-      "Removed CSCI 101 from a semester plan",
-      expect.any(Object)
-    );
+    await expect(removePlannedCourse(1, 5, 100, 10)).resolves.toBeUndefined();
+    expect(mockFrom).toHaveBeenCalledWith("student_planned_courses");
   });
 
   it("throws when delete errors", async () => {
@@ -471,16 +437,10 @@ describe("removePlannedCourse", () => {
 // ---------------------------------------------------------------------------
 
 describe("movePlannedCourse", () => {
-  it("moves course from one term to another and logs activity", async () => {
+  it("moves course from one term to another", async () => {
     mockFrom.mockReturnValue(makeChain(null));
-    await expect(movePlannedCourse(1, 100, 5, 6, 10, "CSCI 101")).resolves.toBeUndefined();
+    await expect(movePlannedCourse(1, 100, 5, 6, 10)).resolves.toBeUndefined();
     expect(mockFrom).toHaveBeenCalledTimes(2); // delete + insert
-    expect(mockSafeLogActivity).toHaveBeenCalledWith(
-      1,
-      "plan_updated",
-      "Moved CSCI 101 to a different semester",
-      expect.any(Object)
-    );
   });
 
   it("throws when delete errors", async () => {
@@ -563,64 +523,6 @@ describe("fetchStudentCourseProgress", () => {
     );
     mockFrom.mockReturnValue(chain);
     await expect(fetchStudentCourseProgress(1)).rejects.toThrow("progress error");
-  });
-});
-
-// ---------------------------------------------------------------------------
-// fetchBreadthPackageId
-// ---------------------------------------------------------------------------
-
-describe("fetchBreadthPackageId", () => {
-  it("returns the breadth_package_id when set", async () => {
-    const chain = createChainMock();
-    chain.maybeSingle = vi.fn().mockResolvedValue({ data: { breadth_package_id: "pkg-123" }, error: null });
-    mockFrom.mockReturnValue(chain);
-
-    const result = await fetchBreadthPackageId(1);
-    expect(result).toBe("pkg-123");
-  });
-
-  it("returns null when not set", async () => {
-    const chain = createChainMock();
-    chain.maybeSingle = vi.fn().mockResolvedValue({ data: null, error: null });
-    mockFrom.mockReturnValue(chain);
-
-    const result = await fetchBreadthPackageId(1);
-    expect(result).toBeNull();
-  });
-
-  it("throws when query errors", async () => {
-    const chain = createChainMock();
-    chain.maybeSingle = vi.fn().mockResolvedValue({ data: null, error: new Error("breadth error") });
-    mockFrom.mockReturnValue(chain);
-
-    await expect(fetchBreadthPackageId(1)).rejects.toThrow("breadth error");
-  });
-});
-
-// ---------------------------------------------------------------------------
-// updateBreadthPackageId
-// ---------------------------------------------------------------------------
-
-describe("updateBreadthPackageId", () => {
-  it("updates the breadth package id", async () => {
-    mockFrom.mockReturnValue(makeChain(null));
-    await expect(updateBreadthPackageId(1, "pkg-abc")).resolves.toBeUndefined();
-    expect(mockFrom).toHaveBeenCalledWith("students");
-  });
-
-  it("sets breadth package id to null", async () => {
-    mockFrom.mockReturnValue(makeChain(null));
-    await expect(updateBreadthPackageId(1, null)).resolves.toBeUndefined();
-  });
-
-  it("throws when update errors", async () => {
-    const chain = createChainMock();
-    chain.then = vi.fn().mockImplementation((r: (v: unknown) => void) =>
-      r({ data: null, error: new Error("update error") })
-    );
-    mockFrom.mockReturnValue(chain);
-    await expect(updateBreadthPackageId(1, "pkg")).rejects.toThrow("update error");
   });
 });
 
