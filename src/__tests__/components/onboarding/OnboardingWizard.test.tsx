@@ -166,6 +166,7 @@ function renderWithChakra(ui: React.ReactElement) {
 describe("OnboardingWizard", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    window.localStorage.clear();
 
     // defaults: keep wizard happy
     mockFetchPrograms.mockResolvedValue([
@@ -223,6 +224,32 @@ describe("OnboardingWizard", () => {
 
     await waitFor(() => {
       expect(screen.getAllByText("Setup Wizard").length).toBeGreaterThanOrEqual(1);
+      expect(screen.getByText("Step 1 of 3")).toBeInTheDocument();
+      expect(screen.getByText("Program: Current")).toBeInTheDocument();
+    });
+  });
+
+  it("restores a saved draft from localStorage", async () => {
+    window.localStorage.setItem(
+      "gradtracker:onboarding-draft",
+      JSON.stringify({
+        currentStep: 1,
+        selectedMajor: 1,
+        selectedCertificates: [20],
+        selectedClasses: [101],
+        expectedGradSemester: "Fall",
+        expectedGradYear: 2027,
+      })
+    );
+
+    await act(async () => {
+      renderWithChakra(<OnboardingWizard />);
+    });
+
+    await waitFor(() => {
+      expect(mockFetchCertificatesForMajor).toHaveBeenCalledWith(1);
+      expect(mockFetchProgramRequirements).toHaveBeenCalledWith(1);
+      expect(screen.getByText("Step 2 of 3")).toBeInTheDocument();
     });
   });
 
@@ -390,6 +417,7 @@ describe("OnboardingWizard", () => {
       expect(mockToaster.success).toHaveBeenCalledWith(
         expect.objectContaining({ title: "Setup complete!" })
       );
+      expect(window.localStorage.getItem("gradtracker:onboarding-draft")).toBeNull();
       expect(mockPush).toHaveBeenCalledWith("/dashboard");
     });
   });

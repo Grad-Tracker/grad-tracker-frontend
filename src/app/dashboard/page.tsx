@@ -64,6 +64,7 @@ import {
 import type { Program } from "@/types/onboarding";
 import DashboardSkeleton from "@/components/dashboard/DashboardSkeleton";
 import { Skeleton } from "@/components/ui/skeleton";
+import { EmptyState } from "@/components/ui/empty-state";
 
 function getStatusBadgeProps(status: string): { color: string; label: string } {
   if (status === "enrolled") return { color: "emerald", label: "Enrolled" };
@@ -87,31 +88,31 @@ function formatRelativeTime(timestamp: string): string {
   const date = new Date(timestamp);
   if (Number.isNaN(date.getTime())) return "Just now";
 
-  const diffMs = date.getTime() - Date.now();
+  const diffMs = Date.now() - date.getTime();
   const diffMinutes = Math.round(diffMs / 60000);
   const rtf = new Intl.RelativeTimeFormat("en", { numeric: "auto" });
 
   if (Math.abs(diffMinutes) < 60) {
-    return rtf.format(diffMinutes, "minute");
+    return rtf.format(-diffMinutes, "minute");
   }
 
   const diffHours = Math.round(diffMinutes / 60);
   if (Math.abs(diffHours) < 24) {
-    return rtf.format(diffHours, "hour");
+    return rtf.format(-diffHours, "hour");
   }
 
   const diffDays = Math.round(diffHours / 24);
   if (Math.abs(diffDays) < 30) {
-    return rtf.format(diffDays, "day");
+    return rtf.format(-diffDays, "day");
   }
 
   const diffMonths = Math.round(diffDays / 30);
   if (Math.abs(diffMonths) < 12) {
-    return rtf.format(diffMonths, "month");
+    return rtf.format(-diffMonths, "month");
   }
 
   const diffYears = Math.round(diffDays / 365);
-  return rtf.format(diffYears, "year");
+  return rtf.format(-diffYears, "year");
 }
 
 async function safeLogActivity(
@@ -200,14 +201,12 @@ export default function Dashboard() {
     remainingCredits: number;
   };
 
-  const TOTAL_REQUIRED_CREDITS = 120;
-
   const [progress, setProgress] = React.useState<ProgressSummary>({
     overall: 0,
-    totalCredits: TOTAL_REQUIRED_CREDITS,
+    totalCredits: 0,
     completedCredits: 0,
     inProgressCredits: 0,
-    remainingCredits: TOTAL_REQUIRED_CREDITS,
+    remainingCredits: 0,
   });
 
   const [loadingProgress, setLoadingProgress] = React.useState(true);
@@ -220,14 +219,7 @@ export default function Dashboard() {
     color: "violet" | "emerald" | "blue" | "amber";
   };
 
-  const DEFAULT_REQUIREMENTS: RequirementBar[] = [
-    { name: "General Education", completed: 0, total: 0, percentage: 0, color: "violet" },
-    { name: "Major Core", completed: 0, total: 0, percentage: 0, color: "emerald" },
-    { name: "Major Electives", completed: 0, total: 0, percentage: 0, color: "blue" },
-    { name: "Free Electives", completed: 0, total: 0, percentage: 0, color: "amber" },
-  ];
-
-  const [requirements, setRequirements] = React.useState<RequirementBar[]>(DEFAULT_REQUIREMENTS);
+  const [requirements, setRequirements] = React.useState<RequirementBar[]>([]);
   const [loadingRequirements, setLoadingRequirements] = React.useState(true);
 
   type PlannedCourseCard = {
@@ -377,62 +369,39 @@ export default function Dashboard() {
             return sum + Number(r?.credits ?? 0);
           }, 0);
 
-        // Requirements (uses blocksResult + completedCourseIds)
-        if (!majorProgramId || (blocksResult as any)?.error) {
-          setRequirements(DEFAULT_REQUIREMENTS);
-          setLoadingRequirements(false);
-        } else {
-          const blocks = ((blocksResult as any)?.data ?? []) as any[];
+        const blocks = majorProgramId && !(blocksResult as any)?.error
+          ? (((blocksResult as any)?.data ?? []) as any[])
+          : [];
 
-          const categorize = (blockName: string) => {
-            const n = blockName.toLowerCase();
-            if (n.includes("general")) return { key: "General Education", color: "violet" as const };
-            if (n.includes("core")) return { key: "Major Core", color: "emerald" as const };
-            if (n.includes("elective")) return { key: "Major Electives", color: "blue" as const };
-            return { key: "Free Electives", color: "amber" as const };
+        const requirementColors: RequirementBar["color"][] = ["violet", "emerald", "blue", "amber"];
+        const bars: RequirementBar[] = blocks.map((b: any, index: number) => {
+          const blockCourseRows = b?.courses ?? [];
+          const fallbackTotal = blockCourseRows.reduce((sum: number, r: any) => {
+            return sum + Number(r?.credits ?? 0);
+          }, 0);
+          const total = Math.max(0, Math.round(Number(b?.credits_required ?? fallbackTotal ?? 0)));
+          const completed = Math.min(
+            total,
+            Math.round(
+              blockCourseRows.reduce((sum: number, r: any) => {
+                const cid = Number(r?.course_id ?? r?.id);
+                if (!completedCourseIds.has(cid)) return sum;
+                return sum + Number(r?.credits ?? 0);
+              }, 0)
+            )
+          );
+
+          return {
+            name: String(b?.block_name ?? `Requirement ${index + 1}`),
+            completed,
+            total,
+            percentage: total === 0 ? 0 : Math.min(100, Math.round((completed / total) * 100)),
+            color: requirementColors[index % requirementColors.length],
           };
+        });
 
-          const agg: Record<
-            string,
-            { completed: number; total: number; color: RequirementBar["color"] }
-          > = {
-            "General Education": { completed: 0, total: 0, color: "violet" },
-            "Major Core": { completed: 0, total: 0, color: "emerald" },
-            "Major Electives": { completed: 0, total: 0, color: "blue" },
-            "Free Electives": { completed: 0, total: 0, color: "amber" },
-          };
-
-          for (const b of blocks) {
-            const { key, color } = categorize(String(b?.block_name ?? ""));
-            const blockCourseRows = b?.courses ?? [];
-
-            const fallbackTotal = blockCourseRows.reduce((sum: number, r: any) => {
-              return sum + Number(r?.credits ?? 0);
-            }, 0);
-
-            const total = Number(b?.credits_required ?? fallbackTotal ?? 0);
-
-            const completed = blockCourseRows.reduce((sum: number, r: any) => {
-              const cid = Number(r?.course_id ?? r?.id);
-              if (!completedCourseIds.has(cid)) return sum;
-              return sum + Number(r?.credits ?? 0);
-            }, 0);
-
-            agg[key].total += total;
-            agg[key].completed += completed;
-            agg[key].color = color;
-          }
-
-          const bars: RequirementBar[] = Object.entries(agg).map(([name, v]) => {
-            const total = Math.max(0, Math.round(v.total));
-            const completed = Math.min(total, Math.round(v.completed));
-            const percentage = total === 0 ? 0 : Math.min(100, Math.round((completed / total) * 100));
-            return { name, completed, total, percentage, color: v.color };
-          });
-
-          setRequirements(bars);
-          setLoadingRequirements(false);
-        }
+        setRequirements(bars);
+        setLoadingRequirements(false);
 
         const courseCreditsById = new Map<number, number>();
         for (const b of ((blocksResult as any)?.data ?? [])) {
@@ -456,9 +425,9 @@ export default function Dashboard() {
         );
 
         // Progress summary (reused completedCredits + inProgressCredits)
-        const totalCredits = TOTAL_REQUIRED_CREDITS;
+        const totalCredits = bars.reduce((sum, bar) => sum + bar.total, 0);
         const remainingCredits = Math.max(totalCredits - completedCredits, 0);
-        const overall = Math.min(100, Math.round((completedCredits / totalCredits) * 100));
+        const overall = totalCredits === 0 ? 0 : Math.min(100, Math.round((completedCredits / totalCredits) * 100));
 
         setProgress({
           overall,
@@ -729,7 +698,7 @@ export default function Dashboard() {
                       {progress.completedCredits}
                     </Text>
                     <Text fontSize="sm" color="fg.muted">
-                      / {progress.totalCredits}
+                      / {progress.totalCredits || "—"}
                     </Text>
                   </HStack>
                 </Box>
@@ -740,7 +709,9 @@ export default function Dashboard() {
                 </Flex>
               </HStack>
               <HStack gap="1" fontSize="xs" color="fg.muted">
-                <Text>{progress.remainingCredits} credits remaining</Text>
+                <Text>
+                  {progress.totalCredits > 0 ? `${progress.remainingCredits} credits remaining` : "Select a program to see required credits"}
+                </Text>
               </HStack>
             </Card.Body>
           </Card.Root>
@@ -795,26 +766,47 @@ export default function Dashboard() {
               </Flex>
             </Card.Header>
             <Card.Body p="5">
-              <Stack gap="5">
-                {requirements.map((req) => (
-                  <Box key={req.name}>
-                    <ProgressRoot value={req.percentage} colorPalette={req.color} size="sm">
+              {loadingRequirements ? (
+                <Stack gap="5">
+                  {[1, 2, 3].map((item) => (
+                    <Box key={item}>
                       <HStack justify="space-between" mb="2">
-                        <ProgressLabel fontWeight="500" fontSize="sm">
-                          {req.name}
-                        </ProgressLabel>
-                        <HStack gap="2">
-                          <Text fontSize="xs" color="fg.muted">
-                            {loadingRequirements ? <Skeleton height="3" width="70px" /> : `${req.completed}/${req.total} credits`}
-                          </Text>
-                          <ProgressValueText fontWeight="600" fontSize="sm" />
-                        </HStack>
+                        <Skeleton height="4" width="130px" />
+                        <Skeleton height="3" width="70px" />
                       </HStack>
-                      <ProgressBar borderRadius="full" />
-                    </ProgressRoot>
-                  </Box>
-                ))}
-              </Stack>
+                      <Skeleton height="2" width="100%" borderRadius="full" />
+                    </Box>
+                  ))}
+                </Stack>
+              ) : requirements.length === 0 ? (
+                <EmptyState
+                  py="6"
+                  icon={<LuGraduationCap />}
+                  title="No degree requirements yet"
+                  description="Select a program during onboarding to see your real requirement blocks and required credits."
+                />
+              ) : (
+                <Stack gap="5">
+                  {requirements.map((req) => (
+                    <Box key={req.name}>
+                      <ProgressRoot value={req.percentage} colorPalette={req.color} size="sm">
+                        <HStack justify="space-between" mb="2">
+                          <ProgressLabel fontWeight="500" fontSize="sm">
+                            {req.name}
+                          </ProgressLabel>
+                          <HStack gap="2">
+                            <Text fontSize="xs" color="fg.muted">
+                              {`${req.completed}/${req.total} credits`}
+                            </Text>
+                            <ProgressValueText fontWeight="600" fontSize="sm" />
+                          </HStack>
+                        </HStack>
+                        <ProgressBar borderRadius="full" />
+                      </ProgressRoot>
+                    </Box>
+                  ))}
+                </Stack>
+              )}
             </Card.Body>
           </Card.Root>
 
@@ -852,14 +844,12 @@ export default function Dashboard() {
                     ))}
                   </Stack>
                 ) : currentCourses.length === 0 ? (
-                  <Box p="4" bg="bg.subtle" borderRadius="lg">
-                    <Text fontWeight="600" fontSize="sm" mb="1">
-                      No courses planned yet
-                    </Text>
-                    <Text fontSize="sm" color="fg.muted">
-                      Once you complete onboarding and add your semester plan, your courses will appear here.
-                    </Text>
-                  </Box>
+                  <EmptyState
+                    py="6"
+                    icon={<LuBookOpen />}
+                    title="No courses planned yet"
+                    description="Once you complete onboarding and add your semester plan, your courses will appear here."
+                  />
                 ) : (
                   currentCourses.map((course) => (
                     <Flex
@@ -1034,11 +1024,12 @@ export default function Dashboard() {
             <Card.Body p="5">
               <Stack gap="4">
                 {recentActivity.length === 0 ? (
-                  <Box p="4" bg="bg.subtle" borderRadius="lg">
-                    <Text fontSize="sm" color="fg.muted">
-                      No recent activity yet. Your actions will appear here once you start using Grad Tracker.
-                    </Text>
-                  </Box>
+                  <EmptyState
+                    py="6"
+                    icon={<LuClock />}
+                    title="No recent activity yet"
+                    description="Your actions will appear here once you start using Grad Tracker."
+                  />
                 ) : recentActivity.map((activity) => {
                   const visualType = getActivityVisualType(activity.activity_type);
                   return (
@@ -1101,13 +1092,22 @@ export default function Dashboard() {
             </Card.Header>
             <Card.Body p="5">
               <Stack gap="2">
-                <Button variant="outline" justifyContent="start" size="sm" fontWeight="500">
-                  Generate Progress Report
-                </Button>
-                <Button variant="outline" justifyContent="start" size="sm" fontWeight="500">
+                <Button
+                  variant="outline"
+                  justifyContent="start"
+                  size="sm"
+                  fontWeight="500"
+                  onClick={() => router.push("/dashboard/planner")}
+                >
                   Plan Next Semester
                 </Button>
-                <Button variant="outline" justifyContent="start" size="sm" fontWeight="500">
+                <Button
+                  variant="outline"
+                  justifyContent="start"
+                  size="sm"
+                  fontWeight="500"
+                  onClick={() => router.push("/dashboard/requirements")}
+                >
                   Review Requirements
                 </Button>
               </Stack>
