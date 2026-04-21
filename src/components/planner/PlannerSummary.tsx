@@ -63,7 +63,6 @@ export default function PlannerSummary({
       ? GRADUATE_TOTAL_CREDITS
       : (degreeCreditTarget ?? summedCredits);
 
-    const countedIds = new Set<number>();
     let completedCredits = 0;
     const countedCompletedIds = new Set<number>();
     for (const block of blocks) {
@@ -84,7 +83,15 @@ export default function PlannerSummary({
     const avgCreditsPerSem = terms.length > 0 ? Math.round(totalPlannedCredits / terms.length) : 0;
     const semsNeeded = avgCreditsPerSem > 0 ? Math.ceil(remainingCredits / avgCreditsPerSem) : 0;
 
-    return { totalRequired, completedCredits, degreePct, remainingCredits, avgCreditsPerSem, semsNeeded };
+    return {
+      totalRequired,
+      completedCredits,
+      coveredCredits,
+      degreePct,
+      remainingCredits,
+      avgCreditsPerSem,
+      semsNeeded,
+    };
   }, [
     blocks,
     completedCourseIds,
@@ -165,7 +172,7 @@ export default function PlannerSummary({
               <Icon color="blue.fg" boxSize="3.5">
                 <LuGraduationCap />
               </Icon>
-              <Text fontSize="sm" fontWeight="600">{totalPlannedCredits}</Text>
+              <Text fontSize="sm" fontWeight="600">{stats.coveredCredits}</Text>
               {stats.totalRequired > 0 && (
                 <Text fontSize="xs" color="fg.muted">/ {stats.totalRequired}</Text>
               )}

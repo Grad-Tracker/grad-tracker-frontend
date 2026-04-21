@@ -177,7 +177,28 @@ export default function RequirementProgress({
 
   if (blocks.length === 0) return null;
 
-  const totalCompleted = blockStats.reduce((s, b) => s + b.completedCredits, 0);
+  const totalCompleted = useMemo(() => {
+    const countedCompletedIds = new Set<number>();
+    let completedCredits = 0;
+
+    for (const block of blocks) {
+      const breadthNoSelection = isBreadthBlock(block) && !hasBreadthPackageSelected;
+      if (breadthNoSelection) continue;
+
+      const blockCourses =
+        block.rule === "ALL_OF"
+          ? canonicalAllOfCourses(block.courses)
+          : block.courses;
+
+      for (const course of blockCourses) {
+        if (!completedCourseIds.has(course.id) || countedCompletedIds.has(course.id)) continue;
+        countedCompletedIds.add(course.id);
+        completedCredits += course.credits;
+      }
+    }
+
+    return completedCredits;
+  }, [blocks, completedCourseIds, hasBreadthPackageSelected]);
   const fallbackTotalRequired = blockStats.reduce((s, b) => s + b.totalRequired, 0);
   const totalRequired = isGraduatePlan
     ? GRADUATE_TOTAL_CREDITS

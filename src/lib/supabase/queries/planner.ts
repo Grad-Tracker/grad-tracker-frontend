@@ -603,7 +603,6 @@ export async function fetchCompletedCourseIds(
     ((data as ViewStudentCourseProgressRow[] | null | undefined) ?? [])
       .filter(
         (row) =>
-          row.completed == null ||
           row.completed === true ||
           String(row.progress_status ?? "").toUpperCase() === "COMPLETED"
       )
