@@ -12,6 +12,47 @@ export function computeProgressPct(
   return Math.round((hit / required.size) * 100);
 }
 
+function isMissingColumnError(error: unknown, columnName: string) {
+  if (!error || typeof error !== "object") return false;
+  const message = String((error as { message?: unknown }).message ?? "");
+  return message.includes(columnName) && message.includes("column");
+}
+
+// Match the fallback pattern used in programs/server-helpers.ts: prefer the
+// canonical `staff_id` column, fall back to the legacy `advisor_id` column.
+async function fetchAdvisorProgramIds(
+  supabase: SupabaseLike,
+  staffId: number
+): Promise<number[]> {
+  const primary = await supabase
+    .from(DB_TABLES.programAdvisors)
+    .select("program_id")
+    .eq("staff_id", staffId);
+
+  let rows = primary.data;
+  if (primary.error) {
+    if (!isMissingColumnError(primary.error, "staff_id")) {
+      throw new Error(
+        `Failed to load advisor assignments: ${primary.error.message}`
+      );
+    }
+    const legacy = await supabase
+      .from(DB_TABLES.programAdvisors)
+      .select("program_id")
+      .eq("advisor_id", staffId);
+    if (legacy.error) {
+      throw new Error(
+        `Failed to load advisor assignments: ${legacy.error.message}`
+      );
+    }
+    rows = legacy.data;
+  }
+
+  return (rows ?? [])
+    .map((r: any) => Number(r.program_id))
+    .filter((n: number) => !Number.isNaN(n));
+}
+
 export type AdvisorStudentRow = {
   id: number;
   firstName: string;
@@ -31,21 +72,16 @@ export async function listStudentsForAdvisor(
   staffId: number
 ): Promise<AdvisorStudentRow[]> {
   // 1. Advisor's program ids
-  const { data: assignments } = await supabase
-    .from(DB_TABLES.programAdvisors)
-    .select("program_id")
-    .eq("advisor_id", staffId);
-  const programIds: number[] = (assignments ?? [])
-    .map((r: any) => Number(r.program_id))
-    .filter((n: number) => !Number.isNaN(n));
+  const programIds = await fetchAdvisorProgramIds(supabase, staffId);
   if (programIds.length === 0) return [];
 
-  // 2. Students enrolled in those programs (sorted by program_id ASC for deterministic primary)
+  // 2. Students enrolled in those programs. Primary-program determinism is
+  // enforced by the `pid < primaryByStudent.get(sid)` min-selection below, so
+  // no DB-level ordering is needed here.
   const { data: enrollments } = await supabase
     .from(DB_TABLES.studentPrograms)
     .select("student_id, program_id")
-    .in("program_id", programIds)
-    .order("program_id");
+    .in("program_id", programIds);
   const studentIds: number[] = Array.from(
     new Set((enrollments ?? []).map((r: any) => Number(r.student_id)))
   );
@@ -288,12 +324,12 @@ export async function getStudentOverview(
   let genEdHit = 0;
   for (const c of genEdRequired) if (completed.has(c)) genEdHit++;
 
-  // Plans + term counts
+  // Plans + term counts (most recently updated first)
   const { data: planRows } = await supabase
     .from(DB_TABLES.plans)
     .select("id, name, description, created_at, updated_at")
     .eq("student_id", studentId)
-    .order("updated_at");
+    .order("updated_at", { ascending: false });
   const planIds = (planRows ?? []).map((p: any) => Number(p.id));
   const { data: termPlans } = planIds.length
     ? await supabase
@@ -335,17 +371,14 @@ export async function getStudentOverview(
       completed: genEdHit,
       total: genEdRequired.size,
     },
-    plans: (planRows ?? [])
-      .slice()
-      .reverse() // updated_at DESC
-      .map((p: any) => ({
-        id: Number(p.id),
-        name: p.name,
-        description: p.description,
-        createdAt: p.created_at,
-        updatedAt: p.updated_at,
-        totalCredits: 0, // intentionally 0 in v1 — credit total is a follow-up enhancement
-        termCount: termCountByPlan.get(Number(p.id)) ?? 0,
-      })),
+    plans: (planRows ?? []).map((p: any) => ({
+      id: Number(p.id),
+      name: p.name,
+      description: p.description,
+      createdAt: p.created_at,
+      updatedAt: p.updated_at,
+      totalCredits: 0, // intentionally 0 in v1 — credit total is a follow-up enhancement
+      termCount: termCountByPlan.get(Number(p.id)) ?? 0,
+    })),
   };
 }

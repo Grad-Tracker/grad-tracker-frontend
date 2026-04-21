@@ -31,7 +31,7 @@ import { createClient } from "@/lib/supabase/client";
 import { DB_TABLES } from "@/lib/supabase/queries/schema";
 import { toaster } from "@/components/ui/toaster";
 
-type Program = {
+export type Program = {
   id: number;
   name: string;
   program_type: string;
@@ -62,7 +62,21 @@ export default function AssignmentsClient({
     new Set(initialAssignedIds)
   );
   const [search, setSearch] = useState("");
-  const [loading, setLoading] = useState<number | null>(null);
+  const [loadingIds, setLoadingIds] = useState<Set<number>>(new Set());
+
+  const startLoading = (id: number) =>
+    setLoadingIds((prev) => {
+      const next = new Set(prev);
+      next.add(id);
+      return next;
+    });
+  const stopLoading = (id: number) =>
+    setLoadingIds((prev) => {
+      if (!prev.has(id)) return prev;
+      const next = new Set(prev);
+      next.delete(id);
+      return next;
+    });
 
   const assignedPrograms = useMemo(
     () => programs.filter((p) => assignedIds.has(p.id)),
@@ -86,7 +100,8 @@ export default function AssignmentsClient({
   }, [programs, assignedIds, search]);
 
   async function handleAdd(programId: number) {
-    setLoading(programId);
+    if (loadingIds.has(programId)) return;
+    startLoading(programId);
     try {
       const supabase = createClient();
       const { error } = await supabase
@@ -109,12 +124,13 @@ export default function AssignmentsClient({
         type: "error",
       });
     } finally {
-      setLoading(null);
+      stopLoading(programId);
     }
   }
 
   async function handleRemove(programId: number) {
-    setLoading(programId);
+    if (loadingIds.has(programId)) return;
+    startLoading(programId);
     try {
       const supabase = createClient();
       const { error } = await supabase
@@ -143,7 +159,7 @@ export default function AssignmentsClient({
         type: "error",
       });
     } finally {
-      setLoading(null);
+      stopLoading(programId);
     }
   }
 
@@ -216,7 +232,7 @@ export default function AssignmentsClient({
                     color="fg.muted"
                     _hover={{ color: "red.fg", bg: "red.subtle" }}
                     onClick={() => handleRemove(program.id)}
-                    loading={loading === program.id}
+                    loading={loadingIds.has(program.id)}
                   >
                     <LuX />
                   </IconButton>
@@ -307,7 +323,7 @@ export default function AssignmentsClient({
                         borderRadius="full"
                         colorPalette={meta.color}
                         onClick={() => handleAdd(program.id)}
-                        loading={loading === program.id}
+                        loading={loadingIds.has(program.id)}
                       >
                         <LuPlus />
                       </IconButton>

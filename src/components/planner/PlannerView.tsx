@@ -359,8 +359,9 @@ export default function PlannerView({
 
         let plansData: PlanWithMeta[] = initialPlans;
 
-        // Auto-create default plan if none exist
-        if (plansData.length === 0) {
+        // Auto-create default plan if none exist (edit mode only — advisors
+        // viewing a student in readonly mode must never write to the DB).
+        if (plansData.length === 0 && canEdit) {
           const { data: studentPrograms, error: spErr } = await supabase
             .from(DB_TABLES.studentPrograms)
             .select("program_id")
@@ -528,7 +529,11 @@ export default function PlannerView({
         if (view === "workspace" && refreshedPlans.length > 0) {
           const nextPlan = refreshedPlans[0];
           setActivePlanId(nextPlan.id);
-          await loadPlanData(studentId, nextPlan.id);
+          await loadPlanData(
+            studentId,
+            nextPlan.id,
+            nextPlan.has_graduate_program ?? false
+          );
         } else {
           setActivePlanId(null);
           setView("hub");
