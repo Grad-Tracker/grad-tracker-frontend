@@ -86,7 +86,7 @@ describe("AssignmentsClient", () => {
     await waitFor(() => {
       expect(mockFrom).toHaveBeenCalledWith("program_advisors");
       expect(mockInsert).toHaveBeenCalledWith({
-        advisor_id: 10,
+        staff_id: 10,
         program_id: 1,
       });
       expect(mockToaster.create).toHaveBeenCalledWith(
@@ -104,7 +104,7 @@ describe("AssignmentsClient", () => {
 
     await waitFor(() => {
       expect(mockDelete).toHaveBeenCalled();
-      expect(mockEqFirst).toHaveBeenCalledWith("advisor_id", 10);
+      expect(mockEqFirst).toHaveBeenCalledWith("staff_id", 10);
       expect(mockEqSecond).toHaveBeenCalledWith("program_id", 1);
       expect(mockToaster.create).toHaveBeenCalledWith(
         expect.objectContaining({ title: "Program removed", type: "info" })

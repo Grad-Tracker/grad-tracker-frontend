@@ -206,7 +206,7 @@ vi.mock("@/components/planner/RemoveSemesterDialog", () => ({
     ) : null,
 }));
 
-vi.mock("@/components/planner/CreatePlanDrawer", () => ({
+vi.mock("@/components/planner/CreatePlanDialog", () => ({
   default: ({ open, onCreatePlan }: any) =>
     open ? (
       <div data-testid="create-plan-drawer">
