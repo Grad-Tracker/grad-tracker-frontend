@@ -70,6 +70,19 @@ describe("CreatePlanDrawer", () => {
     );
   });
 
+  function clickBreadthPackage(name: string) {
+    const breadthLabel = screen.getByText(name);
+    const breadthButton = breadthLabel.closest("button");
+    expect(breadthButton).not.toBeNull();
+    fireEvent.click(breadthButton as HTMLButtonElement);
+  }
+
+  async function selectBreadthOption(name: string) {
+    // Wait for breadth options to render after enabling auto-fill.
+    await screen.findByText(name);
+    clickBreadthPackage(name);
+  }
+
   it("creates a blank plan and closes the drawer", async () => {
     await act(async () => {
       renderWithChakra(<CreatePlanDrawer {...defaultProps} />);
@@ -125,7 +138,7 @@ describe("CreatePlanDrawer", () => {
       fireEvent.click(screen.getByTestId("autofill-switch"));
     });
     await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: "Mathematics" }));
+      await selectBreadthOption("Mathematics");
     });
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: "Create & Auto-Fill" }));
@@ -155,7 +168,7 @@ describe("CreatePlanDrawer", () => {
       fireEvent.click(screen.getByTestId("autofill-switch"));
     });
     await act(async () => {
-      fireEvent.click(screen.getByRole("button", { name: "Mathematics" }));
+      await selectBreadthOption("Mathematics");
     });
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: "Create & Auto-Fill" }));
