@@ -67,9 +67,7 @@ describe("GenEdRequirements", () => {
     mockFetchGenEdBucketsWithCourses.mockReturnValue(new Promise(() => {}) as any);
 
     renderWithChakra(<GenEdRequirements studentId={1} />);
-    expect(
-      screen.getAllByText(/Loading Gen Ed requirements/).length
-    ).toBeGreaterThanOrEqual(1);
+    expect(screen.getByTestId("gen-ed-skeleton")).toBeInTheDocument();
   });
 
   it("renders bucket names after data loads", async () => {

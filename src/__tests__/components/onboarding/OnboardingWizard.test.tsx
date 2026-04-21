@@ -211,10 +211,10 @@ describe("OnboardingWizard", () => {
     mockSaveOnboardingSelections.mockResolvedValue(undefined);
   });
 
-  it("shows loading spinner while programs are being fetched", () => {
+  it("shows skeleton while programs are being fetched", () => {
     mockFetchPrograms.mockReturnValue(new Promise(() => {}));
     renderWithChakra(<OnboardingWizard />);
-    expect(screen.getAllByText("Loading programs...").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByTestId("onboarding-programs-skeleton")).toBeInTheDocument();
   });
 
   it("renders wizard header after programs load", async () => {

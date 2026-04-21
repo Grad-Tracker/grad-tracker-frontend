@@ -26,6 +26,7 @@ import { toaster } from "@/components/ui/toaster";
 import { createClient } from "@/lib/supabase/client";
 import { DB_TABLES, STUDENT_COLUMNS } from "@/lib/supabase/queries/schema";
 import { ClassHistoryTab } from "@/components/settings/ClassHistoryTab";
+import { SettingsSkeleton } from "@/components/settings/SettingsSkeleton";
 
 type NotifPrefs = {
   notif_requirement_alerts: boolean;
@@ -262,7 +263,7 @@ export default function SettingsPage() {
   };
 
   if (loading) {
-    return <Box p="8">Loading...</Box>;
+    return <SettingsSkeleton />;
   }
 
   return (

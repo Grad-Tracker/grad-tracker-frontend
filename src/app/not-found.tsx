@@ -27,7 +27,7 @@ export default function NotFound() {
         left="-10%"
         w="400px"
         h="400px"
-        bg="green.subtle"
+        bg="blue.subtle"
         opacity="0.05"
         borderRadius="full"
         filter="blur(80px)"
@@ -70,7 +70,7 @@ export default function NotFound() {
             <Button
               asChild
               w="full"
-              colorPalette="green"
+              colorPalette="blue"
               size="lg"
               rounded="lg"
               fontWeight="600"

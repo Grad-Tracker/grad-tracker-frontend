@@ -14,26 +14,23 @@ import { Skeleton, SkeletonCircle, SkeletonText } from "@/components/ui/skeleton
 /** Full-page skeleton shown while the student profile is loading. */
 export default function DashboardSkeleton() {
   return (
-    <Stack gap="6">
-      {/* Page title skeleton */}
+    <Stack gap="6" data-testid="dashboard-skeleton">
+      {/* Page title */}
       <Box>
         <Skeleton height="4" width="80px" mb="2" />
         <Skeleton height="8" width="200px" />
       </Box>
 
-      {/* Stats Grid skeleton */}
+      {/* Stats Grid */}
       <Grid templateColumns={{ base: "1fr", xl: "2fr 1fr" }} gap="6">
         <SimpleGrid columns={{ base: 1, sm: 2 }} gap="4">
-          {/* Overall Progress card */}
           <StatCardSkeleton />
-          {/* Credits Completed card */}
           <StatCardSkeleton />
         </SimpleGrid>
-        {/* In Progress card */}
         <StatCardSkeleton />
       </Grid>
 
-      {/* Main Grid skeleton */}
+      {/* Main Grid */}
       <Grid templateColumns={{ base: "1fr", xl: "2fr 1fr" }} gap="6">
         <Stack gap="6">
           {/* Degree Requirements card */}
