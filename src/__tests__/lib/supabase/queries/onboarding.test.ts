@@ -373,7 +373,13 @@ describe("saveOnboardingSelections", () => {
   }
 
   it("completes without error for valid inputs", async () => {
-    mockFrom.mockImplementation(() => makeOkChain());
+    mockFrom.mockImplementation((table: string) => {
+      const chain = makeOkChain();
+      if (table === "v_terms_chronological") {
+        chain.single = vi.fn().mockResolvedValue({ data: { term_id: 1 }, error: null });
+      }
+      return chain;
+    });
 
     await expect(
       saveOnboardingSelections(1, 10, [20], [100], "Spring", 2026)
