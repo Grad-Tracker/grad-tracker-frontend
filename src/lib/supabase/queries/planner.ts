@@ -272,10 +272,10 @@ export async function fetchStudentTerms(
   planId: number
 ): Promise<Term[]> {
   const supabase = createClient();
-  void studentId;
   const { data, error } = await supabase
     .from(DB_VIEWS.planTerms)
     .select("term_id, season, year")
+    .eq("student_id", studentId)
     .eq("plan_id", planId);
 
   if (error) throw error;
@@ -300,7 +300,6 @@ export async function fetchPlannedCourses(
   planId: number
 ): Promise<PlannedCourseWithDetails[]> {
   const supabase = createClient();
-  void studentId;
   const { data, error } = await supabase
     .from(DB_VIEWS.planCourses)
     .select(`
@@ -314,6 +313,7 @@ export async function fetchPlannedCourses(
       title,
       credits
     `)
+    .eq("student_id", studentId)
     .eq("plan_id", planId);
 
   if (error) throw error;
@@ -360,9 +360,17 @@ export async function fetchAvailableCourses(
   options: { includeNonPlannable?: boolean } = {}
 ): Promise<RequirementBlockWithCourses[]> {
   const supabase = createClient();
-  void studentId;
 
   const includeNonPlannable = options.includeNonPlannable ?? false;
+  const { data: planOwner, error: planOwnerError } = await supabase
+    .from(DB_TABLES.plans)
+    .select("id")
+    .eq("id", planId)
+    .eq("student_id", studentId)
+    .maybeSingle();
+
+  if (planOwnerError) throw planOwnerError;
+  if (!planOwner) return [];
 
   const { data: planPrograms, error: planProgramsError } = await supabase
     .from(DB_TABLES.planPrograms)
@@ -584,13 +592,23 @@ export async function fetchCompletedCourseIds(
   studentId: number
 ): Promise<Set<number>> {
   const supabase = createClient();
-  const { data, error } = await supabase
-    .from(DB_TABLES.studentCourseHistory)
-    .select("course_id")
+  const query = supabase
+    .from(DB_VIEWS.studentCourseProgress)
+    .select("course_id, completed, progress_status")
     .eq("student_id", studentId);
+  const { data, error } = await query;
 
   if (error) throw error;
-  return new Set((data ?? []).map((r: any) => Number(r.course_id)));
+  return new Set(
+    ((data as ViewStudentCourseProgressRow[] | null | undefined) ?? [])
+      .filter(
+        (row) =>
+          row.completed == null ||
+          row.completed === true ||
+          String(row.progress_status ?? "").toUpperCase() === "COMPLETED"
+      )
+      .map((row) => Number(row.course_id))
+  );
 }
 
 // ── Auto-generate helpers ────────────────────────────────

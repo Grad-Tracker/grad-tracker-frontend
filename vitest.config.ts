@@ -45,6 +45,10 @@ export default defineConfig({
         "src/app/**/layout.tsx", // optional but usually fine
         "src/lib/supabase/client.ts",
         "src/lib/supabase/server.ts",
+        // Admin client factory: trivial pure wrapper, matches the client/server pattern.
+        "src/lib/supabase/admin.ts",
+        // Pure TypeScript type declarations — no executable code.
+        "src/lib/supabase/queries/view-types.ts",
         "src/utils/supabase/**",
       ],
     },
