@@ -245,7 +245,7 @@ export default function SignupPage() {
           {confirmPassword.length > 0 && (
             <Text
               fontSize="xs"
-              color={password === confirmPassword ? "green.500" : "red.500"}
+              color={password === confirmPassword ? "green.600" : "red.600"}
               mt="1"
             >
               {password === confirmPassword
@@ -260,10 +260,10 @@ export default function SignupPage() {
           size="lg"
           rounded="full"
           fontWeight="600"
-          bg="#1E3A5F"
+          bg="blue.800"
           color="white"
           _hover={{
-            bg: "#162d4a",
+            bg: "blue.900",
             transform: "translateY(-2px)",
             boxShadow: "0 8px 24px rgba(30,58,95,0.3)",
           }}
@@ -293,7 +293,7 @@ export default function SignupPage() {
           <Link href="/signin">
             <Text
               as="span"
-              color="#3B82F6"
+              color="blue.500"
               cursor="pointer"
               fontWeight="600"
               _hover={{ textDecoration: "underline" }}
@@ -311,7 +311,7 @@ export default function SignupPage() {
             <Button
               variant="ghost"
               size="sm"
-              color="#3B82F6"
+              color="blue.500"
               fontWeight="600"
               onClick={() => setAdvisorPanelOpen(true)}
             >
@@ -363,11 +363,11 @@ export default function SignupPage() {
               />
               <Button
                 size="sm"
-                bg="#1E3A5F"
+                bg="blue.800"
                 color="white"
                 rounded="lg"
                 fontWeight="600"
-                _hover={{ bg: "#162d4a" }}
+                _hover={{ bg: "blue.900" }}
                 onClick={handleAdvisorAccessContinue}
               >
                 Continue

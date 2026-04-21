@@ -1,0 +1,155 @@
+trigger:
+  branches:
+    include:
+      - main
+      - dev
+
+pool:
+  name: gradtracker-agents
+
+stages:
+
+  - stage: Build
+    displayName: 'Build Next.js App'
+    jobs:
+      - job: BuildJob
+        steps:
+          - task: UseNode@1
+            inputs:
+              version: '20.x'
+            displayName: 'Use Node.js 20'
+
+          - script: npm ci
+            displayName: 'Install dependencies'
+
+          - script: |
+              SUPABASE_URL=$(az keyvault secret show --vault-name GradTracker-dev-kv --name NEXT-PUBLIC-SUPABASE-URL --query value -o tsv)
+              SUPABASE_ANON_KEY=$(az keyvault secret show --vault-name GradTracker-dev-kv --name NEXT-PUBLIC-SUPABASE-ANON-KEY --query value -o tsv)
+              SUPABASE_PUBLISHABLE_KEY=$(az keyvault secret show --vault-name GradTracker-dev-kv --name NEXT-PUBLIC-SUPABASE-PUBLISHABLE-DEFAULT-KEY --query value -o tsv)
+              ANTHROPIC_KEY=$(az keyvault secret show --vault-name GradTracker-dev-kv --name ANTHROPIC-API-KEY --query value -o tsv)
+              DB_PASS=$(az keyvault secret show --vault-name GradTracker-dev-kv --name DB-PASSWORD --query value -o tsv)
+
+              cat > .env.local << EOF
+              NEXT_PUBLIC_SUPABASE_URL=$SUPABASE_URL
+              NEXT_PUBLIC_SUPABASE_ANON_KEY=$SUPABASE_ANON_KEY
+              NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY=$SUPABASE_PUBLISHABLE_KEY
+              ANTHROPIC_API_KEY=$ANTHROPIC_KEY
+              DB_PASSWORD=$DB_PASS
+              EOF
+            displayName: 'Write .env.local from Key Vault'
+
+          - script: npm run build
+            displayName: 'Build app'
+
+          - task: CopyFiles@2
+            displayName: 'Stage build artifacts'
+            inputs:
+              contents: |
+                **/*
+                !node_modules/**
+                !.git/**
+              targetFolder: $(Build.ArtifactStagingDirectory)
+
+          - task: PublishBuildArtifacts@1
+            displayName: 'Publish artifacts'
+            inputs:
+              artifactName: 'gradtracker-build'
+
+  - stage: Deploy_Dev
+    displayName: 'Deploy to Dev'
+    dependsOn: Build
+    condition: and(succeeded(), eq(variables['Build.SourceBranchName'], 'dev'))
+    variables:
+      - group: gradtracker-dev-vars
+    jobs:
+      - deployment: DeployDev
+        displayName: 'Deploy to Dev VM'
+        environment: dev
+        pool:
+          name: gradtracker-agents
+          demands:
+            - agent.name -equals GradTracker-dev-vm
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - script: |
+                    SUPABASE_URL=$(az keyvault secret show --vault-name GradTracker-dev-kv --name NEXT-PUBLIC-SUPABASE-URL --query value -o tsv)
+                    SUPABASE_ANON_KEY=$(az keyvault secret show --vault-name GradTracker-dev-kv --name NEXT-PUBLIC-SUPABASE-ANON-KEY --query value -o tsv)
+                    SUPABASE_PUBLISHABLE_KEY=$(az keyvault secret show --vault-name GradTracker-dev-kv --name NEXT-PUBLIC-SUPABASE-PUBLISHABLE-DEFAULT-KEY --query value -o tsv)
+                    ANTHROPIC_KEY=$(az keyvault secret show --vault-name GradTracker-dev-kv --name ANTHROPIC-API-KEY --query value -o tsv)
+                    DB_PASS=$(az keyvault secret show --vault-name GradTracker-dev-kv --name DB-PASSWORD --query value -o tsv)
+
+                    cat > /var/www/gradtracker/.env.local << EOF
+                    NEXT_PUBLIC_SUPABASE_URL=$SUPABASE_URL
+                    NEXT_PUBLIC_SUPABASE_ANON_KEY=$SUPABASE_ANON_KEY
+                    NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY=$SUPABASE_PUBLISHABLE_KEY
+                    ANTHROPIC_API_KEY=$ANTHROPIC_KEY
+                    DB_PASSWORD=$DB_PASS
+                    EOF
+
+                    sudo mkdir -p /var/www/gradtracker
+                    sudo cp -r $(Pipeline.Workspace)/gradtracker-build/. /var/www/gradtracker/
+                    cd /var/www/gradtracker
+                    npm ci --omit=dev
+
+                    pm2 stop gradtracker || true
+                    pm2 delete gradtracker || true
+                    pm2 start npm --name "gradtracker" -- start
+                    pm2 save
+                  displayName: 'Deploy and restart app'
+
+  - stage: Deploy_Prod
+    displayName: 'Deploy to Prod'
+    dependsOn: Build
+    condition: and(succeeded(), eq(variables['Build.SourceBranchName'], 'main'))
+    variables:
+      - group: gradtracker-prod-vars
+    jobs:
+      - deployment: DeployProd
+        displayName: 'Deploy to Prod VM'
+        environment: prod
+        pool:
+          name: gradtracker-agents
+          demands:
+            - agent.name -equals gradtracker-prod-agent
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - script: |
+                    export NEXT_PUBLIC_SUPABASE_URL=$(az keyvault secret show \
+                      --vault-name GradTracker-prod-kv \
+                      --name NEXT-PUBLIC-SUPABASE-URL \
+                      --query value -o tsv)
+
+                    export NEXT_PUBLIC_SUPABASE_ANON_KEY=$(az keyvault secret show \
+                      --vault-name GradTracker-prod-kv \
+                      --name NEXT-PUBLIC-SUPABASE-ANON-KEY \
+                      --query value -o tsv)
+
+                    export NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY=$(az keyvault secret show \
+                      --vault-name GradTracker-prod-kv \
+                      --name NEXT-PUBLIC-SUPABASE-PUBLISHABLE-DEFAULT-KEY \
+                      --query value -o tsv)
+
+                    export ANTHROPIC_API_KEY=$(az keyvault secret show \
+                      --vault-name GradTracker-prod-kv \
+                      --name ANTHROPIC-API-KEY \
+                      --query value -o tsv)
+
+                    export DB_PASSWORD=$(az keyvault secret show \
+                      --vault-name GradTracker-prod-kv \
+                      --name DB-PASSWORD \
+                      --query value -o tsv)
+
+                    sudo mkdir -p /var/www/gradtracker
+                    sudo cp -r $(Pipeline.Workspace)/gradtracker-build/. /var/www/gradtracker/
+                    cd /var/www/gradtracker
+                    npm ci --omit=dev
+
+                    pm2 stop gradtracker || true
+                    pm2 delete gradtracker || true
+                    pm2 start npm --name "gradtracker" -- start
+                    pm2 save
+                  displayName: 'Deploy and restart app'

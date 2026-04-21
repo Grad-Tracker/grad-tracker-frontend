@@ -22,6 +22,7 @@ import {
   LuSearch,
   LuTarget,
 } from "react-icons/lu";
+import { EmptyState } from "@/components/ui/empty-state";
 import { getProgramColor, getProgramTypeLabel } from "@/lib/program-colors";
 
 export interface Program {
@@ -293,33 +294,15 @@ export default function ProgramsClient({ programs }: ProgramsClientProps) {
                 className="animate-fade-up"
               >
                 <Card.Body p="12">
-                  <VStack gap="4" textAlign="center">
-                    <Box
-                      w="16"
-                      h="16"
-                      bg="bg.subtle"
-                      borderRadius="full"
-                      display="flex"
-                      alignItems="center"
-                      justifyContent="center"
-                    >
-                      <Icon color="fg.muted" boxSize="8">
-                        <LuTarget />
-                      </Icon>
-                    </Box>
-                    <Heading
-                      size="md"
-                      fontFamily="var(--font-dm-sans), sans-serif"
-                      fontWeight="400"
-                    >
-                      No programs found
-                    </Heading>
-                    <Text color="fg.muted" fontSize="sm" maxW="sm">
-                      {programs.length === 0
+                  <EmptyState
+                    icon={<LuTarget />}
+                    title="No programs found"
+                    description={
+                      programs.length === 0
                         ? "No programs have been added to the database yet."
-                        : "Try adjusting your search to find programs."}
-                    </Text>
-                  </VStack>
+                        : "Try adjusting your search to find programs."
+                    }
+                  />
                 </Card.Body>
               </Card.Root>
             )}

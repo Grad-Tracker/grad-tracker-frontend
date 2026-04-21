@@ -21,6 +21,7 @@ import {
   ProgressCircleValueText,
 } from "@/components/ui/progress-circle";
 import type { PlannedCourseWithDetails, Term, RequirementBlockWithCourses } from "@/types/planner";
+import { isBreadthBlock } from "@/types/planner";
 
 const GRADUATE_TOTAL_CREDITS = 30;
 
@@ -42,7 +43,9 @@ interface PlannerSummaryProps {
   plannedCourses: PlannedCourseWithDetails[];
   blocks: RequirementBlockWithCourses[];
   completedCourseIds: Set<number>;
+  degreeCreditTarget?: number;
   isGraduatePlan?: boolean;
+  hasBreadthPackageSelected?: boolean;
 }
 
 export default function PlannerSummary({
@@ -50,7 +53,9 @@ export default function PlannerSummary({
   plannedCourses,
   blocks,
   completedCourseIds,
+  degreeCreditTarget,
   isGraduatePlan = false,
+  hasBreadthPackageSelected = true,
 }: PlannerSummaryProps) {
   const [expanded, setExpanded] = useState(false);
 
@@ -60,16 +65,25 @@ export default function PlannerSummary({
   );
 
   const stats = useMemo(() => {
-    const summedCredits = blocks.reduce((s, b) => s + creditsForBlock(b), 0);
-    const totalRequired = isGraduatePlan ? GRADUATE_TOTAL_CREDITS : summedCredits;
+    const summedCredits = blocks.reduce((s, b) => {
+      const breadthNoSelection = isBreadthBlock(b) && !hasBreadthPackageSelected;
+      const requiredCredits = breadthNoSelection
+        ? 9
+        : (b.credits_required ?? b.courses.reduce((cs, c) => cs + c.credits, 0));
+      return s + requiredCredits;
+    }, 0);
+    const totalRequired = isGraduatePlan
+      ? GRADUATE_TOTAL_CREDITS
+      : (degreeCreditTarget ?? summedCredits);
 
     const countedIds = new Set<number>();
     let completedCredits = 0;
+    const countedCompletedIds = new Set<number>();
     for (const block of blocks) {
       for (const course of block.courses) {
-        if (completedCourseIds.has(course.id) && !countedIds.has(course.id)) {
-          countedIds.add(course.id);
+        if (completedCourseIds.has(course.id) && !countedCompletedIds.has(course.id)) {
           completedCredits += course.credits;
+          countedCompletedIds.add(course.id);
         }
       }
     }
@@ -84,7 +98,15 @@ export default function PlannerSummary({
     const semsNeeded = avgCreditsPerSem > 0 ? Math.ceil(remainingCredits / avgCreditsPerSem) : 0;
 
     return { totalRequired, completedCredits, degreePct, remainingCredits, avgCreditsPerSem, semsNeeded };
-  }, [blocks, completedCourseIds, totalPlannedCredits, terms.length, isGraduatePlan]);
+  }, [
+    blocks,
+    completedCourseIds,
+    totalPlannedCredits,
+    terms.length,
+    degreeCreditTarget,
+    isGraduatePlan,
+    hasBreadthPackageSelected,
+  ]);
 
   return (
     <Flex

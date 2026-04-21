@@ -1,5 +1,6 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import { screen, fireEvent, waitFor, act } from "@testing-library/react";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { screen, fireEvent, waitFor, act, cleanup } from "@testing-library/react";
+import React from "react";
 import { renderWithChakra } from "@/__tests__/helpers/mocks";
 
 const { mockPush, mockSignInWithPassword, mockGetUser, mockSignOut, mockToaster } = vi.hoisted(() => ({
@@ -13,6 +14,26 @@ const { mockPush, mockSignInWithPassword, mockGetUser, mockSignOut, mockToaster 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: mockPush, replace: vi.fn(), refresh: vi.fn() }),
 }));
+
+vi.mock("next/image", () => ({
+  __esModule: true,
+  default: (props: Record<string, unknown>) => {
+    const { fill, priority, ...rest } = props as Record<string, unknown>;
+    return React.createElement("img", rest);
+  },
+}));
+
+vi.mock("next/link", () => ({
+  __esModule: true,
+  default: ({
+    href,
+    children,
+  }: {
+    href: string;
+    children: React.ReactNode;
+  }) => React.createElement("a", { href }, children),
+}));
+
 vi.mock("@/lib/supabase/client", () => ({
   createClient: () => ({
     auth: {
@@ -22,20 +43,36 @@ vi.mock("@/lib/supabase/client", () => ({
     },
   }),
 }));
+
 vi.mock("@/components/ui/toaster", () => ({ toaster: mockToaster }));
 vi.mock("@/components/ui/color-mode", () => ({ ColorModeButton: () => null }));
+
 vi.mock("@/components/ui/field", () => ({
-  Field: (p: any) => <div><label>{p.label}</label>{p.children}</div>,
+  Field: (p: any) => (
+    <div>
+      <label>{p.label}</label>
+      {p.children}
+    </div>
+  ),
 }));
+
 vi.mock("@/components/ui/password-input", () => ({
   PasswordInput: (p: any) => (
-    <input type="password" placeholder={p.placeholder} value={p.value} onChange={p.onChange} data-testid="password-input" />
+    <input
+      type="password"
+      placeholder={p.placeholder}
+      value={p.value}
+      onChange={p.onChange}
+      data-testid="password-input"
+    />
   ),
 }));
 
 import SigninPage from "@/app/signin/page";
 
 describe("SigninPage", () => {
+  afterEach(() => cleanup());
+
   beforeEach(() => {
     vi.clearAllMocks();
     mockGetUser.mockResolvedValue({
@@ -49,9 +86,7 @@ describe("SigninPage", () => {
     expect(screen.getAllByText("Sign In").length).toBeGreaterThanOrEqual(1);
     expect(screen.getByRole("button", { name: "Student" })).toHaveAttribute("aria-pressed", "true");
     expect(screen.getByRole("button", { name: "Advisor" })).toHaveAttribute("aria-pressed", "false");
-    expect(
-      screen.getAllByText("View your dashboard, requirements, and planner.").length
-    ).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("View your dashboard, requirements, and planner.").length).toBeGreaterThanOrEqual(1);
   });
 
   it("renders email and password fields", () => {
@@ -68,12 +103,12 @@ describe("SigninPage", () => {
     });
 
     expect(screen.getAllByText("Sign In").length).toBeGreaterThanOrEqual(1);
-    expect(
-      screen.getAllByText("Manage programs, Gen-Ed buckets, and course catalog.").length
-    ).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("Manage programs, Gen-Ed buckets, and course catalog.").length).toBeGreaterThanOrEqual(1);
     expect(screen.getByRole("button", { name: "Advisor" })).toHaveAttribute("aria-pressed", "true");
     expect(screen.getByPlaceholderText("you@example.com")).toBeInTheDocument();
+    expect(screen.getByText("You'll be taken to the advisor console.")).toBeInTheDocument();
   });
+
 
   it("shows error toast for empty fields", async () => {
     renderWithChakra(<SigninPage />);
@@ -82,9 +117,7 @@ describe("SigninPage", () => {
     await act(async () => {
       fireEvent.click(btn!);
     });
-    expect(mockToaster.create).toHaveBeenCalledWith(
-      expect.objectContaining({ title: "Missing fields" })
-    );
+    expect(mockToaster.create).toHaveBeenCalledWith(expect.objectContaining({ title: "Missing fields" }));
   });
 
   it("calls signInWithPassword with correct credentials", async () => {
@@ -133,9 +166,7 @@ describe("SigninPage", () => {
     });
 
     await waitFor(() => {
-      expect(mockToaster.create).toHaveBeenCalledWith(
-        expect.objectContaining({ title: "Sign in failed" })
-      );
+      expect(mockToaster.create).toHaveBeenCalledWith(expect.objectContaining({ title: "Sign in failed" }));
     });
   });
 
@@ -191,9 +222,7 @@ describe("SigninPage", () => {
 
     await waitFor(() => {
       expect(mockPush).toHaveBeenCalledWith("/dashboard");
-      expect(mockToaster.create).toHaveBeenCalledWith(
-        expect.objectContaining({ description: "Redirecting..." })
-      );
+      expect(mockToaster.create).toHaveBeenCalledWith(expect.objectContaining({ description: "Redirecting..." }));
     });
   });
 
@@ -300,7 +329,6 @@ describe("SigninPage", () => {
 
   it("keeps forgot password as the only inline action above the CTA", () => {
     renderWithChakra(<SigninPage />);
-
     expect(screen.getAllByText("Forgot password?").length).toBeGreaterThanOrEqual(1);
     expect(screen.queryByRole("button", { name: /Switch to/i })).not.toBeInTheDocument();
   });

@@ -33,22 +33,13 @@ import { Tooltip } from "@/components/ui/tooltip";
 import { toaster } from "@/components/ui/toaster";
 import { createClient } from "@/lib/supabase/client";
 import { DB_TABLES } from "@/lib/supabase/queries/schema";
+import {
+  fetchGenEdBucketsWithCourses,
+  type GenEdBucket,
+  type GenEdCourse,
+} from "@/lib/supabase/queries/gen-ed";
 
-type Course = {
-  id: number;
-  subject: string | null;
-  number: string | null;
-  title: string | null;
-  credits: number | null;
-};
-
-export type GenEdBucket = {
-  id: number;
-  code: string | null;
-  name: string;
-  credits_required: number;
-  courses: Course[];
-};
+export type { GenEdBucket } from "@/lib/supabase/queries/gen-ed";
 
 type BucketSortOption =
   | "name-asc"
@@ -70,7 +61,7 @@ function emptyBucketForm(): BucketForm {
   };
 }
 
-function formatCourse(course: Course) {
+function formatCourse(course: GenEdCourse) {
   const code = `${course.subject ?? ""} ${course.number ?? ""}`.trim();
   return code ? `${code} - ${course.title ?? "Untitled course"}` : course.title ?? "Untitled course";
 }
@@ -93,7 +84,7 @@ export default function GenEdAdminClient({
   const [pendingDeleteBucket, setPendingDeleteBucket] = useState<GenEdBucket | null>(null);
   const [activeBucketId, setActiveBucketId] = useState<number | null>(null);
   const [bucketForm, setBucketForm] = useState<BucketForm>(emptyBucketForm());
-  const [courseResults, setCourseResults] = useState<Course[]>([]);
+  const [courseResults, setCourseResults] = useState<GenEdCourse[]>([]);
   const [selectedCourseIds, setSelectedCourseIds] = useState<number[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [bucketSort, setBucketSort] = useState<BucketSortOption>("name-asc");
@@ -111,69 +102,8 @@ export default function GenEdAdminClient({
   }
 
   async function loadBuckets() {
-    const { data: bucketRows, error: bucketsError } = await supabase
-      .from(DB_TABLES.genEdBuckets)
-      .select("id, code, name, credits_required")
-      .order("name");
-
-    if (bucketsError) {
-      throw bucketsError;
-    }
-
-    const { data: mappingRows, error: mappingsError } = await supabase
-      .from(DB_TABLES.genEdBucketCourses)
-      .select("bucket_id, course_id");
-
-    if (mappingsError) {
-      throw mappingsError;
-    }
-
-    const courseIds = Array.from(
-      new Set((mappingRows ?? []).map((row: any) => Number(row.course_id)).filter(Number.isFinite))
-    );
-
-    const coursesResult = courseIds.length
-      ? await supabase
-          .from(DB_TABLES.courses)
-          .select("id, subject, number, title, credits")
-          .in("id", courseIds)
-      : { data: [], error: null };
-
-    if (coursesResult.error) {
-      throw coursesResult.error;
-    }
-
-    const coursesById = new Map<number, Course>();
-    for (const course of coursesResult.data ?? []) {
-      coursesById.set(Number((course as any).id), {
-        id: Number((course as any).id),
-        subject: (course as any).subject ?? null,
-        number: (course as any).number ?? null,
-        title: (course as any).title ?? null,
-        credits: (course as any).credits == null ? null : Number((course as any).credits),
-      });
-    }
-
-    const bucketToCourses = new Map<number, Course[]>();
-    for (const row of mappingRows ?? []) {
-      const bucketId = Number((row as any).bucket_id);
-      const course = coursesById.get(Number((row as any).course_id));
-      if (!course) continue;
-      if (!bucketToCourses.has(bucketId)) bucketToCourses.set(bucketId, []);
-      bucketToCourses.get(bucketId)!.push(course);
-    }
-
-    setBuckets(
-      (bucketRows ?? []).map((bucket: any) => ({
-        id: Number(bucket.id),
-        code: bucket.code ?? null,
-        name: bucket.name,
-        credits_required: Number(bucket.credits_required ?? 12),
-        courses: (bucketToCourses.get(Number(bucket.id)) ?? []).sort((a, b) =>
-          formatCourse(a).localeCompare(formatCourse(b))
-        ),
-      }))
-    );
+    const nextBuckets = await fetchGenEdBucketsWithCourses(supabase);
+    setBuckets(nextBuckets);
   }
 
   useEffect(() => {

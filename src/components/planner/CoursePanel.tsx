@@ -26,6 +26,7 @@ import { MIN_PANEL_WIDTH, MAX_PANEL_WIDTH } from "@/constants/planner";
 interface CoursePanelProps {
   blocks: RequirementBlockWithCourses[];
   allDedupedBlocks: RequirementBlockWithCourses[];
+  degreeCreditTarget?: number;
   completedCourseIds: Set<number>;
   plannedCourseIds: Set<number>;
   plannedCourses: PlannedCourseWithDetails[];
@@ -37,11 +38,13 @@ interface CoursePanelProps {
   selectedTrackId?: number | null;
   onTrackSelect?: (trackId: number) => void;
   genEdBuckets?: GenEdBucketWithCourses[];
+  canEdit?: boolean;
 }
 
 export default function CoursePanel({
   blocks,
   allDedupedBlocks,
+  degreeCreditTarget,
   completedCourseIds,
   plannedCourseIds,
   plannedCourses,
@@ -53,6 +56,7 @@ export default function CoursePanel({
   selectedTrackId = null,
   onTrackSelect,
   genEdBuckets = [],
+  canEdit = true,
 }: CoursePanelProps) {
   const { isOver, setNodeRef } = useDroppable({ id: "course-panel" });
   const [search, setSearch] = useState("");
@@ -144,13 +148,13 @@ export default function CoursePanel({
   const virtualizer = useVirtualizer({
     count: rows.length,
     getScrollElement: () => scrollRef.current,
-    // Fixed sizes — no measureElement, prevents layout thrash on scroll
     estimateSize: (i) => {
       const row = rows[i];
       if (row.kind === "header") return 40;
-      if (row.kind === "breadth") return 120;
-      return 60;
+      if (row.kind === "breadth") return 500;
+      return 68;
     },
+    measureElement: (el) => el.getBoundingClientRect().height,
     overscan: 10,
   });
 
@@ -259,6 +263,7 @@ export default function CoursePanel({
         blocks={blocks}
         plannedCourses={plannedCourses}
         completedCourseIds={completedCourseIds}
+        degreeCreditTarget={degreeCreditTarget}
         hasBreadthPackageSelected={!!selectedBreadthPackageId}
         isGraduatePlan={isGraduatePlan}
       />
@@ -297,6 +302,8 @@ export default function CoursePanel({
             return (
               <Box
                 key={vItem.key}
+                ref={virtualizer.measureElement}
+                data-index={vItem.index}
                 style={{
                   position: "absolute",
                   top: 0,
@@ -350,6 +357,7 @@ export default function CoursePanel({
                       isCompleted={completedCourseIds.has(row.course.id)}
                       isPlanned={plannedCourseIds.has(row.course.id)}
                       dragContextId={row.blockId}
+                      dragDisabled={!canEdit}
                     />
                   </Box>
                 )}

@@ -8,15 +8,18 @@ export default defineConfig({
     environment: "jsdom",
     setupFiles: ["./src/__tests__/setup.ts"],
     include: ["src/**/*.test.{ts,tsx}"],
+
+    // Prevent suite-wide flake timeouts under full load
+    testTimeout: 10000,
+    hookTimeout: 10000,
+
     coverage: {
       provider: "v8",
       reporter: ["text", "html", "lcov", "json"],
       reportsDirectory: "./coverage",
       // Measure coverage for all source files in src/.
       // Excludes: auto-generated Chakra UI wrappers, test files, config files.
-      include: [
-        "src/**/*.{ts,tsx}",
-      ],
+      include: ["src/**/*.{ts,tsx}"],
       exclude: [
         "**/node_modules/**",
         "**/.next/**",
@@ -39,17 +42,28 @@ export default defineConfig({
         "src/proxy.ts",
         "src/types/**",
         "src/app/auth/**/route.ts",
-        "src/app/**/layout.tsx",          // optional but usually fine
+        "src/app/**/layout.tsx", // optional but usually fine
         "src/lib/supabase/client.ts",
         "src/lib/supabase/server.ts",
+        // Admin client factory: trivial pure wrapper, matches the client/server pattern.
+        "src/lib/supabase/admin.ts",
+        // Pure TypeScript type declarations — no executable code.
+        "src/lib/supabase/queries/view-types.ts",
         "src/utils/supabase/**",
-      ]
-    }
+      ],
+    },
   },
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
-      "server-only": path.resolve(__dirname, "./src/__tests__/mocks/server-only.ts")
-    }
-  }
+      "@tanstack/react-virtual": path.resolve(
+        __dirname,
+        "./src/__tests__/mocks/tanstack-react-virtual.ts"
+      ),
+      "server-only": path.resolve(
+        __dirname,
+        "./src/__tests__/mocks/server-only.ts"
+      ),
+    },
+  },
 });

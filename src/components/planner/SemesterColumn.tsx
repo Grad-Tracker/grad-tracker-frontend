@@ -24,6 +24,7 @@ interface SemesterColumnProps {
   isCollapsed?: boolean;
   onToggleCollapse?: () => void;
   isGraduatePlan?: boolean;
+  canEdit?: boolean;
 }
 
 function getCreditLoadInfo(
@@ -62,6 +63,7 @@ function SemesterColumn({
   isCollapsed = false,
   onToggleCollapse,
   isGraduatePlan = false,
+  canEdit = true,
 }: SemesterColumnProps) {
   const { isOver, setNodeRef } = useDroppable({
     id: `term-${term.id}`,
@@ -117,7 +119,7 @@ function SemesterColumn({
       w="full"
       overflow="hidden"
       borderWidth="1px"
-      borderColor={isOver ? "blue.400" : "border.subtle"}
+      borderColor={isOver ? "blue.600" : "border.subtle"}
       boxShadow={isOver ? "0 0 0 2px var(--chakra-colors-blue-200)" : "none"}
       bg="bg"
       transition="all 0.2s"
@@ -173,16 +175,18 @@ function SemesterColumn({
                       <Text fontSize="xs">−</Text>
                     </IconButton>
                   )}
-                  <IconButton
-                    aria-label="Remove semester"
-                    variant="ghost"
-                    size="xs"
-                    color="fg.muted"
-                    _hover={{ color: "red.500", bg: "red.subtle" }}
-                    onClick={() => onRemoveTerm(term.id)}
-                  >
-                    <LuTrash2 size={14} />
-                  </IconButton>
+                  {canEdit && (
+                    <IconButton
+                      aria-label="Remove semester"
+                      variant="ghost"
+                      size="xs"
+                      color="fg.muted"
+                      _hover={{ color: "red.500", bg: "red.subtle" }}
+                      onClick={() => onRemoveTerm(term.id)}
+                    >
+                      <LuTrash2 size={14} />
+                    </IconButton>
+                  )}
                 </HStack>
               </HStack>
             </Table.ColumnHeader>
@@ -224,6 +228,7 @@ function SemesterColumn({
                 course={pc.course}
                 termId={term.id}
                 onCourseClick={onCourseClick}
+                canEdit={canEdit}
               />
             ))
           )}
