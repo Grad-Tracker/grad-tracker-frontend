@@ -5,12 +5,24 @@ import { ChakraProvider, defaultSystem } from "@chakra-ui/react";
 
 /* ---------------- HOISTED MOCKS ---------------- */
 
-const { mockGetUser, mockUpdateUser, mockFrom, mockToasterCreate, mockPush } = vi.hoisted(() => ({
+const {
+  mockGetUser,
+  mockUpdateUser,
+  mockFrom,
+  mockToasterCreate,
+  mockPush,
+  mockFetch,
+  mockFetchPrograms,
+  mockFetchStudentMajorProgram,
+} = vi.hoisted(() => ({
   mockGetUser: vi.fn(),
   mockUpdateUser: vi.fn(),
   mockFrom: vi.fn(),
   mockToasterCreate: vi.fn(),
   mockPush: vi.fn(),
+  mockFetch: vi.fn(),
+  mockFetchPrograms: vi.fn(),
+  mockFetchStudentMajorProgram: vi.fn(),
 }));
 
 vi.mock("next/navigation", () => ({
@@ -28,16 +40,23 @@ vi.mock("@/components/ui/toaster", () => ({
   toaster: { create: mockToasterCreate },
 }));
 
+vi.mock("@/lib/supabase/queries/onboarding", () => ({
+  fetchPrograms: mockFetchPrograms,
+  fetchStudentMajorProgram: mockFetchStudentMajorProgram,
+}));
+
 vi.mock("next/link", () => ({
   default: (p: any) => <a href={p.href}>{p.children}</a>,
 }));
 
 // Lightweight Field wrapper so label text is rendered
 vi.mock("@/components/ui/field", () => ({
-  Field: ({ label, children }: any) => (
+  Field: ({ label, children, helperText, errorText }: any) => (
     <div>
       {label && <label>{label}</label>}
       {children}
+      {helperText && <div>{helperText}</div>}
+      {errorText && <div role="alert">{errorText}</div>}
     </div>
   ),
 }));
@@ -82,6 +101,8 @@ function setupMocks(
     error: null,
   });
   mockUpdateUser.mockResolvedValue({ data: {}, error: null });
+  mockFetchPrograms.mockResolvedValue([]);
+  mockFetchStudentMajorProgram.mockResolvedValue(null);
 
   const studentData = { ...DEFAULT_STUDENT, ...studentOverrides };
 
@@ -105,6 +126,11 @@ function setupMocks(
 describe("SettingsPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.stubGlobal("fetch", mockFetch);
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: vi.fn().mockResolvedValue({ success: true }),
+    });
   });
 
   /* ---- Loading ---- */
@@ -113,6 +139,22 @@ describe("SettingsPage", () => {
     mockGetUser.mockReturnValue(new Promise(() => {})); // never resolves
     renderSettings();
     expect(screen.getByTestId("settings-skeleton")).toBeInTheDocument();
+  });
+
+  it("shows an error toast when the initial settings load fails", async () => {
+    mockGetUser.mockRejectedValue(new Error("load failed"));
+
+    await act(async () => { renderSettings(); });
+
+    await waitFor(() => {
+      expect(mockToasterCreate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: "Failed to load settings",
+          description: "load failed",
+          type: "error",
+        })
+      );
+    });
   });
 
   /* ---- Profile section ---- */
@@ -255,7 +297,7 @@ describe("SettingsPage", () => {
     });
   });
 
-  it("Save Graduation Info shows error toast for year below 2000", async () => {
+  it("Save Graduation Info shows inline validation for year below 2000", async () => {
     setupMocks();
     await act(async () => { renderSettings(); });
     await waitFor(() => screen.getByPlaceholderText("e.g. 2026"));
@@ -266,12 +308,10 @@ describe("SettingsPage", () => {
       fireEvent.click(screen.getByText("Save Graduation Info"));
     });
 
-    expect(mockToasterCreate).toHaveBeenCalledWith(
-      expect.objectContaining({ title: "Enter a valid graduation year", type: "error" })
-    );
+    expect(screen.getByRole("alert")).toHaveTextContent("Enter a year between 2000 and 2100.");
   });
 
-  it("Save Graduation Info shows error toast for year above 2100", async () => {
+  it("Save Graduation Info shows inline validation for year above 2100", async () => {
     setupMocks();
     await act(async () => { renderSettings(); });
     await waitFor(() => screen.getByPlaceholderText("e.g. 2026"));
@@ -282,9 +322,7 @@ describe("SettingsPage", () => {
       fireEvent.click(screen.getByText("Save Graduation Info"));
     });
 
-    expect(mockToasterCreate).toHaveBeenCalledWith(
-      expect.objectContaining({ title: "Enter a valid graduation year", type: "error" })
-    );
+    expect(screen.getByRole("alert")).toHaveTextContent("Enter a year between 2000 and 2100.");
   });
 
   /* Notification Preferences section is commented out — tests skipped until re-enabled */
@@ -354,10 +392,16 @@ describe("SettingsPage", () => {
 
     expect(mockToasterCreate).toHaveBeenCalledWith(
       expect.objectContaining({
-        title: "Verification email sent",
+        title: "Confirmation email sent",
         type: "success",
       })
     );
+    expect(screen.getByPlaceholderText("you@example.com")).toHaveValue("updated@uwp.edu");
+    expect(screen.getByText("Update Email")).toBeDisabled();
+    expect(screen.getByText("Pending verification")).toBeInTheDocument();
+    expect(
+      screen.getByText(/Your sign-in email will stay test@uwp\.edu until you confirm updated@uwp\.edu\./i)
+    ).toBeInTheDocument();
   });
 
   it("shows an error toast when updating the email fails", async () => {
@@ -375,6 +419,75 @@ describe("SettingsPage", () => {
 
     expect(mockToasterCreate).toHaveBeenCalledWith(
       expect.objectContaining({ title: "Failed to update email", description: "email failed", type: "error" })
+    );
+  });
+
+  it("calls the change-major API and shows success when saving a new major", async () => {
+    setupMocks();
+    mockFetchPrograms.mockResolvedValueOnce([
+      { id: 10, name: "Computer Science", program_type: "MAJOR" },
+      { id: 20, name: "Data Science", program_type: "MAJOR" },
+    ]);
+    mockFetchStudentMajorProgram.mockResolvedValueOnce({
+      program_id: 10,
+      program_name: "Computer Science",
+      catalog_year: "2025-2026",
+      program_type: "MAJOR",
+      student_id: 1,
+    });
+
+    await act(async () => { renderSettings(); });
+    await waitFor(() => screen.getByLabelText("Select major"));
+
+    fireEvent.change(screen.getByLabelText("Select major"), {
+      target: { value: "20" },
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByText("Save Major"));
+    });
+
+    expect(mockFetch).toHaveBeenCalledWith("/api/student/change-major", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ programId: 20 }),
+    });
+    expect(mockToasterCreate).toHaveBeenCalledWith(
+      expect.objectContaining({ title: "Major updated", type: "success" })
+    );
+  });
+
+  it("shows an error toast when saving a new major fails", async () => {
+    setupMocks();
+    mockFetchPrograms.mockResolvedValueOnce([
+      { id: 10, name: "Computer Science", program_type: "MAJOR" },
+      { id: 20, name: "Data Science", program_type: "MAJOR" },
+    ]);
+    mockFetchStudentMajorProgram.mockResolvedValueOnce({
+      program_id: 10,
+      program_name: "Computer Science",
+      catalog_year: "2025-2026",
+      program_type: "MAJOR",
+      student_id: 1,
+    });
+    mockFetch.mockResolvedValueOnce({
+      ok: false,
+      json: vi.fn().mockResolvedValue({ error: "major failed" }),
+    });
+
+    await act(async () => { renderSettings(); });
+    await waitFor(() => screen.getByLabelText("Select major"));
+
+    fireEvent.change(screen.getByLabelText("Select major"), {
+      target: { value: "20" },
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByText("Save Major"));
+    });
+
+    expect(mockToasterCreate).toHaveBeenCalledWith(
+      expect.objectContaining({ title: "Failed to change major", description: "major failed", type: "error" })
     );
   });
 
@@ -469,38 +582,7 @@ describe("SettingsPage", () => {
   });
 
   it("resets progress successfully and routes back to the dashboard", async () => {
-    const studentEqFn = vi.fn().mockResolvedValue({ data: null, error: null });
-    const studentUpdateFn = vi.fn().mockReturnValue({ eq: studentEqFn });
-
-    mockGetUser.mockResolvedValue({
-      data: { user: { id: "auth-uuid", email: "test@uwp.edu" } },
-      error: null,
-    });
-
-    mockFrom.mockImplementation((table: string) => {
-      if (table === "students") {
-        const chain = createChainMock();
-        chain.maybeSingle = vi.fn().mockResolvedValue({ data: DEFAULT_STUDENT, error: null });
-        chain.update = studentUpdateFn;
-        return chain;
-      }
-      if (
-        table === "student_course_history" ||
-        table === "student_planned_courses" ||
-        table === "student_programs"
-      ) {
-        const chain = createChainMock();
-        chain.delete = vi.fn().mockReturnValue(chain);
-        chain.eq = vi.fn().mockResolvedValue({ data: null, error: null });
-        return chain;
-      }
-      if (table === "notification_preferences") {
-        const chain = createChainMock();
-        chain.maybeSingle = vi.fn().mockResolvedValue({ data: null, error: null });
-        return chain;
-      }
-      return createChainMock();
-    });
+    setupMocks();
 
     await act(async () => { renderSettings(); });
     await waitFor(() => screen.getByText("Reset All Progress"));
@@ -513,7 +595,7 @@ describe("SettingsPage", () => {
       fireEvent.click(screen.getByText("Yes, Reset"));
     });
 
-    expect(studentUpdateFn).toHaveBeenCalledWith({ has_completed_onboarding: false });
+    expect(mockFetch).toHaveBeenCalledWith("/api/student/reset-progress", { method: "POST" });
     expect(mockToasterCreate).toHaveBeenCalledWith(
       expect.objectContaining({ title: "Progress reset", type: "success" })
     );
@@ -521,35 +603,10 @@ describe("SettingsPage", () => {
   });
 
   it("shows an error toast when resetting progress fails", async () => {
-    mockGetUser.mockResolvedValue({
-      data: { user: { id: "auth-uuid", email: "test@uwp.edu" } },
-      error: null,
-    });
-
-    mockFrom.mockImplementation((table: string) => {
-      if (table === "students") {
-        const chain = createChainMock();
-        chain.maybeSingle = vi.fn().mockResolvedValue({ data: DEFAULT_STUDENT, error: null });
-        return chain;
-      }
-      if (table === "student_course_history") {
-        const chain = createChainMock();
-        chain.delete = vi.fn().mockReturnValue(chain);
-        chain.eq = vi.fn().mockResolvedValue({ data: null, error: new Error("reset failed") });
-        return chain;
-      }
-      if (table === "student_planned_courses" || table === "student_programs") {
-        const chain = createChainMock();
-        chain.delete = vi.fn().mockReturnValue(chain);
-        chain.eq = vi.fn().mockResolvedValue({ data: null, error: null });
-        return chain;
-      }
-      if (table === "notification_preferences") {
-        const chain = createChainMock();
-        chain.maybeSingle = vi.fn().mockResolvedValue({ data: null, error: null });
-        return chain;
-      }
-      return createChainMock();
+    setupMocks();
+    mockFetch.mockResolvedValueOnce({
+      ok: false,
+      json: vi.fn().mockResolvedValue({ error: "reset failed" }),
     });
 
     await act(async () => { renderSettings(); });
@@ -583,6 +640,9 @@ describe("SettingsPage", () => {
       const link = screen.getByRole("link", { name: /Reset Password/i });
       expect(link).toBeInTheDocument();
       expect(link).toHaveAttribute("href", "/reset-password");
+      expect(
+        screen.getByText(/Selecting this opens the reset flow and sends a reset link to your account email\./i)
+      ).toBeInTheDocument();
     });
   });
 });

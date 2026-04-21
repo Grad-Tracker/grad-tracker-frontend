@@ -16,7 +16,7 @@ import { LuArrowRight, LuLoader, LuShieldCheck } from "react-icons/lu";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { validateEmailDomain, normalizeEmail } from "@/lib/email-validation";
+import { normalizeEmail } from "@/lib/email-validation";
 import { DB_TABLES } from "@/lib/supabase/queries/schema";
 import AuthPageLayout from "@/components/auth/AuthPageLayout";
 import PasswordStrength from "@/components/auth/PasswordStrength";
@@ -59,16 +59,6 @@ export default function AdvisorSignupClient() {
     }
 
     const normalizedEmail = normalizeEmail(email);
-    const validation = validateEmailDomain("advisor", normalizedEmail);
-
-    if (!validation.isValid) {
-      toaster.create({
-        title: validation.errorTitle!,
-        description: validation.errorDescription!,
-        type: "error",
-      });
-      return;
-    }
 
     setLoading(true);
 
@@ -223,16 +213,13 @@ export default function AdvisorSignupClient() {
 
         <Field label="Email">
           <Input
-            placeholder="your.name@uwp.edu"
+            placeholder="you@example.com"
             type="email"
             rounded="lg"
             size="lg"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
           />
-          <Text fontSize="xs" color="fg.muted" mt="1">
-            Use your advisor email ending in @uwp.edu.
-          </Text>
         </Field>
 
         <Field label="Password">
@@ -272,10 +259,10 @@ export default function AdvisorSignupClient() {
           size="lg"
           rounded="full"
           fontWeight="600"
-          bg="#1E3A5F"
+          bg="blue.800"
           color="white"
           _hover={{
-            bg: "#162d4a",
+            bg: "blue.900",
             transform: "translateY(-2px)",
             boxShadow: "0 8px 24px rgba(30,58,95,0.3)",
           }}
@@ -305,7 +292,7 @@ export default function AdvisorSignupClient() {
           <Link href="/signin">
             <Text
               as="span"
-              color="#3B82F6"
+              color="blue.500"
               cursor="pointer"
               fontWeight="600"
               _hover={{ textDecoration: "underline" }}

@@ -98,7 +98,13 @@ export const ColorPickerEyeDropper = React.forwardRef<
 >(function ColorPickerEyeDropper(props, ref) {
   return (
     <ChakraColorPicker.EyeDropperTrigger asChild>
-      <IconButton size="xs" variant="outline" ref={ref} {...props}>
+      <IconButton
+        size="xs"
+        variant="outline"
+        aria-label="Pick color from screen"
+        ref={ref}
+        {...props}
+      >
         <LuPipette />
       </IconButton>
     </ChakraColorPicker.EyeDropperTrigger>

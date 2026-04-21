@@ -10,7 +10,6 @@ import {
   Flex,
   Grid,
   HStack,
-  Icon,
   Input,
   Portal,
   Separator,
@@ -18,7 +17,13 @@ import {
   VStack,
 } from "@chakra-ui/react";
 import Link from "next/link";
-import { LuArrowLeft, LuPencil, LuPlus, LuSearch, LuTrash2 } from "react-icons/lu";
+import { LuPencil, LuPlus, LuSearch, LuTrash2 } from "react-icons/lu";
+
+import {
+  BreadcrumbCurrentLink,
+  BreadcrumbLink,
+  BreadcrumbRoot,
+} from "@/components/ui/breadcrumb";
 
 import { Field } from "@/components/ui/field";
 import { NativeSelectField, NativeSelectRoot } from "@/components/ui/native-select";
@@ -536,21 +541,15 @@ export default function ProgramAdminDetailClient({
     <Box className="mesh-gradient-subtle" minH="100vh">
       <Box maxW="7xl" mx="auto" px={{ base: "4", md: "6", lg: "8" }} py="8">
         <VStack align="stretch" gap="6">
-          <Link href="/admin/programs">
-            <HStack
-              gap="1"
-              color="fg.muted"
-              _hover={{ color: "fg" }}
-              transition="color 0.15s"
-              display="inline-flex"
-              fontSize="sm"
-            >
-              <Icon boxSize="4">
-                <LuArrowLeft />
-              </Icon>
-              <Text>Back to Programs</Text>
-            </HStack>
-          </Link>
+          <BreadcrumbRoot size="sm">
+            <BreadcrumbLink asChild>
+              <Link href="/admin">Admin</Link>
+            </BreadcrumbLink>
+            <BreadcrumbLink asChild>
+              <Link href="/admin/programs">Programs</Link>
+            </BreadcrumbLink>
+            <BreadcrumbCurrentLink>{program.name}</BreadcrumbCurrentLink>
+          </BreadcrumbRoot>
 
           <Card.Root bg="bg" borderRadius="xl" borderWidth="1px" borderColor="border.subtle">
             <Card.Body p="6">

@@ -11,6 +11,10 @@ import {
   Badge,
   Icon,
   Steps,
+  Spinner,
+  Flex,
+  Progress,
+  HStack,
 } from "@chakra-ui/react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { LuTarget, LuBookOpen, LuClipboardCheck, LuSparkles } from "react-icons/lu";
@@ -41,16 +45,31 @@ const steps = [
   { title: "Review", description: "Confirm selections", icon: LuClipboardCheck },
 ];
 
+const ONBOARDING_DRAFT_KEY = "gradtracker:onboarding-draft";
+const INITIAL_STATE: OnboardingState = {
+  currentStep: 0,
+  selectedMajor: null,
+  selectedCertificates: [],
+  selectedClasses: [],
+  expectedGradSemester: null,
+  expectedGradYear: null,
+};
+
+function getErrorMessage(error: unknown): string {
+  if (error instanceof Error && error.message) return error.message;
+  if (typeof error === "string" && error.trim().length > 0) return error;
+  if (error && typeof error === "object") {
+    const maybeMessage = (error as { message?: unknown }).message;
+    if (typeof maybeMessage === "string" && maybeMessage.trim().length > 0) {
+      return maybeMessage;
+    }
+  }
+  return "Please try again.";
+}
+
 export default function OnboardingWizard() {
   const router = useRouter();
-  const [state, setState] = useState<OnboardingState>({
-    currentStep: 0,
-    selectedMajor: null,
-    selectedCertificates: [],
-    selectedClasses: [],
-    expectedGradSemester: null,
-    expectedGradYear: null,
-  });
+  const [state, setState] = useState<OnboardingState>(INITIAL_STATE);
 
   // Data fetched from Supabase
   const [majors, setMajors] = useState<Program[]>([]);
@@ -63,6 +82,48 @@ export default function OnboardingWizard() {
   const [loadingCertificates, setLoadingCertificates] = useState(false);
   const [loadingRequirements, setLoadingRequirements] = useState(false);
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    try {
+      const savedDraft = window.localStorage.getItem(ONBOARDING_DRAFT_KEY);
+      if (!savedDraft) return;
+
+      const parsed = JSON.parse(savedDraft) as Partial<OnboardingState>;
+      setState((prev) => ({
+        ...prev,
+        currentStep:
+          typeof parsed.currentStep === "number" &&
+          parsed.currentStep >= 0 &&
+          parsed.currentStep < steps.length
+            ? parsed.currentStep
+            : prev.currentStep,
+        selectedMajor:
+          typeof parsed.selectedMajor === "number" || parsed.selectedMajor === null
+            ? (parsed.selectedMajor ?? null)
+            : prev.selectedMajor,
+        selectedCertificates: Array.isArray(parsed.selectedCertificates)
+          ? parsed.selectedCertificates.filter((value): value is number => typeof value === "number")
+          : prev.selectedCertificates,
+        selectedClasses: Array.isArray(parsed.selectedClasses)
+          ? parsed.selectedClasses.filter((value): value is number => typeof value === "number")
+          : prev.selectedClasses,
+        expectedGradSemester:
+          typeof parsed.expectedGradSemester === "string" || parsed.expectedGradSemester === null
+            ? (parsed.expectedGradSemester ?? null)
+            : prev.expectedGradSemester,
+        expectedGradYear:
+          typeof parsed.expectedGradYear === "number" || parsed.expectedGradYear === null
+            ? (parsed.expectedGradYear ?? null)
+            : prev.expectedGradYear,
+      }));
+    } catch {
+      window.localStorage.removeItem(ONBOARDING_DRAFT_KEY);
+    }
+  }, []);
+
+  useEffect(() => {
+    window.localStorage.setItem(ONBOARDING_DRAFT_KEY, JSON.stringify(state));
+  }, [state]);
 
   // Fetch majors on mount
   useEffect(() => {
@@ -229,13 +290,14 @@ export default function OnboardingWizard() {
         description: "Your graduation tracker is ready.",
       });
 
+      window.localStorage.removeItem(ONBOARDING_DRAFT_KEY);
       router.push("/dashboard");
     } catch (err) {
       console.error("Failed to save onboarding selections:", err);
 
       toaster.error({
         title: "Failed to save selections",
-        description: "Please try again.",
+        description: getErrorMessage(err),
       });
     } finally {
       setSaving(false);
@@ -270,6 +332,8 @@ export default function OnboardingWizard() {
   const selectedCertificatesData = certificates.filter((c) =>
     state.selectedCertificates.includes(c.id)
   );
+  const currentStepData = steps[state.currentStep];
+  const progressValue = ((state.currentStep + 1) / steps.length) * 100;
 
   return (
     <Box minH="100vh" bg="bg" fontFamily="'Plus Jakarta Sans', sans-serif">
@@ -304,8 +368,61 @@ export default function OnboardingWizard() {
             </Text>
           </VStack>
 
+          <Box
+            className="animate-fade-up-delay-1"
+            bg="bg"
+            borderWidth="1px"
+            borderColor="border.subtle"
+            borderRadius="2xl"
+            p={{ base: "4", md: "5" }}
+          >
+            <VStack gap="4" align="stretch">
+              <Flex
+                direction={{ base: "column", md: "row" }}
+                justify="space-between"
+                align={{ base: "start", md: "center" }}
+                gap="3"
+              >
+                <Box>
+                  <Text fontSize="sm" color="fg.muted" fontWeight="600">
+                    Step {state.currentStep + 1} of {steps.length}
+                  </Text>
+                  <Heading size="md" fontWeight="600" mt="1">
+                    {currentStepData.title}
+                  </Heading>
+                  <Text fontSize="sm" color="fg.muted" mt="1">
+                    {currentStepData.description}
+                  </Text>
+                </Box>
+                <Badge colorPalette="blue" variant="subtle" size="lg" alignSelf={{ base: "start", md: "auto" }}>
+                  Draft saved automatically
+                </Badge>
+              </Flex>
+              <Progress.Root value={progressValue} colorPalette="blue" size="sm" borderRadius="full">
+                <Progress.Track borderRadius="full">
+                  <Progress.Range borderRadius="full" />
+                </Progress.Track>
+              </Progress.Root>
+              <HStack gap="2" flexWrap="wrap">
+                {steps.map((step, index) => {
+                  const status =
+                    index < state.currentStep ? "Complete" : index === state.currentStep ? "Current" : "Up next";
+                  return (
+                    <Badge
+                      key={step.title}
+                      colorPalette={index === state.currentStep ? "blue" : index < state.currentStep ? "green" : "gray"}
+                      variant={index === state.currentStep ? "solid" : "subtle"}
+                    >
+                      {step.title}: {status}
+                    </Badge>
+                  );
+                })}
+              </HStack>
+            </VStack>
+          </Box>
+
           {/* Steps Component */}
-          <Box className="animate-fade-up-delay-1">
+          <Box className="animate-fade-up-delay-2">
             <Steps.Root
               step={state.currentStep}
               onStepChange={handleStepChange}

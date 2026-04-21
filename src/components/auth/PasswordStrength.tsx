@@ -18,12 +18,12 @@ function getStrength(password: string) {
     score <= 2 ? "Weak" : score <= 3 ? "Fair" : score <= 4 ? "Good" : "Strong";
   const color =
     score <= 2
-      ? "red.500"
+      ? "red.600"
       : score <= 3
-        ? "orange.400"
+        ? "orange.600"
         : score <= 4
-          ? "blue.400"
-          : "green.500";
+          ? "blue.600"
+          : "green.600";
   return { results, score, level, color };
 }
 
@@ -63,7 +63,7 @@ export default function PasswordStrength({
               w="1.5"
               h="1.5"
               borderRadius="full"
-              bg={check.met ? "green.500" : "border"}
+              bg={check.met ? "green.600" : "border"}
               transition="background 0.2s"
             />
             <Text

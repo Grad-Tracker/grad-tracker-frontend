@@ -1,0 +1,6 @@
+{
+  "compute_usd_per_second": 0.00003,
+  "egress_usd_per_gb": 0.09,
+  "request_usd_per_1000": 0.0,
+  "notes": "Replace these with your Supabase billing rates from dashboard."
+}

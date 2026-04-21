@@ -93,7 +93,7 @@ function fillForm(
     });
   }
   if (opts.email) {
-    fireEvent.change(screen.getByPlaceholderText("your.name@uwp.edu"), {
+    fireEvent.change(screen.getByPlaceholderText("you@example.com"), {
       target: { value: opts.email },
     });
   }
@@ -166,18 +166,11 @@ describe("AdvisorSignupClient", () => {
     ).toBeGreaterThanOrEqual(1);
   });
 
-  it("renders the advisor email placeholder", () => {
+  it("renders the email placeholder", () => {
     renderWithChakra(<AdvisorSignupClient />);
     expect(
-      screen.getByPlaceholderText("your.name@uwp.edu")
+      screen.getByPlaceholderText("you@example.com")
     ).toBeInTheDocument();
-  });
-
-  it("renders the advisor email helper text", () => {
-    renderWithChakra(<AdvisorSignupClient />);
-    expect(
-      screen.getAllByText("Use your advisor email ending in @uwp.edu.").length
-    ).toBeGreaterThanOrEqual(1);
   });
 
   it("renders the campus image", () => {
@@ -299,52 +292,6 @@ describe("AdvisorSignupClient", () => {
     expect(mockToaster.create).toHaveBeenCalledWith(
       expect.objectContaining({ title: "Password too short" })
     );
-  });
-
-  it("blocks rangers email addresses before signup", async () => {
-    renderWithChakra(<AdvisorSignupClient />);
-    fillForm({
-      first: "Ada",
-      last: "Lovelace",
-      email: "ada@rangers.uwp.edu",
-      pw: "password123",
-      confirm: "password123",
-    });
-
-    await act(async () => {
-      clickCreateAccount();
-    });
-
-    expect(mockToaster.create).toHaveBeenCalledWith(
-      expect.objectContaining({
-        title: "Invalid email domain",
-        description: "Advisor sign up requires a @uwp.edu email address.",
-      })
-    );
-    expect(mockSignUp).not.toHaveBeenCalled();
-  });
-
-  it("blocks non-uwp email addresses before signup", async () => {
-    renderWithChakra(<AdvisorSignupClient />);
-    fillForm({
-      first: "Ada",
-      last: "Lovelace",
-      email: "ada@gmail.com",
-      pw: "password123",
-      confirm: "password123",
-    });
-
-    await act(async () => {
-      clickCreateAccount();
-    });
-
-    expect(mockToaster.create).toHaveBeenCalledWith(
-      expect.objectContaining({
-        title: "Invalid email domain",
-        description: "Advisor sign up requires a @uwp.edu email address.",
-      })
-    );
-    expect(mockSignUp).not.toHaveBeenCalled();
   });
 
   /* ===== Successful signup ===== */

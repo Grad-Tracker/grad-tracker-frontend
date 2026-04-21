@@ -36,50 +36,19 @@ export default function LandingPage() {
       fontFamily="var(--font-dm-sans), sans-serif"
       position="relative"
     >
-      {/* ===== HERO — Campus photo background ===== */}
       <Box
-        position="relative"
-        minH={{ base: "600px", md: "700px", lg: "90vh" }}
-        display="flex"
-        flexDirection="column"
-        alignItems="center"
-        justifyContent="center"
-        textAlign="center"
-        px={{ base: "6", md: "12" }}
-        py={{ base: "20", md: "24" }}
-        overflow="hidden"
+        as="header"
+        position="absolute"
+        top="0"
+        left="0"
+        right="0"
+        zIndex="10"
       >
-        {/* Campus background image */}
-        <Image
-          src="/landing/Parkside_Hero.jpg"
-          alt="UW-Parkside Campus aerial view"
-          fill
-          style={{ objectFit: "cover", objectPosition: "center" }}
-          priority
-
-        />
-
-        {/* Dark overlay */}
-        <Box
-          position="absolute"
-          inset="0"
-          zIndex="1"
-          style={{
-            background: "linear-gradient(to bottom, rgba(15,23,42,0.5) 0%, rgba(15,23,42,0.6) 40%, rgba(15,23,42,0.8) 100%)",
-          }}
-        />
-
-        {/* Floating top bar: logo + sign in */}
         <Flex
-          position="absolute"
-          top="0"
-          left="0"
-          right="0"
           justify="space-between"
           align="center"
           px={{ base: "6", md: "12" }}
           py="5"
-          zIndex="10"
         >
           <HStack gap="3">
             <Flex
@@ -114,9 +83,43 @@ export default function LandingPage() {
             Sign In
           </LinkButton>
         </Flex>
+      </Box>
 
-        {/* Hero content */}
-        <VStack gap="7" position="relative" zIndex="2" maxW="700px">
+      <Box>
+        {/* ===== HERO — Campus photo background ===== */}
+        <Box
+          position="relative"
+          minH={{ base: "600px", md: "700px", lg: "90vh" }}
+          display="flex"
+          flexDirection="column"
+          alignItems="center"
+          justifyContent="center"
+          textAlign="center"
+          px={{ base: "6", md: "12" }}
+          py={{ base: "20", md: "24" }}
+          overflow="hidden"
+        >
+          {/* Campus background image */}
+          <Image
+            src="/landing/Parkside_Hero.jpg"
+            alt="UW-Parkside Campus aerial view"
+            fill
+            style={{ objectFit: "cover", objectPosition: "center" }}
+            priority
+          />
+
+          {/* Dark overlay */}
+          <Box
+            position="absolute"
+            inset="0"
+            zIndex="1"
+            style={{
+              background: "linear-gradient(to bottom, rgba(15,23,42,0.5) 0%, rgba(15,23,42,0.6) 40%, rgba(15,23,42,0.8) 100%)",
+            }}
+          />
+
+          {/* Hero content */}
+          <VStack gap="7" position="relative" zIndex="2" maxW="700px">
           {/* Headline */}
           <Heading
             fontFamily="var(--font-dm-sans), sans-serif"
@@ -132,11 +135,11 @@ export default function LandingPage() {
             <br />
             <Text
               as="span"
-              style={{
-                background: "linear-gradient(135deg, #93C5FD, #C4B5FD)",
-                WebkitBackgroundClip: "text",
-                WebkitTextFillColor: "transparent",
-              }}
+              bgGradient="to-r"
+              gradientFrom="blue.200"
+              gradientTo="purple.200"
+              backgroundClip="text"
+              color="transparent"
             >
               Your future.
             </Text>
@@ -159,7 +162,7 @@ export default function LandingPage() {
               <Button
                 size="lg"
                 bg="white"
-                color="#1E3A5F"
+                color="blue.800"
                 rounded="full"
                 px="8"
                 fontWeight="600"
@@ -243,18 +246,18 @@ export default function LandingPage() {
         >
           UW-Parkside Campus
         </Text>
-      </Box>
+        </Box>
 
-      {/* ===== PRODUCT SCREENSHOT — overlaps hero ===== */}
-      <Box position="relative" zIndex="3">
-      <FadeIn>
-      <Box
-        px={{ base: "4", md: "12" }}
-        mt={{ base: "-8", md: "-12" }}
-        textAlign="center"
-        maxW="960px"
-        mx="auto"
-      >
+        {/* ===== PRODUCT SCREENSHOT — overlaps hero ===== */}
+        <Box position="relative" zIndex="3">
+        <FadeIn>
+        <Box
+          px={{ base: "4", md: "12" }}
+          mt={{ base: "-8", md: "-12" }}
+          textAlign="center"
+          maxW="960px"
+          mx="auto"
+        >
           <Box
             borderRadius="xl"
             borderWidth="1px"
@@ -302,12 +305,12 @@ export default function LandingPage() {
               style={{ width: "100%", height: "auto", display: "block" }}
             />
           </Box>
-      </Box>
-      </FadeIn>
-      </Box>
+        </Box>
+        </FadeIn>
+        </Box>
 
-      {/* ===== HOW IT WORKS ===== */}
-      <Box id="how-it-works" py={{ base: "16", md: "24" }} scrollMarginTop="4">
+        {/* ===== HOW IT WORKS ===== */}
+        <Box id="how-it-works" py={{ base: "16", md: "24" }} scrollMarginTop="4">
         <Container maxW="960px" mx="auto" px={{ base: "4", md: "6" }}>
           <FadeIn>
           <VStack gap="3" textAlign="center" mb={{ base: "12", md: "16" }}>
@@ -344,10 +347,10 @@ export default function LandingPage() {
               left="calc(16.67% + 20px)"
               right="calc(16.67% + 20px)"
               h="2px"
-              style={{
-                background: "linear-gradient(90deg, #3B82F6, #8B5CF6)",
-                opacity: 0.2,
-              }}
+              bgGradient="to-r"
+              gradientFrom="blue.500"
+              gradientTo="purple.500"
+              opacity={0.2}
             />
 
             {[
@@ -356,21 +359,21 @@ export default function LandingPage() {
                 step: "01",
                 title: "Create your account",
                 desc: "Sign up free with your Parkside email. Takes less than a minute.",
-                color: "#3B82F6",
+                color: "blue.500",
               },
               {
                 icon: LuMousePointerClick,
                 step: "02",
                 title: "Select your program",
                 desc: "Choose your major, minor, or certificates from 40+ Parkside programs.",
-                color: "#6366F1",
+                color: "purple.500",
               },
               {
                 icon: LuTrendingUp,
                 step: "03",
                 title: "Track your progress",
                 desc: "See exactly where you stand and what you need to graduate on time.",
-                color: "#8B5CF6",
+                color: "purple.600",
               },
             ].map((item, i) => (
               <FadeIn key={item.step} delay={i * 0.12}>
@@ -415,10 +418,10 @@ export default function LandingPage() {
             ))}
           </Grid>
         </Container>
-      </Box>
+        </Box>
 
-      {/* ===== FEATURES — Bento Grid ===== */}
-      <Box py={{ base: "10", md: "20" }} borderTopWidth="1px" borderColor="border.subtle">
+        {/* ===== FEATURES — Bento Grid ===== */}
+        <Box py={{ base: "10", md: "20" }} borderTopWidth="1px" borderColor="border.subtle">
         <Container maxW="960px" mx="auto" px={{ base: "4", md: "6" }}>
           <FadeIn>
           <VStack gap="3" textAlign="center" mb={{ base: "10", md: "14" }}>
@@ -454,7 +457,7 @@ export default function LandingPage() {
             {/* 1. Semester Planner — wide */}
             <BentoCard
               icon={LuCalendarRange}
-              iconColor="#3B82F6"
+              iconColor="blue.500"
               title="Semester Planner"
               description="Build your path to graduation semester by semester. Drag courses, track credits, and see your degree progress update in real time."
               wide
@@ -468,7 +471,7 @@ export default function LandingPage() {
             {/* 2. Course Catalog */}
             <BentoCard
               icon={LuBookOpen}
-              iconColor="#6366F1"
+              iconColor="purple.500"
               title="Course Catalog"
               description="Browse 2,200+ courses with credits, prerequisites, and requirement mapping."
             >
@@ -481,7 +484,7 @@ export default function LandingPage() {
             {/* 3. Requirement Breakdown */}
             <BentoCard
               icon={LuLayoutGrid}
-              iconColor="#8B5CF6"
+              iconColor="purple.600"
               title="Requirement Breakdown"
               description="Every gen-ed bucket and major block mapped to your program — 106+ programs tracked."
             >
@@ -494,7 +497,7 @@ export default function LandingPage() {
             {/* 4. AI Advisor — wide */}
             <BentoCard
               icon={LuSparkles}
-              iconColor="#EC4899"
+              iconColor="pink.500"
               title="AI Academic Advisor"
               description="Get instant, personalized guidance. Knows your progress, your requirements, and your program."
               wide
@@ -515,10 +518,8 @@ export default function LandingPage() {
                   left="0"
                   right="0"
                   h="1px"
-                  style={{
-                    background: "linear-gradient(90deg, transparent, #EC4899, #8B5CF6, transparent)",
-                    opacity: 0.4,
-                  }}
+                  bgImage="linear-gradient(to-r, var(--chakra-colors-transparent), var(--chakra-colors-pink-500), var(--chakra-colors-purple-600), var(--chakra-colors-transparent))"
+                  opacity={0.4}
                 />
                 <VStack
                   gap="3"
@@ -533,7 +534,7 @@ export default function LandingPage() {
                         w="7"
                         h="7"
                         borderRadius="full"
-                        bg="#1E3A5F"
+                        bg="blue.800"
                         color="white"
                         fontWeight="600"
                         fontSize="2xs"
@@ -544,7 +545,7 @@ export default function LandingPage() {
                         JM
                       </Flex>
                       <Box
-                        bg="#1E3A5F"
+                        bg="blue.800"
                         color="white"
                         px="3.5"
                         py="2.5"
@@ -564,9 +565,9 @@ export default function LandingPage() {
                       w="7"
                       h="7"
                       borderRadius="full"
-                      style={{
-                        background: "linear-gradient(135deg, #EC4899, #8B5CF6)",
-                      }}
+                      bgGradient="to-br"
+                      gradientFrom="pink.500"
+                      gradientTo="purple.600"
                       color="white"
                       fontSize="sm"
                       align="center"
@@ -604,15 +605,116 @@ export default function LandingPage() {
           </Grid>
           </FadeIn>
         </Container>
+        </Box>
+
+        {/* ===== CTA ===== */}
+        <Box
+          position="relative"
+          overflow="hidden"
+          style={{
+            background: "linear-gradient(to bottom, #0F172A 0%, #0B1120 100%)",
+          }}
+        >
+          {/* Background glow */}
+          <Box
+            position="absolute"
+            top="-200px"
+            left="50%"
+            transform="translateX(-50%)"
+            w="800px"
+            h="600px"
+            borderRadius="full"
+            style={{
+              background: "radial-gradient(circle, rgba(59,130,246,0.15) 0%, rgba(139,92,246,0.08) 40%, transparent 70%)",
+            }}
+            pointerEvents="none"
+          />
+          {/* Grid pattern overlay */}
+          <Box
+            position="absolute"
+            inset="0"
+            opacity="0.03"
+            style={{
+              backgroundImage: "linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)",
+              backgroundSize: "40px 40px",
+            }}
+            pointerEvents="none"
+          />
+
+          <Box
+            py={{ base: "20", md: "28" }}
+            textAlign="center"
+            position="relative"
+          >
+            <FadeIn>
+            <Container maxW="lg" mx="auto">
+              <VStack gap="6">
+                <Heading
+                  fontFamily="var(--font-dm-sans), sans-serif"
+                  fontSize={{ base: "3xl", md: "5xl" }}
+                  fontWeight="400"
+                  letterSpacing="-0.03em"
+                  lineHeight="1.1"
+                  color="white"
+                >
+                  Your graduation roadmap
+                  <br />
+                  <Text
+                    as="span"
+                    style={{
+                      background: "linear-gradient(135deg, #93C5FD, #C4B5FD)",
+                      WebkitBackgroundClip: "text",
+                      WebkitTextFillColor: "transparent",
+                    }}
+                  >
+                    starts here
+                  </Text>
+                </Heading>
+                <Text
+                  fontSize="md"
+                  color="whiteAlpha.600"
+                  lineHeight="1.6"
+                  maxW="420px"
+                >
+                  Free for all UW-Parkside students. Set up in under 2 minutes.
+                  No credit card required.
+                </Text>
+                <Link href="/signup">
+                  <Button
+                    size="lg"
+                    bg="white"
+                    color="#0F172A"
+                    rounded="full"
+                    px="10"
+                    fontWeight="600"
+                    fontSize="md"
+                    _hover={{
+                      bg: "whiteAlpha.900",
+                      transform: "translateY(-2px)",
+                      boxShadow: "0 8px 30px rgba(255,255,255,0.15)",
+                    }}
+                    transition="all 0.2s"
+                  >
+                    Get Started Free
+                    <Icon ml="2">
+                      <LuArrowRight />
+                    </Icon>
+                  </Button>
+                </Link>
+              </VStack>
+            </Container>
+            </FadeIn>
+          </Box>
+        </Box>
       </Box>
 
-      {/* ===== CTA + FOOTER — single dark section ===== */}
+      {/* ===== FOOTER ===== */}
       <Box
         position="relative"
         overflow="hidden"
-        style={{
-          background: "linear-gradient(to bottom, #0F172A 0%, #0B1120 100%)",
-        }}
+        bgGradient="to-b"
+        gradientFrom="gray.900"
+        gradientTo="gray.950"
       >
         {/* Background glow */}
         <Box
@@ -639,72 +741,6 @@ export default function LandingPage() {
           }}
           pointerEvents="none"
         />
-
-        {/* CTA */}
-        <Box
-          py={{ base: "20", md: "28" }}
-          textAlign="center"
-          position="relative"
-        >
-          <FadeIn>
-          <Container maxW="lg" mx="auto">
-            <VStack gap="6">
-              <Heading
-                fontFamily="var(--font-dm-sans), sans-serif"
-                fontSize={{ base: "3xl", md: "5xl" }}
-                fontWeight="400"
-                letterSpacing="-0.03em"
-                lineHeight="1.1"
-                color="white"
-              >
-                Your graduation roadmap
-                <br />
-                <Text
-                  as="span"
-                  style={{
-                    background: "linear-gradient(135deg, #93C5FD, #C4B5FD)",
-                    WebkitBackgroundClip: "text",
-                    WebkitTextFillColor: "transparent",
-                  }}
-                >
-                  starts here
-                </Text>
-              </Heading>
-              <Text
-                fontSize="md"
-                color="whiteAlpha.600"
-                lineHeight="1.6"
-                maxW="420px"
-              >
-                Free for all UW-Parkside students. Set up in under 2 minutes.
-                No credit card required.
-              </Text>
-              <Link href="/signup">
-                <Button
-                  size="lg"
-                  bg="white"
-                  color="#0F172A"
-                  rounded="full"
-                  px="10"
-                  fontWeight="600"
-                  fontSize="md"
-                  _hover={{
-                    bg: "whiteAlpha.900",
-                    transform: "translateY(-2px)",
-                    boxShadow: "0 8px 30px rgba(255,255,255,0.15)",
-                  }}
-                  transition="all 0.2s"
-                >
-                  Get Started Free
-                  <Icon ml="2">
-                    <LuArrowRight />
-                  </Icon>
-                </Button>
-              </Link>
-            </VStack>
-          </Container>
-          </FadeIn>
-        </Box>
 
         {/* Footer */}
         <Box

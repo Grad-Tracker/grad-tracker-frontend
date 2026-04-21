@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import type * as React from "react";
 import {
   Box,
   Badge,
@@ -44,6 +45,17 @@ interface PlanCardProps {
   onDelete: (planId: number) => void;
   canDelete: boolean;
   index: number;
+  canEdit?: boolean;
+}
+
+function handleKeyboardActivate(
+  e: React.KeyboardEvent,
+  onActivate: () => void
+) {
+  if (e.key === "Enter" || e.key === " ") {
+    e.preventDefault();
+    onActivate();
+  }
 }
 
 export default function PlanCard({
@@ -53,6 +65,7 @@ export default function PlanCard({
   onDelete,
   canDelete,
   index,
+  canEdit = true,
 }: PlanCardProps) {
   const [isRenaming, setIsRenaming] = useState(false);
   const [renameValue, setRenameValue] = useState(plan.name);
@@ -98,10 +111,7 @@ export default function PlanCard({
       }}
       onKeyDown={(e) => {
         if (isRenaming) return;
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          onOpen(plan.id);
-        }
+        handleKeyboardActivate(e, () => onOpen(plan.id));
       }}
       style={{
         animationDelay: `${index * 80}ms`,
@@ -176,50 +186,52 @@ export default function PlanCard({
             )}
           </Box>
 
-          <MenuRoot positioning={{ placement: "bottom-end" }}>
-            <MenuTrigger asChild>
-              <IconButton
-                aria-label="Plan options"
-                size="xs"
-                variant="ghost"
-                color="fg.muted"
-                _hover={{ color: "fg", bg: "bg.subtle" }}
-                onClick={(e) => e.stopPropagation()}
-                opacity={isHovered ? 1 : 0}
-                transition="opacity 0.15s"
-                borderRadius="lg"
-              >
-                <LuEllipsisVertical />
-              </IconButton>
-            </MenuTrigger>
-            <MenuContent minW="140px" borderRadius="lg">
-              <MenuItem
-                value="rename"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setRenameValue(plan.name);
-                  setIsRenaming(true);
-                }}
-              >
-                <LuPencil />
-                Rename
-              </MenuItem>
-              {canDelete && (
+          {canEdit && (
+            <MenuRoot positioning={{ placement: "bottom-end" }}>
+              <MenuTrigger asChild>
+                <IconButton
+                  aria-label="Plan options"
+                  size="xs"
+                  variant="ghost"
+                  color="fg.muted"
+                  _hover={{ color: "fg", bg: "bg.subtle" }}
+                  onClick={(e) => e.stopPropagation()}
+                  opacity={isHovered ? 1 : 0}
+                  transition="opacity 0.15s"
+                  borderRadius="lg"
+                >
+                  <LuEllipsisVertical />
+                </IconButton>
+              </MenuTrigger>
+              <MenuContent minW="140px" borderRadius="lg">
                 <MenuItem
-                  value="delete"
-                  color="fg.error"
-                  _hover={{ bg: "red.subtle" }}
+                  value="rename"
                   onClick={(e) => {
                     e.stopPropagation();
-                    onDelete(plan.id);
+                    setRenameValue(plan.name);
+                    setIsRenaming(true);
                   }}
                 >
-                  <LuTrash2 />
-                  Delete
+                  <LuPencil />
+                  Rename
                 </MenuItem>
-              )}
-            </MenuContent>
-          </MenuRoot>
+                {canDelete && (
+                  <MenuItem
+                    value="delete"
+                    color="fg.error"
+                    _hover={{ bg: "red.subtle" }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onDelete(plan.id);
+                    }}
+                  >
+                    <LuTrash2 />
+                    Delete
+                  </MenuItem>
+                )}
+              </MenuContent>
+            </MenuRoot>
+          )}
         </Flex>
 
         {/* Program badges */}

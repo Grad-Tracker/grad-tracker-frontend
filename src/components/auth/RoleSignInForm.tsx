@@ -18,7 +18,7 @@ import { Field } from "@/components/ui/field";
 import { PasswordInput } from "@/components/ui/password-input";
 import { toaster } from "@/components/ui/toaster";
 import { createClient } from "@/lib/supabase/client";
-import { validateEmailDomain, normalizeEmail } from "@/lib/email-validation";
+import { normalizeEmail } from "@/lib/email-validation";
 import AuthPageLayout from "./AuthPageLayout";
 
 type Role = "student" | "advisor";
@@ -43,8 +43,8 @@ const roleContent: Record<
   student: {
     title: "Sign In",
     helper: "View your dashboard, requirements, and planner.",
-    emailPlaceholder: "your.name@rangers.uwp.edu",
-    emailHelper: "Use your Parkside student email ending in @rangers.uwp.edu.",
+    emailPlaceholder: "you@example.com",
+    emailHelper: "",
     postSignInHint: "You'll be taken to your student dashboard.",
     signupHref: "/signup",
     signupLabel: "Create student account",
@@ -52,8 +52,8 @@ const roleContent: Record<
   advisor: {
     title: "Sign In",
     helper: "Manage programs, Gen-Ed buckets, and course catalog.",
-    emailPlaceholder: "your.name@uwp.edu",
-    emailHelper: "Use your advisor email ending in @uwp.edu.",
+    emailPlaceholder: "you@example.com",
+    emailHelper: "",
     postSignInHint: "You'll be taken to the advisor console.",
     signupHref: "/admin/signup",
     signupLabel: "Create advisor account",
@@ -83,16 +83,6 @@ export default function RoleSignInForm({
     }
 
     const normalized = normalizeEmail(email);
-    const validation = validateEmailDomain(selectedRole, normalized);
-
-    if (!validation.isValid) {
-      toaster.create({
-        title: validation.errorTitle!,
-        description: validation.errorDescription!,
-        type: "error",
-      });
-      return;
-    }
 
     setLoading(true);
 
@@ -206,7 +196,7 @@ export default function RoleSignInForm({
               left="1"
               width="calc(50% - 0.25rem)"
               borderRadius="lg"
-              bg="#1E3A5F"
+              bg="blue.800"
               boxShadow="0 2px 8px rgba(30,58,95,0.3)"
               transform={
                 selectedRole === "student"
@@ -258,9 +248,11 @@ export default function RoleSignInForm({
               value={email}
               onChange={(e) => setEmail(e.target.value)}
             />
-            <Text fontSize="xs" color="fg.muted" mt="1">
-              {currentRole.emailHelper}
-            </Text>
+            {currentRole.emailHelper && (
+              <Text fontSize="xs" color="fg.muted" mt="1">
+                {currentRole.emailHelper}
+              </Text>
+            )}
           </Field>
 
           <Field label="Password">
@@ -277,7 +269,7 @@ export default function RoleSignInForm({
             <Link href="/forgot-password">
               <Text
                 fontSize="sm"
-                color="#3B82F6"
+                color="blue.500"
                 cursor="pointer"
                 fontWeight="600"
                 _hover={{ textDecoration: "underline" }}
@@ -293,10 +285,10 @@ export default function RoleSignInForm({
           size="lg"
           rounded="full"
           fontWeight="600"
-          bg="#1E3A5F"
+          bg="blue.800"
           color="white"
           _hover={{
-            bg: "#162d4a",
+            bg: "blue.900",
             transform: "translateY(-2px)",
             boxShadow: "0 8px 24px rgba(30,58,95,0.3)",
           }}
@@ -330,7 +322,7 @@ export default function RoleSignInForm({
           <Link href={currentRole.signupHref}>
             <Text
               as="span"
-              color="#3B82F6"
+              color="blue.500"
               cursor="pointer"
               fontWeight="600"
               _hover={{ textDecoration: "underline" }}

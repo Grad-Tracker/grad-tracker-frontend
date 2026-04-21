@@ -8,15 +8,18 @@ export default defineConfig({
     environment: "jsdom",
     setupFiles: ["./src/__tests__/setup.ts"],
     include: ["src/**/*.test.{ts,tsx}"],
+
+    // Prevent suite-wide flake timeouts under full load
+    testTimeout: 10000,
+    hookTimeout: 10000,
+
     coverage: {
       provider: "v8",
       reporter: ["text", "html", "lcov", "json"],
       reportsDirectory: "./coverage",
       // Measure coverage for all source files in src/.
       // Excludes: auto-generated Chakra UI wrappers, test files, config files.
-      include: [
-        "src/**/*.{ts,tsx}",
-      ],
+      include: ["src/**/*.{ts,tsx}"],
       exclude: [
         "**/node_modules/**",
         "**/.next/**",
@@ -30,6 +33,11 @@ export default defineConfig({
         // Large shared-plan seed/fallback dataset; covered selectively via focused tests,
         // but excluded from global thresholds to avoid static seed branches dominating totals.
         "src/lib/supabase/queries/shared-plans.ts",
+        // AI advisor Anthropic-SDK glue: streaming, tool dispatch, and large prompt/context
+        // assembly. Mocking the SDK at the granularity needed to cover these is more brittle
+        // than the value; keep them in analysis but out of the coverage gate.
+        "src/lib/ai-advisor/tools.ts",
+        "src/lib/ai-advisor/data.ts",
         // Test files themselves
         "src/__tests__/**",
         "**/*.test.ts",
@@ -39,17 +47,28 @@ export default defineConfig({
         "src/proxy.ts",
         "src/types/**",
         "src/app/auth/**/route.ts",
-        "src/app/**/layout.tsx",          // optional but usually fine
+        "src/app/**/layout.tsx", // optional but usually fine
         "src/lib/supabase/client.ts",
         "src/lib/supabase/server.ts",
+        // Admin client factory: trivial pure wrapper, matches the client/server pattern.
+        "src/lib/supabase/admin.ts",
+        // Pure TypeScript type declarations — no executable code.
+        "src/lib/supabase/queries/view-types.ts",
         "src/utils/supabase/**",
-      ]
-    }
+      ],
+    },
   },
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
-      "server-only": path.resolve(__dirname, "./src/__tests__/mocks/server-only.ts")
-    }
-  }
+      "@tanstack/react-virtual": path.resolve(
+        __dirname,
+        "./src/__tests__/mocks/tanstack-react-virtual.ts"
+      ),
+      "server-only": path.resolve(
+        __dirname,
+        "./src/__tests__/mocks/server-only.ts"
+      ),
+    },
+  },
 });

@@ -58,7 +58,7 @@ describe("AdminSigninPage", () => {
     mockSignInWithPassword.mockResolvedValue({ data: {}, error: null });
     renderWithChakra(<AdminSigninPage />);
 
-    fireEvent.change(screen.getByPlaceholderText("your.name@uwp.edu"), {
+    fireEvent.change(screen.getByPlaceholderText("you@example.com"), {
       target: { value: "advisor@uwp.edu" },
     });
     fireEvent.change(screen.getByTestId("password-input"), {

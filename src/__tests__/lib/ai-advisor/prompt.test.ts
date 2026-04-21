@@ -17,7 +17,7 @@ describe("AI advisor prompt", () => {
       hasCompletedOnboarding: true,
     });
 
-    expect(prompt).toContain("Use tools for factual claims");
+    expect(prompt).toContain("Use tools for all factual claims about student data.");
     expect(prompt).toContain("Never invent");
     expect(prompt).toContain("informational support only");
     expect(prompt).toContain("Alex Johnson");

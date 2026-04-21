@@ -10,6 +10,13 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
+    "majors:audit": "node scripts/majors/audit-majors.mjs",
+    "majors:link-fix": "node scripts/majors/fix-major-course-mappings.mjs",
+    "majors:verify": "node scripts/majors/verify-majors.mjs",
+    "courses:audit": "node scripts/courses/audit-courses.mjs",
+    "courses:link-audit": "node scripts/courses/audit-course-links.mjs",
+    "courses:link-fix": "node scripts/courses/fix-course-links.mjs",
+    "courses:sync": "node scripts/courses/sync-courses.mjs",
     "skills:sync": "node scripts/skills/sync-skills.mjs",
     "skills:validate": "node scripts/skills/validate-skills.mjs",
     "skills:check": "npm run skills:validate && node scripts/skills/sync-skills.mjs --check"
@@ -27,11 +34,13 @@
     "@tanstack/react-virtual": "^3.13.23",
     "@tiptap/pm": "^3.18.0",
     "@tiptap/react": "^3.18.0",
-    "next": "16.2.2",
+    "next": "^16.2.4",
     "next-themes": "^0.4.6",
     "react": "19.2.3",
     "react-dom": "19.2.3",
-    "react-icons": "^5.5.0"
+    "react-icons": "^5.5.0",
+    "react-markdown": "^10.1.0",
+    "remark-gfm": "^4.0.1"
   },
   "devDependencies": {
     "@testing-library/jest-dom": "^6.9.1",
