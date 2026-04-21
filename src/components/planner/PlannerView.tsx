@@ -48,8 +48,6 @@ import {
   removePlannedCourse,
   movePlannedCourse,
   fetchGenEdBucketsWithCourses,
-  fetchBreadthPackageId,
-  updateBreadthPackageId,
 } from "@/lib/supabase/queries/planner";
 import { DB_TABLES, PLANNED_COURSE_STATUS } from "@/lib/supabase/queries/schema";
 import { logStudentActivity } from "@/lib/supabase/queries/activity";
@@ -88,39 +86,6 @@ function isValidBreadthPackageId(value: string | null): value is string {
   return !!value && BREADTH_PACKAGE_IDS.has(value);
 }
 
-function getLegacyBreadthPackageFromStorage(studentId: number): string | null {
-  const directValue = localStorage.getItem(
-    `gradtracker:breadthPackage:${studentId}`
-  );
-  if (isValidBreadthPackageId(directValue)) return directValue;
-
-  const planScopedPrefix = `gradtracker:breadthPackage:${studentId}:`;
-  for (let i = 0; i < localStorage.length; i += 1) {
-    const key = localStorage.key(i);
-    if (!key?.startsWith(planScopedPrefix)) continue;
-    const value = localStorage.getItem(key);
-    if (isValidBreadthPackageId(value)) return value;
-  }
-
-  return null;
-}
-
-function clearLegacyBreadthPackageStorage(studentId: number): void {
-  localStorage.removeItem(`gradtracker:breadthPackage:${studentId}`);
-  const planScopedPrefix = `gradtracker:breadthPackage:${studentId}:`;
-  const keysToRemove: string[] = [];
-
-  for (let i = 0; i < localStorage.length; i += 1) {
-    const key = localStorage.key(i);
-    if (key?.startsWith(planScopedPrefix)) {
-      keysToRemove.push(key);
-    }
-  }
-
-  for (const key of keysToRemove) {
-    localStorage.removeItem(key);
-  }
-}
 
 function getCourseActivityLabel(course: Course): string {
   return `${course.subject} ${course.number}`;
@@ -175,21 +140,17 @@ export default function PlannerView({
   );
 
   const handleBreadthPackageSelect = useCallback(
-    async (packageId: string) => {
+    (packageId: string) => {
       if (!studentId || !canEdit) return;
-      try {
-        await updateBreadthPackageId(studentId, packageId);
-        setSelectedBreadthPackageId(packageId);
-      } catch (err) {
-        console.error("Failed to save breadth package:", err);
-        toaster.create({
-          title: "Failed to save breadth package",
-          description: "Please try again.",
-          type: "error",
-        });
+      setSelectedBreadthPackageId(packageId);
+      if (activePlanId) {
+        localStorage.setItem(
+          `gradtracker:breadthPackage:${studentId}:${activePlanId}`,
+          packageId
+        );
       }
     },
-    [studentId, canEdit]
+    [studentId, canEdit, activePlanId]
   );
 
   // Graduate track selection (persisted per plan)
@@ -336,14 +297,13 @@ export default function PlannerView({
           setSelectedTrackId(null);
         }
 
-        const [termsData, coursesData, blocksData, completedData, genEdData, breadthPackageId] =
+        const [termsData, coursesData, blocksData, completedData, genEdData] =
           await Promise.all([
-            fetchStudentTerms(sid, planId, signal),
-            fetchPlannedCourses(sid, planId, signal),
-            fetchAvailableCourses(sid, planId, signal),
-            fetchCompletedCourseIds(sid, signal),
+            fetchStudentTerms(sid, planId),
+            fetchPlannedCourses(sid, planId),
+            fetchAvailableCourses(sid, planId),
+            fetchCompletedCourseIds(sid),
             fetchGenEdBucketsWithCourses(),
-            graduate ? Promise.resolve<string | null>(null) : fetchBreadthPackageId(sid),
           ]);
 
         if (signal.aborted) return;
@@ -354,8 +314,11 @@ export default function PlannerView({
         setCompletedIds(completedData);
         setGenEdBuckets(genEdData);
         if (!graduate) {
+          const savedPkg = localStorage.getItem(
+            `gradtracker:breadthPackage:${sid}:${planId}`
+          );
           setSelectedBreadthPackageId(
-            isValidBreadthPackageId(breadthPackageId) ? breadthPackageId : null
+            savedPkg && isValidBreadthPackageId(savedPkg) ? savedPkg : null
           );
         }
       } catch (err) {
@@ -392,27 +355,7 @@ export default function PlannerView({
         const supabase = createClient();
 
         // Fetch plans (can fail — must be caught to avoid unhandled rejection)
-        const [initialPlans, dbBreadthPackageId] = await Promise.all([
-          fetchPlans(studentId),
-          fetchBreadthPackageId(studentId),
-        ]);
-
-        let selectedBreadthId = isValidBreadthPackageId(dbBreadthPackageId)
-          ? dbBreadthPackageId
-          : null;
-
-        if (!selectedBreadthId) {
-          const legacyBreadth = getLegacyBreadthPackageFromStorage(studentId);
-          if (legacyBreadth) {
-            await updateBreadthPackageId(studentId, legacyBreadth);
-            clearLegacyBreadthPackageStorage(studentId);
-            selectedBreadthId = legacyBreadth;
-          }
-        } else {
-          clearLegacyBreadthPackageStorage(studentId);
-        }
-
-        setSelectedBreadthPackageId(selectedBreadthId);
+        const initialPlans = await fetchPlans(studentId);
 
         let plansData: PlanWithMeta[] = initialPlans;
 
@@ -695,8 +638,7 @@ export default function PlannerView({
           studentId,
           termId,
           course.id,
-          activePlanId,
-          getCourseActivityLabel(course)
+          activePlanId
         );
         setPlannedCourses((prev) =>
           prev.filter(
@@ -780,8 +722,7 @@ export default function PlannerView({
             course.id,
             fromTermId,
             toTermId,
-            activePlanId,
-            getCourseActivityLabel(course)
+            activePlanId
           );
         } catch (err: any) {
           setPlannedCourses(prevPlannedCourses);
