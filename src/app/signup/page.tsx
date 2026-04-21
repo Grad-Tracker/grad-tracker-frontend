@@ -17,7 +17,7 @@ import { LuArrowRight, LuLoader } from "react-icons/lu";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { validateEmailDomain, normalizeEmail } from "@/lib/email-validation";
+import { isStudentEmail, normalizeEmail } from "@/lib/email-validation";
 import AuthPageLayout from "@/components/auth/AuthPageLayout";
 import PasswordStrength from "@/components/auth/PasswordStrength";
 
@@ -122,12 +122,11 @@ export default function SignupPage() {
     }
 
     const normalized = normalizeEmail(email);
-    const validation = validateEmailDomain("student", normalized);
 
-    if (!validation.isValid) {
+    if (!isStudentEmail(normalized)) {
       toaster.create({
-        title: validation.errorTitle!,
-        description: validation.errorDescription!,
+        title: "Invalid email domain",
+        description: "Student sign up requires a @rangers.uwp.edu email address.",
         type: "error",
       });
       return;
@@ -224,7 +223,7 @@ export default function SignupPage() {
 
         <Field label="Email">
           <Input
-            placeholder="your.name@rangers.uwp.edu"
+            placeholder="you@example.com"
             type="email"
             rounded="lg"
             size="lg"
@@ -255,7 +254,7 @@ export default function SignupPage() {
           {confirmPassword.length > 0 && (
             <Text
               fontSize="xs"
-              color={password === confirmPassword ? "green.500" : "red.500"}
+              color={password === confirmPassword ? "green.600" : "red.600"}
               mt="1"
             >
               {password === confirmPassword
@@ -270,10 +269,10 @@ export default function SignupPage() {
           size="lg"
           rounded="full"
           fontWeight="600"
-          bg="#1E3A5F"
+          bg="blue.800"
           color="white"
           _hover={{
-            bg: "#162d4a",
+            bg: "blue.900",
             transform: "translateY(-2px)",
             boxShadow: "0 8px 24px rgba(30,58,95,0.3)",
           }}
@@ -303,7 +302,7 @@ export default function SignupPage() {
           <Link href="/signin">
             <Text
               as="span"
-              color="#3B82F6"
+              color="blue.500"
               cursor="pointer"
               fontWeight="600"
               _hover={{ textDecoration: "underline" }}
@@ -321,7 +320,7 @@ export default function SignupPage() {
             <Button
               variant="ghost"
               size="sm"
-              color="#3B82F6"
+              color="blue.500"
               fontWeight="600"
               onClick={() => setAdvisorPanelOpen(true)}
             >
@@ -373,11 +372,11 @@ export default function SignupPage() {
               />
               <Button
                 size="sm"
-                bg="#1E3A5F"
+                bg="blue.800"
                 color="white"
                 rounded="lg"
                 fontWeight="600"
-                _hover={{ bg: "#162d4a" }}
+                _hover={{ bg: "blue.900" }}
                 onClick={handleAdvisorAccessContinue}
               >
                 Continue

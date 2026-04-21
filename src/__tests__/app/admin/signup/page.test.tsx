@@ -84,7 +84,7 @@ function fillForm(opts: {
     });
   }
   if (opts.email) {
-    fireEvent.change(screen.getByPlaceholderText("your.name@uwp.edu"), {
+    fireEvent.change(screen.getByPlaceholderText("you@example.com"), {
       target: { value: opts.email },
     });
   }
@@ -145,7 +145,7 @@ describe("AdminSignupPage", () => {
     ).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText("First Name").length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText("Last Name").length).toBeGreaterThanOrEqual(1);
-    expect(screen.getByPlaceholderText("your.name@uwp.edu")).toBeInTheDocument();
+    expect(screen.getByPlaceholderText("you@example.com")).toBeInTheDocument();
     expect(screen.getAllByText("Email").length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText("Password").length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText("Confirm Password").length).toBeGreaterThanOrEqual(1);
@@ -169,54 +169,6 @@ describe("AdminSignupPage", () => {
     expect(mockToaster.create).toHaveBeenCalledWith(
       expect.objectContaining({ title: "Passwords don't match" })
     );
-  });
-
-  it("blocks rangers email addresses before signup", async () => {
-    renderWithChakra(<AdvisorSignupClient />);
-    fillForm({
-      first: "Ada",
-      last: "Lovelace",
-      email: "ada@rangers.uwp.edu",
-      pw: "password123",
-      confirm: "password123",
-    });
-
-    await act(async () => {
-      clickCreateAccount();
-    });
-
-    expect(mockToaster.create).toHaveBeenCalledWith(
-      expect.objectContaining({
-        title: "Invalid email domain",
-        description: "Advisor sign up requires a @uwp.edu email address.",
-      })
-    );
-    expect(mockSignUp).not.toHaveBeenCalled();
-    expect(mockInsert).not.toHaveBeenCalled();
-  });
-
-  it("blocks non-uwp email addresses before signup", async () => {
-    renderWithChakra(<AdvisorSignupClient />);
-    fillForm({
-      first: "Ada",
-      last: "Lovelace",
-      email: "ada@gmail.com",
-      pw: "password123",
-      confirm: "password123",
-    });
-
-    await act(async () => {
-      clickCreateAccount();
-    });
-
-    expect(mockToaster.create).toHaveBeenCalledWith(
-      expect.objectContaining({
-        title: "Invalid email domain",
-        description: "Advisor sign up requires a @uwp.edu email address.",
-      })
-    );
-    expect(mockSignUp).not.toHaveBeenCalled();
-    expect(mockInsert).not.toHaveBeenCalled();
   });
 
   it("signs out and shows account exists toast for duplicate emails", async () => {

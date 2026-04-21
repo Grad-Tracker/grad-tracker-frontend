@@ -415,7 +415,7 @@ export function ChatInterface() {
         gap="2"
         flexShrink={0}
       >
-        <Box w="2" h="2" borderRadius="full" bg={loading ? "orange.500" : "green.500"} />
+        <Box w="2" h="2" borderRadius="full" bg={loading ? "orange.600" : "green.600"} />
         <Text fontSize="xs" fontWeight="600" color="fg.muted">
           {loading ? "Atlas is thinking..." : "Atlas is online"}
         </Text>
