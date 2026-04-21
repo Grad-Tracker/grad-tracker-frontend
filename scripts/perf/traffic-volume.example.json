@@ -1,0 +1,11 @@
+{
+  "flows": {
+    "requirements_index": 12000,
+    "requirements_detail": 8000,
+    "courses_catalog": 15000,
+    "planner_bundle": 18000,
+    "class_history_bundle": 9000,
+    "onboarding_bundle": 5000
+  },
+  "notes": "Optional override if log-derived per-flow volume is unavailable."
+}

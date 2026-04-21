@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import type * as React from "react";
 import {
   Badge,
   Box,
@@ -28,6 +29,16 @@ interface PlansHubProps {
   onCreatePlan: () => void;
   onRenamePlan: (planId: number, newName: string) => Promise<void>;
   onDeletePlan: (planId: number) => void;
+}
+
+function handleKeyboardActivate(
+  e: React.KeyboardEvent,
+  onActivate: () => void
+) {
+  if (e.key === "Enter" || e.key === " ") {
+    e.preventDefault();
+    onActivate();
+  }
 }
 
 export default function PlansHub({
@@ -258,12 +269,7 @@ export default function PlansHub({
               transform: "translateY(-2px)",
             }}
             onClick={onCreatePlan}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
-                onCreatePlan();
-              }
-            }}
+            onKeyDown={(e) => handleKeyboardActivate(e, onCreatePlan)}
             className="plan-card-enter"
             style={{ animationDelay: `${plans.length * 80}ms` }}
           >

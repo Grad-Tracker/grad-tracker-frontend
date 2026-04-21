@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState, type KeyboardEvent } from "react";
+import type * as React from "react";
 import { useRouter } from "next/navigation";
 import {
   Avatar,
@@ -77,6 +78,16 @@ const navItems = [
 interface CoursesClientProps {
   initialCourses: Course[];
   subjects: string[];
+}
+
+function handleKeyboardActivate(
+  e: React.KeyboardEvent,
+  onActivate: () => void
+) {
+  if (e.key === "Enter" || e.key === " ") {
+    e.preventDefault();
+    onActivate();
+  }
 }
 
 function getCourseActivityLabel(course: Course): string {
@@ -258,8 +269,7 @@ export default function CoursesClient({
         studentId,
         term.id,
         selectedCourse.id,
-        planId,
-        getCourseActivityLabel(selectedCourse)
+        planId
       );
       toaster.create({
         title: "Added to plan",
@@ -311,8 +321,7 @@ export default function CoursesClient({
         studentId,
         currentTerm.id,
         selectedCourse.id,
-        planId,
-        getCourseActivityLabel(selectedCourse)
+        planId
       );
       toaster.create({
         title: "Added to current semester",
@@ -333,10 +342,7 @@ export default function CoursesClient({
   };
 
   const handleCourseCardKeyDown = (event: KeyboardEvent<HTMLDivElement>, course: Course) => {
-    if (event.key === "Enter" || event.key === " ") {
-      event.preventDefault();
-      handleCourseClick(course);
-    }
+    handleKeyboardActivate(event, () => handleCourseClick(course));
   };
 
   const subjectCollection = useMemo(

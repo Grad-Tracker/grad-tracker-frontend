@@ -266,7 +266,7 @@ describe("CoursesClient", () => {
     fireEvent.click(findClickableAncestor(fallSemesterLabels[0]));
 
     await waitFor(() => {
-      expect(mockAddPlannedCourse).toHaveBeenCalledWith(1, 21, 1, 11, "CS 101");
+      expect(mockAddPlannedCourse).toHaveBeenCalledWith(1, 21, 1, 11);
       expect(mockToasterCreate).toHaveBeenCalledWith(
         expect.objectContaining({
           title: "Added to plan",
@@ -288,7 +288,7 @@ describe("CoursesClient", () => {
     fireEvent.click(addSemesterButton);
 
     await waitFor(() => {
-      expect(mockAddPlannedCourse).toHaveBeenCalledWith(1, 20, 1, 10, "CS 101");
+      expect(mockAddPlannedCourse).toHaveBeenCalledWith(1, 20, 1, 10);
       expect(mockToasterCreate).toHaveBeenCalledWith(
         expect.objectContaining({
           title: "Added to current semester",

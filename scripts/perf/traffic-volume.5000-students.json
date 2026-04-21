@@ -1,0 +1,11 @@
+{
+  "flows": {
+    "requirements_index": 5000,
+    "requirements_detail": 5000,
+    "courses_catalog": 5000,
+    "planner_bundle": 5000,
+    "class_history_bundle": 5000,
+    "onboarding_bundle": 5000
+  },
+  "notes": "Projection profile for 5000 students assuming one run per student per flow per month."
+}
