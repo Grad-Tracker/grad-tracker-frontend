@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
 import {
   Avatar,
   Badge,
@@ -35,7 +35,6 @@ import {
 import { fetchStudentCourseProgress, fetchGenEdBucketsWithCourses } from "@/lib/supabase/queries/planner";
 import {
   DB_VIEWS,
-  DB_TABLES
 } from "@/lib/supabase/queries/schema";
 import { toaster } from "@/components/ui/toaster";
 import {
@@ -65,6 +64,28 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { EmptyState } from "@/components/ui/empty-state";
 import { getCurrentAcademicTerm } from "@/lib/academic-term";
 import type { ViewPlanTermRow, ViewPlanCourseRow, ViewStudentCourseProgressRow } from "@/lib/supabase/queries/view-types";
+
+type RequirementCourseRow = {
+  course_id?: number | null;
+  id?: number | null;
+  credits?: number | null;
+};
+
+type RequirementBlockRow = {
+  block_id?: number | null;
+  block_name?: string | null;
+  rule?: string | null;
+  n_required?: number | null;
+  credits_required?: number | null;
+  courses?: RequirementCourseRow[] | null;
+};
+
+type MajorBlocksResult = {
+  data: RequirementBlockRow[] | null;
+  error: unknown;
+  majorName: string;
+  majorProgramId: number | null;
+};
 
 function getStatusBadgeProps(status: string): { color: string; label: string } {
   if (status === "enrolled") return { color: "emerald", label: "Enrolled" };
@@ -121,6 +142,8 @@ function formatRelativeTime(timestamp: string): string {
   return rtf.format(-diffYears, "year");
 }
 
+// Reserved for non-blocking dashboard activity logging flows.
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 async function safeLogActivity(
   studentId: number,
   activityType: Parameters<typeof logStudentActivity>[1],
@@ -141,7 +164,7 @@ async function safeLogActivity(
 async function resolveMajorAndBlocks(
   supabase: ReturnType<typeof createClient>,
   studentId: number
-) {
+): Promise<MajorBlocksResult> {
   let majorName = "Unknown";
   let majorProgramId: number | null = null;
 
@@ -153,10 +176,10 @@ async function resolveMajorAndBlocks(
 
   if (!majorProgramId) {
     return {
-      data: null as any,
-      error: null as any,
+      data: null,
+      error: null,
       majorName,
-      majorProgramId: null as number | null,
+      majorProgramId: null,
     };
   }
 
@@ -239,10 +262,6 @@ export default function Dashboard() {
   const [loadingCourses, setLoadingCourses] = React.useState(true);
   const [recentActivity, setRecentActivity] = React.useState<StudentActivityRow[]>([]);
 
-  const [currentMajorProgramId, setCurrentMajorProgramId] = React.useState<number | null>(null);
-
-  const [studentIdForReset, setStudentIdForReset] = React.useState<number | null>(null);
-
   React.useEffect(() => {
     const loadStudent = async () => {
       setLoadingStudent(true);
@@ -297,7 +316,6 @@ export default function Dashboard() {
         setLoadingProgress(true);
 
         const studentId = resolvedStudentRow.student_id;
-        setStudentIdForReset(studentId);
 
         const completedPromise = fetchStudentCourseProgress(studentId);
         const activityPromise = fetchRecentStudentActivity(studentId).catch(() => [] as StudentActivityRow[]);
@@ -321,9 +339,8 @@ export default function Dashboard() {
         ]);
         setRecentActivity(activityResult);
 
-        const majorName = (blocksResult as any).majorName ?? "Unknown";
-        const majorProgramId = (blocksResult as any).majorProgramId as number | null;
-        setCurrentMajorProgramId(majorProgramId);
+        const majorName = blocksResult.majorName ?? "Unknown";
+        const majorProgramId = blocksResult.majorProgramId;
 
         const termIds = ((currentTermIdsResult as { data?: Pick<ViewPlanTermRow, "term_id">[] })?.data ?? []).map(
           (r) => r.term_id
@@ -392,34 +409,34 @@ export default function Dashboard() {
         };
 
         const programBlocks =
-          majorProgramId && !(blocksResult as any)?.error
-            ? (((blocksResult as any)?.data ?? []) as any[])
+          majorProgramId && !blocksResult.error
+            ? (blocksResult.data ?? [])
             : [];
 
         // Gen ed from gen_ed_buckets (separate from major program)
         if (
           majorProgramId &&
-          !programBlocks.some((block: any) =>
+          !programBlocks.some((block) =>
             String(block?.block_name ?? "").toLowerCase().includes("general education")
           )
         ) {
           try {
-          const genEdBuckets = await fetchGenEdBucketsWithCourses();
-          for (const bucket of genEdBuckets) {
-            agg["General Education"].total += bucket.credits_required;
-            const bucketCompleted = bucket.courses.reduce((sum, c) => {
-              if (!completedCourseIds.has(c.id)) return sum;
-              return sum + c.credits;
-            }, 0);
-            agg["General Education"].completed += bucketCompleted;
-          }
-        } catch {
+            const genEdBuckets = await fetchGenEdBucketsWithCourses();
+            for (const bucket of genEdBuckets) {
+              agg["General Education"].total += bucket.credits_required;
+              const bucketCompleted = bucket.courses.reduce((sum, c) => {
+                if (!completedCourseIds.has(c.id)) return sum;
+                return sum + c.credits;
+              }, 0);
+              agg["General Education"].completed += bucketCompleted;
+            }
+          } catch {
           // Non-critical — gen ed bar will show 0/0
-        }
+          }
         }
 
         // Major program blocks
-        if (majorProgramId && !(blocksResult as any)?.error) {
+        if (majorProgramId && !blocksResult.error) {
           for (const b of programBlocks) {
             const blockCourseRows = b?.courses ?? [];
             // Skip parent blocks with no courses (their sub-blocks have the actual courses)
@@ -445,7 +462,7 @@ export default function Dashboard() {
             } else if (rule === "N_OF" && nRequired > 0 && blockCourseRows.length > 0) {
               // Pick N courses — estimate credits as N * average credit per course
               const avgCredits = blockCourseRows.reduce(
-                (sum: number, r: any) => sum + Number(r?.credits ?? 0), 0
+                (sum: number, r) => sum + Number(r?.credits ?? 0), 0
               ) / blockCourseRows.length;
               total = Math.round(nRequired * avgCredits);
             } else if (rule === "ANY_OF") {
@@ -454,11 +471,11 @@ export default function Dashboard() {
             } else {
               // ALL_OF or unknown — sum all course credits
               total = blockCourseRows.reduce(
-                (sum: number, r: any) => sum + Number(r?.credits ?? 0), 0
+                (sum: number, r) => sum + Number(r?.credits ?? 0), 0
               );
             }
 
-            const completed = blockCourseRows.reduce((sum: number, r: any) => {
+            const completed = blockCourseRows.reduce((sum: number, r) => {
               const cid = Number(r?.course_id ?? r?.id);
               if (!completedCourseIds.has(cid)) return sum;
               return sum + Number(r?.credits ?? 0);
@@ -490,7 +507,7 @@ export default function Dashboard() {
             .select("id, credits")
             .in("id", completedIdArray);
           completedCredits = (creditRows ?? []).reduce(
-            (sum: number, r: any) => sum + Number(r.credits ?? 0),
+            (sum: number, r: { credits?: number | null }) => sum + Number(r.credits ?? 0),
             0
           );
         }
