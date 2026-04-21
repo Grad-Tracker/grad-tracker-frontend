@@ -1,3 +1,5 @@
+import { cache } from "react";
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { DB_VIEWS } from "@/lib/supabase/queries/schema";
@@ -18,6 +20,24 @@ type ReqNode = {
   sort_order: number;
   program_req_atoms: { atom_type: string; required_course_id: number | null }[];
 };
+
+const FALLBACK_REQUIREMENTS_TITLE = "Program Requirements | Grad Tracker";
+const REQUIREMENTS_DESCRIPTION = "Track your graduation progress in Grad Tracker.";
+
+const getProgramById = cache(async (id: string) => {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from(DB_VIEWS.programCatalog)
+    .select("program_id, program_name, catalog_year, program_type")
+    .eq("program_id", id)
+    .maybeSingle();
+
+  return {
+    data: (data as ViewProgramCatalogRow | null) ?? null,
+    error,
+  };
+});
 
 function toCourse(course: ViewProgramRequirementCourseItem): Course {
   return {
@@ -191,19 +211,35 @@ function getCourseOrderFromTree(nodes: ReqNode[]): number[] {
   return result;
 }
 
+export async function generateMetadata({
+  params,
+}: Readonly<{
+  params: Promise<{ id: string }>;
+}>): Promise<Metadata> {
+  const { id } = await params;
+  const { data: programRow, error } = await getProgramById(id);
+
+  if (error || !programRow?.program_name) {
+    return {
+      title: FALLBACK_REQUIREMENTS_TITLE,
+      description: REQUIREMENTS_DESCRIPTION,
+    };
+  }
+
+  return {
+    title: `${programRow.program_name} | Requirements | Grad Tracker`,
+    description: REQUIREMENTS_DESCRIPTION,
+  };
+}
+
 export default async function ProgramDetailPage({
   params,
 }: Readonly<{
   params: Promise<{ id: string }>;
 }>) {
   const { id } = await params;
+  const { data: programRow, error: programError } = await getProgramById(id);
   const supabase = await createClient();
-
-  const { data: programRow, error: programError } = await supabase
-    .from(DB_VIEWS.programCatalog)
-    .select("program_id, program_name, catalog_year, program_type")
-    .eq("program_id", id)
-    .maybeSingle();
 
   if (programError || !programRow) {
     notFound();

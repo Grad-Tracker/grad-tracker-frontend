@@ -2,6 +2,11 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import PlannerView from "@/components/planner/PlannerView";
 
+export const metadata = {
+  title: "Planner | Grad Tracker",
+  description: "Track your graduation progress in Grad Tracker.",
+};
+
 export default async function PlannerPage() {
   const supabase = await createClient();
   const {

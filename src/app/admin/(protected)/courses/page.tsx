@@ -3,6 +3,11 @@ import { DB_TABLES } from "@/lib/supabase/queries/schema";
 import type { CourseDetail } from "@/types/course";
 import CoursesAdminClient from "./CoursesAdminClient";
 
+export const metadata = {
+  title: "Courses | Admin | GradTracker",
+  description: "Manage course catalog data in the GradTracker admin workspace.",
+};
+
 export default async function AdminCoursesPage() {
   const supabase = await createClient();
 
