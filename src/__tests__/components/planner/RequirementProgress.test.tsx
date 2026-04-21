@@ -6,6 +6,20 @@ import RequirementProgress from "@/components/planner/RequirementProgress";
 import type { RequirementBlockWithCourses, PlannedCourseWithDetails } from "@/types/planner";
 import type { Course } from "@/types/course";
 
+vi.mock("@/components/ui/progress", () => ({
+  ProgressRoot: ({ children, value, colorPalette }: any) =>
+    React.createElement(
+      "div",
+      {
+        role: "progressbar",
+        "aria-valuenow": String(value),
+        "data-color-palette": colorPalette,
+      },
+      children
+    ),
+  ProgressBar: (props: any) => React.createElement("div", props),
+}));
+
 // ── Factories ───────────────────────────────────────────────────────
 
 function makeCourse(overrides: Partial<Course> = {}): Course {
@@ -123,6 +137,30 @@ describe("RequirementProgress", () => {
     );
 
     expect(screen.getAllByText("0/12 cr").length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("infers ANY_OF credit target from the minimum course credits", () => {
+    const anyOfBlock = makeBlock({
+      id: 99,
+      name: "Choose One",
+      rule: "ANY_OF",
+      credits_required: null,
+      courses: [
+        makeCourse({ id: 901, credits: 4 }),
+        makeCourse({ id: 902, credits: 3 }),
+        makeCourse({ id: 903, credits: 5 }),
+      ],
+    });
+
+    renderWithChakra(
+      <RequirementProgress
+        blocks={[anyOfBlock]}
+        plannedCourses={[]}
+        completedCourseIds={new Set()}
+      />
+    );
+
+    expect(screen.getAllByText("0/3 cr").length).toBeGreaterThanOrEqual(1);
   });
 
   it("shows correct credit fractions (e.g., 6/12 cr)", () => {
@@ -320,5 +358,52 @@ describe("RequirementProgress", () => {
 
     // The shared completed course should count once in overall badge.
     expect(screen.getAllByText("3/6 cr").length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("collapses cross-listed ALL_OF courses when inferring required credits", () => {
+    const crossListed = [
+      makeCourse({ id: 3001, subject: "CS", number: "450", title: "Capstone", credits: 3 }),
+      makeCourse({ id: 3002, subject: "SE", number: "450", title: "Capstone", credits: 3 }),
+    ];
+
+    const block = makeBlock({
+      id: 300,
+      name: "Cross-listed Core",
+      rule: "ALL_OF",
+      credits_required: null,
+      courses: crossListed,
+    });
+
+    renderWithChakra(
+      <RequirementProgress
+        blocks={[block]}
+        plannedCourses={[]}
+        completedCourseIds={new Set()}
+      />
+    );
+
+    // Canonicalized cross-list should require 3 credits, not 6.
+    expect(screen.getAllByText("0/3 cr").length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("uses purple for non-core, non-electives graduate block rows", () => {
+    const trackBlock = makeBlock({
+      id: 411,
+      name: "Data Science Track",
+      credits_required: 9,
+      courses: [makeCourse({ id: 4110, credits: 3 })],
+    });
+
+    const { container } = renderWithChakra(
+      <RequirementProgress
+        blocks={[trackBlock]}
+        plannedCourses={[]}
+        completedCourseIds={new Set()}
+        isGraduatePlan={true}
+      />
+    );
+
+    const progress = container.querySelector('[role="progressbar"]');
+    expect(progress?.getAttribute("data-color-palette")).toBe("purple");
   });
 });

@@ -157,6 +157,51 @@ describe("PlannerSummary", () => {
     expect(screen.getAllByText("12").length).toBeGreaterThanOrEqual(1);
   });
 
+  it("uses graduate fixed total (30 credits) when isGraduatePlan is true", () => {
+    const props = {
+      ...defaultProps,
+      degreeCreditTarget: 120,
+      isGraduatePlan: true,
+      blocks: [
+        makeBlock({
+          id: 10,
+          name: "Core Courses",
+          credits_required: 18,
+          courses: [makeCourse({ id: 10, credits: 3 })],
+        }),
+      ],
+      plannedCourses: [makePlannedCourse(10, 1)],
+    };
+
+    renderWithChakra(<PlannerSummary {...props} />);
+
+    // Graduate summary should always use 30-credit denominator.
+    expect(screen.getAllByText("/ 30").length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("uses 9 credits as breadth total when breadth package is not selected", () => {
+    const breadthBlock = makeBlock({
+      id: 22,
+      name: "Breadth Requirement - Choose One",
+      credits_required: null,
+      courses: [
+        makeCourse({ id: 220, subject: "MATH", number: "222", credits: 3 }),
+        makeCourse({ id: 221, subject: "PHYS", number: "202", credits: 3 }),
+      ],
+    });
+
+    renderWithChakra(
+      <PlannerSummary
+        {...defaultProps}
+        blocks={[breadthBlock]}
+        plannedCourses={[makePlannedCourse(220, 1)]}
+        hasBreadthPackageSelected={false}
+      />
+    );
+
+    expect(screen.getAllByText("/ 9").length).toBeGreaterThanOrEqual(1);
+  });
+
   it("handles empty state (0 terms, 0 courses, 0 blocks)", () => {
     const emptyProps = {
       terms: [],
