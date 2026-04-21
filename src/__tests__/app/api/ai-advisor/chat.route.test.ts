@@ -38,6 +38,7 @@ function makeRequest(body: unknown) {
 describe("POST /api/ai-advisor/chat", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    process.env.ANTHROPIC_API_KEY = "test-key";
   });
 
   it("returns 400 for invalid request payload", async () => {

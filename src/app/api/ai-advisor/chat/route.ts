@@ -88,6 +88,13 @@ export async function POST(request: Request) {
     );
   }
 
+  if (!process.env.ANTHROPIC_API_KEY) {
+    return NextResponse.json(
+      { error: "AI advisor is not configured." },
+      { status: 503 }
+    );
+  }
+
   try {
     const response = await generateAdvisorResponse({
       message: parsedBody.message,

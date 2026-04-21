@@ -1009,6 +1009,7 @@ export default function Dashboard() {
           </Card.Root>
         </Stack>
       </Grid>
+
     </Stack>
   );
 }

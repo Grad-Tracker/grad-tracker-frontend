@@ -13,10 +13,12 @@ import {
   CLAUDE_TOOL_DEFINITIONS,
   TOOL_NAMES,
 } from "@/lib/ai-advisor/tools";
+import { serverListStudentPlans } from "@/lib/ai-advisor/plan-mutations";
 import type { AdvisorToolName } from "@/lib/ai-advisor/tools";
 import type {
   AdvisorChatHistoryItem,
   AdvisorChatRequest,
+  AdvisorSideEffect,
   AdvisorStreamEvent,
 } from "@/types/ai-advisor";
 
@@ -106,6 +108,17 @@ export async function POST(request: Request) {
     );
   }
 
+  // Resolve the active plan name for the system prompt.
+  let activePlanName: string | null = null;
+  if (parsedBody.activePlanId !== null && parsedBody.activePlanId !== undefined) {
+    try {
+      const plans = await serverListStudentPlans(supabase, profile.studentId);
+      activePlanName = plans.find((p) => p.id === parsedBody!.activePlanId)?.name ?? null;
+    } catch {
+      // Non-fatal — plan name is context-only.
+    }
+  }
+
   const requestBody = parsedBody;
 
   const stream = new ReadableStream({
@@ -116,7 +129,7 @@ export async function POST(request: Request) {
         try {
           controller.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`));
         } catch {
-          // Controller may already be closed
+          // Controller may already be closed.
         }
       }
 
@@ -131,6 +144,7 @@ export async function POST(request: Request) {
           catalogYear: profile.primaryProgram?.catalogYear ?? null,
           expectedGraduation: profile.expectedGraduation,
           hasCompletedOnboarding: profile.hasCompletedOnboarding,
+          activePlanName,
         });
 
         const systemPromptWithJsonInstruction = `${systemPrompt}\n\nReturn strict JSON with keys: answer, recommendations, risks, missingData, citations.`;
@@ -143,6 +157,7 @@ export async function POST(request: Request) {
         const toolset = createAdvisorTools(dependencies);
         const usedCitations = new Set<string>();
         const missingData: string[] = [];
+        const sideEffects: AdvisorSideEffect[] = [];
 
         const messages: Anthropic.Messages.MessageParam[] = [
           ...requestBody.history.slice(-8).map((item) => ({
@@ -152,14 +167,11 @@ export async function POST(request: Request) {
           { role: "user" as const, content: requestBody.message },
         ];
 
-        const maxTurns = 4;
+        const maxTurns = 6;
         let completedWithResponse = false;
 
         for (let turn = 0; turn < maxTurns; turn++) {
-          // Check if request was aborted
-          if (request.signal.aborted) {
-            break;
-          }
+          if (request.signal.aborted) break;
 
           const messageStream = client.messages.stream({
             model,
@@ -196,34 +208,54 @@ export async function POST(request: Request) {
             const response = parsed ?? makeFallbackResponse(textContent || "I could not parse a response.");
             response.citations = Array.from(new Set([...response.citations, ...usedCitations]));
             response.missingData = Array.from(new Set([...response.missingData, ...missingData]));
+            if (sideEffects.length > 0) {
+              response.sideEffects = sideEffects;
+            }
             send({ type: "done", response });
             completedWithResponse = true;
             break;
           }
 
-          // Tool turn -- execute tools and continue
           messages.push({ role: "assistant", content: finalMessage.content });
           const toolResults: Anthropic.Messages.ToolResultBlockParam[] = [];
 
           for (const toolUse of toolUseBlocks) {
-            // Short-circuit if aborted
-            if (request.signal.aborted) {
-              break;
-            }
+            if (request.signal.aborted) break;
 
             send({ type: "status", text: `Looking up ${toolUse.name.replaceAll("_", " ")}...` });
+
             try {
               const toolInput = (toolUse.input ?? {}) as Record<string, unknown>;
               const toolName = toolUse.name as AdvisorToolName;
 
-              // Inject activePlanId for tools that support planId parameter
+              // For plan write tools, always override planId with the active plan from the
+              // frontend — Claude may hallucinate a planId by inferring it from the plan's
+              // name (e.g., "Plan 2" → planId: 2) rather than using the real database ID.
               if (
+                (toolName === TOOL_NAMES.addCourseToPlan ||
+                  toolName === TOOL_NAMES.removeCourseFromPlan ||
+                  toolName === TOOL_NAMES.moveCourseInPlan ||
+                  toolName === TOOL_NAMES.renamePlan ||
+                  toolName === TOOL_NAMES.clearPlanTerm) &&
+                requestBody.activePlanId != null
+              ) {
+                toolInput.planId = requestBody.activePlanId;
+              } else if (
+                // Inject activePlanId for plan-scoped read tools when not explicitly provided.
                 requestBody.activePlanId !== undefined &&
                 requestBody.activePlanId !== null &&
                 (toolName === TOOL_NAMES.getPlanSnapshot ||
                   toolName === TOOL_NAMES.getDegreeProgress ||
                   toolName === TOOL_NAMES.getRemainingRequirements ||
-                  toolName === TOOL_NAMES.recommendNextSemester) &&
+                  toolName === TOOL_NAMES.recommendNextSemester ||
+                  toolName === TOOL_NAMES.checkGraduationReadiness ||
+                  toolName === TOOL_NAMES.validatePlan ||
+                  toolName === TOOL_NAMES.projectGraduationDate ||
+                  toolName === TOOL_NAMES.checkTermCreditLoad ||
+                  toolName === TOOL_NAMES.identifyPlanGaps ||
+                  toolName === TOOL_NAMES.getUnfulfillableRequirements ||
+                  toolName === TOOL_NAMES.suggestTermBalance ||
+                  toolName === TOOL_NAMES.generateAdvisingSummary) &&
                 !toolInput.planId
               ) {
                 toolInput.planId = requestBody.activePlanId;
@@ -231,6 +263,23 @@ export async function POST(request: Request) {
 
               const data = await executeToolByName(toolset, toolName, toolInput);
               usedCitations.add(`tool:${toolUse.name}`);
+
+              // Capture plan creation side effects.
+              if (
+                toolName === TOOL_NAMES.createPlan &&
+                data &&
+                typeof data === "object"
+              ) {
+                const result = data as Record<string, unknown>;
+                if (typeof result.planId === "number" && typeof result.name === "string") {
+                  sideEffects.push({
+                    type: "plan_created",
+                    planId: result.planId,
+                    planName: result.name,
+                  });
+                }
+              }
+
               toolResults.push({
                 type: "tool_result",
                 tool_use_id: toolUse.id,
@@ -242,10 +291,7 @@ export async function POST(request: Request) {
               toolResults.push({
                 type: "tool_result",
                 tool_use_id: toolUse.id,
-                content: JSON.stringify({
-                  ok: false,
-                  error: errorMessage,
-                }),
+                content: JSON.stringify({ ok: false, error: errorMessage }),
               });
             }
           }
@@ -259,16 +305,19 @@ export async function POST(request: Request) {
           );
           fallback.citations = Array.from(usedCitations);
           fallback.missingData = Array.from(new Set(missingData));
+          if (sideEffects.length > 0) fallback.sideEffects = sideEffects;
           send({ type: "done", response: fallback });
         }
       } catch (error) {
         console.error("AI advisor stream error:", error);
         send({ type: "error", message: "Unable to process request." });
+        // Yield a tick so the error event flushes before we close the stream.
+        await new Promise<void>((r) => setTimeout(r, 0));
       } finally {
         try {
           controller.close();
         } catch {
-          // Already closed
+          // Already closed.
         }
       }
     },

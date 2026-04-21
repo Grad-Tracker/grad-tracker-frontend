@@ -24,6 +24,19 @@ import type { PlannedCourseWithDetails, Term, RequirementBlockWithCourses } from
 
 const GRADUATE_TOTAL_CREDITS = 30;
 
+function creditsForBlock(b: RequirementBlockWithCourses): number {
+  if (b.credits_required != null) return b.credits_required;
+  const rule = (b.rule ?? "ALL_OF").toUpperCase();
+  if (rule === "N_OF" && b.n_required != null && b.courses.length > 0) {
+    const avg = b.courses.reduce((s, c) => s + c.credits, 0) / b.courses.length;
+    return Math.round(b.n_required * avg);
+  }
+  if (rule === "ANY_OF" && b.courses.length > 0) {
+    return Math.min(...b.courses.map((c) => c.credits));
+  }
+  return b.courses.reduce((s, c) => s + c.credits, 0);
+}
+
 interface PlannerSummaryProps {
   terms: Term[];
   plannedCourses: PlannedCourseWithDetails[];
@@ -47,15 +60,15 @@ export default function PlannerSummary({
   );
 
   const stats = useMemo(() => {
-    const summedCredits = blocks.reduce((s, b) => {
-      return s + (b.credits_required ?? b.courses.reduce((cs, c) => cs + c.credits, 0));
-    }, 0);
+    const summedCredits = blocks.reduce((s, b) => s + creditsForBlock(b), 0);
     const totalRequired = isGraduatePlan ? GRADUATE_TOTAL_CREDITS : summedCredits;
 
+    const countedIds = new Set<number>();
     let completedCredits = 0;
     for (const block of blocks) {
       for (const course of block.courses) {
-        if (completedCourseIds.has(course.id)) {
+        if (completedCourseIds.has(course.id) && !countedIds.has(course.id)) {
+          countedIds.add(course.id);
           completedCredits += course.credits;
         }
       }
