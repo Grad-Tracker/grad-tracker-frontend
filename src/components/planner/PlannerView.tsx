@@ -63,6 +63,7 @@ import type {
 import {
   deduplicateBlocks,
   getGraduateTracks,
+  computePerProgramCreditTarget,
   BREADTH_PACKAGES,
 } from "@/types/planner";
 import type { Course } from "@/types/course";
@@ -274,6 +275,17 @@ export default function PlannerView({
       }),
     [plannerPoolBlocks, selectedBreadthPackage, isGraduatePlan, selectedTrackId]
   );
+
+  const degreeCreditTarget = useMemo(() => {
+    if (displayBlocks.length === 0) return undefined;
+    return computePerProgramCreditTarget(displayBlocks, {
+      selectedPackage: isGraduatePlan ? null : selectedBreadthPackage,
+      isGraduate: isGraduatePlan,
+      selectedTrackId: isGraduatePlan ? selectedTrackId : null,
+      minimumUndergradCredits: isGraduatePlan ? 0 : 120,
+      useLegacyElectivePoolForTotal: !isGraduatePlan,
+    });
+  }, [displayBlocks, isGraduatePlan, selectedBreadthPackage, selectedTrackId]);
 
   // ── Load plan-specific data ────────────────────────────
   const loadAbortRef = useRef<AbortController | null>(null);
@@ -964,6 +976,7 @@ export default function PlannerView({
                     <CoursePanel
                       blocks={displayBlocks}
                       allDedupedBlocks={allDedupedBlocks}
+                      degreeCreditTarget={degreeCreditTarget}
                       completedCourseIds={completedIds}
                       plannedCourseIds={plannedCourseIds}
                       plannedCourses={plannedCourses}
@@ -1062,6 +1075,7 @@ export default function PlannerView({
                 plannedCourses={plannedCourses}
                 blocks={displayBlocks}
                 completedCourseIds={completedIds}
+                degreeCreditTarget={degreeCreditTarget}
                 isGraduatePlan={isGraduatePlan}
               />
             </>
@@ -1119,6 +1133,7 @@ export default function PlannerView({
           programIds={
             plans.find((p) => p.id === activePlanId)?.program_ids ?? []
           }
+          degreeCreditTarget={degreeCreditTarget}
           plans={plans}
           activePlanId={activePlanId}
           onComplete={async (planId) => {

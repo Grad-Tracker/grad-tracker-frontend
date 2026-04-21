@@ -292,4 +292,33 @@ describe("RequirementProgress", () => {
     // Block row still only tracks requirement-mapped credits.
     expect(screen.getAllByText("3/12 cr").length).toBeGreaterThanOrEqual(1);
   });
+
+  it("dedupes completed credits across overlapping blocks in overall degree badge", () => {
+    const shared = makeCourse({ id: 500, credits: 3, subject: "CS", number: "201", title: "Shared" });
+
+    const blockA = makeBlock({
+      id: 1,
+      name: "Block A",
+      credits_required: 3,
+      courses: [shared],
+    });
+    const blockB = makeBlock({
+      id: 2,
+      name: "Block B",
+      credits_required: 3,
+      courses: [shared],
+    });
+
+    renderWithChakra(
+      <RequirementProgress
+        blocks={[blockA, blockB]}
+        plannedCourses={[]}
+        completedCourseIds={new Set([500])}
+        degreeCreditTarget={6}
+      />
+    );
+
+    // The shared completed course should count once in overall badge.
+    expect(screen.getAllByText("3/6 cr").length).toBeGreaterThanOrEqual(1);
+  });
 });

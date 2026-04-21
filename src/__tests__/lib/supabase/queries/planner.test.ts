@@ -469,6 +469,7 @@ describe("fetchCompletedCourseIds", () => {
       { course_id: 100, completed: true, progress_status: "COMPLETED" },
       { course_id: 200, completed: null, progress_status: "COMPLETED" },
       { course_id: 300, completed: false, progress_status: "IN_PROGRESS" },
+      { course_id: 400, completed: null, progress_status: "IN_PROGRESS" },
     ];
     mockFrom.mockReturnValue(makeChain(rows));
 
@@ -476,6 +477,7 @@ describe("fetchCompletedCourseIds", () => {
     expect(result.has(100)).toBe(true);
     expect(result.has(200)).toBe(true);
     expect(result.has(300)).toBe(false);
+    expect(result.has(400)).toBe(false);
   });
 
   it("returns empty set when no data", async () => {

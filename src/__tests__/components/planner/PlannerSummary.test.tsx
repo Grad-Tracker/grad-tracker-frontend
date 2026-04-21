@@ -145,6 +145,18 @@ describe("PlannerSummary", () => {
     expect(screen.getAllByText("18 credits").length).toBeGreaterThanOrEqual(1);
   });
 
+  it("uses covered credits (completed + planned) in collapsed credit numerator", () => {
+    const props = {
+      ...defaultProps,
+      completedCourseIds: new Set<number>([1]),
+    };
+
+    renderWithChakra(<PlannerSummary {...props} />);
+
+    // Planned = 9, Completed = 3, so collapsed numerator should show 12.
+    expect(screen.getAllByText("12").length).toBeGreaterThanOrEqual(1);
+  });
+
   it("handles empty state (0 terms, 0 courses, 0 blocks)", () => {
     const emptyProps = {
       terms: [],
