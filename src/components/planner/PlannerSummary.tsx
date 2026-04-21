@@ -25,19 +25,6 @@ import { isBreadthBlock } from "@/types/planner";
 
 const GRADUATE_TOTAL_CREDITS = 30;
 
-function creditsForBlock(b: RequirementBlockWithCourses): number {
-  if (b.credits_required != null) return b.credits_required;
-  const rule = (b.rule ?? "ALL_OF").toUpperCase();
-  if (rule === "N_OF" && b.n_required != null && b.courses.length > 0) {
-    const avg = b.courses.reduce((s, c) => s + c.credits, 0) / b.courses.length;
-    return Math.round(b.n_required * avg);
-  }
-  if (rule === "ANY_OF" && b.courses.length > 0) {
-    return Math.min(...b.courses.map((c) => c.credits));
-  }
-  return b.courses.reduce((s, c) => s + c.credits, 0);
-}
-
 interface PlannerSummaryProps {
   terms: Term[];
   plannedCourses: PlannedCourseWithDetails[];

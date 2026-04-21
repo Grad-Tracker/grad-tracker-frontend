@@ -106,4 +106,18 @@ describe("CourseDetailDrawer", () => {
     fireEvent.click(screen.getByRole("button", { name: "Remove Course" }));
     expect(onRemoveCourse).toHaveBeenCalled();
   });
+
+  it("calls onOpenChange when drawer open state changes", () => {
+    const onOpenChange = vi.fn();
+    renderWithChakra(
+      <CourseDetailDrawer
+        course={baseCourse}
+        open={true}
+        onOpenChange={onOpenChange}
+        onRemoveCourse={vi.fn()}
+      />
+    );
+    onOpenChange(false);
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+  });
 });
