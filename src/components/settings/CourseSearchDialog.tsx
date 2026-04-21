@@ -20,7 +20,7 @@ interface CourseSearchDialogProps {
   onCourseSelected: (course: CourseRow) => void;
 }
 
-export function CourseSearchDialog({ open, onClose, onCourseSelected }: CourseSearchDialogProps) {
+export function CourseSearchDialog({ open, onClose, onCourseSelected }: Readonly<CourseSearchDialogProps>) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<CourseRow[]>([]);
   const [searching, setSearching] = useState(false);

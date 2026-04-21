@@ -18,14 +18,16 @@ import {
   VStack,
 } from "@chakra-ui/react";
 import Link from "next/link";
+import { LuBookMarked, LuCircleAlert, LuClock } from "react-icons/lu";
 import {
-  LuArrowLeft,
-  LuBookMarked,
-  LuCircleAlert,
-  LuClock,
-} from "react-icons/lu";
+  BreadcrumbCurrentLink,
+  BreadcrumbLink,
+  BreadcrumbRoot,
+} from "@/components/ui/breadcrumb";
 import type { Course } from "@/types/course";
 import { BREADTH_PACKAGES, getPackageCourseKeys, courseKey } from "@/types/planner";
+import { getProgramColor, getProgramTypeLabel } from "@/lib/program-colors";
+import { getSubjectColor } from "@/lib/subject-colors";
 
 interface Program {
   id: string;
@@ -50,48 +52,6 @@ interface ProgramDetailClientProps {
   blocks: Block[];
 }
 
-function getProgramColor(type: string): string {
-  const colorMap: Record<string, string> = {
-    MAJOR: "blue",
-    MINOR: "purple",
-    GRADUATE: "green",
-    CERTIFICATE: "orange",
-  };
-  return colorMap[type] || "gray";
-}
-
-function getProgramTypeLabel(type: string): string {
-  const labelMap: Record<string, string> = {
-    MAJOR: "Major",
-    MINOR: "Minor",
-    GRADUATE: "Graduate",
-    CERTIFICATE: "Certificate",
-  };
-  return labelMap[type] || type;
-}
-
-function getSubjectColor(subject: string): string {
-  const colorMap: Record<string, string> = {
-    CS: "green",
-    CSCI: "green",
-    MATH: "blue",
-    ENGL: "purple",
-    COMM: "orange",
-    PHIL: "teal",
-    PSYC: "pink",
-    BUSI: "cyan",
-    BIOL: "emerald",
-    CHEM: "orange",
-    PHYS: "blue",
-    HIST: "yellow",
-    ECON: "cyan",
-    ART: "red",
-    MUSC: "purple",
-    SOCI: "pink",
-  };
-  return colorMap[subject] || "gray";
-}
-
 function isBreadthBlock(blockName: string): boolean {
   return /breadth/i.test(blockName);
 }
@@ -100,11 +60,11 @@ function CourseTable({
   courses,
   onCourseClick,
   crossPairs = [],
-}: {
+}: Readonly<{
   courses: Course[];
   onCourseClick: (course: Course) => void;
   crossPairs?: number[][];
-}) {
+}>) {
   const handleRowKeyDown = (event: KeyboardEvent<HTMLTableRowElement>, course: Course) => {
     if (event.key === "Enter" || event.key === " ") {
       event.preventDefault();
@@ -207,17 +167,17 @@ function OptionGroupView({
   options,
   onCourseClick,
   crossPairs,
-}: {
+}: Readonly<{
   options: Course[][];
   onCourseClick: (course: Course) => void;
   crossPairs?: number[][];
-}) {
+}>) {
   return (
     <VStack align="stretch" gap="0">
       {options.map((group, i) => {
         const totalCredits = group.reduce((sum, c) => sum + Number(c.credits), 0);
         return (
-          <Box key={i}>
+          <Box key={group.map((c) => c.id).join("-")}>
             {i > 0 && (
               <HStack my="3">
                 <Separator flex="1" />
@@ -248,11 +208,11 @@ function BreadthPackageView({
   courses,
   onCourseClick,
   crossPairs,
-}: {
+}: Readonly<{
   courses: Course[];
   onCourseClick: (course: Course) => void;
   crossPairs?: number[][];
-}) {
+}>) {
   return (
     <VStack align="stretch" gap="5">
       {BREADTH_PACKAGES.map((pkg, i) => {
@@ -299,10 +259,46 @@ function getRuleLabel(block: Block): string {
   }
 }
 
+function BlockCourseContent({
+  block,
+  courses,
+  onCourseClick,
+}: Readonly<{
+  block: Block;
+  courses: Course[];
+  onCourseClick: (course: Course) => void;
+}>) {
+  if (block.options) {
+    return (
+      <OptionGroupView
+        options={block.options}
+        onCourseClick={onCourseClick}
+        crossPairs={block.crossPairs}
+      />
+    );
+  }
+  if (isBreadthBlock(block.name)) {
+    return (
+      <BreadthPackageView
+        courses={courses}
+        onCourseClick={onCourseClick}
+        crossPairs={block.crossPairs}
+      />
+    );
+  }
+  return (
+    <CourseTable
+      courses={courses}
+      onCourseClick={onCourseClick}
+      crossPairs={block.crossPairs}
+    />
+  );
+}
+
 export default function ProgramDetailClient({
   program,
   blocks,
-}: ProgramDetailClientProps) {
+}: Readonly<ProgramDetailClientProps>) {
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
 
@@ -316,24 +312,16 @@ export default function ProgramDetailClient({
   return (
     <Box className="mesh-gradient-subtle">
       <VStack align="stretch" gap="6">
-        {/* Back link */}
-        <Box>
-          <Link href="/dashboard/requirements">
-            <HStack
-              gap="1"
-              color="fg.muted"
-              _hover={{ color: "fg" }}
-              transition="color 0.15s"
-              display="inline-flex"
-              fontSize="sm"
-            >
-              <Icon boxSize="4">
-                <LuArrowLeft />
-              </Icon>
-              <Text>All Programs</Text>
-            </HStack>
-          </Link>
-        </Box>
+        {/* Breadcrumbs */}
+        <BreadcrumbRoot size="sm">
+          <BreadcrumbLink asChild>
+            <Link href="/dashboard">Dashboard</Link>
+          </BreadcrumbLink>
+          <BreadcrumbLink asChild>
+            <Link href="/dashboard/requirements">Requirements</Link>
+          </BreadcrumbLink>
+          <BreadcrumbCurrentLink>{program.name}</BreadcrumbCurrentLink>
+        </BreadcrumbRoot>
 
         {/* Header */}
         <VStack align="start" gap="3" className="animate-fade-up">
@@ -416,23 +404,11 @@ export default function ProgramDetailClient({
                         <Text color="fg.muted" fontSize="sm" fontStyle="italic">
                           No courses listed for this requirement.
                         </Text>
-                      ) : block.options ? (
-                        <OptionGroupView
-                          options={block.options}
-                          onCourseClick={handleCourseClick}
-                          crossPairs={block.crossPairs}
-                        />
-                      ) : isBreadthBlock(block.name) ? (
-                        <BreadthPackageView
-                          courses={courses}
-                          onCourseClick={handleCourseClick}
-                          crossPairs={block.crossPairs}
-                        />
                       ) : (
-                        <CourseTable
+                        <BlockCourseContent
+                          block={block}
                           courses={courses}
                           onCourseClick={handleCourseClick}
-                          crossPairs={block.crossPairs}
                         />
                       )}
                     </Card.Body>

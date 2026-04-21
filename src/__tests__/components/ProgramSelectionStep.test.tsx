@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { screen, fireEvent } from "@testing-library/react";
 import ProgramSelectionStep from "@/components/onboarding/ProgramSelectionStep";
-import { ChakraProvider, defaultSystem } from "@chakra-ui/react";
+import { renderWithChakra } from "@/__tests__/helpers/mocks";
 import type { Program } from "@/types/onboarding";
 
 const mockMajors: Program[] = [
@@ -25,10 +25,6 @@ const defaultProps = {
   expectedGradYear: null as number | null,
   onGradChange: vi.fn(),
 };
-
-function renderWithChakra(ui: React.ReactElement) {
-  return render(<ChakraProvider value={defaultSystem}>{ui}</ChakraProvider>);
-}
 
 describe("ProgramSelectionStep", () => {
   it("renders major names", () => {

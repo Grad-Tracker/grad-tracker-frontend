@@ -23,6 +23,7 @@ import {
   LuTarget,
 } from "react-icons/lu";
 import { EmptyState } from "@/components/ui/empty-state";
+import { getProgramColor, getProgramTypeLabel } from "@/lib/program-colors";
 
 export interface Program {
   id: string;
@@ -43,27 +44,8 @@ const TAB_TYPES: Record<TabValue, string[]> = {
   certificates: ["CERTIFICATE"],
 };
 
-function getProgramColor(type: string): string {
-  const colorMap: Record<string, string> = {
-    MAJOR: "blue",
-    MINOR: "purple",
-    GRADUATE: "green",
-    CERTIFICATE: "orange",
-  };
-  return colorMap[type] || "gray";
-}
 
-function getProgramTypeLabel(type: string): string {
-  const labelMap: Record<string, string> = {
-    MAJOR: "Major",
-    MINOR: "Minor",
-    GRADUATE: "Graduate",
-    CERTIFICATE: "Certificate",
-  };
-  return labelMap[type] || type;
-}
-
-function ProgramCard({ program, index }: { program: Program; index: number }) {
+function ProgramCard({ program, index }: Readonly<{ program: Program; index: number }>) {
   const colorPalette = getProgramColor(program.program_type);
   return (
     <Link
@@ -256,7 +238,7 @@ export default function ProgramsClient({ programs }: ProgramsClientProps) {
 
         {/* Results count */}
         <Text fontSize="sm" color="fg.muted">
-          {filteredPrograms.length} program{filteredPrograms.length !== 1 ? "s" : ""} found
+          {filteredPrograms.length} program{filteredPrograms.length === 1 ? "" : "s"} found
         </Text>
 
         {/* Program Grid */}

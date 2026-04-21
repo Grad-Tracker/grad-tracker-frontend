@@ -4,14 +4,12 @@ import { useState } from "react";
 import {
   Box,
   Button,
-  CloseButton,
-  Dialog,
   HStack,
   Input,
-  Portal,
   Text,
   VStack,
 } from "@chakra-ui/react";
+import { ConfirmationDialog } from "@/components/shared/ConfirmationDialog";
 import type { Season, Term } from "@/types/planner";
 
 interface AddSemesterDialogProps {
@@ -37,7 +35,6 @@ export default function AddSemesterDialog({
   const currentYear = new Date().getFullYear();
   const [season, setSeason] = useState<Season>("Fall");
   const [year, setYear] = useState(currentYear);
-  const [loading, setLoading] = useState(false);
 
   const isDuplicate = existingTerms.some(
     (t) => t.season === season && t.year === year
@@ -45,102 +42,63 @@ export default function AddSemesterDialog({
 
   async function handleAdd() {
     if (isDuplicate) return;
-    setLoading(true);
-    try {
-      await onAdd(season, year);
-      onOpenChange(false);
-      // Reset for next time
-      setSeason("Fall");
-      setYear(currentYear);
-    } finally {
-      setLoading(false);
-    }
+    await onAdd(season, year);
+    // Reset for next time
+    setSeason("Fall");
+    setYear(currentYear);
   }
 
   return (
-    <Dialog.Root
-      lazyMount
+    <ConfirmationDialog
       open={open}
-      onOpenChange={(e) => onOpenChange(e.open)}
+      onOpenChange={onOpenChange}
+      onConfirm={handleAdd}
+      title="Add Semester"
+      confirmText={`Add ${season} ${year}`}
+      confirmColor="blue"
+      confirmDisabled={isDuplicate}
     >
-      <Portal>
-        <Dialog.Backdrop />
-        <Dialog.Positioner>
-          <Dialog.Content borderRadius="xl">
-            <Dialog.Header>
-              <Dialog.Title
-                fontFamily="var(--font-dm-sans), sans-serif"
-                fontWeight="400"
-                letterSpacing="-0.02em"
-              >
-                Add Semester
-              </Dialog.Title>
-            </Dialog.Header>
-            <Dialog.Body>
-              <VStack gap="4" align="stretch">
-                <Box>
-                  <Text fontSize="sm" fontWeight="500" mb="2">
-                    Season
-                  </Text>
-                  <HStack gap="2">
-                    {SEASONS.map((s) => (
-                      <Button
-                        key={s}
-                        flex="1"
-                        variant={season === s ? "solid" : "outline"}
-                        colorPalette={season === s ? "blue" : "gray"}
-                        size="sm"
-                        borderRadius="lg"
-                        onClick={() => setSeason(s)}
-                      >
-                        {SEASON_ICONS[s]} {s}
-                      </Button>
-                    ))}
-                  </HStack>
-                </Box>
-                <Box>
-                  <Text fontSize="sm" fontWeight="500" mb="2">
-                    Year
-                  </Text>
-                  <Input
-                    type="number"
-                    value={year}
-                    onChange={(e) => setYear(Number(e.target.value))}
-                    min={2020}
-                    max={2040}
-                    size="sm"
-                    borderRadius="lg"
-                  />
-                </Box>
-                {isDuplicate && (
-                  <Text fontSize="sm" color="red.500">
-                    {season} {year} already exists in your plan.
-                  </Text>
-                )}
-              </VStack>
-            </Dialog.Body>
-            <Dialog.Footer>
-              <Dialog.ActionTrigger asChild>
-                <Button variant="outline" borderRadius="lg">
-                  Cancel
-                </Button>
-              </Dialog.ActionTrigger>
+      <VStack gap="4" align="stretch">
+        <Box>
+          <Text fontSize="sm" fontWeight="500" mb="2">
+            Season
+          </Text>
+          <HStack gap="2">
+            {SEASONS.map((s) => (
               <Button
-                colorPalette="blue"
+                key={s}
+                flex="1"
+                variant={season === s ? "solid" : "outline"}
+                colorPalette={season === s ? "blue" : "gray"}
+                size="sm"
                 borderRadius="lg"
-                onClick={handleAdd}
-                disabled={isDuplicate}
-                loading={loading}
+                onClick={() => setSeason(s)}
               >
-                Add {season} {year}
+                {SEASON_ICONS[s]} {s}
               </Button>
-            </Dialog.Footer>
-            <Dialog.CloseTrigger asChild>
-              <CloseButton size="sm" />
-            </Dialog.CloseTrigger>
-          </Dialog.Content>
-        </Dialog.Positioner>
-      </Portal>
-    </Dialog.Root>
+            ))}
+          </HStack>
+        </Box>
+        <Box>
+          <Text fontSize="sm" fontWeight="500" mb="2">
+            Year
+          </Text>
+          <Input
+            type="number"
+            value={year}
+            onChange={(e) => setYear(Number(e.target.value))}
+            min={2020}
+            max={2040}
+            size="sm"
+            borderRadius="lg"
+          />
+        </Box>
+        {isDuplicate && (
+          <Text fontSize="sm" color="red.500">
+            {season} {year} already exists in your plan.
+          </Text>
+        )}
+      </VStack>
+    </ConfirmationDialog>
   );
 }

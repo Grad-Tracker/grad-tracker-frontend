@@ -1,167 +1,83 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { cleanup } from "@testing-library/react";
-import { render, screen, fireEvent, waitFor, act } from "@testing-library/react";
+import { describe, it, expect, vi, afterEach, beforeEach } from "vitest";
+import { cleanup, screen } from "@testing-library/react";
 import React from "react";
-import { ChakraProvider, defaultSystem } from "@chakra-ui/react";
+import { renderWithChakra } from "@/__tests__/helpers/mocks";
 
-const { mockPush, mockSignInWithPassword, mockGetUser, mockToaster } = vi.hoisted(() => ({
-  mockPush: vi.fn(),
-  mockSignInWithPassword: vi.fn(),
-  mockGetUser: vi.fn(),
-  mockToaster: { create: vi.fn(), success: vi.fn(), error: vi.fn() },
-}));
-
-vi.mock("next/navigation", () => ({
-  useRouter: () => ({ push: mockPush, replace: vi.fn(), refresh: vi.fn() }),
-}));
-
-vi.mock("@/lib/supabase/client", () => ({
-  createClient: () => ({
-    auth: { signInWithPassword: mockSignInWithPassword, getUser: mockGetUser },
-  }),
+// Mock next/image as a simple img element
+vi.mock("next/image", () => ({
+  __esModule: true,
+  default: (props: Record<string, unknown>) => {
+    // eslint-disable-next-line @next/next/no-img-element, jsx-a11y/alt-text
+    const { fill, priority, ...rest } = props as Record<string, unknown>;
+    return React.createElement("img", rest);
+  },
 }));
 
-vi.mock("@/components/ui/toaster", () => ({ toaster: mockToaster }));
-vi.mock("@/components/ui/color-mode", () => ({ ColorModeButton: () => null }));
-vi.mock("@/components/ui/dialog", () => ({
-  DialogBody: (p: any) => <div>{p.children}</div>,
-  DialogCloseTrigger: () => null,
-  DialogContent: (p: any) => <div>{p.children}</div>,
-  DialogHeader: (p: any) => <div>{p.children}</div>,
-  DialogRoot: (p: any) => <div>{p.children}</div>,
-  DialogTitle: (p: any) => <div>{p.children}</div>,
-  DialogTrigger: (p: any) => <div>{p.children}</div>,
+// Mock next/link as a simple anchor
+vi.mock("next/link", () => ({
+  __esModule: true,
+  default: ({
+    href,
+    children,
+  }: {
+    href: string;
+    children: React.ReactNode;
+  }) => React.createElement("a", { href }, children),
 }));
-vi.mock("@/components/ui/field", () => ({
-  Field: (p: any) => (
-    <div>
-      <label>{p.label}</label>
-      {p.children}
-    </div>
-  ),
+
+// Mock the LinkButton component as a simple anchor
+vi.mock("@/components/ui/link-button", () => ({
+  LinkButton: ({
+    href,
+    children,
+    ...rest
+  }: {
+    href?: string;
+    children?: React.ReactNode;
+    [key: string]: unknown;
+  }) => React.createElement("a", { href, ...rest }, children),
 }));
-vi.mock("@/components/ui/password-input", () => ({
-  PasswordInput: (p: any) => (
-    <input
-      type="password"
-      placeholder={p.placeholder}
-      value={p.value}
-      onChange={p.onChange}
-      data-testid="password-input"
-    />
-  ),
-}));
-vi.mock("@/components/ui/progress", () => ({
-  ProgressBar: () => null,
-  ProgressLabel: (p: any) => <span>{p.children}</span>,
-  ProgressRoot: (p: any) => <div>{p.children}</div>,
-  ProgressValueText: () => null,
-}));
-vi.mock("@/components/ui/progress-circle", () => ({
-  ProgressCircleRing: () => null,
-  ProgressCircleRoot: (p: any) => <div>{p.children}</div>,
-  ProgressCircleValueText: () => <span>72%</span>,
-}));
-vi.mock("@/components/ui/stat", () => ({
-  StatLabel: (p: any) => <span>{p.children}</span>,
-  StatRoot: (p: any) => <div>{p.children}</div>,
-  StatValueText: (p: any) => <span>{p.children}</span>,
-}));
-vi.mock("@/components/ui/timeline", () => ({
-  TimelineConnector: (p: any) => <div>{p.children}</div>,
-  TimelineContent: (p: any) => <div>{p.children}</div>,
-  TimelineItem: (p: any) => <div>{p.children}</div>,
-  TimelineRoot: (p: any) => <div>{p.children}</div>,
-  TimelineTitle: (p: any) => <div>{p.children}</div>,
-}));
+
+// Mock IntersectionObserver for FadeIn component
+const mockIntersectionObserver = vi.fn();
+
+beforeEach(() => {
+  mockIntersectionObserver.mockImplementation((callback: IntersectionObserverCallback) => {
+    // Immediately trigger with isIntersecting: true so FadeIn content renders visibly
+    setTimeout(() => {
+      callback(
+        [{ isIntersecting: true, target: document.createElement("div") }] as unknown as IntersectionObserverEntry[],
+        {} as IntersectionObserver
+      );
+    }, 0);
+    return {
+      observe: vi.fn(),
+      unobserve: vi.fn(),
+      disconnect: vi.fn(),
+    };
+  });
+  vi.stubGlobal("IntersectionObserver", mockIntersectionObserver);
+});
 
 import LandingPage from "@/components/LandingPage";
-
-function renderWithChakra(ui: React.ReactElement) {
-  return render(<ChakraProvider value={defaultSystem}>{ui}</ChakraProvider>);
-}
 
 describe("LandingPage", { timeout: 15000 }, () => {
   afterEach(cleanup);
 
-  beforeEach(() => {
-    vi.clearAllMocks();
-    mockGetUser.mockResolvedValue({
-      data: { user: { user_metadata: {} } },
-    });
-  });
+  // --- Header / Navbar ---
 
-  it("renders GradTracker logo", () => {
+  it("renders GradTracker branding in the header", () => {
     renderWithChakra(<LandingPage />);
     expect(screen.getAllByText("GradTracker").length).toBeGreaterThanOrEqual(1);
   });
 
-  it("renders Parkside badge", () => {
+  it("renders Parkside text", () => {
     renderWithChakra(<LandingPage />);
     expect(screen.getAllByText("Parkside").length).toBeGreaterThanOrEqual(1);
   });
 
-  it("renders hero heading with Graduation text", () => {
+  it("renders Sign In link pointing to /signin", () => {
     renderWithChakra(<LandingPage />);
-    expect(screen.getAllByText(/Graduation/).length).toBeGreaterThanOrEqual(1);
-  });
-
-  it("renders Get Started Free buttons", () => {
-    renderWithChakra(<LandingPage />);
-    expect(screen.getAllByText("Get Started Free").length).toBeGreaterThanOrEqual(1);
-  });
-
-  it("renders See How It Works button", () => {
-    renderWithChakra(<LandingPage />);
-    expect(screen.getAllByText("See How It Works").length).toBeGreaterThanOrEqual(1);
-  });
-
-  it("renders all feature card titles", () => {
-    renderWithChakra(<LandingPage />);
-    expect(screen.getAllByText("Credit Tracking").length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText("Parkside Requirements").length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText("Progress Visualization").length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText("Advisor Ready").length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText("Semester Planning").length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText("Requirement Alerts").length).toBeGreaterThanOrEqual(1);
-  });
-
-  it("renders Built for Parkside Rangers heading", () => {
-    renderWithChakra(<LandingPage />);
-    expect(screen.getAllByText("Built for Parkside Rangers").length).toBeGreaterThanOrEqual(1);
-  });
-
-  it("renders stats section", () => {
-    renderWithChakra(<LandingPage />);
-    expect(screen.getAllByText("40+").length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText("120").length).toBeGreaterThanOrEqual(1);
-  });
-
-  it("renders how it works timeline", () => {
-    renderWithChakra(<LandingPage />);
-    expect(screen.getAllByText(/Sign In with Your Parkside Account/).length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText(/Select Your Degree Program/).length).toBeGreaterThanOrEqual(1);
-  });
-
-  it("renders progress demo section", () => {
-    renderWithChakra(<LandingPage />);
-    expect(screen.getAllByText("Your Dashboard").length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText("Overall Completion").length).toBeGreaterThanOrEqual(1);
-  });
-
-  it("renders CTA section", () => {
-    renderWithChakra(<LandingPage />);
-    expect(screen.getAllByText(/Ready to Graduate/).length).toBeGreaterThanOrEqual(1);
-  });
-
-  it("renders footer", () => {
-    renderWithChakra(<LandingPage />);
-    expect(screen.getAllByText(/Built with care/).length).toBeGreaterThanOrEqual(1);
-  });
-
-  it("renders Sign In button as a link to /signin", () => {
-    renderWithChakra(<LandingPage />);
-    // The Sign In nav button should be an anchor pointing to /signin (no modal)
     const signInLinks = screen
       .getAllByText("Sign In")
       .map((el) => el.closest("a"))
@@ -170,14 +86,232 @@ describe("LandingPage", { timeout: 15000 }, () => {
     expect(signInLinks[0]).toHaveAttribute("href", "/signin");
   });
 
-  it("does not render Advisor sign in text in the header", () => {
+  // --- Hero Section ---
+
+  it("renders hero heading lines", () => {
     renderWithChakra(<LandingPage />);
-    expect(screen.queryByRole("link", { name: "Advisor sign in" })).not.toBeInTheDocument();
+    // The heading is a single h2 with <br> separators, so match within it
+    const headings = screen.getAllByRole("heading", { level: 2 });
+    const heroHeading = headings.find(
+      (h) =>
+        h.textContent?.includes("Your degree.") &&
+        h.textContent?.includes("Your plan.") &&
+        h.textContent?.includes("Your future.")
+    );
+    expect(heroHeading).toBeDefined();
   });
 
-  it("renders security and free badges", () => {
+  it("renders hero subtitle", () => {
     renderWithChakra(<LandingPage />);
-    expect(screen.getAllByText("Secure & Private").length).toBeGreaterThanOrEqual(1);
-    expect(screen.getAllByText("Always Free").length).toBeGreaterThanOrEqual(1);
+    expect(
+      screen.getAllByText(/Track every requirement, plan every semester/).length
+    ).toBeGreaterThanOrEqual(1);
+  });
+
+  it("renders Start Tracking button linking to /signup", () => {
+    renderWithChakra(<LandingPage />);
+    const buttons = screen.getAllByText("Start Tracking");
+    expect(buttons.length).toBeGreaterThanOrEqual(1);
+    const link = buttons[0].closest("a");
+    expect(link).toHaveAttribute("href", "/signup");
+  });
+
+  it("renders See How It Works button", () => {
+    renderWithChakra(<LandingPage />);
+    expect(
+      screen.getAllByText("See How It Works").length
+    ).toBeGreaterThanOrEqual(1);
+  });
+
+  // --- Stats ---
+
+  it("renders inline stats: 40+, 2,200+, 135, Free", () => {
+    renderWithChakra(<LandingPage />);
+    expect(screen.getAllByText("40+").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("2,200+").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("135").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("Free").length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("renders stat labels", () => {
+    renderWithChakra(<LandingPage />);
+    expect(screen.getAllByText("Programs").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("Courses").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("Catalogs").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("For Students").length).toBeGreaterThanOrEqual(1);
+  });
+
+  // --- Product Screenshot ---
+
+  it("renders the dashboard screenshot image", () => {
+    renderWithChakra(<LandingPage />);
+    const images = screen.getAllByAltText("GradTracker Dashboard");
+    expect(images.length).toBeGreaterThanOrEqual(1);
+  });
+
+  // --- How It Works Section ---
+
+  it("renders How It Works section heading", () => {
+    renderWithChakra(<LandingPage />);
+    expect(
+      screen.getAllByText(/How it works/i).length
+    ).toBeGreaterThanOrEqual(1);
+    expect(
+      screen.getAllByText("Three steps to graduation clarity").length
+    ).toBeGreaterThanOrEqual(1);
+  });
+
+  it("renders the three how-it-works steps", () => {
+    renderWithChakra(<LandingPage />);
+    expect(
+      screen.getAllByText("Create your account").length
+    ).toBeGreaterThanOrEqual(1);
+    expect(
+      screen.getAllByText("Select your program").length
+    ).toBeGreaterThanOrEqual(1);
+    expect(
+      screen.getAllByText("Track your progress").length
+    ).toBeGreaterThanOrEqual(1);
+  });
+
+  it("renders step numbers", () => {
+    renderWithChakra(<LandingPage />);
+    expect(screen.getAllByText("STEP 01").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("STEP 02").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("STEP 03").length).toBeGreaterThanOrEqual(1);
+  });
+
+  // --- Features Section ---
+
+  it("renders Features section heading", () => {
+    renderWithChakra(<LandingPage />);
+    expect(screen.getAllByText("Features").length).toBeGreaterThanOrEqual(1);
+    expect(
+      screen.getAllByText("Everything you need to graduate on time").length
+    ).toBeGreaterThanOrEqual(1);
+  });
+
+  it("renders all four feature card titles", () => {
+    renderWithChakra(<LandingPage />);
+    expect(
+      screen.getAllByText("Semester Planner").length
+    ).toBeGreaterThanOrEqual(1);
+    expect(
+      screen.getAllByText("Course Catalog").length
+    ).toBeGreaterThanOrEqual(1);
+    expect(
+      screen.getAllByText("Requirement Breakdown").length
+    ).toBeGreaterThanOrEqual(1);
+    expect(
+      screen.getAllByText("AI Academic Advisor").length
+    ).toBeGreaterThanOrEqual(1);
+  });
+
+  it("renders feature descriptions", () => {
+    renderWithChakra(<LandingPage />);
+    expect(
+      screen.getAllByText(/Build your path to graduation semester by semester/)
+        .length
+    ).toBeGreaterThanOrEqual(1);
+    expect(
+      screen.getAllByText(/Browse 2,200\+ courses/).length
+    ).toBeGreaterThanOrEqual(1);
+    expect(
+      screen.getAllByText(/Every gen-ed bucket and major block/).length
+    ).toBeGreaterThanOrEqual(1);
+    expect(
+      screen.getAllByText(/Get instant, personalized guidance/).length
+    ).toBeGreaterThanOrEqual(1);
+  });
+
+  // --- AI Advisor Chat Preview ---
+
+  it("renders the AI advisor chat preview", () => {
+    renderWithChakra(<LandingPage />);
+    expect(
+      screen.getAllByText(/What should I take next semester/).length
+    ).toBeGreaterThanOrEqual(1);
+    expect(
+      screen.getAllByText(/I'd recommend/).length
+    ).toBeGreaterThanOrEqual(1);
+  });
+
+  // --- CTA Section ---
+
+  it("renders the CTA heading", () => {
+    renderWithChakra(<LandingPage />);
+    expect(
+      screen.getAllByText(/Your graduation roadmap/).length
+    ).toBeGreaterThanOrEqual(1);
+    expect(
+      screen.getAllByText("starts here").length
+    ).toBeGreaterThanOrEqual(1);
+  });
+
+  it("renders Get Started Free button in CTA linking to /signup", () => {
+    renderWithChakra(<LandingPage />);
+    const buttons = screen.getAllByText("Get Started Free");
+    expect(buttons.length).toBeGreaterThanOrEqual(1);
+    const link = buttons[0].closest("a");
+    expect(link).toHaveAttribute("href", "/signup");
+  });
+
+  it("renders CTA subtitle text", () => {
+    renderWithChakra(<LandingPage />);
+    expect(
+      screen.getAllByText(/Free for all UW-Parkside students/).length
+    ).toBeGreaterThanOrEqual(1);
+  });
+
+  // --- Footer ---
+
+  it("renders footer with GradTracker Parkside branding", () => {
+    renderWithChakra(<LandingPage />);
+    // There should be at least 2 GradTracker texts (header + footer)
+    expect(screen.getAllByText("GradTracker").length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("renders footer navigation links", () => {
+    renderWithChakra(<LandingPage />);
+    expect(
+      screen.getAllByText("Progress Tracking").length
+    ).toBeGreaterThanOrEqual(1);
+    // "Semester Planner" appears in features too, so check for at least 1
+    expect(
+      screen.getAllByText("AI Advisor").length
+    ).toBeGreaterThanOrEqual(1);
+    // "Course Catalog" appears in features too
+    expect(
+      screen.getAllByText("Course Catalog").length
+    ).toBeGreaterThanOrEqual(1);
+  });
+
+  it("renders copyright notice", () => {
+    renderWithChakra(<LandingPage />);
+    const year = new Date().getFullYear();
+    expect(
+      screen.getAllByText(new RegExp(`© ${year} GradTracker`)).length
+    ).toBeGreaterThanOrEqual(1);
+  });
+
+  // --- Images ---
+
+  it("renders campus hero background image", () => {
+    renderWithChakra(<LandingPage />);
+    const images = screen.getAllByAltText("UW-Parkside Campus aerial view");
+    expect(images.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("renders feature screenshot images", () => {
+    renderWithChakra(<LandingPage />);
+    expect(
+      screen.getAllByAltText("Semester Planner").length
+    ).toBeGreaterThanOrEqual(1);
+    expect(
+      screen.getAllByAltText("Course Catalog").length
+    ).toBeGreaterThanOrEqual(1);
+    expect(
+      screen.getAllByAltText("Programs and Requirements").length
+    ).toBeGreaterThanOrEqual(1);
   });
 });

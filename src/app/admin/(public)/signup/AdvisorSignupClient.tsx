@@ -2,26 +2,24 @@
 
 import { useState } from "react";
 import {
-  Badge,
-  Box,
   Button,
-  Card,
-  Container,
   HStack,
   Icon,
   Input,
   Text,
   VStack,
 } from "@chakra-ui/react";
-import { ColorModeButton } from "@/components/ui/color-mode";
 import { Field } from "@/components/ui/field";
 import { PasswordInput } from "@/components/ui/password-input";
 import { toaster } from "@/components/ui/toaster";
-import { LuGraduationCap, LuArrowRight, LuLoader } from "react-icons/lu";
+import { LuArrowRight, LuLoader, LuShieldCheck } from "react-icons/lu";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { isAdvisorEmail, normalizeEmail } from "@/lib/email-validation";
 import { DB_TABLES } from "@/lib/supabase/queries/schema";
+import AuthPageLayout from "@/components/auth/AuthPageLayout";
+import PasswordStrength from "@/components/auth/PasswordStrength";
 
 export default function AdvisorSignupClient() {
   const router = useRouter();
@@ -60,13 +58,9 @@ export default function AdvisorSignupClient() {
       return;
     }
 
-    const normalizedEmail = email.trim().toLowerCase();
+    const normalizedEmail = normalizeEmail(email);
 
-    const hasValidAdvisorDomain =
-      normalizedEmail.endsWith("@uwp.edu") &&
-      !normalizedEmail.endsWith("@rangers.uwp.edu");
-
-    if (!hasValidAdvisorDomain) {
+    if (!isAdvisorEmail(normalizedEmail)) {
       toaster.create({
         title: "Invalid email domain",
         description: "Advisor sign up requires a @uwp.edu email address.",
@@ -89,7 +83,7 @@ export default function AdvisorSignupClient() {
             first_name: firstName,
             last_name: lastName,
           },
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
+          emailRedirectTo: `${globalThis.location.origin}/auth/callback`,
         },
       });
 
@@ -115,7 +109,8 @@ export default function AdvisorSignupClient() {
         await supabase.auth.signOut();
         toaster.create({
           title: "Account already exists",
-          description: "An account with this email already exists. Please sign in instead.",
+          description:
+            "An account with this email already exists. Please sign in instead.",
           type: "error",
         });
         return;
@@ -167,245 +162,155 @@ export default function AdvisorSignupClient() {
   }
 
   return (
-    <Box
-      minH="100vh"
-      fontFamily="var(--font-plus-jakarta), sans-serif"
-      position="relative"
+    <AuthPageLayout
+      headline="Advisor"
+      highlightWord="portal."
+      subtitle="Manage programs, track student progress, and keep the catalog up to date."
     >
-      <Box
-        as="header"
-        position="sticky"
-        top="0"
-        zIndex="sticky"
-        className="glass-card"
-        borderBottomWidth="1px"
-        borderColor="border.subtle"
-      >
-        <Container maxW="7xl" mx="auto" px={{ base: "4", md: "6", lg: "8" }}>
-          <HStack justify="space-between" py="4">
-            <Link href="/">
-              <HStack gap="3" cursor="pointer">
-                <Box
-                  p="2"
-                  bg="blue.solid"
-                  borderRadius="lg"
-                  className="animate-pulse-glow"
-                >
-                  <Icon color="white" boxSize="5">
-                    <LuGraduationCap />
-                  </Icon>
-                </Box>
-                <Text
-                  fontWeight="700"
-                  fontSize="xl"
-                  fontFamily="var(--font-outfit), sans-serif"
-                  letterSpacing="-0.02em"
-                >
-                  GradTracker
-                </Text>
-                <Badge
-                  colorPalette="blue"
-                  variant="surface"
-                  size="sm"
-                  fontWeight="500"
-                >
-                  Parkside
-                </Badge>
-              </HStack>
-            </Link>
-            <HStack gap="3">
-              <ColorModeButton variant="ghost" size="sm" />
-            </HStack>
-          </HStack>
-        </Container>
-      </Box>
-
-      <Box
-        className="mesh-gradient noise-overlay"
-        py={{ base: "16", md: "24" }}
-        minH="calc(100vh - 73px)"
-        display="flex"
-        alignItems="center"
-        position="relative"
-        overflow="hidden"
-      >
-        <Box
-          position="absolute"
-          top="-20%"
-          right="-10%"
-          w="500px"
-          h="500px"
-          bg="blue.500"
-          opacity="0.05"
+      <VStack gap="5" align="stretch">
+        <HStack
+          gap="2"
+          px="3"
+          py="1.5"
+          bg="green.50"
           borderRadius="full"
-          filter="blur(100px)"
-        />
-        <Box
-          position="absolute"
-          bottom="-30%"
-          left="-10%"
-          w="400px"
-          h="400px"
-          bg="teal.500"
-          opacity="0.05"
-          borderRadius="full"
-          filter="blur(80px)"
-        />
+          borderWidth="1px"
+          borderColor="green.200"
+          w="fit-content"
+        >
+          <Icon color="green.600" boxSize="3.5">
+            <LuShieldCheck />
+          </Icon>
+          <Text fontSize="xs" fontWeight="600" color="green.700">
+            Access code verified
+          </Text>
+        </HStack>
 
-        <Container maxW="md" position="relative" zIndex="2">
-          <Box position="relative">
-            <Box
-              position="absolute"
-              inset="-4"
-              bg="blue.500"
-              opacity="0.15"
-              borderRadius="3xl"
-              filter="blur(40px)"
+        <VStack gap="1" align="start">
+          <Text
+            fontWeight="700"
+            fontSize={{ base: "2xl", md: "3xl" }}
+            letterSpacing="-0.02em"
+          >
+            Create Advisor Account
+          </Text>
+          <Text color="fg.muted" fontSize="sm">
+            Set up your advisor account for program management tools.
+          </Text>
+        </VStack>
+
+        <HStack gap="3" w="full">
+          <Field label="First Name">
+            <Input
+              placeholder="First name"
+              rounded="lg"
+              size="lg"
+              value={firstName}
+              onChange={(e) => setFirstName(e.target.value)}
             />
+          </Field>
+          <Field label="Last Name">
+            <Input
+              placeholder="Last name"
+              rounded="lg"
+              size="lg"
+              value={lastName}
+              onChange={(e) => setLastName(e.target.value)}
+            />
+          </Field>
+        </HStack>
 
-            <Card.Root
-              bg="bg"
-              p={{ base: "6", md: "10" }}
-              borderRadius="3xl"
-              boxShadow="2xl"
-              borderWidth="1px"
-              borderColor="border.subtle"
-              position="relative"
-              overflow="hidden"
+        <Field label="Email">
+          <Input
+            placeholder="you@example.com"
+            type="email"
+            rounded="lg"
+            size="lg"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
+        </Field>
+
+        <Field label="Password">
+          <PasswordInput
+            placeholder="Create a password"
+            rounded="lg"
+            size="lg"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
+          {password.length > 0 && <PasswordStrength password={password} />}
+        </Field>
+
+        <Field label="Confirm Password">
+          <PasswordInput
+            placeholder="Confirm your password"
+            rounded="lg"
+            size="lg"
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+          />
+          {confirmPassword.length > 0 && (
+            <Text
+              fontSize="xs"
+              color={password === confirmPassword ? "green.500" : "red.500"}
+              mt="1"
             >
-              <Box
-                position="absolute"
-                top="0"
-                left="0"
-                right="0"
-                h="1px"
-                bgGradient="to-r"
-                gradientFrom="transparent"
-                gradientVia="blue.500"
-                gradientTo="transparent"
-              />
+              {password === confirmPassword
+                ? "Passwords match"
+                : "Passwords don\u2019t match"}
+            </Text>
+          )}
+        </Field>
 
-              <Card.Body p="0">
-                <VStack gap="6" align="stretch">
-                  <VStack gap="2" textAlign="center">
-                    <Text
-                      fontWeight="700"
-                      fontSize="2xl"
-                      fontFamily="var(--font-outfit), sans-serif"
-                      letterSpacing="-0.02em"
-                    >
-                      Create Advisor Account
-                    </Text>
-                    <Text color="fg.muted" fontSize="sm">
-                      Create an advisor account for advisor tools access.
-                    </Text>
-                  </VStack>
+        <Button
+          w="full"
+          size="lg"
+          rounded="full"
+          fontWeight="600"
+          bg="blue.800"
+          color="white"
+          _hover={{
+            bg: "blue.900",
+            transform: "translateY(-2px)",
+            boxShadow: "0 8px 24px rgba(30,58,95,0.3)",
+          }}
+          transition="all 0.2s"
+          onClick={handleSignup}
+          disabled={loading}
+        >
+          {loading ? (
+            <>
+              <Icon className="animate-spin" mr="2">
+                <LuLoader />
+              </Icon>
+              Creating Account...
+            </>
+          ) : (
+            <>
+              Create Advisor Account
+              <Icon ml="2">
+                <LuArrowRight />
+              </Icon>
+            </>
+          )}
+        </Button>
 
-                  <VStack gap="5">
-                    <HStack gap="4" w="full">
-                      <Field label="First Name">
-                        <Input
-                          placeholder="First name"
-                          rounded="lg"
-                          size="lg"
-                          value={firstName}
-                          onChange={(e) => setFirstName(e.target.value)}
-                        />
-                      </Field>
-                      <Field label="Last Name">
-                        <Input
-                          placeholder="Last name"
-                          rounded="lg"
-                          size="lg"
-                          value={lastName}
-                          onChange={(e) => setLastName(e.target.value)}
-                        />
-                      </Field>
-                    </HStack>
-
-                    <Field label="Email">
-                      <Input
-                        placeholder="your.name@uwp.edu"
-                        type="email"
-                        rounded="lg"
-                        size="lg"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                      />
-                    </Field>
-
-                    <Field label="Password">
-                      <PasswordInput
-                        placeholder="Create a password"
-                        rounded="lg"
-                        size="lg"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                      />
-                    </Field>
-
-                    <Field label="Confirm Password">
-                      <PasswordInput
-                        placeholder="Confirm your password"
-                        rounded="lg"
-                        size="lg"
-                        value={confirmPassword}
-                        onChange={(e) => setConfirmPassword(e.target.value)}
-                      />
-                    </Field>
-                  </VStack>
-
-                  <Button
-                    w="full"
-                    colorPalette="blue"
-                    size="lg"
-                    rounded="lg"
-                    fontWeight="600"
-                    _hover={{
-                      transform: "translateY(-2px)",
-                      boxShadow: "lg",
-                    }}
-                    transition="all 0.2s"
-                    onClick={handleSignup}
-                    disabled={loading}
-                  >
-                    {loading ? (
-                      <>
-                        <Icon className="animate-spin" mr="2">
-                          <LuLoader />
-                        </Icon>
-                        Creating Account...
-                      </>
-                    ) : (
-                      <>
-                        Create Advisor Account
-                        <Icon ml="2">
-                          <LuArrowRight />
-                        </Icon>
-                      </>
-                    )}
-                  </Button>
-
-                  <Text fontSize="sm" color="fg.muted" textAlign="center">
-                    Already have an account?{" "}
-                    <Link href="/signin">
-                      <Text
-                        as="span"
-                        color="blue.solid"
-                        cursor="pointer"
-                        fontWeight="600"
-                        _hover={{ textDecoration: "underline" }}
-                      >
-                        Sign in
-                      </Text>
-                    </Link>
-                  </Text>
-                </VStack>
-              </Card.Body>
-            </Card.Root>
-          </Box>
-        </Container>
-      </Box>
-    </Box>
+        <Text fontSize="sm" color="fg.muted" textAlign="center">
+          Already have an account?{" "}
+          <Link href="/signin">
+            <Text
+              as="span"
+              color="blue.500"
+              cursor="pointer"
+              fontWeight="600"
+              _hover={{ textDecoration: "underline" }}
+            >
+              Sign in
+            </Text>
+          </Link>
+        </Text>
+      </VStack>
+    </AuthPageLayout>
   );
 }

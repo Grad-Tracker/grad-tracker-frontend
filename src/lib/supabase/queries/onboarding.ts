@@ -1,15 +1,14 @@
 import { createClient } from "@/lib/supabase/client";
 import type { Program, RequirementBlock, CourseRow } from "@/types/onboarding";
 import { DB_TABLES, DB_VIEWS, PROGRAM_TYPES, STUDENT_COLUMNS } from "./schema";
-import { logStudentActivity } from "./activity";
 import type {
   ViewCourseCatalogRow,
-  ViewProgramBlockCourseItem,
   ViewProgramBlockCoursesRow,
   ViewProgramCatalogRow,
   ViewStudentMajorProgramRow,
   ViewStudentProfileRow,
 } from "./view-types";
+import { mapViewBlockToCourseBlock, safeLogActivity } from "./helpers";
 
 function splitFullName(fullName: string): { firstName: string; lastName: string } {
   const trimmed = fullName.trim();
@@ -24,29 +23,6 @@ function isMissingColumnError(error: unknown, columnName: string): boolean {
   if (!error || typeof error !== "object") return false;
   const message = String((error as { message?: unknown }).message ?? "");
   return message.includes(columnName) && message.includes("column");
-}
-
-function toCourseRowFromView(item: ViewProgramBlockCourseItem): CourseRow {
-  return {
-    id: Number(item.course_id),
-    subject: String(item.subject ?? ""),
-    number: String(item.number ?? ""),
-    title: String(item.title ?? ""),
-    credits: Number(item.credits ?? 0),
-  };
-}
-
-async function safeLogActivity(
-  studentId: number,
-  activityType: Parameters<typeof logStudentActivity>[1],
-  message: string,
-  metadata: Record<string, unknown>
-) {
-  try {
-    await logStudentActivity(studentId, activityType, message, metadata);
-  } catch (error) {
-    console.error("Failed to log student activity:", error);
-  }
 }
 
 export async function fetchStudentProfileByAuthUserId(
@@ -70,7 +46,7 @@ export async function fetchStudentMajorProgram(
 ): Promise<ViewStudentMajorProgramRow | null> {
   const supabase = createClient();
   const { data, error } = await supabase
-    .from(DB_VIEWS.studentMajorProgram)
+    .from(DB_VIEWS.studentPrimaryMajorProgram)
     .select("student_id, program_id, program_name, catalog_year, program_type")
     .eq("student_id", studentId)
     .maybeSingle();
@@ -121,15 +97,7 @@ export async function fetchProgramRequirements(
   if (error) throw error;
   if (!data?.length) return [];
 
-  return (data as ViewProgramBlockCoursesRow[]).map((row) => ({
-    id: Number(row.block_id),
-    program_id: Number(row.program_id),
-    name: row.block_name,
-    rule: row.rule,
-    n_required: row.n_required,
-    credits_required: row.credits_required,
-    courses: (row.courses ?? []).map(toCourseRowFromView),
-  }));
+  return (data as ViewProgramBlockCoursesRow[]).map(mapViewBlockToCourseBlock);
 }
 
 /**

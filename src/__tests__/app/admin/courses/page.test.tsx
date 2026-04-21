@@ -1,7 +1,7 @@
 import React from "react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen } from "@testing-library/react";
-import { ChakraProvider, defaultSystem } from "@chakra-ui/react";
+import { screen } from "@testing-library/react";
+import { renderWithChakra } from "@/__tests__/helpers/mocks";
 
 // ── hoisted mocks ─────────────────────────────────────────────────────────────
 
@@ -20,7 +20,7 @@ vi.mock("@/lib/supabase/server", () => ({
 }));
 
 // Mock CoursesAdminClient to avoid rendering the full client tree
-vi.mock("@/app/admin/courses/CoursesAdminClient", () => ({
+vi.mock("@/app/admin/(protected)/courses/CoursesAdminClient", () => ({
   default: ({ initialCourses, subjects }: { initialCourses: unknown[]; subjects: string[] }) => (
     <div data-testid="courses-admin-client">
       <span data-testid="course-count">{initialCourses.length}</span>
@@ -29,11 +29,7 @@ vi.mock("@/app/admin/courses/CoursesAdminClient", () => ({
   ),
 }));
 
-import AdminCoursesPage from "@/app/admin/courses/page";
-
-function renderWithChakra(ui: React.ReactElement) {
-  return render(<ChakraProvider value={defaultSystem}>{ui}</ChakraProvider>);
-}
+import AdminCoursesPage from "@/app/admin/(protected)/courses/page";
 
 // ── tests ─────────────────────────────────────────────────────────────────────
 

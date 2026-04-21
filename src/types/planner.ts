@@ -49,6 +49,8 @@ export interface RequirementBlockWithCourses {
   rule: string;
   n_required: number | null;
   credits_required: number | null;
+  is_plannable?: boolean;
+  planner_exclusion_reason?: string | null;
   courses: Course[];
 }
 
@@ -289,7 +291,7 @@ export function shortenBlockName(name: string): string {
     return "Concentration";
 
   const stripped = name
-    .replace(/^Required Major Courses\s*-?\s*/i, "")
+    .replace(/^Required Major Courses[\s-]*/i, "")
     .replace(/^Required Program\s*/i, "")
     .replace(/^Required\s+/i, "")
     .replace(/\s+Courses?$/i, "")
@@ -304,6 +306,12 @@ export interface DeduplicateOptions {
   isGraduate?: boolean;
   /** Block ID of the selected graduate track; unselected track blocks are hidden */
   selectedTrackId?: number | null;
+}
+
+export interface ProgramCreditTargetOptions extends DeduplicateOptions {
+  breadthCreditsWhenUnselected?: number;
+  minimumUndergradCredits?: number;
+  useLegacyElectivePoolForTotal?: boolean;
 }
 
 /**
@@ -410,6 +418,94 @@ export function deduplicateBlocks(
   }
 
   return result;
+}
+
+function blockRequiredCreditsForTarget(
+  block: RequirementBlockWithCourses,
+  opts: ProgramCreditTargetOptions
+): number {
+  const breadthNoSelection =
+    !opts.isGraduate &&
+    isBreadthBlock(block) &&
+    !opts.selectedPackage;
+
+  if (breadthNoSelection) {
+    return opts.breadthCreditsWhenUnselected ?? 9;
+  }
+
+  if (block.credits_required != null) {
+    return block.credits_required;
+  }
+
+  return block.courses.reduce((sum, course) => sum + course.credits, 0);
+}
+
+function blockCreditsForLegacyDegreeTarget(
+  block: RequirementBlockWithCourses,
+  opts: ProgramCreditTargetOptions
+): number {
+  const strict = blockRequiredCreditsForTarget(block, opts);
+
+  // Legacy behavior for degree totals: elective-major pools can act as a
+  // top-up source toward full graduation credits even when block minimums
+  // (e.g. 12 credits / 4 courses) are lower.
+  const isElectiveMajorBlock =
+    block.rule === "N_OF" &&
+    (/elective major courses?/i.test(block.name) ||
+      /^electives$/i.test(block.name.trim()));
+
+  if (!isElectiveMajorBlock) return strict;
+
+  const poolCredits = block.courses.reduce((sum, course) => sum + course.credits, 0);
+  return Math.max(strict, poolCredits);
+}
+
+/**
+ * Compute a degree-credit target by program, then take the maximum program target.
+ * This keeps totals on a per-major basis instead of summing every selected program.
+ */
+export function computePerProgramCreditTarget(
+  blocks: RequirementBlockWithCourses[],
+  opts: ProgramCreditTargetOptions = {}
+): number {
+  if (blocks.length === 0) return 0;
+
+  const byProgram = new Map<number, RequirementBlockWithCourses[]>();
+  for (const block of blocks) {
+    if (!byProgram.has(block.program_id)) {
+      byProgram.set(block.program_id, []);
+    }
+    byProgram.get(block.program_id)!.push(block);
+  }
+
+  let maxProgramTarget = 0;
+  for (const programBlocks of byProgram.values()) {
+    const deduped = deduplicateBlocks(programBlocks, opts);
+    const strictTarget = deduped.reduce(
+      (sum, block) => sum + blockRequiredCreditsForTarget(block, opts),
+      0
+    );
+
+    let programTarget = strictTarget;
+
+    if (!opts.isGraduate && opts.useLegacyElectivePoolForTotal) {
+      const legacyTarget = deduped.reduce(
+        (sum, block) => sum + blockCreditsForLegacyDegreeTarget(block, opts),
+        0
+      );
+      programTarget = Math.max(programTarget, legacyTarget);
+    }
+
+    if (!opts.isGraduate && (opts.minimumUndergradCredits ?? 0) > 0) {
+      programTarget = Math.max(programTarget, opts.minimumUndergradCredits ?? 0);
+    }
+
+    if (programTarget > maxProgramTarget) {
+      maxProgramTarget = programTarget;
+    }
+  }
+
+  return maxProgramTarget;
 }
 
 // ── Term helpers ─────────────────────────────────────────

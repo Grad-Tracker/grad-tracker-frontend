@@ -50,10 +50,7 @@ import {
   reactivateCourse,
 } from "@/lib/supabase/queries/courses";
 import type { CourseDetail, CourseInput } from "@/types/course";
-
-// ── constants ─────────────────────────────────────────────────────────────────
-
-const PAGE_SIZE = 25;
+import { COURSES_ADMIN_PAGE_SIZE } from "@/lib/constants";
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
@@ -95,7 +92,7 @@ interface CoursesAdminClientProps {
 export default function CoursesAdminClient({
   initialCourses,
   subjects,
-}: CoursesAdminClientProps) {
+}: Readonly<CoursesAdminClientProps>) {
   // ── data state ──────────────────────────────────────────────────────────────
   const [courses, setCourses] = useState<CourseDetail[]>(initialCourses);
 
@@ -124,7 +121,7 @@ export default function CoursesAdminClient({
   const subjectCollection = useMemo(() => {
     const seen = new Set<string>();
     courses.forEach((c) => seen.add(c.subject));
-    const sorted = Array.from(seen).sort();
+    const sorted = Array.from(seen).sort((a, b) => a.localeCompare(b));
     return createListCollection({
       items: sorted.map((s) => ({ label: s, value: s })),
     });
@@ -144,16 +141,16 @@ export default function CoursesAdminClient({
     });
   }, [courses, search, subjectFilter]);
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const totalPages = Math.max(1, Math.ceil(filtered.length / COURSES_ADMIN_PAGE_SIZE));
 
   // Clamp page whenever the filtered set changes (filters or data mutations).
   useEffect(() => {
-    setPage((prev) => Math.min(prev, Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))));
+    setPage((prev) => Math.min(prev, Math.max(1, Math.ceil(filtered.length / COURSES_ADMIN_PAGE_SIZE))));
   }, [filtered]);
 
   const paginated = useMemo(() => {
-    const start = (page - 1) * PAGE_SIZE;
-    return filtered.slice(start, start + PAGE_SIZE);
+    const start = (page - 1) * COURSES_ADMIN_PAGE_SIZE;
+    return filtered.slice(start, start + COURSES_ADMIN_PAGE_SIZE);
   }, [filtered, page]);
 
   // ── dialog helpers ───────────────────────────────────────────────────────────
@@ -193,7 +190,7 @@ export default function CoursesAdminClient({
     if (!form.number.trim()) errors.number = "Number is required.";
     if (!form.title.trim()) errors.title = "Title is required.";
     const credits = parseFloat(form.creditsStr);
-    if (!form.creditsStr.trim() || isNaN(credits) || credits <= 0) {
+    if (!form.creditsStr.trim() || Number.isNaN(credits) || credits <= 0) {
       errors.credits = "Credits must be a positive number.";
     }
     setFormErrors(errors);
@@ -230,9 +227,9 @@ export default function CoursesAdminClient({
         };
         setCourses((prev) =>
           [...prev, newCourse].sort((a, b) =>
-            a.subject !== b.subject
-              ? a.subject.localeCompare(b.subject)
-              : a.number.localeCompare(b.number)
+            a.subject === b.subject
+              ? a.number.localeCompare(b.number)
+              : a.subject.localeCompare(b.subject)
           )
         );
         toaster.create({ title: "Course added", type: "success" });
@@ -545,7 +542,7 @@ export default function CoursesAdminClient({
             </Text>
             <Pagination.Root
               count={filtered.length}
-              pageSize={PAGE_SIZE}
+              pageSize={COURSES_ADMIN_PAGE_SIZE}
               page={page}
               onPageChange={(e) => setPage(e.page)}
               siblingCount={1}

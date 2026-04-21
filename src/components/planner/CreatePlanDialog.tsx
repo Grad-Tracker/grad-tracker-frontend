@@ -1,13 +1,11 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import {
-  Badge,
   Box,
   Button,
   CloseButton,
   Dialog,
-  Flex,
   HStack,
   Icon,
   Input,
@@ -17,14 +15,8 @@ import {
   Textarea,
   VStack,
 } from "@chakra-ui/react";
-import {
-  LuSearch,
-  LuGraduationCap,
-  LuBookOpen,
-  LuAward,
-  LuCheck,
-  LuSparkles,
-} from "react-icons/lu";
+import { LuSparkles } from "react-icons/lu";
+import ProgramSelector from "@/components/shared/ProgramSelector";
 import { Switch } from "@/components/ui/switch";
 import { fetchPrograms } from "@/lib/supabase/queries/onboarding";
 import type { Program } from "@/types/onboarding";
@@ -40,18 +32,6 @@ interface CreatePlanDialogProps {
   ) => Promise<void>;
   existingPlanCount: number;
 }
-
-const TYPE_ORDER: Program["program_type"][] = ["MAJOR", "MINOR", "CERTIFICATE", "GRADUATE"];
-
-const TYPE_META: Record<
-  Program["program_type"],
-  { label: string; color: string; icon: typeof LuGraduationCap }
-> = {
-  MAJOR: { label: "Majors", color: "blue", icon: LuGraduationCap },
-  MINOR: { label: "Minors", color: "purple", icon: LuBookOpen },
-  CERTIFICATE: { label: "Certificates", color: "orange", icon: LuAward },
-  GRADUATE: { label: "Graduate Programs", color: "purple", icon: LuGraduationCap },
-};
 
 export default function CreatePlanDialog({
   open,
@@ -93,24 +73,6 @@ export default function CreatePlanDialog({
         .finally(() => setProgramsLoading(false));
     }
   }, [open]);
-
-  const filteredByType = useMemo(() => {
-    const q = search.toLowerCase().trim();
-    const filtered = q
-      ? allPrograms.filter((p) => p.name.toLowerCase().includes(q))
-      : allPrograms;
-
-    const grouped: Record<Program["program_type"], Program[]> = {
-      MAJOR: [],
-      MINOR: [],
-      CERTIFICATE: [],
-      GRADUATE: [],
-    };
-    for (const p of filtered) {
-      grouped[p.program_type].push(p);
-    }
-    return grouped;
-  }, [allPrograms, search]);
 
   function toggleProgram(id: number) {
     setSelectedProgramIds((prev) => {
@@ -209,100 +171,14 @@ export default function CreatePlanDialog({
                     available courses.
                   </Text>
 
-                  {/* Search */}
-                  <Box position="relative" mb="3">
-                    <Box
-                      position="absolute"
-                      left="3"
-                      top="50%"
-                      transform="translateY(-50%)"
-                      color="fg.muted"
-                      zIndex="1"
-                    >
-                      <LuSearch size={14} />
-                    </Box>
-                    <Input
-                      value={search}
-                      onChange={(e) => setSearch(e.target.value)}
-                      placeholder="Search programs..."
-                      size="sm"
-                      borderRadius="lg"
-                      pl="9"
-                    />
-                  </Box>
-
-                  {programsLoading ? (
-                    <Text fontSize="sm" color="fg.muted" py="4" textAlign="center">
-                      Loading programs...
-                    </Text>
-                  ) : (
-                    <VStack
-                      align="stretch"
-                      gap="4"
-                      maxH="280px"
-                      overflowY="auto"
-                      pr="1"
-                    >
-                      {TYPE_ORDER.map((type) => {
-                        const programs = filteredByType[type];
-                        if (programs.length === 0) return null;
-                        const meta = TYPE_META[type];
-
-                        return (
-                          <Box key={type}>
-                            <HStack gap="2" mb="2">
-                              <Icon
-                                boxSize="3.5"
-                                color={`${meta.color}.fg`}
-                              >
-                                <meta.icon />
-                              </Icon>
-                              <Text
-                                fontSize="xs"
-                                fontWeight="600"
-                                color="fg.muted"
-                                textTransform="uppercase"
-                                letterSpacing="0.05em"
-                              >
-                                {meta.label}
-                              </Text>
-                              <Badge
-                                size="sm"
-                                variant="subtle"
-                                colorPalette={meta.color}
-                              >
-                                {programs.length}
-                              </Badge>
-                            </HStack>
-
-                            <Flex gap="2" flexWrap="wrap">
-                              {programs.map((program) => {
-                                const isSelected = selectedProgramIds.has(
-                                  program.id
-                                );
-                                return (
-                                  <Button
-                                    key={program.id}
-                                    size="xs"
-                                    variant={isSelected ? "solid" : "outline"}
-                                    colorPalette={
-                                      isSelected ? meta.color : "gray"
-                                    }
-                                    borderRadius="full"
-                                    onClick={() => toggleProgram(program.id)}
-                                    fontWeight={isSelected ? "600" : "400"}
-                                  >
-                                    {isSelected && <LuCheck size={12} />}
-                                    {program.name}
-                                  </Button>
-                                );
-                              })}
-                            </Flex>
-                          </Box>
-                        );
-                      })}
-                    </VStack>
-                  )}
+                  <ProgramSelector
+                    programs={allPrograms}
+                    selectedIds={selectedProgramIds}
+                    onToggle={toggleProgram}
+                    searchQuery={search}
+                    onSearchChange={setSearch}
+                    loading={programsLoading}
+                  />
 
                   <Text fontSize="xs" color={selectedProgramIds.size > 0 ? "fg.muted" : "orange.fg"} mt="3">
                     {selectedProgramIds.size > 0

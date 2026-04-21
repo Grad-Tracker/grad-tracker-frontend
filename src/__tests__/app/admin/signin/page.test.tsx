@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, waitFor, act } from "@testing-library/react";
-import { ChakraProvider, defaultSystem } from "@chakra-ui/react";
+import { screen, fireEvent, waitFor, act } from "@testing-library/react";
+import { renderWithChakra } from "@/__tests__/helpers/mocks";
 
 const { mockPush, mockSignInWithPassword, mockGetUser, mockSignOut, mockToaster } = vi.hoisted(() => ({
   mockPush: vi.fn(),
@@ -35,10 +35,6 @@ vi.mock("@/components/ui/password-input", () => ({
 
 import AdminSigninPage from "@/app/admin/signin/page";
 
-function renderWithChakra(ui: React.ReactElement) {
-  return render(<ChakraProvider value={defaultSystem}>{ui}</ChakraProvider>);
-}
-
 describe("AdminSigninPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -50,7 +46,7 @@ describe("AdminSigninPage", () => {
   it("renders advisor copy by default", () => {
     renderWithChakra(<AdminSigninPage />);
 
-    expect(screen.getAllByText("Advisor Sign In").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("Sign In").length).toBeGreaterThanOrEqual(1);
     expect(
       screen.getAllByText("Manage programs, Gen-Ed buckets, and course catalog.").length
     ).toBeGreaterThanOrEqual(1);
@@ -62,7 +58,7 @@ describe("AdminSigninPage", () => {
     mockSignInWithPassword.mockResolvedValue({ data: {}, error: null });
     renderWithChakra(<AdminSigninPage />);
 
-    fireEvent.change(screen.getByPlaceholderText("your.name@uwp.edu"), {
+    fireEvent.change(screen.getByPlaceholderText("you@example.com"), {
       target: { value: "advisor@uwp.edu" },
     });
     fireEvent.change(screen.getByTestId("password-input"), {

@@ -7,10 +7,6 @@ vi.mock("@/components/dashboard/DashboardSidebar", () => ({
   default: () => <div data-testid="dashboard-sidebar">Sidebar</div>,
 }));
 
-vi.mock("@/components/dashboard/DashboardHeader", () => ({
-  default: () => <div data-testid="dashboard-header">Header</div>,
-}));
-
 import DashboardShell from "@/components/dashboard/DashboardShell";
 
 describe("DashboardShell", () => {
@@ -25,15 +21,6 @@ describe("DashboardShell", () => {
       </DashboardShell>
     );
     expect(screen.getByTestId("dashboard-sidebar")).toBeInTheDocument();
-  });
-
-  it("renders header", () => {
-    renderWithChakra(
-      <DashboardShell>
-        <div>Content</div>
-      </DashboardShell>
-    );
-    expect(screen.getByTestId("dashboard-header")).toBeInTheDocument();
   });
 
   it("renders children content", () => {

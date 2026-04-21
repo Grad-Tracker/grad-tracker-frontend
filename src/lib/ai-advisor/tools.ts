@@ -90,11 +90,11 @@ export function createAdvisorToolDependencies(
 }
 
 function normalizeCourseCode(raw: string): string {
-  return raw.trim().toUpperCase().replace(/\s+/g, " ").replace(/-/g, " ");
+  return raw.trim().toUpperCase().replaceAll(/\s+/g, " ").replaceAll("-", " ");
 }
 
 function extractCourseCodes(message: string): string[] {
-  const matches = message.matchAll(/([A-Za-z]{2,6})\s*[- ]\s*([0-9]{2,4}[A-Za-z]?)/g);
+  const matches = message.matchAll(/([A-Za-z]{2,6})[\s-]+([0-9]{2,4}[A-Za-z]?)/g);
   const codes = new Set<string>();
   for (const match of matches) {
     const subject = String(match[1] ?? "").toUpperCase();
@@ -132,12 +132,18 @@ function tryParseJson(text: string): unknown {
     // Continue with fallback parsing.
   }
 
-  const fenced = raw.match(/```(?:json)?\s*([\s\S]*?)```/i);
-  if (fenced?.[1]) {
-    try {
-      return JSON.parse(fenced[1]);
-    } catch {
-      // Continue with fallback parsing.
+  const fenceOpen = raw.indexOf("```");
+  if (fenceOpen >= 0) {
+    let contentStart = raw.indexOf("\n", fenceOpen);
+    if (contentStart < 0) contentStart = fenceOpen + 3;
+    else contentStart += 1;
+    const fenceClose = raw.indexOf("```", contentStart);
+    if (fenceClose >= 0) {
+      try {
+        return JSON.parse(raw.slice(contentStart, fenceClose).trim());
+      } catch {
+        // Continue with fallback parsing.
+      }
     }
   }
 
@@ -181,13 +187,13 @@ function normalizeAdvisorResponse(payload: unknown): AdvisorChatResponse | null 
     : [];
 
   const risks = Array.isArray(obj.risks)
-    ? obj.risks.map((value) => String(value)).filter(Boolean)
+    ? obj.risks.map(String).filter(Boolean)
     : [];
   const missingData = Array.isArray(obj.missingData)
-    ? obj.missingData.map((value) => String(value)).filter(Boolean)
+    ? obj.missingData.map(String).filter(Boolean)
     : [];
   const citations = Array.isArray(obj.citations)
-    ? obj.citations.map((value) => String(value)).filter(Boolean)
+    ? obj.citations.map(String).filter(Boolean)
     : [];
 
   return {
@@ -314,7 +320,7 @@ export function createAdvisorTools(deps: AdvisorToolDependencies): AdvisorToolse
       const normalizedIds = Array.from(
         new Set(
           (input.courseIds ?? [])
-            .map((id) => Number(id))
+            .map(Number)
             .filter((id) => Number.isFinite(id))
         )
       );

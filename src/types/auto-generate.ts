@@ -9,6 +9,7 @@ export interface AutoGenerateOptions {
   startSeason: Season;
   startYear: number;
   breadthPackage?: BreadthPackage | null;
+  targetCredits?: number;
 }
 
 export interface ScheduledSemester {
@@ -29,9 +30,26 @@ export interface ScheduleResult {
 
 export type ValidationSeverity = "error" | "warning" | "info";
 
+export const VALIDATION_ISSUE_CODES = {
+  availabilityViolation: "AVAILABILITY_VIOLATION",
+  blockExcludedNonPlannable: "BLOCK_EXCLUDED_NON_PLANNABLE",
+  blockUnsatisfied: "BLOCK_UNSATISFIED",
+  courseNotScheduled: "COURSE_NOT_SCHEDULED",
+  creditCapExceeded: "CREDIT_CAP_EXCEEDED",
+  genEdUnsatisfied: "GENED_UNSATISFIED",
+  highCreditAverage: "HIGH_CREDIT_AVERAGE",
+  horizonUnachievable: "HORIZON_UNACHIEVABLE",
+  lowCreditAverage: "LOW_CREDIT_AVERAGE",
+  prereqViolation: "PREREQ_VIOLATION",
+} as const;
+
+export type ValidationIssueCode =
+  (typeof VALIDATION_ISSUE_CODES)[keyof typeof VALIDATION_ISSUE_CODES]
+  | (string & {});
+
 export interface ValidationIssue {
   severity: ValidationSeverity;
-  code: string;
+  code: ValidationIssueCode;
   message: string;
   courseId?: number;
   semester?: string;
@@ -72,6 +90,12 @@ export interface AutoGenerateResult {
   totalCourses: number;
   totalCredits: number;
   validation: ValidationResult;
+  targetHorizon?: {
+    season: Season;
+    year: number;
+    terms: number;
+  };
+  tailEliminationSucceeded?: boolean;
 }
 
 export interface GenEdBucketWithCourses {

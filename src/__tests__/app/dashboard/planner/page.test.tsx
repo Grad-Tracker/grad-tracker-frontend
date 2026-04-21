@@ -27,6 +27,7 @@ const {
   mockFetchGenEdBucketsWithCourses,
   mockFetchBreadthPackageId,
   mockUpdateBreadthPackageId,
+  mockFetchCourseOfferings,
   mockLogStudentActivity,
 
   // NEW: capture DnD handlers so tests can call them
@@ -62,6 +63,7 @@ const {
     mockFetchGenEdBucketsWithCourses: vi.fn().mockResolvedValue([]),
     mockFetchBreadthPackageId: vi.fn().mockResolvedValue(null),
     mockUpdateBreadthPackageId: vi.fn().mockResolvedValue(undefined),
+    mockFetchCourseOfferings: vi.fn().mockResolvedValue([]),
     mockLogStudentActivity: vi.fn().mockResolvedValue(undefined),
 
     mockDndHandlers: {
@@ -103,6 +105,23 @@ vi.mock("@/lib/supabase/queries/planner", () => ({
   movePlannedCourse: mockMovePlannedCourse,
   fetchBreadthPackageId: mockFetchBreadthPackageId,
   updateBreadthPackageId: mockUpdateBreadthPackageId,
+  fetchCourseOfferings: mockFetchCourseOfferings,
+}));
+
+vi.mock("@/lib/planner/auto-generate", () => ({
+  buildAvailabilityMap: vi.fn().mockReturnValue(new Map()),
+  isAvailable: vi.fn().mockReturnValue(true),
+}));
+
+vi.mock("@/lib/planner/prereq-graph", () => ({
+  extractPrereqEdges: vi.fn().mockResolvedValue(new Map()),
+}));
+
+vi.mock("@/lib/planner/prereq-validation", () => ({
+  arePrereqsSatisfied: vi.fn().mockReturnValue({ satisfied: true, missing: [] }),
+  findBrokenDependents: vi.fn().mockReturnValue([]),
+  buildCourseTermIndex: vi.fn().mockReturnValue(new Map()),
+  termSortKey: vi.fn().mockReturnValue(0),
 }));
 
 vi.mock("@/lib/supabase/queries/activity", () => ({
@@ -115,6 +134,11 @@ vi.mock("@/components/planner/PlansHub", () => ({
     <div data-testid="plans-hub">
       <span>{plans.length} plans</span>
       <button data-testid="open-plan" onClick={() => onOpenPlan(plans[0]?.id)}>Open</button>
+      {plans[1] && (
+        <button data-testid="open-plan-2" onClick={() => onOpenPlan(plans[1].id)}>
+          Open2
+        </button>
+      )}
       <button data-testid="create-plan-btn" onClick={onCreatePlan}>Create</button>
       {plans[0] && (
         <button data-testid="rename-plan" onClick={() => onRenamePlan(plans[0].id, "Renamed")}>
@@ -134,6 +158,7 @@ vi.mock("@/components/planner/PlansHub", () => ({
 vi.mock("@/components/planner/SemesterGrid", () => ({
   default: (props: any) => (
     <div data-testid="semester-grid">
+      <span data-testid="term-year">{props.terms?.[0]?.year ?? "none"}</span>
       <button
         data-testid="mock-remove-term"
         onClick={() => props.onRemoveTerm?.(props.terms?.[0]?.id ?? 1)}
@@ -297,6 +322,14 @@ function setupAuthenticatedState(plansOverride?: any[]) {
   mockGetUser.mockResolvedValue({ data: { user: { id: "user-1" } } });
   mockStudentRow({ id: 1 });
   mockFetchPlans.mockResolvedValue(plansOverride ?? defaultPlans);
+}
+
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((res) => {
+    resolve = res;
+  });
+  return { promise, resolve };
 }
 
 // Small course object used in drag tests
@@ -572,33 +605,7 @@ describe("PlannerPage", () => {
     });
   });
 
-  it("shows plan tabs when multiple plans exist", async () => {
-    const twoPlans = [
-      {
-        id: 1, student_id: 1, name: "Plan Alpha", description: null,
-        created_at: "2025-01-01", updated_at: "2025-01-15",
-        program_ids: [1], term_count: 0, course_count: 0,
-        total_credits: 0, has_graduate_program: false,
-      },
-      {
-        id: 2, student_id: 1, name: "Plan Beta", description: null,
-        created_at: "2025-01-02", updated_at: "2025-01-16",
-        program_ids: [1], term_count: 0, course_count: 0,
-        total_credits: 0, has_graduate_program: false,
-      },
-    ];
-    setupAuthenticatedState(twoPlans);
-
-    await act(async () => renderWithChakra(<PlannerPage />));
-    await waitFor(() => expect(screen.getByTestId("plans-hub")).toBeInTheDocument());
-
-    await act(async () => fireEvent.click(screen.getByTestId("open-plan")));
-
-    await waitFor(() => {
-      expect(screen.getAllByText("Plan Alpha").length).toBeGreaterThanOrEqual(1);
-      expect(screen.getAllByText("Plan Beta").length).toBeGreaterThanOrEqual(1);
-    });
-  });
+  // Plan tabs were removed — users switch plans via the plans hub
 
   it("shows plan data skeleton while plan is loading", async () => {
     setupAuthenticatedState();
@@ -611,6 +618,60 @@ describe("PlannerPage", () => {
 
     await waitFor(() => {
       expect(screen.getByTestId("planner-skeleton")).toBeInTheDocument();
+    });
+  });
+
+  it("ignores stale plan-load responses when switching plans quickly", async () => {
+    setupAuthenticatedState([
+      {
+        id: 1, student_id: 1, name: "Plan A", description: null,
+        created_at: "2025-01-01", updated_at: "2025-01-15",
+        program_ids: [1], term_count: 1, course_count: 0,
+        total_credits: 0, has_graduate_program: false,
+      },
+      {
+        id: 2, student_id: 1, name: "Plan B", description: null,
+        created_at: "2025-01-01", updated_at: "2025-01-15",
+        program_ids: [1], term_count: 1, course_count: 0,
+        total_credits: 0, has_graduate_program: false,
+      },
+    ]);
+
+    const plan1Terms = deferred<any[]>();
+    const plan2Terms = deferred<any[]>();
+    mockFetchTerms.mockImplementation((_sid, pid) => {
+      if (pid === 1) return plan1Terms.promise;
+      if (pid === 2) return plan2Terms.promise;
+      return Promise.resolve([]);
+    });
+
+    await act(async () => renderWithChakra(<PlannerPage />));
+    await waitFor(() => expect(screen.getByTestId("plans-hub")).toBeInTheDocument());
+
+    await act(async () => fireEvent.click(screen.getByTestId("open-plan")));
+    await act(async () => {
+      const switchButtons = screen.getAllByRole("button", { name: "Plan B" });
+      fireEvent.click(switchButtons[0]);
+    });
+
+    await act(async () => {
+      plan2Terms.resolve([{ id: 2, season: "Spring", year: 2030 }]);
+      await Promise.resolve();
+    });
+
+    await waitFor(() => {
+      expect(screen.getByRole("heading", { name: "Plan B" })).toBeInTheDocument();
+      expect(screen.getByTestId("term-year")).toHaveTextContent("2030");
+    });
+
+    await act(async () => {
+      plan1Terms.resolve([{ id: 1, season: "Fall", year: 2027 }]);
+      await Promise.resolve();
+    });
+
+    await waitFor(() => {
+      expect(screen.getByRole("heading", { name: "Plan B" })).toBeInTheDocument();
+      expect(screen.getByTestId("term-year")).toHaveTextContent("2030");
     });
   });
 
@@ -690,34 +751,7 @@ describe("PlannerPage", () => {
     });
   });
 
-  it("switches plans in workspace (handleSwitchPlan)", async () => {
-    const twoPlans = [
-      { id: 1, student_id: 1, name: "Plan Alpha", program_ids: [1], term_count: 0, course_count: 0, total_credits: 0, has_graduate_program: false },
-      { id: 2, student_id: 1, name: "Plan Beta", program_ids: [1], term_count: 0, course_count: 0, total_credits: 0, has_graduate_program: false },
-    ];
-    setupAuthenticatedState(twoPlans);
-
-    mockFetchTerms.mockResolvedValue([{ id: 1, season: "Fall", year: 2025 }]);
-
-    await act(async () => renderWithChakra(<PlannerPage />));
-    await waitFor(() => expect(screen.getByTestId("plans-hub")).toBeInTheDocument());
-
-    await act(async () => fireEvent.click(screen.getByTestId("open-plan")));
-    await waitFor(() => expect(screen.getAllByText("Plan Alpha").length).toBeGreaterThan(0));
-
-    // Click the Plan Beta tab button
-    fireEvent.click(screen.getByText("Plan Beta"));
-
-    await waitFor(() => {
-      // loadPlanData triggers fetchStudentTerms(sid, planId)
-      expect(mockFetchTerms).toHaveBeenCalled();
-    });
-
-    // assert last call is planId 2
-    const last = mockFetchTerms.mock.calls[mockFetchTerms.mock.calls.length - 1];
-    expect(last[0]).toBe(1);
-    expect(last[1]).toBe(2);
-  });
+  // Plan switching via tabs was removed — users switch plans via the plans hub
 
   it("removes an empty term immediately (handleRemoveTermRequest -> handleRemoveTermConfirmed)", async () => {
     setupAuthenticatedState();
@@ -766,12 +800,13 @@ describe("PlannerPage", () => {
     });
   });
 
-  it("selects breadth package and persists to students.breadth_package_id", async () => {
+  it("selects breadth package and persists to per-plan localStorage", async () => {
     setupAuthenticatedState();
     mockFetchTerms.mockResolvedValue([{ id: 1, season: "Fall", year: 2025 }]);
 
     // Use a real package ID that exists
     const pkg = BREADTH_PACKAGES[0]?.id ?? "BREADTH";
+    const setItemSpy = vi.spyOn(window.localStorage.__proto__, "setItem");
 
     await act(async () => renderWithChakra(<PlannerPage />));
     await waitFor(() => expect(screen.getByTestId("plans-hub")).toBeInTheDocument());
@@ -782,21 +817,31 @@ describe("PlannerPage", () => {
     fireEvent.click(screen.getByTestId("mock-select-breadth"));
 
     await waitFor(() => {
-      expect(mockUpdateBreadthPackageId).toHaveBeenCalledWith(1, pkg);
+      expect(setItemSpy).toHaveBeenCalledWith(
+        "gradtracker:breadthPackage:1:1",
+        pkg
+      );
     });
+    setItemSpy.mockRestore();
   });
 
-  it("migrates legacy breadth package from localStorage when DB value is null", async () => {
+  it("loads breadth package from per-plan localStorage key", async () => {
     setupAuthenticatedState();
     const pkg = BREADTH_PACKAGES[1]?.id ?? "math-physics";
-    localStorage.setItem("gradtracker:breadthPackage:1", pkg);
+    localStorage.setItem("gradtracker:breadthPackage:1:1", pkg);
+    const setItemSpy = vi.spyOn(window.localStorage.__proto__, "setItem");
 
     await act(async () => renderWithChakra(<PlannerPage />));
+    await waitFor(() => expect(screen.getByTestId("plans-hub")).toBeInTheDocument());
+    await act(async () => fireEvent.click(screen.getByTestId("open-plan")));
+    await waitFor(() => expect(screen.getByTestId("course-panel")).toBeInTheDocument());
+
+    fireEvent.click(screen.getByTestId("mock-select-breadth"));
 
     await waitFor(() => {
-      expect(mockUpdateBreadthPackageId).toHaveBeenCalledWith(1, pkg);
+      expect(setItemSpy).toHaveBeenCalledWith("gradtracker:breadthPackage:1:1", pkg);
     });
-    expect(localStorage.getItem("gradtracker:breadthPackage:1")).toBeNull();
+    setItemSpy.mockRestore();
   });
 
   it("executes drag handlers: add, move, remove (handleDragStart/handleDragEnd branches)", async () => {
@@ -948,7 +993,10 @@ describe("PlannerPage", () => {
 
   it("handles drag guard branches and drag failures", async () => {
     setupAuthenticatedState();
-    mockFetchTerms.mockResolvedValue([{ id: 1, season: "Fall", year: 2025 }]);
+    mockFetchTerms.mockResolvedValue([
+      { id: 1, season: "Fall", year: 2025 },
+      { id: 2, season: "Spring", year: 2026 },
+    ]);
     mockFetchPlannedCourses.mockResolvedValue([
       { student_id: 1, term_id: 1, course_id: 777, status: "planned", plan_id: 1, course: COURSE },
     ]);
@@ -1005,7 +1053,7 @@ describe("PlannerPage", () => {
 
     await waitFor(() => {
       expect(mockToaster.create).toHaveBeenCalledWith(
-        expect.objectContaining({ title: "Failed to move course", type: "error" })
+        expect.objectContaining({ title: "Error", description: "move fail", type: "error" })
       );
     });
   });
@@ -1030,7 +1078,10 @@ describe("PlannerPage", () => {
 
   it("handles remove-term fallback and drag update fallback errors", async () => {
     setupAuthenticatedState();
-    mockFetchTerms.mockResolvedValue([{ id: 1, season: "Fall", year: 2025 }]);
+    mockFetchTerms.mockResolvedValue([
+      { id: 1, season: "Fall", year: 2025 },
+      { id: 2, season: "Spring", year: 2026 },
+    ]);
     mockFetchPlannedCourses.mockResolvedValue([
       { student_id: 1, term_id: 1, course_id: 777, status: "planned", plan_id: 1, course: COURSE },
     ]);
@@ -1062,7 +1113,8 @@ describe("PlannerPage", () => {
     await waitFor(() => {
       expect(mockToaster.create).toHaveBeenCalledWith(
         expect.objectContaining({
-          title: "Failed to move course",
+          title: "Error",
+          description: "Failed to update plan",
           type: "error",
         })
       );

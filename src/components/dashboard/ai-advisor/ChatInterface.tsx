@@ -38,7 +38,7 @@ const promptChips = [
 ];
 
 function createId() {
-  return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  return `${Date.now()}-${crypto.randomUUID()}`;
 }
 
 function AIMessage({ message }: { message: AdvisorMessage }) {
@@ -134,7 +134,7 @@ function AIMessage({ message }: { message: AdvisorMessage }) {
   );
 }
 
-function UserMessage({ message }: { message: AdvisorMessage }) {
+function UserMessage({ message }: Readonly<{ message: AdvisorMessage }>) {
   return (
     <VStack align="end" gap="1">
       <Badge colorPalette="blue" variant="subtle">
@@ -294,12 +294,9 @@ export function ChatInterface() {
 
       if (!response.ok) {
         const payload = (await response.json().catch(() => ({}))) as { error?: string };
-        const fallbackError =
-          response.status === 401
-            ? "You must sign in again to use Atlas."
-            : response.status === 409
-              ? "Complete onboarding before using Atlas."
-              : "Atlas could not process your request.";
+        let fallbackError = "Atlas could not process your request.";
+        if (response.status === 401) fallbackError = "You must sign in again to use Atlas.";
+        else if (response.status === 409) fallbackError = "Complete onboarding before using Atlas.";
         throw new Error(payload.error || fallbackError);
       }
 
@@ -418,7 +415,7 @@ export function ChatInterface() {
         gap="2"
         flexShrink={0}
       >
-        <Box w="2" h="2" borderRadius="full" bg={loading ? "orange.500" : "green.500"} />
+        <Box w="2" h="2" borderRadius="full" bg={loading ? "orange.600" : "green.600"} />
         <Text fontSize="xs" fontWeight="600" color="fg.muted">
           {loading ? "Atlas is thinking..." : "Atlas is online"}
         </Text>

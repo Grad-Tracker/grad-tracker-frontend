@@ -1,1030 +1,695 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
 import {
-  Badge,
   Box,
   Button,
-  Card,
-  Center,
   Container,
   Flex,
   Grid,
   Heading,
   HStack,
   Icon,
-  SimpleGrid,
-  Stack,
   Text,
   VStack,
 } from "@chakra-ui/react";
-import { ColorModeButton } from "@/components/ui/color-mode";
+import { LinkButton } from "@/components/ui/link-button";
 import {
-  ProgressBar,
-  ProgressLabel,
-  ProgressRoot,
-  ProgressValueText,
-} from "@/components/ui/progress";
-import {
-  ProgressCircleRing,
-  ProgressCircleRoot,
-  ProgressCircleValueText,
-} from "@/components/ui/progress-circle";
-import { StatLabel, StatRoot, StatValueText } from "@/components/ui/stat";
-import {
-  TimelineConnector,
-  TimelineContent,
-  TimelineItem,
-  TimelineRoot,
-  TimelineTitle,
-} from "@/components/ui/timeline";
-import {
-  LuChartBar,
-  LuBell,
-  LuCalendar,
-  LuCheck,
-  LuSquareCheck,
-  LuGraduationCap,
-  LuChartPie,
-  LuUsers,
   LuArrowRight,
+  LuBookOpen,
+  LuCalendarRange,
+
+  LuGraduationCap,
+  LuLayoutGrid,
+  LuMousePointerClick,
   LuSparkles,
-  LuShield,
-  LuShare2,
-  LuZap,
+  LuTrendingUp,
+  LuUserPlus,
 } from "react-icons/lu";
 import Link from "next/link";
-
-const features = [
-  {
-    icon: LuChartBar,
-    title: "Credit Tracking",
-    description:
-      "Track your completed, in-progress, and remaining credits toward your Parkside degree requirements.",
-    color: "blue",
-  },
-  {
-    icon: LuSquareCheck,
-    title: "Parkside Requirements",
-    description:
-      "Maps directly to UW-Parkside degree programs, general education, and major-specific requirements.",
-    color: "teal",
-  },
-  {
-    icon: LuChartPie,
-    title: "Progress Visualization",
-    description:
-      "See your progress toward your Parkside degree at a glance with clear visual indicators.",
-    color: "blue",
-  },
-  {
-    icon: LuUsers,
-    title: "Advisor Ready",
-    description:
-      "Generate progress reports to share with your Parkside academic advisor during meetings.",
-    color: "purple",
-  },
-  {
-    icon: LuCalendar,
-    title: "Semester Planning",
-    description:
-      "Plan your remaining semesters at Parkside to stay on track for graduation.",
-    color: "orange",
-  },
-  {
-    icon: LuBell,
-    title: "Requirement Alerts",
-    description:
-      "Know when you're missing prerequisites or need specific courses before they fill up.",
-    color: "pink",
-  },
-];
-
-const steps = [
-  {
-    title: "Sign In with Your Parkside Account",
-    description:
-      "Use your UW-Parkside credentials to securely access your academic information.",
-  },
-  {
-    title: "Select Your Degree Program",
-    description:
-      "Choose your major from Parkside's catalog and we'll load your specific requirements.",
-  },
-  {
-    title: "Add Your Completed Courses",
-    description:
-      "Enter the courses you've taken at Parkside or transferred from other institutions.",
-  },
-  {
-    title: "Track and Plan Your Graduation",
-    description:
-      "See your progress toward your Parkside degree and plan your remaining semesters.",
-  },
-];
+import Image from "next/image";
 
 export default function LandingPage() {
   return (
     <Box
       minH="100vh"
-      fontFamily="var(--font-plus-jakarta), sans-serif"
+      fontFamily="var(--font-dm-sans), sans-serif"
       position="relative"
     >
-      {/* Navigation Header */}
+      {/* ===== HERO — Campus photo background ===== */}
       <Box
-        as="header"
-        position="sticky"
-        top="0"
-        zIndex="sticky"
-        className="glass-card"
-        borderBottomWidth="1px"
-        borderColor="border.subtle"
+        position="relative"
+        minH={{ base: "600px", md: "700px", lg: "90vh" }}
+        display="flex"
+        flexDirection="column"
+        alignItems="center"
+        justifyContent="center"
+        textAlign="center"
+        px={{ base: "6", md: "12" }}
+        py={{ base: "20", md: "24" }}
+        overflow="hidden"
       >
-        <Container maxW="7xl" mx="auto" px={{ base: "4", md: "6", lg: "8" }}>
-          <HStack justify="space-between" py="4">
-            <HStack gap="3">
-              <Box
-                p="2"
-                bg="blue.solid"
-                borderRadius="lg"
-                className="animate-pulse-glow"
-              >
-                <Icon color="white" boxSize="5">
-                  <LuGraduationCap />
-                </Icon>
-              </Box>
-              <Text
-                fontWeight="700"
-                fontSize="xl"
-                fontFamily="var(--font-outfit), sans-serif"
-                letterSpacing="-0.02em"
-              >
-                GradTracker
-              </Text>
-              <Badge
-                colorPalette="blue"
-                variant="surface"
-                size="sm"
-                fontWeight="500"
-              >
+        {/* Campus background image */}
+        <Image
+          src="/landing/Parkside_Hero.jpg"
+          alt="UW-Parkside Campus aerial view"
+          fill
+          style={{ objectFit: "cover", objectPosition: "center" }}
+          priority
+
+        />
+
+        {/* Dark overlay */}
+        <Box
+          position="absolute"
+          inset="0"
+          zIndex="1"
+          style={{
+            background: "linear-gradient(to bottom, rgba(15,23,42,0.5) 0%, rgba(15,23,42,0.6) 40%, rgba(15,23,42,0.8) 100%)",
+          }}
+        />
+
+        {/* Floating top bar: logo + sign in */}
+        <Flex
+          position="absolute"
+          top="0"
+          left="0"
+          right="0"
+          justify="space-between"
+          align="center"
+          px={{ base: "6", md: "12" }}
+          py="5"
+          zIndex="10"
+        >
+          <HStack gap="3">
+            <Flex
+              align="center"
+              justify="center"
+              w="8"
+              h="8"
+              bg="rgba(255,255,255,0.15)"
+              css={{ backdropFilter: "blur(8px)" }}
+              border="1px solid rgba(255,255,255,0.2)"
+              borderRadius="lg"
+            >
+              <Icon color="white" boxSize="4">
+                <LuGraduationCap />
+              </Icon>
+            </Flex>
+            <Text fontWeight="700" fontSize="md" color="white">
+              GradTracker{" "}
+              <Text as="span" color="whiteAlpha.600" fontWeight="500" fontSize="sm">
                 Parkside
-              </Badge>
-            </HStack>
-            <HStack gap="3">
-              <ColorModeButton variant="ghost" size="sm" />
-              <Link href="/signin">
-                <Button
-                  as="span"
-                  variant="solid"
-                  colorPalette="blue"
-                  size="sm"
-                  rounded="full"
-                  px="5"
-                  fontWeight="600"
-                >
-                  Sign In
-                </Button>
-              </Link>
-            </HStack>
+              </Text>
+            </Text>
           </HStack>
+          <LinkButton
+            href="/signin"
+            variant="plain"
+            color="whiteAlpha.700"
+            fontWeight="500"
+            fontSize="sm"
+            _hover={{ color: "white" }}
+          >
+            Sign In
+          </LinkButton>
+        </Flex>
+
+        {/* Hero content */}
+        <VStack gap="7" position="relative" zIndex="2" maxW="700px">
+          {/* Headline */}
+          <Heading
+            fontFamily="var(--font-dm-sans), sans-serif"
+            fontSize={{ base: "4xl", md: "5xl", lg: "6xl" }}
+            fontWeight="400"
+            lineHeight="1.08"
+            letterSpacing="-0.035em"
+            color="white"
+          >
+            Your degree.
+            <br />
+            Your plan.
+            <br />
+            <Text
+              as="span"
+              bgGradient="to-r"
+              gradientFrom="blue.200"
+              gradientTo="purple.200"
+              backgroundClip="text"
+              color="transparent"
+            >
+              Your future.
+            </Text>
+          </Heading>
+
+          {/* Subtitle */}
+          <Text
+            fontSize={{ base: "md", md: "lg" }}
+            color="whiteAlpha.700"
+            lineHeight="1.6"
+            maxW="520px"
+          >
+            Track every requirement, plan every semester, and get AI-powered
+            guidance — built specifically for UW-Parkside students.
+          </Text>
+
+          {/* CTA buttons */}
+          <HStack gap="3" flexWrap="wrap" justify="center">
+            <Link href="/signup">
+              <Button
+                size="lg"
+                bg="white"
+                color="blue.800"
+                rounded="full"
+                px="8"
+                fontWeight="600"
+                _hover={{
+                  bg: "whiteAlpha.900",
+                  transform: "translateY(-2px)",
+                  boxShadow: "xl",
+                }}
+                transition="all 0.2s"
+              >
+                Start Tracking
+                <Icon ml="2">
+                  <LuArrowRight />
+                </Icon>
+              </Button>
+            </Link>
+            <Button
+              size="lg"
+              variant="outline"
+              color="white"
+              borderColor="rgba(255,255,255,0.3)"
+              borderWidth="1.5px"
+              rounded="full"
+              px="8"
+              fontWeight="600"
+              _hover={{
+                bg: "rgba(255,255,255,0.08)",
+                borderColor: "rgba(255,255,255,0.5)",
+              }}
+              transition="all 0.2s"
+              onClick={() =>
+                document.getElementById("how-it-works")?.scrollIntoView({ behavior: "smooth" })
+              }
+            >
+              See How It Works
+            </Button>
+          </HStack>
+
+          {/* Inline stats */}
+          <HStack
+            gap={{ base: "4", md: "8" }}
+            flexWrap="wrap"
+            justify="center"
+          >
+            {[
+              { num: "40+", label: "Programs" },
+              { num: "2,200+", label: "Courses" },
+              { num: "135", label: "Catalogs" },
+              { num: "Free", label: "For Students" },
+            ].map((stat, i) => (
+              <HStack key={stat.label} gap="1.5" align="baseline">
+                {i > 0 && (
+                  <Box
+                    w="1px"
+                    h="4"
+                    bg="rgba(255,255,255,0.15)"
+                    mr="3"
+                    display={{ base: "none", md: "block" }}
+                  />
+                )}
+                <Text fontWeight="700" fontSize="sm" color="white">
+                  {stat.num}
+                </Text>
+                <Text fontSize="xs" color="whiteAlpha.500" fontWeight="500">
+                  {stat.label}
+                </Text>
+              </HStack>
+            ))}
+          </HStack>
+        </VStack>
+
+        {/* Campus credit */}
+        <Text
+          position="absolute"
+          bottom="3"
+          right="4"
+          zIndex="5"
+          fontSize="2xs"
+          color="whiteAlpha.300"
+          fontWeight="500"
+        >
+          UW-Parkside Campus
+        </Text>
+      </Box>
+
+      {/* ===== PRODUCT SCREENSHOT — overlaps hero ===== */}
+      <Box position="relative" zIndex="3">
+      <FadeIn>
+      <Box
+        px={{ base: "4", md: "12" }}
+        mt={{ base: "-8", md: "-12" }}
+        textAlign="center"
+        maxW="960px"
+        mx="auto"
+      >
+          <Box
+            borderRadius="xl"
+            borderWidth="1px"
+            borderColor="border"
+            boxShadow="0 4px 6px rgba(0,0,0,0.04), 0 20px 40px rgba(0,0,0,0.08), 0 40px 80px rgba(0,0,0,0.06)"
+            overflow="hidden"
+            bg="bg"
+          >
+            {/* Browser chrome */}
+            <Flex
+              align="center"
+              px="4"
+              py="3"
+              bg="bg.subtle"
+              borderBottomWidth="1px"
+              borderColor="border.subtle"
+              gap="2"
+            >
+              <HStack gap="1.5">
+                <Box w="3" h="3" borderRadius="full" bg="red.400" />
+                <Box w="3" h="3" borderRadius="full" bg="yellow.400" />
+                <Box w="3" h="3" borderRadius="full" bg="green.400" />
+              </HStack>
+              <Box
+                flex="1"
+                maxW="360px"
+                mx="auto"
+                bg="bg"
+                borderRadius="md"
+                px="3"
+                py="1"
+                borderWidth="1px"
+                borderColor="border.subtle"
+              >
+                <Text fontSize="2xs" color="fg.muted" textAlign="center" fontFamily="monospace">
+                  gradtracker.app/dashboard
+                </Text>
+              </Box>
+            </Flex>
+            <Image
+              src="/landing/Dashboard_page.png"
+              alt="GradTracker Dashboard"
+              width={1920}
+              height={1080}
+              style={{ width: "100%", height: "auto", display: "block" }}
+            />
+          </Box>
+      </Box>
+      </FadeIn>
+      </Box>
+
+      {/* ===== HOW IT WORKS ===== */}
+      <Box id="how-it-works" py={{ base: "16", md: "24" }} scrollMarginTop="4">
+        <Container maxW="960px" mx="auto" px={{ base: "4", md: "6" }}>
+          <FadeIn>
+          <VStack gap="3" textAlign="center" mb={{ base: "12", md: "16" }}>
+            <Text
+              fontSize="xs"
+              fontWeight="700"
+              letterSpacing="1.5px"
+              textTransform="uppercase"
+              color="blue.fg"
+            >
+              How it works
+            </Text>
+            <Heading
+              fontFamily="var(--font-dm-sans), sans-serif"
+              fontSize={{ base: "3xl", md: "4xl" }}
+              fontWeight="400"
+              letterSpacing="-0.02em"
+            >
+              Three steps to graduation clarity
+            </Heading>
+          </VStack>
+          </FadeIn>
+
+          <Grid
+            templateColumns={{ base: "1fr", md: "1fr 1fr 1fr" }}
+            gap={{ base: "8", md: "6" }}
+            position="relative"
+          >
+            {/* Connecting line (desktop only) */}
+            <Box
+              display={{ base: "none", md: "block" }}
+              position="absolute"
+              top="36px"
+              left="calc(16.67% + 20px)"
+              right="calc(16.67% + 20px)"
+              h="2px"
+              bgGradient="to-r"
+              gradientFrom="blue.500"
+              gradientTo="purple.500"
+              opacity={0.2}
+            />
+
+            {[
+              {
+                icon: LuUserPlus,
+                step: "01",
+                title: "Create your account",
+                desc: "Sign up free with your Parkside email. Takes less than a minute.",
+                color: "blue.500",
+              },
+              {
+                icon: LuMousePointerClick,
+                step: "02",
+                title: "Select your program",
+                desc: "Choose your major, minor, or certificates from 40+ Parkside programs.",
+                color: "purple.500",
+              },
+              {
+                icon: LuTrendingUp,
+                step: "03",
+                title: "Track your progress",
+                desc: "See exactly where you stand and what you need to graduate on time.",
+                color: "purple.600",
+              },
+            ].map((item, i) => (
+              <FadeIn key={item.step} delay={i * 0.12}>
+              <VStack gap="4" textAlign="center" position="relative">
+                <Flex
+                  w="14"
+                  h="14"
+                  borderRadius="2xl"
+                  align="center"
+                  justify="center"
+                  bg="bg"
+                  border="1px solid"
+                  borderColor="border.subtle"
+                  boxShadow="0 2px 8px rgba(0,0,0,0.04)"
+                  position="relative"
+                  zIndex="1"
+                >
+                  <Icon boxSize="6" color={item.color}>
+                    <item.icon />
+                  </Icon>
+                </Flex>
+                <Text
+                  fontSize="2xs"
+                  fontWeight="700"
+                  letterSpacing="1px"
+                  color="fg.subtle"
+                >
+                  STEP {item.step}
+                </Text>
+                <Heading
+                  fontSize="md"
+                  fontWeight="600"
+                  fontFamily="var(--font-dm-sans), sans-serif"
+                >
+                  {item.title}
+                </Heading>
+                <Text fontSize="sm" color="fg.muted" lineHeight="1.6" maxW="280px">
+                  {item.desc}
+                </Text>
+              </VStack>
+              </FadeIn>
+            ))}
+          </Grid>
         </Container>
       </Box>
 
-      {/* Hero Section */}
-      <Box
-        className="mesh-gradient noise-overlay"
-        py={{ base: "16", md: "24", lg: "32" }}
-        position="relative"
-        overflow="hidden"
-      >
-        {/* Decorative elements */}
-        <Box
-          position="absolute"
-          top="-20%"
-          right="-10%"
-          w="500px"
-          h="500px"
-          bg="blue.500"
-          opacity="0.05"
-          borderRadius="full"
-          filter="blur(100px)"
-        />
-        <Box
-          position="absolute"
-          bottom="-30%"
-          left="-10%"
-          w="400px"
-          h="400px"
-          bg="teal.500"
-          opacity="0.05"
-          borderRadius="full"
-          filter="blur(80px)"
-        />
-
-        <Container
-          maxW="7xl"
-          mx="auto"
-          px={{ base: "4", md: "6", lg: "8" }}
-          position="relative"
-          zIndex="2"
-        >
-          <Grid
-            templateColumns={{ base: "1fr", lg: "1.2fr 1fr" }}
-            gap={{ base: "12", lg: "16" }}
-            alignItems="center"
-          >
-            <VStack
-              align={{ base: "center", lg: "start" }}
-              gap="8"
-              textAlign={{ base: "center", lg: "left" }}
+      {/* ===== FEATURES — Bento Grid ===== */}
+      <Box py={{ base: "10", md: "20" }} borderTopWidth="1px" borderColor="border.subtle">
+        <Container maxW="960px" mx="auto" px={{ base: "4", md: "6" }}>
+          <FadeIn>
+          <VStack gap="3" textAlign="center" mb={{ base: "10", md: "14" }}>
+            <Text
+              fontSize="xs"
+              fontWeight="700"
+              letterSpacing="1.5px"
+              textTransform="uppercase"
+              color="blue.fg"
             >
-              <HStack className="animate-fade-up">
-                <Badge
-                  colorPalette="blue"
-                  variant="surface"
-                  size="lg"
-                  px="4"
-                  py="2"
-                  rounded="full"
-                  fontWeight="600"
-                >
-                  <Icon boxSize="4" mr="2">
-                    <LuSparkles />
-                  </Icon>
-                  Built for UW-Parkside Students
-                </Badge>
-              </HStack>
+              Features
+            </Text>
+            <Heading
+              fontFamily="var(--font-dm-sans), sans-serif"
+              fontSize={{ base: "3xl", md: "4xl" }}
+              fontWeight="400"
+              letterSpacing="-0.02em"
+            >
+              Everything you need to graduate on time
+            </Heading>
+            <Text fontSize="md" color="fg.muted" maxW="480px" lineHeight="1.6">
+              Plan, track, and get guidance — everything working together from
+              enrollment to commencement.
+            </Text>
+          </VStack>
+          </FadeIn>
 
-              <Heading
-                className="animate-fade-up-delay-1"
-                fontFamily="var(--font-outfit), sans-serif"
-                size={{ base: "4xl", md: "5xl", lg: "6xl" }}
-                lineHeight="1.1"
-                letterSpacing="-0.03em"
-                fontWeight="400"
+          <FadeIn delay={0.1}>
+          <Grid
+            templateColumns={{ base: "1fr", md: "1fr 1fr" }}
+            gap="4"
+          >
+            {/* 1. Semester Planner — wide */}
+            <BentoCard
+              icon={LuCalendarRange}
+              iconColor="blue.500"
+              title="Semester Planner"
+              description="Build your path to graduation semester by semester. Drag courses, track credits, and see your degree progress update in real time."
+              wide
+            >
+              <ScreenshotVisual
+                src="/landing/Planner_Page.png"
+                alt="Semester Planner"
+              />
+            </BentoCard>
+
+            {/* 2. Course Catalog */}
+            <BentoCard
+              icon={LuBookOpen}
+              iconColor="purple.500"
+              title="Course Catalog"
+              description="Browse 2,200+ courses with credits, prerequisites, and requirement mapping."
+            >
+              <ScreenshotVisual
+                src="/landing/Courses_Page.png"
+                alt="Course Catalog"
+              />
+            </BentoCard>
+
+            {/* 3. Requirement Breakdown */}
+            <BentoCard
+              icon={LuLayoutGrid}
+              iconColor="purple.600"
+              title="Requirement Breakdown"
+              description="Every gen-ed bucket and major block mapped to your program — 106+ programs tracked."
+            >
+              <ScreenshotVisual
+                src="/landing/Programs_Page.png"
+                alt="Programs and Requirements"
+              />
+            </BentoCard>
+
+            {/* 4. AI Advisor — wide */}
+            <BentoCard
+              icon={LuSparkles}
+              iconColor="pink.500"
+              title="AI Academic Advisor"
+              description="Get instant, personalized guidance. Knows your progress, your requirements, and your program."
+              wide
+            >
+              <Box
+                px={{ base: "4", md: "6" }}
+                py="5"
+                bg="bg.subtle"
+                borderTop="1px solid"
+                borderColor="border.subtle"
+                position="relative"
+                overflow="hidden"
               >
-                Your Path to{" "}
-                <Text as="span" className="gradient-text">
-                  Graduation
-                </Text>
-                , Visualized
-              </Heading>
-
-              <Text
-                className="animate-fade-up-delay-2"
-                fontSize={{ base: "lg", md: "xl" }}
-                color="fg.muted"
-                maxW="xl"
-                lineHeight="1.7"
-              >
-                Track your completed courses, monitor degree requirements, and
-                plan your remaining semesters—all in one place designed
-                specifically for Rangers.
-              </Text>
-
-              <HStack
-                gap="4"
-                pt="4"
-                className="animate-fade-up-delay-3"
-                flexWrap="wrap"
-                justify={{ base: "center", lg: "start" }}
-              >
-                <Link href="/signup">
-                  <Button
-                    size="lg"
-                    colorPalette="blue"
-                    rounded="full"
-                    px="8"
-                    fontWeight="600"
-                    _hover={{
-                      transform: "translateY(-2px)",
-                      boxShadow: "lg",
-                    }}
-                    transition="all 0.2s"
-                  >
-                    Get Started Free
-                    <Icon ml="2">
-                      <LuArrowRight />
-                    </Icon>
-                  </Button>
-                </Link>
-                <Button
-                  size="lg"
-                  variant="outline"
-                  rounded="full"
-                  px="8"
-                  fontWeight="600"
-                  borderWidth="2px"
-                  _hover={{
-                    bg: "bg.subtle",
-                    transform: "translateY(-2px)",
-                  }}
-                  transition="all 0.2s"
-                >
-                  See How It Works
-                </Button>
-              </HStack>
-
-              <HStack
-                gap="8"
-                pt="6"
-                className="animate-fade-up-delay-4"
-                color="fg.muted"
-                fontSize="sm"
-                flexWrap="wrap"
-                justify={{ base: "center", lg: "start" }}
-              >
-                <HStack gap="2">
-                  <Icon color="blue.solid">
-                    <LuShield />
-                  </Icon>
-                  <Text>Secure & Private</Text>
-                </HStack>
-                <HStack gap="2">
-                  <Icon color="blue.solid">
-                    <LuZap />
-                  </Icon>
-                  <Text>Always Free</Text>
-                </HStack>
-              </HStack>
-            </VStack>
-
-            <Center className="animate-scale-in">
-              <Box position="relative" className="animate-float">
-                {/* Glow effect */}
+                {/* Subtle gradient accent */}
                 <Box
                   position="absolute"
-                  inset="-4"
-                  bg="blue.500"
-                  opacity="0.15"
-                  borderRadius="3xl"
-                  filter="blur(40px)"
+                  top="0"
+                  left="0"
+                  right="0"
+                  h="1px"
+                  bgImage="linear-gradient(to-r, var(--chakra-colors-transparent), var(--chakra-colors-pink-500), var(--chakra-colors-purple-600), var(--chakra-colors-transparent))"
+                  opacity={0.4}
                 />
-
-                <Card.Root
-                  bg="bg"
-                  p={{ base: "6", md: "10" }}
-                  borderRadius="3xl"
-                  boxShadow="2xl"
-                  borderWidth="1px"
-                  borderColor="border.subtle"
-                  position="relative"
-                  overflow="hidden"
-                  minW={{ base: "280px", md: "340px" }}
+                <VStack
+                  gap="3"
+                  maxW="600px"
+                  mx="auto"
+                  align="stretch"
                 >
-                  {/* Subtle gradient overlay */}
-                  <Box
-                    position="absolute"
-                    top="0"
-                    left="0"
-                    right="0"
-                    h="1px"
-                    bgGradient="to-r"
-                    gradientFrom="transparent"
-                    gradientVia="blue.500"
-                    gradientTo="transparent"
-                  />
-
-                  <Card.Body p="0">
-                    <VStack gap="6">
-                      <Box position="relative">
-                        <ProgressCircleRoot
-                          value={72}
-                          size="xl"
-                          colorPalette="blue"
-                        >
-                          <ProgressCircleRing
-                            cap="round"
-                            css={{ "--thickness": "8px" }}
-                          />
-                          <ProgressCircleValueText
-                            fontSize="4xl"
-                            fontWeight="700"
-                            fontFamily="var(--font-outfit), sans-serif"
-                          />
-                        </ProgressCircleRoot>
-                      </Box>
-                      <VStack gap="2">
-                        <Text
-                          fontWeight="700"
-                          fontSize="xl"
-                          fontFamily="var(--font-outfit), sans-serif"
-                        >
-                          Graduation Progress
-                        </Text>
-                        <Text color="fg.muted" fontSize="sm">
-                          86 of 120 credits completed
-                        </Text>
-                      </VStack>
-                      <HStack gap="4" w="full" justify="center">
-                        <VStack gap="0">
-                          <Text fontWeight="700" fontSize="lg" color="blue.fg">
-                            34
-                          </Text>
-                          <Text fontSize="xs" color="fg.muted">
-                            Remaining
-                          </Text>
-                        </VStack>
-                        <Box w="1px" h="8" bg="border.muted" />
-                        <VStack gap="0">
-                          <Text fontWeight="700" fontSize="lg" color="blue.fg">
-                            12
-                          </Text>
-                          <Text fontSize="xs" color="fg.muted">
-                            In Progress
-                          </Text>
-                        </VStack>
-                        <Box w="1px" h="8" bg="border.muted" />
-                        <VStack gap="0">
-                          <Text
-                            fontWeight="700"
-                            fontSize="lg"
-                            color="teal.solid"
-                          >
-                            3
-                          </Text>
-                          <Text fontSize="xs" color="fg.muted">
-                            Semesters
-                          </Text>
-                        </VStack>
-                      </HStack>
-                    </VStack>
-                  </Card.Body>
-                </Card.Root>
-              </Box>
-            </Center>
-          </Grid>
-        </Container>
-      </Box>
-
-      {/* Stats Section */}
-      <Box py="16" borderBottomWidth="1px" borderColor="border.subtle">
-        <Container maxW="7xl" mx="auto" px={{ base: "4", md: "6", lg: "8" }}>
-          <SimpleGrid columns={{ base: 2, md: 4 }} gap={{ base: "6", md: "8" }}>
-            {[
-              { value: "40+", label: "Degree Programs" },
-              { value: "120", label: "Credits to Graduate" },
-              { value: "4", label: "Year Programs" },
-              { value: "1", label: "Tool to Track It All" },
-            ].map((stat, i) => (
-              <StatRoot key={stat.label} textAlign="center">
-                <StatValueText
-                  fontSize={{ base: "3xl", md: "5xl" }}
-                  fontWeight="400"
-                  fontFamily="var(--font-outfit), sans-serif"
-                  className="gradient-text"
-                  style={{ animationDelay: `${i * 0.1}s` }}
-                >
-                  {stat.value}
-                </StatValueText>
-                <StatLabel color="fg.muted" fontSize="sm" fontWeight="500">
-                  {stat.label}
-                </StatLabel>
-              </StatRoot>
-            ))}
-          </SimpleGrid>
-        </Container>
-      </Box>
-
-      {/* Features Section */}
-      <Box py={{ base: "16", md: "24" }} className="mesh-gradient">
-        <Container maxW="7xl" mx="auto" px={{ base: "4", md: "6", lg: "8" }}>
-          <VStack gap="16" align="center">
-            <VStack gap="5" textAlign="center" maxW="2xl" mx="auto">
-              <Badge
-                colorPalette="blue"
-                variant="surface"
-                size="lg"
-                px="4"
-                py="2"
-                rounded="full"
-              >
-                Features
-              </Badge>
-              <Heading
-                fontFamily="var(--font-outfit), sans-serif"
-                size={{ base: "3xl", md: "4xl" }}
-                letterSpacing="-0.02em"
-                fontWeight="400"
-              >
-                Built for Parkside Rangers
-              </Heading>
-              <Text fontSize="lg" color="fg.muted" lineHeight="1.7">
-                Designed specifically for UW-Parkside degree requirements,
-                course catalogs, and graduation pathways.
-              </Text>
-            </VStack>
-
-            <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} gap="6" w="full">
-              {features.map((feature, index) => (
-                <Card.Root
-                  key={feature.title}
-                  bg="bg"
-                  p="0"
-                  borderRadius="2xl"
-                  borderWidth="1px"
-                  borderColor="border.subtle"
-                  overflow="hidden"
-                  _hover={{
-                    borderColor: `${feature.color}.solid`,
-                    transform: "translateY(-4px)",
-                    boxShadow: "xl",
-                  }}
-                  transition="all 0.3s cubic-bezier(0.4, 0, 0.2, 1)"
-                  style={{ animationDelay: `${index * 0.1}s` }}
-                >
-                  <Card.Body p="6">
-                    <VStack align="start" gap="4">
+                  {/* User message */}
+                  <Flex justify="flex-end">
+                    <HStack gap="2.5" flexDirection="row-reverse" align="flex-start">
                       <Flex
+                        w="7"
+                        h="7"
+                        borderRadius="full"
+                        bg="blue.800"
+                        color="white"
+                        fontWeight="600"
+                        fontSize="2xs"
                         align="center"
                         justify="center"
-                        w="12"
-                        h="12"
-                        bg={`${feature.color}.subtle`}
-                        borderRadius="xl"
-                        color={`${feature.color}.fg`}
+                        flexShrink={0}
                       >
-                        <Icon boxSize="6">
-                          <feature.icon />
-                        </Icon>
+                        JM
                       </Flex>
-                      <VStack align="start" gap="2">
-                        <Heading
-                          size="md"
-                          fontWeight="600"
-                          letterSpacing="-0.01em"
-                        >
-                          {feature.title}
-                        </Heading>
-                        <Text color="fg.muted" lineHeight="1.6" fontSize="sm">
-                          {feature.description}
-                        </Text>
-                      </VStack>
-                    </VStack>
-                  </Card.Body>
-                </Card.Root>
-              ))}
-            </SimpleGrid>
-          </VStack>
-        </Container>
-      </Box>
-
-      {/* How It Works Section */}
-      <Box bg="bg.subtle" py={{ base: "16", md: "24" }}>
-        <Container maxW="5xl" mx="auto" px={{ base: "4", md: "6", lg: "8" }}>
-          <Grid
-            templateColumns={{ base: "1fr", lg: "1fr 1.2fr" }}
-            gap={{ base: "12", lg: "16" }}
-            alignItems="center"
-          >
-            <VStack align={{ base: "center", lg: "start" }} gap="6">
-              <Badge
-                colorPalette="teal"
-                variant="surface"
-                size="lg"
-                px="4"
-                py="2"
-                rounded="full"
-              >
-                How It Works
-              </Badge>
-              <Heading
-                fontFamily="var(--font-outfit), sans-serif"
-                size={{ base: "3xl", md: "4xl" }}
-                letterSpacing="-0.02em"
-                fontWeight="400"
-                textAlign={{ base: "center", lg: "left" }}
-              >
-                Get started in minutes
-              </Heading>
-              <Text
-                fontSize="lg"
-                color="fg.muted"
-                lineHeight="1.7"
-                textAlign={{ base: "center", lg: "left" }}
-              >
-                Simple setup, powerful insights. Your graduation roadmap awaits.
-              </Text>
-            </VStack>
-
-            <TimelineRoot size="lg">
-              {steps.map((step, index) => (
-                <TimelineItem key={index}>
-                  <TimelineConnector>
-                    <Center
-                      w="10"
-                      h="10"
-                      bg={index === 0 ? "blue.solid" : "bg"}
-                      borderWidth="2px"
-                      borderColor={index === 0 ? "blue.solid" : "blue.muted"}
-                      borderRadius="full"
-                      color={index === 0 ? "white" : "blue.fg"}
-                      fontWeight="700"
-                      fontSize="sm"
-                    >
-                      {index + 1}
-                    </Center>
-                  </TimelineConnector>
-                  <TimelineContent pb="8">
-                    <TimelineTitle fontWeight="600" fontSize="md" mb="1">
-                      {step.title}
-                    </TimelineTitle>
-                    <Text color="fg.muted" fontSize="sm" lineHeight="1.6">
-                      {step.description}
-                    </Text>
-                  </TimelineContent>
-                </TimelineItem>
-              ))}
-            </TimelineRoot>
-          </Grid>
-        </Container>
-      </Box>
-
-      {/* Progress Demo Section */}
-      <Box py={{ base: "16", md: "24" }}>
-        <Container maxW="7xl" mx="auto" px={{ base: "4", md: "6", lg: "8" }}>
-          <Grid
-            templateColumns={{ base: "1fr", lg: "1fr 1fr" }}
-            gap={{ base: "12", lg: "16" }}
-            alignItems="center"
-          >
-            <Card.Root
-              bg="bg"
-              p={{ base: "6", md: "8" }}
-              borderRadius="2xl"
-              borderWidth="1px"
-              borderColor="border.subtle"
-              boxShadow="lg"
-            >
-              <Card.Body p="0">
-                <VStack align="stretch" gap="6">
-                  <HStack justify="space-between" align="center">
-                    <Heading
-                      size="lg"
-                      fontFamily="var(--font-outfit), sans-serif"
-                      fontWeight="400"
-                    >
-                      Your Dashboard
-                    </Heading>
-                    <Badge colorPalette="blue" variant="surface" size="sm">
-                      Demo
-                    </Badge>
-                  </HStack>
-
-                  <Stack gap="5">
-                    <ProgressRoot value={72} colorPalette="blue" size="sm">
-                      <HStack justify="space-between" mb="2">
-                        <ProgressLabel fontWeight="500" fontSize="sm">
-                          Overall Completion
-                        </ProgressLabel>
-                        <ProgressValueText fontWeight="600" fontSize="sm" />
-                      </HStack>
-                      <ProgressBar rounded="full" />
-                    </ProgressRoot>
-
-                    <ProgressRoot value={100} colorPalette="teal" size="sm">
-                      <HStack justify="space-between" mb="2">
-                        <ProgressLabel fontWeight="500" fontSize="sm">
-                          General Education
-                        </ProgressLabel>
-                        <ProgressValueText fontWeight="600" fontSize="sm" />
-                      </HStack>
-                      <ProgressBar rounded="full" />
-                    </ProgressRoot>
-
-                    <ProgressRoot value={85} colorPalette="blue" size="sm">
-                      <HStack justify="space-between" mb="2">
-                        <ProgressLabel fontWeight="500" fontSize="sm">
-                          Major Requirements
-                        </ProgressLabel>
-                        <ProgressValueText fontWeight="600" fontSize="sm" />
-                      </HStack>
-                      <ProgressBar rounded="full" />
-                    </ProgressRoot>
-
-                    <ProgressRoot value={40} colorPalette="orange" size="sm">
-                      <HStack justify="space-between" mb="2">
-                        <ProgressLabel fontWeight="500" fontSize="sm">
-                          Electives
-                        </ProgressLabel>
-                        <ProgressValueText fontWeight="600" fontSize="sm" />
-                      </HStack>
-                      <ProgressBar rounded="full" />
-                    </ProgressRoot>
-                  </Stack>
-                </VStack>
-              </Card.Body>
-            </Card.Root>
-
-            <VStack
-              align={{ base: "center", lg: "start" }}
-              gap="6"
-              textAlign={{ base: "center", lg: "left" }}
-            >
-              <Badge
-                colorPalette="blue"
-                variant="surface"
-                size="lg"
-                px="4"
-                py="2"
-                rounded="full"
-              >
-                Progress Tracking
-              </Badge>
-              <Heading
-                fontFamily="var(--font-outfit), sans-serif"
-                size={{ base: "2xl", md: "3xl" }}
-                letterSpacing="-0.02em"
-                fontWeight="400"
-              >
-                See Your Progress at a Glance
-              </Heading>
-              <Text fontSize="lg" color="fg.muted" lineHeight="1.7">
-                Your personalized dashboard breaks down progress by category so
-                you always know exactly what you have left to complete.
-              </Text>
-              <VStack
-                align={{ base: "center", lg: "start" }}
-                gap="3"
-                pt="2"
-                w="full"
-              >
-                {[
-                  "Track multiple requirement categories",
-                  "Real-time progress updates",
-                  "Color-coded completion status",
-                  "Export reports for advisors",
-                ].map((item) => (
-                  <HStack key={item} gap="3">
-                    <Flex
-                      align="center"
-                      justify="center"
-                      w="6"
-                      h="6"
-                      bg="blue.subtle"
-                      borderRadius="full"
-                    >
-                      <Icon color="blue.fg" boxSize="3.5">
-                        <LuCheck />
-                      </Icon>
-                    </Flex>
-                    <Text fontSize="sm" fontWeight="500">
-                      {item}
-                    </Text>
-                  </HStack>
-                ))}
-              </VStack>
-            </VStack>
-          </Grid>
-        </Container>
-      </Box>
-
-      {/* Shared Plans Section */}
-      <Box bg="bg.subtle" py={{ base: "16", md: "20" }}>
-        <Container maxW="7xl" mx="auto" px={{ base: "4", md: "6", lg: "8" }}>
-          <Grid
-            templateColumns={{ base: "1fr", lg: "1.05fr 1fr" }}
-            gap={{ base: "10", lg: "14" }}
-            alignItems="center"
-          >
-            <VStack
-              align={{ base: "center", lg: "start" }}
-              gap="6"
-              textAlign={{ base: "center", lg: "left" }}
-            >
-              <Badge
-                colorPalette="blue"
-                variant="surface"
-                size="lg"
-                px="4"
-                py="2"
-                rounded="full"
-              >
-                Shared Plans
-              </Badge>
-              <Heading
-                fontFamily="var(--font-outfit), sans-serif"
-                size={{ base: "2xl", md: "3xl" }}
-                letterSpacing="-0.02em"
-                fontWeight="400"
-              >
-                Compare real planning paths
-              </Heading>
-              <Text fontSize="lg" color="fg.muted" lineHeight="1.7" maxW="xl">
-                Browse read-only degree plans that students and advisors share publicly. See how
-                other people sequence semesters, balance credit loads, and map out the road to
-                graduation.
-              </Text>
-              <VStack
-                align={{ base: "center", lg: "start" }}
-                gap="3"
-                pt="2"
-                w="full"
-              >
-                {[
-                  "View semester-by-semester course layouts",
-                  "Compare pacing before building your own plan",
-                  "Open shared links without needing to sign in",
-                ].map((item) => (
-                  <HStack key={item} gap="3">
-                    <Flex
-                      align="center"
-                      justify="center"
-                      w="6"
-                      h="6"
-                      bg="blue.subtle"
-                      borderRadius="full"
-                    >
-                      <Icon color="blue.fg" boxSize="3.5">
-                        <LuCheck />
-                      </Icon>
-                    </Flex>
-                    <Text fontSize="sm" fontWeight="500">
-                      {item}
-                    </Text>
-                  </HStack>
-                ))}
-              </VStack>
-              <Button asChild colorPalette="blue" rounded="full" px="7">
-                <Link href="/shared/plans">
-                  Browse Shared Plans
-                  <Icon ml="2">
-                    <LuArrowRight />
-                  </Icon>
-                </Link>
-              </Button>
-            </VStack>
-
-            <Card.Root
-              bg="linear-gradient(135deg, var(--chakra-colors-bg) 0%, var(--chakra-colors-blue-subtle) 100%)"
-              borderRadius="3xl"
-              borderWidth="1px"
-              borderColor="border.subtle"
-              boxShadow="lg"
-              overflow="hidden"
-            >
-              <Card.Body p={{ base: "6", md: "8" }}>
-                <VStack align="stretch" gap="5">
-                  <HStack justify="space-between" align="start">
-                    <VStack align="start" gap="1">
-                      <HStack gap="3">
-                        <Flex
-                          align="center"
-                          justify="center"
-                          w="10"
-                          h="10"
-                          bg="bg"
-                          borderRadius="xl"
-                          borderWidth="1px"
-                          borderColor="border.subtle"
-                        >
-                          <Icon color="blue.fg" boxSize="5">
-                            <LuShare2 />
-                          </Icon>
-                        </Flex>
-                        <VStack align="start" gap="0">
-                          <Text fontSize="xs" color="fg.muted" fontWeight="700" letterSpacing="0.08em">
-                            PUBLIC EXAMPLE
-                          </Text>
-                          <Heading
-                            size="md"
-                            fontFamily="var(--font-outfit), sans-serif"
-                            fontWeight="400"
-                          >
-                            Computer Science Plan
-                          </Heading>
-                        </VStack>
-                      </HStack>
-                      <Text fontSize="sm" color="fg.muted" pl={{ base: "0", sm: "13" }}>
-                        Shared by Maya / B.S. Computer Science
-                      </Text>
-                    </VStack>
-
-                    <Badge colorPalette="blue" variant="solid">
-                      Read-only
-                    </Badge>
-                  </HStack>
-
-                  <SimpleGrid columns={{ base: 1, sm: 2 }} gap="3">
-                    {[
-                      {
-                        term: "Fall 2026",
-                        credits: "15 cr",
-                        courses: ["CS 231", "MATH 222", "ENGL 202"],
-                      },
-                      {
-                        term: "Spring 2027",
-                        credits: "14 cr",
-                        courses: ["CS 320", "CS 331", "COMM 105"],
-                      },
-                    ].map((term) => (
                       <Box
-                        key={term.term}
-                        p="4"
-                        borderRadius="2xl"
-                        bg="bg"
-                        borderWidth="1px"
-                        borderColor="border.subtle"
+                        bg="blue.800"
+                        color="white"
+                        px="3.5"
+                        py="2.5"
+                        borderRadius="xl"
+                        borderBottomRightRadius="sm"
+                        fontSize="sm"
+                        lineHeight="1.5"
+                        maxW="75%"
                       >
-                        <HStack justify="space-between" mb="3">
-                          <Text fontWeight="700">{term.term}</Text>
-                          <Badge variant="surface" colorPalette="gray">
-                            {term.credits}
-                          </Badge>
-                        </HStack>
-                        <VStack align="stretch" gap="2">
-                          {term.courses.map((course) => (
-                            <Box key={course} p="2.5" borderRadius="lg" bg="bg.subtle">
-                              <Text fontSize="sm" fontWeight="500">
-                                {course}
-                              </Text>
-                            </Box>
-                          ))}
-                        </VStack>
+                        What should I take next semester to stay on track?
                       </Box>
-                    ))}
-                  </SimpleGrid>
+                    </HStack>
+                  </Flex>
+                  {/* AI reply */}
+                  <HStack gap="2.5" align="flex-start">
+                    <Flex
+                      w="7"
+                      h="7"
+                      borderRadius="full"
+                      bgGradient="to-br"
+                      gradientFrom="pink.500"
+                      gradientTo="purple.600"
+                      color="white"
+                      fontSize="sm"
+                      align="center"
+                      justify="center"
+                      flexShrink={0}
+                    >
+                      ✦
+                    </Flex>
+                    <Box
+                      bg="bg"
+                      border="1px solid"
+                      borderColor="border.subtle"
+                      px="3.5"
+                      py="2.5"
+                      borderRadius="xl"
+                      borderBottomLeftRadius="sm"
+                      fontSize="sm"
+                      lineHeight="1.5"
+                      maxW="75%"
+                    >
+                      Based on your progress, I&apos;d recommend{" "}
+                      <Text as="strong">CSCI 340</Text> and{" "}
+                      <Text as="strong">MATH 221</Text> — both are
+                      prerequisites for your senior-year courses. You also need
+                      one more Humanities gen-ed.
+                      <br />
+                      <br />
+                      Would you like me to add these to your semester plan?
+                    </Box>
+                  </HStack>
                 </VStack>
-              </Card.Body>
-            </Card.Root>
+              </Box>
+            </BentoCard>
+
           </Grid>
+          </FadeIn>
         </Container>
       </Box>
 
-      {/* CTA Section */}
+      {/* ===== CTA + FOOTER — single dark section ===== */}
       <Box
         position="relative"
         overflow="hidden"
-        py={{ base: "16", md: "24" }}
-        bg="blue.950"
-        _light={{ bg: "blue.600" }}
+        bgGradient="to-b"
+        gradientFrom="gray.900"
+        gradientTo="gray.950"
       >
-        {/* Decorative elements */}
+        {/* Background glow */}
         <Box
           position="absolute"
-          top="-50%"
-          right="-20%"
-          w="600px"
+          top="-200px"
+          left="50%"
+          transform="translateX(-50%)"
+          w="800px"
           h="600px"
-          bg="blue.500"
-          opacity="0.15"
           borderRadius="full"
-          filter="blur(100px)"
+          style={{
+            background: "radial-gradient(circle, rgba(59,130,246,0.15) 0%, rgba(139,92,246,0.08) 40%, transparent 70%)",
+          }}
+          pointerEvents="none"
         />
+        {/* Grid pattern overlay */}
         <Box
           position="absolute"
-          bottom="-50%"
-          left="-20%"
-          w="500px"
-          h="500px"
-          bg="teal.500"
-          opacity="0.1"
-          borderRadius="full"
-          filter="blur(80px)"
+          inset="0"
+          opacity="0.03"
+          style={{
+            backgroundImage: "linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)",
+            backgroundSize: "40px 40px",
+          }}
+          pointerEvents="none"
         />
 
-        <Container
-          maxW="4xl"
-          mx="auto"
-          px={{ base: "4", md: "6", lg: "8" }}
+        {/* CTA */}
+        <Box
+          py={{ base: "20", md: "28" }}
+          textAlign="center"
           position="relative"
-          zIndex="2"
         >
-          <VStack gap="8" textAlign="center">
-            <Heading
-              fontFamily="var(--font-outfit), sans-serif"
-              size={{ base: "3xl", md: "4xl", lg: "5xl" }}
-              color="white"
-              letterSpacing="-0.02em"
-              fontWeight="400"
-              lineHeight="1.2"
-            >
-              Ready to Graduate
-              <br />
-              on Time, Ranger?
-            </Heading>
-            <Text
-              fontSize={{ base: "lg", md: "xl" }}
-              color="whiteAlpha.800"
-              maxW="2xl"
-              lineHeight="1.7"
-            >
-              Take control of your Parkside academic journey. Start tracking
-              your progress toward your degree today — it&apos;s free for all
-              UW-Parkside students.
-            </Text>
-            <HStack gap="4" pt="4" flexWrap="wrap" justify="center">
+          <FadeIn>
+          <Container maxW="lg" mx="auto">
+            <VStack gap="6">
+              <Heading
+                fontFamily="var(--font-dm-sans), sans-serif"
+                fontSize={{ base: "3xl", md: "5xl" }}
+                fontWeight="400"
+                letterSpacing="-0.03em"
+                lineHeight="1.1"
+                color="white"
+              >
+                Your graduation roadmap
+                <br />
+                <Text
+                  as="span"
+                  bgGradient="to-r"
+                  gradientFrom="blue.200"
+                  gradientTo="purple.200"
+                  backgroundClip="text"
+                  color="transparent"
+                >
+                  starts here
+                </Text>
+              </Heading>
+              <Text
+                fontSize="md"
+                color="whiteAlpha.600"
+                lineHeight="1.6"
+                maxW="420px"
+              >
+                Free for all UW-Parkside students. Set up in under 2 minutes.
+                No credit card required.
+              </Text>
               <Link href="/signup">
                 <Button
                   size="lg"
                   bg="white"
-                  color="blue.700"
+                  color="gray.900"
                   rounded="full"
-                  px="8"
+                  px="10"
                   fontWeight="600"
+                  fontSize="md"
                   _hover={{
                     bg: "whiteAlpha.900",
                     transform: "translateY(-2px)",
-                    boxShadow: "xl",
+                    boxShadow: "0 8px 30px rgba(255,255,255,0.15)",
                   }}
                   transition="all 0.2s"
                 >
@@ -1034,108 +699,205 @@ export default function LandingPage() {
                   </Icon>
                 </Button>
               </Link>
-              <Button
-                size="lg"
-                variant="outline"
-                color="white"
-                borderColor="whiteAlpha.400"
-                borderWidth="2px"
-                rounded="full"
-                px="8"
-                fontWeight="600"
-                _hover={{
-                  bg: "whiteAlpha.100",
-                  borderColor: "whiteAlpha.600",
-                }}
-              >
-                Learn More
-              </Button>
-            </HStack>
-          </VStack>
-        </Container>
-      </Box>
+            </VStack>
+          </Container>
+          </FadeIn>
+        </Box>
 
-      {/* Footer */}
-      <Box
-        as="footer"
-        bg="bg"
-        py="12"
-        borderTopWidth="1px"
-        borderColor="border.subtle"
-      >
-        <Container maxW="7xl" mx="auto" px={{ base: "4", md: "6", lg: "8" }}>
-          <SimpleGrid columns={{ base: 1, md: 4 }} gap="8">
-            <VStack align="start" gap="4">
+        {/* Footer */}
+        <Box
+          as="footer"
+          py="10"
+          position="relative"
+          color="whiteAlpha.700"
+        >
+          <Container maxW="960px" mx="auto" px={{ base: "4", md: "6" }}>
+            <Box
+              mb="8"
+              h="1px"
+              style={{
+                background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent)",
+              }}
+            />
+            <Flex
+              direction={{ base: "column", md: "row" }}
+              justify="space-between"
+              align={{ base: "start", md: "center" }}
+              gap="6"
+            >
               <HStack gap="3">
-                <Box p="2" bg="blue.solid" borderRadius="lg">
-                  <Icon color="white" boxSize="4">
+                <Flex
+                  align="center"
+                  justify="center"
+                  w="6"
+                  h="6"
+                  bg="whiteAlpha.100"
+                  borderRadius="md"
+                >
+                  <Icon color="white" boxSize="3.5">
                     <LuGraduationCap />
                   </Icon>
-                </Box>
-                <Text
-                  fontWeight="700"
-                  fontSize="lg"
-                  fontFamily="var(--font-outfit), sans-serif"
-                >
-                  GradTracker
+                </Flex>
+                <Text fontWeight="700" fontSize="sm" color="white">
+                  GradTracker{" "}
+                  <Text as="span" color="whiteAlpha.400" fontWeight="500" fontSize="xs">
+                    Parkside
+                  </Text>
                 </Text>
               </HStack>
-              <Text color="fg.muted" fontSize="sm" lineHeight="1.6">
-                A graduation tracking tool built specifically for UW-Parkside
-                students.
+
+              <HStack gap="6" flexWrap="wrap">
+                {["Progress Tracking", "Semester Planner", "AI Advisor", "Course Catalog"].map((link) => (
+                  <Text
+                    key={link}
+                    fontSize="sm"
+                  >
+                    {link}
+                  </Text>
+                ))}
+              </HStack>
+            </Flex>
+            <Box mt="8" pt="6">
+              <Text fontSize="xs" color="whiteAlpha.400">
+                &copy; {new Date().getFullYear()} GradTracker. A project for UW-Parkside.
               </Text>
-            </VStack>
-
-            {[
-              {
-                title: "Resources",
-                links: ["Degree Programs", "Course Catalog", "Academic Calendar"],
-              },
-              {
-                title: "Support",
-                links: ["Help Center", "Contact Advising", "FAQ"],
-              },
-              {
-                title: "UW-Parkside",
-                links: ["University Website", "SOLAR", "Rangers Athletics"],
-              },
-            ].map((section) => (
-              <VStack align="start" gap="4" key={section.title}>
-                <Text fontWeight="600" fontSize="sm" letterSpacing="0.02em">
-                  {section.title}
-                </Text>
-                <VStack align="start" gap="2">
-                  {section.links.map((link) => (
-                    <Text
-                      key={link}
-                      color="fg.muted"
-                      fontSize="sm"
-                      cursor="pointer"
-                      _hover={{ color: "blue.fg" }}
-                      transition="color 0.2s"
-                    >
-                      {link}
-                    </Text>
-                  ))}
-                </VStack>
-              </VStack>
-            ))}
-          </SimpleGrid>
-
-          <Box
-            pt="8"
-            mt="8"
-            borderTopWidth="1px"
-            borderColor="border.subtle"
-            textAlign="center"
-          >
-            <Text color="fg.muted" fontSize="sm">
-              © {new Date().getFullYear()} Parkside GradTracker. Built with care
-              for UW-Parkside students.
-            </Text>
-          </Box>
-        </Container>
+            </Box>
+          </Container>
+        </Box>
       </Box>
+    </Box>
+  );
+}
+
+/* ===== Sub-components ===== */
+
+function FadeIn({
+  children,
+  delay = 0,
+}: {
+  children: React.ReactNode;
+  delay?: number;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [isVisible, setIsVisible] = useState(false);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setIsVisible(true);
+          observer.unobserve(entry.target);
+        }
+      },
+      { threshold: 0.1, rootMargin: "0px 0px -40px 0px" }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  return (
+    <Box
+      ref={ref}
+      opacity={isVisible ? 1 : 0}
+      transform={isVisible ? "translateY(0)" : "translateY(24px)"}
+      transition={`opacity 0.7s cubic-bezier(0.16,1,0.3,1) ${delay}s, transform 0.7s cubic-bezier(0.16,1,0.3,1) ${delay}s`}
+    >
+      {children}
+    </Box>
+  );
+}
+
+function BentoCard({
+  icon: IconComponent,
+  iconColor,
+  title,
+  description,
+  wide,
+  children,
+}: {
+  icon: React.ComponentType;
+  iconColor: string;
+  title: string;
+  description: string;
+  wide?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <Box
+      bg="bg"
+      borderWidth="1px"
+      borderColor="border.subtle"
+      borderRadius="2xl"
+      overflow="hidden"
+      gridColumn={wide ? { base: "span 1", md: "span 2" } : undefined}
+      transition="all 0.3s"
+      _hover={{
+        transform: "translateY(-4px)",
+        boxShadow: "0 12px 40px rgba(0,0,0,0.06)",
+      }}
+      css={{
+        "& img": {
+          transition: "transform 0.5s cubic-bezier(0.16,1,0.3,1)",
+        },
+        "&:hover img": {
+          transform: "scale(1.03)",
+        },
+      }}
+    >
+      <Box px={{ base: "5", md: "6" }} pt={{ base: "5", md: "6" }}>
+        <Flex
+          w="9"
+          h="9"
+          borderRadius="xl"
+          align="center"
+          justify="center"
+          mb="4"
+          style={{ backgroundColor: `${iconColor}12` }}
+        >
+          <Icon boxSize="4.5" color={iconColor}>
+            <IconComponent />
+          </Icon>
+        </Flex>
+        <Heading
+          fontSize="lg"
+          fontWeight="600"
+          fontFamily="var(--font-dm-sans), sans-serif"
+          mb="1.5"
+        >
+          {title}
+        </Heading>
+        <Text fontSize="sm" color="fg.muted" lineHeight="1.5">
+          {description}
+        </Text>
+      </Box>
+      {children}
+    </Box>
+  );
+}
+
+function ScreenshotVisual({
+  src,
+  alt,
+}: {
+  src: string;
+  alt: string;
+}) {
+  return (
+    <Box
+      mt="4"
+      overflow="hidden"
+      borderTop="1px solid"
+      borderColor="border.subtle"
+    >
+      <Image
+        src={src}
+        alt={alt}
+        width={1920}
+        height={1080}
+        style={{ width: "100%", height: "auto", display: "block" }}
+      />
     </Box>
   );
 }

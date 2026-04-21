@@ -127,7 +127,7 @@ function renderCourseList(
   });
 }
 
-function SinglePlanGrid({ plan }: { plan: SharedPlanDetail }) {
+function SinglePlanGrid({ plan }: Readonly<{ plan: SharedPlanDetail }>) {
   const sortedTerms = [...plan.terms].sort(compareTerms);
 
   if (sortedTerms.length === 0) {
@@ -205,10 +205,10 @@ function SinglePlanGrid({ plan }: { plan: SharedPlanDetail }) {
 function ComparePlansView({
   sharedPlan,
   myPlan,
-}: {
+}: Readonly<{
   sharedPlan: SharedPlanDetail;
   myPlan: ComparablePlanDetail;
-}) {
+}>) {
   const termMap = new Map<string, SharedPlanDetail["terms"][number]>();
   [...sharedPlan.terms, ...myPlan.terms].forEach((term) => {
     termMap.set(getTermKey(term), term);
@@ -401,10 +401,10 @@ function ComparePlansView({
 export function SharedPlanUnavailable({
   title = "This shared plan is not available",
   description = "The link may be invalid, expired, or turned off by the person who shared it.",
-}: {
+}: Readonly<{
   title?: string;
   description?: string;
-}) {
+}>) {
   return (
     <Flex minH="100vh" bg="bg.subtle" align="center" justify="center" px="4" py="10">
       <Card.Root maxW="xl" w="full" borderRadius="3xl" borderWidth="1px" borderColor="border.subtle">
@@ -430,10 +430,10 @@ export function SharedPlanUnavailable({
 export function SharedPlansIndex({
   plans,
   ownPlans = [],
-}: {
+}: Readonly<{
   plans: SharedPlanSummary[];
   ownPlans?: OwnPlanSummary[];
-}) {
+}>) {
   return (
     <Box minH="100vh" bg="bg.subtle" px={{ base: "4", md: "8" }} py={{ base: "8", md: "10" }}>
       <Box maxW="7xl" mx="auto">
@@ -583,12 +583,12 @@ export function SharedPlanView({
   showPlannerCta = false,
   ownPlans = [],
   comparisonPlan = null,
-}: {
+}: Readonly<{
   plan: SharedPlanDetail;
   showPlannerCta?: boolean;
   ownPlans?: OwnPlanSummary[];
   comparisonPlan?: ComparablePlanDetail | null;
-}) {
+}>) {
   return (
     <Box minH="100vh" bg="bg.subtle" px={{ base: "4", md: "8" }} py={{ base: "8", md: "10" }}>
       <Box maxW="7xl" mx="auto">

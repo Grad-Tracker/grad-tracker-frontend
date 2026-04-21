@@ -67,7 +67,7 @@ export async function loadMessages(
     conversationId: Number(row.conversation_id),
     role: row.role as "user" | "assistant",
     content: String(row.content),
-    metadata: (row.metadata ?? {}) as Record<string, unknown>,
+    metadata: row.metadata ?? {},
     createdAt: String(row.created_at),
   }));
 }

@@ -1,14 +1,13 @@
 import { createClient } from "@/lib/supabase/client";
 import { DB_TABLES, DB_VIEWS } from "./schema";
-import { logStudentActivity } from "./activity";
 import type {
   ViewCourseCatalogRow,
-  ViewProgramBlockCourseItem,
   ViewProgramBlockCoursesRow,
   ViewStudentCourseHistoryDetailRow,
   ViewStudentPrimaryMajorProgramRow,
 } from "./view-types";
 import type { CourseRow } from "@/types/onboarding";
+import { viewItemToCourse, safeLogActivity, formatActivityCourseLabel } from "./helpers";
 
 // --- Types ---
 
@@ -26,34 +25,6 @@ export interface MajorWithRequirements {
     name: string;
     courses: CourseRow[];
   }[];
-}
-
-function toCourseRow(course: ViewProgramBlockCourseItem): CourseRow {
-  return {
-    id: Number(course.course_id),
-    subject: String(course.subject ?? ""),
-    number: String(course.number ?? ""),
-    title: String(course.title ?? ""),
-    credits: Number(course.credits ?? 0),
-  };
-}
-
-async function safeLogActivity(
-  studentId: number,
-  activityType: Parameters<typeof logStudentActivity>[1],
-  message: string,
-  metadata: Record<string, unknown>
-) {
-  try {
-    await logStudentActivity(studentId, activityType, message, metadata);
-  } catch (error) {
-    console.error("Failed to log student activity:", error);
-  }
-}
-
-function formatActivityCourseLabel(courseLabel?: string): string {
-  const normalized = courseLabel?.trim();
-  return normalized && normalized.length > 0 ? normalized : "a course";
 }
 
 // --- Queries ---
@@ -102,7 +73,7 @@ export async function fetchMajorRequirementCourses(
     blocks: ((blocks as ViewProgramBlockCoursesRow[] | null) ?? []).map((block) => ({
       id: Number(block.block_id),
       name: block.block_name,
-      courses: (block.courses ?? []).map(toCourseRow),
+      courses: (block.courses ?? []).map(viewItemToCourse),
     })),
   };
 }
@@ -202,7 +173,7 @@ export async function deleteCourseHistory(
 export async function searchCourses(query: string): Promise<CourseRow[]> {
   if (query.length < 2) return [];
   const supabase = createClient();
-  const escaped = query.replace(/[%_]/g, "\\$&");
+  const escaped = query.replaceAll(/[%_]/g, "\\$&");
   const pattern = `%${escaped}%`;
 
   const { data, error } = await supabase

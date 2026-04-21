@@ -12,7 +12,7 @@ interface AdditionalCoursesProps {
   onCourseSelected: (course: CourseRow) => void;
 }
 
-export function AdditionalCourses({ courses, onDelete, onCourseSelected }: AdditionalCoursesProps) {
+export function AdditionalCourses({ courses, onDelete, onCourseSelected }: Readonly<AdditionalCoursesProps>) {
   const [dialogOpen, setDialogOpen] = useState(false);
 
   return (

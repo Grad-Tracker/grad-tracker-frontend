@@ -31,7 +31,6 @@ import {
 } from "@chakra-ui/react";
 import { Select } from "@chakra-ui/react";
 import Link from "next/link";
-import { ColorModeButton } from "@/components/ui/color-mode";
 import { toaster } from "@/components/ui/toaster";
 import {
   LuLayoutDashboard,
@@ -63,10 +62,10 @@ import {
   getOrCreateTerm,
 } from "@/lib/supabase/queries/planner";
 import { DB_TABLES, DB_VIEWS } from "@/lib/supabase/queries/schema";
-import { compareTerms, type Season, type Term } from "@/types/planner";
+import { compareTerms, type Term } from "@/types/planner";
 import { EmptyState } from "@/components/ui/empty-state";
-
-const PAGE_SIZE = 52;
+import { getCurrentAcademicTerm } from "@/lib/academic-term";
+import { COURSES_PAGE_SIZE } from "@/lib/constants";
 
 const navItems = [
   { icon: LuLayoutDashboard, label: "Dashboard", href: "/dashboard", active: false },
@@ -81,9 +80,6 @@ interface CoursesClientProps {
   subjects: string[];
 }
 
-function getCourseActivityLabel(course: Course): string {
-  return `${course.subject} ${course.number}`;
-}
 
 export default function CoursesClient({
   initialCourses,
@@ -115,16 +111,6 @@ export default function CoursesClient({
     setAvailablePlans([]);
     setPlanTerms({});
     setSelectedPlanId(null);
-  };
-
-  const getCurrentAcademicTerm = (): { season: Season; year: number } => {
-    const now = new Date();
-    const month = now.getMonth();
-    const year = now.getFullYear();
-
-    if (month <= 4) return { season: "Spring", year };
-    if (month <= 7) return { season: "Summer", year };
-    return { season: "Fall", year };
   };
 
   const ensureDefaultPlan = async (studentId: number): Promise<number> => {
@@ -270,8 +256,7 @@ export default function CoursesClient({
         studentId,
         term.id,
         selectedCourse.id,
-        planId,
-        getCourseActivityLabel(selectedCourse)
+        planId
       );
       toaster.create({
         title: "Added to plan",
@@ -323,8 +308,7 @@ export default function CoursesClient({
         studentId,
         currentTerm.id,
         selectedCourse.id,
-        planId,
-        getCourseActivityLabel(selectedCourse)
+        planId
       );
       toaster.create({
         title: "Added to current semester",
@@ -399,11 +383,124 @@ export default function CoursesClient({
 
   // Paginate the filtered courses
   const paginatedCourses = useMemo(() => {
-    const startIndex = (page - 1) * PAGE_SIZE;
-    return filteredCourses.slice(startIndex, startIndex + PAGE_SIZE);
+    const startIndex = (page - 1) * COURSES_PAGE_SIZE;
+    return filteredCourses.slice(startIndex, startIndex + COURSES_PAGE_SIZE);
   }, [filteredCourses, page]);
 
-  const totalPages = Math.ceil(filteredCourses.length / PAGE_SIZE);
+  const totalPages = Math.ceil(filteredCourses.length / COURSES_PAGE_SIZE);
+
+  function renderAddToPlanBody() {
+    if (loadingPlans) {
+      return (
+        <Flex minH="240px" align="center" justify="center">
+          <VStack gap="3">
+            <Spinner color="blue.500" />
+            <Text fontSize="sm" color="fg.muted">
+              Loading your plans...
+            </Text>
+          </VStack>
+        </Flex>
+      );
+    }
+    if (availablePlans.length === 0) {
+      return (
+        <Flex minH="240px" align="center" justify="center">
+          <EmptyState
+            icon={<LuCalendar />}
+            title="No plans available yet"
+            description="Create a plan in the planner first, then you can add this course to a semester."
+          />
+        </Flex>
+      );
+    }
+    return (
+      <VStack align="stretch" gap="6">
+        <Box>
+          <Text fontSize="sm" color="fg.muted" mb="3">
+            1. Pick a plan
+          </Text>
+          <SimpleGrid columns={{ base: 1, md: 2 }} gap="4">
+            {availablePlans.map((plan) => {
+              const isSelected = selectedPlanId === plan.id;
+              const termCount = planTerms[plan.id]?.length ?? 0;
+              return (
+                <Button
+                  key={plan.id}
+                  type="button"
+                  variant="plain"
+                  h="auto"
+                  justifyContent="flex-start"
+                  whiteSpace="normal"
+                  textAlign="left"
+                  borderWidth="1px"
+                  borderColor={isSelected ? "blue.500" : "border.subtle"}
+                  bg={isSelected ? "blue.subtle" : "bg"}
+                  borderRadius="2xl"
+                  p="5"
+                  transition="all 0.15s"
+                  _hover={{ borderColor: "blue.400", bg: "blue.subtle" }}
+                  onClick={() => setSelectedPlanId(plan.id)}
+                >
+                  <HStack gap="2" mb="4" color="fg.muted" fontSize="sm">
+                    <Text fontWeight="600">{plan.name}</Text>
+                    <Badge variant="subtle" colorPalette={isSelected ? "blue" : "gray"}>
+                      {termCount} {termCount === 1 ? "semester" : "semesters"}
+                    </Badge>
+                  </HStack>
+                  <Text fontSize="lg" fontWeight="600">
+                    {plan.name}
+                  </Text>
+                  <Text color="fg.muted" mt="2">
+                    {termCount > 0
+                      ? "Select this plan to choose a semester."
+                      : "This plan does not have any semesters yet."}
+                  </Text>
+                </Button>
+              );
+            })}
+          </SimpleGrid>
+        </Box>
+
+        {selectedPlanId && (
+          <Box>
+            <Text fontSize="sm" color="fg.muted" mb="3">
+              2. Pick a semester
+            </Text>
+            {(planTerms[selectedPlanId] ?? []).length > 0 ? (
+              <SimpleGrid columns={{ base: 1, md: 2 }} gap="3">
+                {(planTerms[selectedPlanId] ?? []).map((term) => (
+                  <Button
+                    key={term.id}
+                    size="lg"
+                    justifyContent="space-between"
+                    variant="outline"
+                    colorPalette="blue"
+                    borderRadius="xl"
+                    onClick={() => handleAddToSelectedPlan(selectedPlanId, term)}
+                    loading={addingToSelectedPlan}
+                  >
+                    {term.season} {term.year}
+                  </Button>
+                ))}
+              </SimpleGrid>
+            ) : (
+              <Box
+                borderWidth="1px"
+                borderColor="border.subtle"
+                borderRadius="xl"
+                p="5"
+                bg="bg.subtle"
+              >
+                <Text fontSize="sm" color="fg.muted">
+                  This plan does not have any semesters yet. Add one in the planner first.
+                </Text>
+              </Box>
+            )}
+          </Box>
+        )}
+      </VStack>
+    );
+  }
 
   return (
   <Box className="mesh-gradient-subtle">
@@ -544,8 +641,8 @@ export default function CoursesClient({
 
         {/* Results count */}
         <Text fontSize="sm" color="fg.muted">
-          Showing {Math.min((page - 1) * PAGE_SIZE + 1, filteredCourses.length)}-
-          {Math.min(page * PAGE_SIZE, filteredCourses.length)} of{" "}
+          Showing {Math.min((page - 1) * COURSES_PAGE_SIZE + 1, filteredCourses.length)}-
+          {Math.min(page * COURSES_PAGE_SIZE, filteredCourses.length)} of{" "}
           {filteredCourses.length} courses
         </Text>
 
@@ -628,7 +725,7 @@ export default function CoursesClient({
               <Flex justify="center" pt="4">
                 <Pagination.Root
                   count={filteredCourses.length}
-                  pageSize={PAGE_SIZE}
+                  pageSize={COURSES_PAGE_SIZE}
                   page={page}
                   onPageChange={(e) => setPage(e.page)}
                   siblingCount={1}
@@ -893,110 +990,7 @@ export default function CoursesClient({
               </Dialog.Header>
 
               <Dialog.Body overflowY="auto" py="6">
-                {loadingPlans ? (
-                  <Flex minH="240px" align="center" justify="center">
-                    <VStack gap="3">
-                      <Spinner color="blue.500" />
-                      <Text fontSize="sm" color="fg.muted">
-                        Loading your plans...
-                      </Text>
-                    </VStack>
-                  </Flex>
-                ) : availablePlans.length === 0 ? (
-                  <Flex minH="240px" align="center" justify="center">
-                    <EmptyState
-                      icon={<LuCalendar />}
-                      title="No plans available yet"
-                      description="Create a plan in the planner first, then you can add this course to a semester."
-                    />
-                  </Flex>
-                ) : (
-                  <VStack align="stretch" gap="6">
-                    <Box>
-                      <Text fontSize="sm" color="fg.muted" mb="3">
-                        1. Pick a plan
-                      </Text>
-                      <SimpleGrid columns={{ base: 1, md: 2 }} gap="4">
-                        {availablePlans.map((plan) => {
-                          const isSelected = selectedPlanId === plan.id;
-                          const termCount = planTerms[plan.id]?.length ?? 0;
-                          return (
-                            <Button
-                              key={plan.id}
-                              type="button"
-                              variant="plain"
-                              h="auto"
-                              justifyContent="flex-start"
-                              whiteSpace="normal"
-                              textAlign="left"
-                              borderWidth="1px"
-                              borderColor={isSelected ? "blue.500" : "border.subtle"}
-                              bg={isSelected ? "blue.subtle" : "bg"}
-                              borderRadius="2xl"
-                              p="5"
-                              transition="all 0.15s"
-                              _hover={{ borderColor: "blue.400", bg: "blue.subtle" }}
-                              onClick={() => setSelectedPlanId(plan.id)}
-                            >
-                              <HStack gap="2" mb="4" color="fg.muted" fontSize="sm">
-                                <Text fontWeight="600">{plan.name}</Text>
-                                <Badge variant="subtle" colorPalette={isSelected ? "blue" : "gray"}>
-                                  {termCount} {termCount === 1 ? "semester" : "semesters"}
-                                </Badge>
-                              </HStack>
-                              <Text fontSize="lg" fontWeight="600">
-                                {plan.name}
-                              </Text>
-                              <Text color="fg.muted" mt="2">
-                                {termCount > 0
-                                  ? "Select this plan to choose a semester."
-                                  : "This plan does not have any semesters yet."}
-                              </Text>
-                            </Button>
-                          );
-                        })}
-                      </SimpleGrid>
-                    </Box>
-
-                    {selectedPlanId && (
-                      <Box>
-                        <Text fontSize="sm" color="fg.muted" mb="3">
-                          2. Pick a semester
-                        </Text>
-                        {(planTerms[selectedPlanId] ?? []).length > 0 ? (
-                          <SimpleGrid columns={{ base: 1, md: 2 }} gap="3">
-                            {(planTerms[selectedPlanId] ?? []).map((term) => (
-                              <Button
-                                key={term.id}
-                                size="lg"
-                                justifyContent="space-between"
-                                variant="outline"
-                                colorPalette="blue"
-                                borderRadius="xl"
-                                onClick={() => handleAddToSelectedPlan(selectedPlanId, term)}
-                                loading={addingToSelectedPlan}
-                              >
-                                {term.season} {term.year}
-                              </Button>
-                            ))}
-                          </SimpleGrid>
-                        ) : (
-                          <Box
-                            borderWidth="1px"
-                            borderColor="border.subtle"
-                            borderRadius="xl"
-                            p="5"
-                            bg="bg.subtle"
-                          >
-                            <Text fontSize="sm" color="fg.muted">
-                              This plan does not have any semesters yet. Add one in the planner first.
-                            </Text>
-                          </Box>
-                        )}
-                      </Box>
-                    )}
-                  </VStack>
-                )}
+                {renderAddToPlanBody()}
               </Dialog.Body>
 
               <Dialog.Footer borderTopWidth="1px" borderColor="border.subtle">

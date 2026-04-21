@@ -40,7 +40,7 @@ export default function GenEdProgress({
   buckets,
   plannedCourses,
   completedCourseIds,
-}: GenEdProgressProps) {
+}: Readonly<GenEdProgressProps>) {
   const plannedCourseIdSet = useMemo(
     () => new Set(plannedCourses.map((pc) => pc.course_id)),
     [plannedCourses]

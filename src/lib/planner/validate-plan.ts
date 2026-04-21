@@ -8,7 +8,50 @@ import type {
   BlockSatisfactionStatus,
   GenEdSatisfactionStatus,
 } from "@/types/auto-generate";
-import { isAvailable } from "./auto-generate";
+import { buildCoreqMap, isAvailable } from "./auto-generate";
+
+function canonicalAllOfCourses(courses: Course[]): Course[] {
+  const grouped = new Map<string, Course[]>();
+  for (const course of courses) {
+    const key = `${course.number}|${course.title.trim().toLowerCase()}|${course.credits}`;
+    const list = grouped.get(key) ?? [];
+    list.push(course);
+    grouped.set(key, list);
+  }
+
+  const canonical: Course[] = [];
+  for (const group of grouped.values()) {
+    const subjects = new Set(group.map((course) => course.subject));
+    if (subjects.size > 1) {
+      canonical.push(group[0]);
+      continue;
+    }
+    canonical.push(...group);
+  }
+
+  return canonical;
+}
+
+function inferNOfRequiredCredits(courses: Course[], nRequired: number): number {
+  if (nRequired <= 0 || courses.length === 0) return 0;
+
+  const freq = new Map<number, number>();
+  for (const course of courses) {
+    const current = freq.get(course.credits) ?? 0;
+    freq.set(course.credits, current + 1);
+  }
+
+  let modeCredits = courses[0].credits;
+  let modeCount = -1;
+  for (const [credits, count] of freq) {
+    if (count > modeCount || (count === modeCount && credits > modeCredits)) {
+      modeCount = count;
+      modeCredits = credits;
+    }
+  }
+
+  return modeCredits * nRequired;
+}
 
 /**
  * Pure validation function — no Supabase calls.
@@ -36,6 +79,8 @@ export function validatePlan(
 
   const scheduledIds = new Set(courseToSemIdx.keys());
   const allScheduledAndCompleted = new Set([...scheduledIds, ...completedIds]);
+  const scheduledCourses = semesters.flatMap((semester) => semester.courses);
+  const coreqMap = buildCoreqMap(scheduledCourses);
 
   // ── 1. Unscheduled courses ────────────────────────────
   const unscheduledCourses: Course[] = [];
@@ -64,6 +109,15 @@ export function validatePlan(
         // Prereq not in our scheduled set — might be outside the plan
         continue;
       }
+
+      // Lab/lecture pairs are allowed in the same semester.
+      const isSameSemesterCoreq =
+        prereqIdx === courseIdx &&
+        (coreqMap.get(courseId)?.has(prereqId) ?? false);
+      if (isSameSemesterCoreq) {
+        continue;
+      }
+
       if (prereqIdx >= courseIdx) {
         const sem = semesters[courseIdx];
         issues.push({
@@ -107,11 +161,14 @@ export function validatePlan(
   // ── 5. Block satisfaction ─────────────────────────────
   const blockStatuses: BlockSatisfactionStatus[] = [];
   for (const block of blocks) {
-    const blockCourseIds = new Set(block.courses.map((c) => c.id));
+    const blockCourses =
+      block.rule === "ALL_OF"
+        ? canonicalAllOfCourses(block.courses)
+        : block.courses;
     let scheduledCredits = 0;
     let scheduledCount = 0;
 
-    for (const course of block.courses) {
+    for (const course of blockCourses) {
       if (allScheduledAndCompleted.has(course.id)) {
         scheduledCredits += course.credits;
         scheduledCount++;
@@ -123,24 +180,35 @@ export function validatePlan(
 
     switch (block.rule) {
       case "ALL_OF":
-        satisfied = scheduledCount >= block.courses.length;
-        requiredCredits = block.courses.reduce((s, c) => s + c.credits, 0);
+        satisfied = scheduledCount >= blockCourses.length;
+        requiredCredits =
+          block.credits_required ??
+          blockCourses.reduce((s, c) => s + c.credits, 0);
         break;
       case "ANY_OF":
         satisfied = scheduledCount >= 1;
-        requiredCredits = block.courses.length > 0 ? Math.min(...block.courses.map((c) => c.credits)) : 0;
+        requiredCredits =
+          blockCourses.length > 0
+            ? Math.min(...blockCourses.map((c) => c.credits))
+            : 0;
         break;
       case "N_OF":
-        satisfied = scheduledCount >= (block.n_required ?? 1);
-        requiredCredits = null;
+        if (block.credits_required != null) {
+          satisfied = scheduledCredits >= block.credits_required;
+          requiredCredits = block.credits_required;
+        } else {
+          const nRequired = block.n_required ?? 1;
+          satisfied = scheduledCount >= nRequired;
+          requiredCredits = inferNOfRequiredCredits(blockCourses, nRequired);
+        }
         break;
       case "CREDITS_OF":
         satisfied = scheduledCredits >= (block.credits_required ?? 0);
         requiredCredits = block.credits_required;
         break;
       default:
-        satisfied = scheduledCount >= block.courses.length;
-        requiredCredits = block.courses.reduce((s, c) => s + c.credits, 0);
+        satisfied = scheduledCount >= blockCourses.length;
+        requiredCredits = blockCourses.reduce((s, c) => s + c.credits, 0);
     }
 
     const missingCredits = Math.max(0, (requiredCredits ?? 0) - scheduledCredits);

@@ -16,7 +16,7 @@ export default function DraggableCourseRow({
   course,
   termId,
   onCourseClick,
-}: DraggableCourseRowProps) {
+}: Readonly<DraggableCourseRowProps>) {
   const { attributes, listeners, setNodeRef, transform, isDragging } =
     useDraggable({
       id: `course-${course.id}-term-${termId}`,

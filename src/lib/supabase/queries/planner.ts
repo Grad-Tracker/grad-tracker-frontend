@@ -9,55 +9,94 @@ import type {
 } from "@/types/planner";
 import type { Course } from "@/types/course";
 import type { GenEdBucketWithCourses, ScheduledSemester } from "@/types/auto-generate";
-import { DB_TABLES, DB_VIEWS, PLANNED_COURSE_STATUS, STUDENT_COLUMNS } from "./schema";
-import { logStudentActivity } from "./activity";
-import type {
-  ViewGenEdBucketCourseItem,
-  ViewGenEdBucketCoursesRow,
-  ViewPlanCourseRow,
-  ViewPlanMetaRow,
-  ViewPlanTermRow,
-  ViewProgramBlockCourseItem,
-  ViewProgramBlockCoursesRow,
-  ViewStudentCourseProgressRow,
-} from "./view-types";
+import type { ViewStudentCourseProgressRow } from "./view-types";
+import {
+  DB_TABLES,
+  DB_VIEWS,
+  PLANNED_COURSE_STATUS,
+  type PlanMetaViewRow,
+  type PlanTermViewRow,
+  type PlanCourseViewRow,
+  type ProgramBlockCourseViewRow,
+  type GenEdBucketCourseViewRow,
+} from "./schema";
 
-function toCourseFromBlockItem(item: ViewProgramBlockCourseItem): Course {
-  return {
-    id: Number(item.course_id),
-    subject: String(item.subject ?? ""),
-    number: String(item.number ?? ""),
-    title: String(item.title ?? ""),
-    credits: Number(item.credits ?? 0),
-  };
+function parseNumber(value: unknown, fallback: number): number {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
 }
 
-function toCourseFromGenEdItem(item: ViewGenEdBucketCourseItem): Course {
-  return {
-    id: Number(item.course_id),
-    subject: String(item.subject ?? ""),
-    number: String(item.number ?? ""),
-    title: String(item.title ?? ""),
-    credits: Number(item.credits ?? 0),
-  };
-}
-
-async function safeLogActivity(
-  studentId: number,
-  activityType: Parameters<typeof logStudentActivity>[1],
-  message: string,
-  metadata: Record<string, unknown>
-) {
-  try {
-    await logStudentActivity(studentId, activityType, message, metadata);
-  } catch (error) {
-    console.error("Failed to log student activity:", error);
+function parseProgramIds(value: unknown): number[] {
+  if (Array.isArray(value)) {
+    return value.map((v) => Number(v)).filter((v) => Number.isFinite(v));
   }
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (!trimmed) return [];
+    // Supports Postgres-style arrays: "{1,2,3}"
+    const raw = trimmed.startsWith("{") && trimmed.endsWith("}")
+      ? trimmed.slice(1, -1)
+      : trimmed;
+    if (!raw) return [];
+    return raw
+      .split(",")
+      .map((part) => Number(part.trim()))
+      .filter((v) => Number.isFinite(v));
+  }
+  return [];
 }
 
-function formatActivityCourseLabel(courseLabel?: string): string {
-  const normalized = courseLabel?.trim();
-  return normalized && normalized.length > 0 ? normalized : "a course";
+function parseText(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
+function normalizeSeason(value: unknown): Season | null {
+  if (typeof value !== "string") return null;
+  const normalized = value.trim().toLowerCase();
+  if (normalized === "fall" || normalized === "fa") return "Fall";
+  if (normalized === "spring" || normalized === "sp") return "Spring";
+  if (normalized === "summer" || normalized === "su") return "Summer";
+  return null;
+}
+
+type ViewCourseLike = {
+  course_id?: unknown;
+  id?: unknown;
+  subject?: unknown;
+  number?: unknown;
+  title?: unknown;
+  credits?: unknown;
+};
+
+function parseCourseLike(value: unknown): Course | null {
+  if (typeof value !== "object" || value === null) return null;
+  const row = value as ViewCourseLike;
+  const id = parseNumber(row.course_id ?? row.id, NaN);
+  const subject = parseText(row.subject);
+  const number = parseText(row.number);
+  const title = parseText(row.title);
+  if (!Number.isFinite(id) || !subject || !number || !title) return null;
+
+  return {
+    id,
+    subject,
+    number,
+    title,
+    credits: parseNumber(row.credits, 0),
+  };
+}
+
+function parseCourseArray(value: unknown): Course[] {
+  if (!Array.isArray(value)) return [];
+  const deduped = new Map<number, Course>();
+  for (const item of value) {
+    const course = parseCourseLike(item);
+    if (!course) continue;
+    deduped.set(course.id, course);
+  }
+  return Array.from(deduped.values());
 }
 
 // ── Plan CRUD ────────────────────────────────────────────
@@ -67,26 +106,36 @@ export async function fetchPlans(studentId: number): Promise<PlanWithMeta[]> {
 
   const { data, error } = await supabase
     .from(DB_VIEWS.planMeta)
-    .select(
-      "plan_id, student_id, name, description, created_at, updated_at, program_ids, term_count, course_count, total_credits, has_graduate_program"
-    )
+    .select(`
+      plan_id,
+      student_id,
+      name,
+      description,
+      created_at,
+      updated_at,
+      program_ids,
+      term_count,
+      course_count,
+      total_credits,
+      has_graduate_program
+    `)
     .eq("student_id", studentId)
     .order("created_at");
 
   if (error) throw error;
   if (!data?.length) return [];
 
-  return (data as ViewPlanMetaRow[]).map((row) => ({
-    id: Number((row as any).plan_id ?? (row as any).id),
-    student_id: Number(row.student_id),
-    name: row.name,
-    description: row.description,
-    created_at: row.created_at,
-    updated_at: row.updated_at,
-    program_ids: (row.program_ids ?? []).map(Number),
-    term_count: Number(row.term_count ?? 0),
-    course_count: Number(row.course_count ?? 0),
-    total_credits: Number(row.total_credits ?? 0),
+  return (data as PlanMetaViewRow[]).map((row) => ({
+    id: parseNumber(row.plan_id ?? row.id, 0),
+    student_id: parseNumber(row.student_id, studentId),
+    name: row.name ?? "Untitled Plan",
+    description: row.description ?? null,
+    created_at: row.created_at ?? new Date(0).toISOString(),
+    updated_at: row.updated_at ?? new Date(0).toISOString(),
+    program_ids: parseProgramIds(row.program_ids),
+    term_count: parseNumber(row.term_count, 0),
+    course_count: parseNumber(row.course_count, 0),
+    total_credits: parseNumber(row.total_credits, 0),
     has_graduate_program: Boolean(row.has_graduate_program),
   }));
 }
@@ -117,11 +166,6 @@ export async function createPlan(
       .insert(rows);
     if (ppError) throw ppError;
   }
-
-  await safeLogActivity(studentId, "plan_created", `Created plan ${name}`, {
-    plan_id: Number(plan.id),
-    program_ids: programIds,
-  });
 
   return plan as Plan;
 }
@@ -200,121 +244,204 @@ export async function setPlanPrograms(
   }
 }
 
+export async function fetchStudentCourseProgress(
+  studentId: number
+): Promise<ViewStudentCourseProgressRow[]> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from(DB_VIEWS.studentCourseProgress)
+    .select(`
+      student_id,
+      course_id,
+      plan_id,
+      term_id,
+      completed,
+      grade,
+      progress_status
+    `)
+    .eq("student_id", studentId);
+
+  if (error) throw error;
+  return (data ?? []) as ViewStudentCourseProgressRow[];
+}
+
 // ── Term & course queries (plan-scoped) ──────────────────
 
 export async function fetchStudentTerms(
   studentId: number,
-  planId: number,
-  signal?: AbortSignal
+  planId: number
 ): Promise<Term[]> {
   const supabase = createClient();
-  let query = supabase
+  void studentId;
+  const { data, error } = await supabase
     .from(DB_VIEWS.planTerms)
     .select("term_id, season, year")
-    .eq("student_id", studentId)
     .eq("plan_id", planId);
-  if (signal) query = query.abortSignal(signal);
-  const { data, error } = await query;
 
   if (error) throw error;
-  return (data as any[] | null | undefined ?? []).map((row) => {
-    if (row?.terms) return row.terms as Term;
-    return {
-      id: Number(row.term_id),
-      season: row.season,
-      year: Number(row.year),
-    } as Term;
-  });
+
+  return (data as PlanTermViewRow[] ?? [])
+    .map((row) => {
+      const termId = row.term_id;
+      const season = normalizeSeason(row.season);
+      const year = row.year;
+      if (termId == null || season == null || year == null) return null;
+      return {
+        id: parseNumber(termId, 0),
+        season,
+        year: parseNumber(year, 0),
+      } as Term;
+    })
+    .filter((row): row is Term => row !== null);
 }
 
 export async function fetchPlannedCourses(
   studentId: number,
-  planId: number,
-  signal?: AbortSignal
+  planId: number
 ): Promise<PlannedCourseWithDetails[]> {
   const supabase = createClient();
-  let query = supabase
+  void studentId;
+  const { data, error } = await supabase
     .from(DB_VIEWS.planCourses)
-    .select("student_id, term_id, course_id, status, plan_id, subject, number, title, credits")
-    .eq("student_id", studentId)
+    .select(`
+      student_id,
+      term_id,
+      course_id,
+      status,
+      plan_id,
+      subject,
+      number,
+      title,
+      credits
+    `)
     .eq("plan_id", planId);
-  if (signal) query = query.abortSignal(signal);
-  const { data, error } = await query;
 
   if (error) throw error;
-  return (data as any[] | null | undefined ?? []).map((row) => {
-    if (row?.courses) {
-      return {
-        student_id: row.student_id,
-        term_id: row.term_id,
-        course_id: row.course_id,
-        status: row.status,
-        plan_id: row.plan_id,
-        course: row.courses as Course,
-      } as PlannedCourseWithDetails;
-    }
 
-    return {
-      student_id: Number(row.student_id),
-      term_id: Number(row.term_id),
-      course_id: Number(row.course_id),
-      status: row.status,
-      plan_id: Number(row.plan_id),
-      course: {
-        id: Number(row.course_id),
-        subject: row.subject,
-        number: row.number,
-        title: row.title,
-        credits: Number(row.credits ?? 0),
-      },
-    } as PlannedCourseWithDetails;
-  });
+  return (data as PlanCourseViewRow[] ?? [])
+    .map((row) => {
+      const courseId = row.course_id;
+      const termId = row.term_id;
+      const plan = row.plan_id;
+      const student = row.student_id;
+      if (courseId == null || termId == null || plan == null || student == null) {
+        return null;
+      }
+
+      const nested = row.courses ?? null;
+      const subject = nested?.subject ?? row.subject ?? row.course_subject ?? null;
+      const number = nested?.number ?? row.number ?? row.course_number ?? null;
+      const title = nested?.title ?? row.title ?? row.course_title ?? null;
+      const credits = nested?.credits ?? row.credits ?? row.course_credits ?? 0;
+
+      if (!subject || !number || !title) return null;
+
+      return {
+        student_id: parseNumber(student, 0),
+        term_id: parseNumber(termId, 0),
+        course_id: parseNumber(courseId, 0),
+        status: row.status ?? PLANNED_COURSE_STATUS.planned,
+        plan_id: parseNumber(plan, 0),
+        course: {
+          id: parseNumber(nested?.id ?? courseId, 0),
+          subject,
+          number,
+          title,
+          credits: parseNumber(credits, 0),
+        },
+      } as PlannedCourseWithDetails;
+    })
+    .filter((row): row is PlannedCourseWithDetails => row !== null);
 }
 
 export async function fetchAvailableCourses(
   studentId: number,
   planId: number,
-  signal?: AbortSignal
+  options: { includeNonPlannable?: boolean } = {}
 ): Promise<RequirementBlockWithCourses[]> {
   const supabase = createClient();
+  void studentId;
 
-  let metaBuilder = supabase
-    .from(DB_VIEWS.planMeta)
-    .select("program_ids")
-    .eq("student_id", studentId)
+  const includeNonPlannable = options.includeNonPlannable ?? false;
+
+  const { data: planPrograms, error: planProgramsError } = await supabase
+    .from(DB_TABLES.planPrograms)
+    .select("program_id")
     .eq("plan_id", planId);
-  if (signal) metaBuilder = metaBuilder.abortSignal(signal);
-  const { data: planMeta, error: ppError } = await metaBuilder.single();
 
-  if (ppError) throw ppError;
-  const programIds = (planMeta?.program_ids ?? []).map(Number);
-  if (!programIds.length) return [];
+  if (planProgramsError) throw planProgramsError;
+  if (!planPrograms?.length) return [];
 
-  let blocksQuery = supabase
+  const programIds = (planPrograms ?? [])
+    .map((row: { program_id: unknown }) => parseNumber(row.program_id, NaN))
+    .filter((id) => Number.isFinite(id));
+
+  if (programIds.length === 0) return [];
+
+  let query = supabase
     .from(DB_VIEWS.programBlockCourses)
-    .select(
-      "block_id, program_id, block_name, rule, n_required, credits_required, courses"
-    )
+    .select(`
+      block_id,
+      program_id,
+      program_name,
+      block_name,
+      rule,
+      n_required,
+      credits_required,
+      course_ids,
+      courses,
+      is_plannable,
+      planner_exclusion_reason
+    `)
     .in("program_id", programIds)
-    .order("block_name");
-  if (signal) blocksQuery = blocksQuery.abortSignal(signal);
-  const { data: blocks, error: blocksError } = await blocksQuery;
+    .order("block_name", { ascending: true });
 
-  if (blocksError) throw blocksError;
-  if (!blocks?.length) return [];
+  if (!includeNonPlannable) {
+    query = query.eq("is_plannable", true);
+  }
 
-  return (blocks as ViewProgramBlockCoursesRow[]).map((block) => {
-    const blockCourses = (block.courses ?? []).map(toCourseFromBlockItem);
-    return {
-      id: Number(block.block_id),
-      program_id: Number(block.program_id),
-      name: block.block_name,
-      rule: block.rule,
-      n_required: block.n_required,
-      credits_required: block.credits_required,
-      courses: blockCourses,
-    } as RequirementBlockWithCourses;
-  });
+  const { data, error } = await query;
+
+  if (error) throw error;
+  if (!data?.length) return [];
+
+  const byBlock = new Map<number, RequirementBlockWithCourses>();
+
+  for (const row of data as ProgramBlockCourseViewRow[]) {
+    const blockId = row.block_id;
+    if (blockId == null || row.program_id == null || !row.rule) continue;
+
+    const resolvedBlockId = parseNumber(blockId, 0);
+    if (!byBlock.has(resolvedBlockId)) {
+      const parsedCourses = parseCourseArray(row.courses);
+      byBlock.set(resolvedBlockId, {
+        id: resolvedBlockId,
+        program_id: parseNumber(row.program_id, 0),
+        name: row.block_name ?? "Untitled Requirement Block",
+        rule: row.rule,
+        n_required: row.n_required == null ? null : parseNumber(row.n_required, 0),
+        credits_required:
+          row.credits_required == null ? null : parseNumber(row.credits_required, 0),
+        is_plannable: row.is_plannable ?? true,
+        planner_exclusion_reason: row.planner_exclusion_reason ?? null,
+        courses: parsedCourses,
+      });
+      continue;
+    }
+
+    const block = byBlock.get(resolvedBlockId)!;
+    const parsedCourses = parseCourseArray(row.courses);
+    if (parsedCourses.length === 0) continue;
+
+    const existingIds = new Set(block.courses.map((course) => course.id));
+    for (const course of parsedCourses) {
+      if (existingIds.has(course.id)) continue;
+      block.courses.push(course);
+      existingIds.add(course.id);
+    }
+  }
+
+  return Array.from(byBlock.values());
 }
 
 export async function getOrCreateTerm(
@@ -387,7 +514,7 @@ export async function addPlannedCourse(
   termId: number,
   courseId: number,
   planId: number,
-  courseLabel?: string
+  _activityLabel?: string
 ): Promise<void> {
   const supabase = createClient();
   const { error } = await supabase
@@ -401,28 +528,13 @@ export async function addPlannedCourse(
     });
 
   if (error) throw error;
-
-  const activityCourseLabel = formatActivityCourseLabel(courseLabel);
-  await safeLogActivity(
-    studentId,
-    "course_added",
-    `Added ${activityCourseLabel} to a semester plan`,
-    {
-      course_id: courseId,
-      term_id: termId,
-      plan_id: planId,
-      source: "planner",
-      course_label: activityCourseLabel,
-    }
-  );
 }
 
 export async function removePlannedCourse(
   studentId: number,
   termId: number,
   courseId: number,
-  planId: number,
-  courseLabel?: string
+  planId: number
 ): Promise<void> {
   const supabase = createClient();
   const { error } = await supabase
@@ -434,20 +546,6 @@ export async function removePlannedCourse(
     .eq("plan_id", planId);
 
   if (error) throw error;
-
-  const activityCourseLabel = formatActivityCourseLabel(courseLabel);
-  await safeLogActivity(
-    studentId,
-    "course_removed",
-    `Removed ${activityCourseLabel} from a semester plan`,
-    {
-      course_id: courseId,
-      term_id: termId,
-      plan_id: planId,
-      source: "planner",
-      course_label: activityCourseLabel,
-    }
-  );
 }
 
 export async function movePlannedCourse(
@@ -455,8 +553,7 @@ export async function movePlannedCourse(
   courseId: number,
   fromTermId: number,
   toTermId: number,
-  planId: number,
-  courseLabel?: string
+  planId: number
 ): Promise<void> {
   const supabase = createClient();
 
@@ -481,85 +578,19 @@ export async function movePlannedCourse(
     });
 
   if (insertError) throw insertError;
-
-  const activityCourseLabel = formatActivityCourseLabel(courseLabel);
-  await safeLogActivity(
-    studentId,
-    "plan_updated",
-    `Moved ${activityCourseLabel} to a different semester`,
-    {
-      course_id: courseId,
-      from_term_id: fromTermId,
-      to_term_id: toTermId,
-      plan_id: planId,
-      course_label: activityCourseLabel,
-    }
-  );
 }
 
 export async function fetchCompletedCourseIds(
-  studentId: number,
-  signal?: AbortSignal
+  studentId: number
 ): Promise<Set<number>> {
   const supabase = createClient();
-  let query = supabase
-    .from(DB_VIEWS.studentCourseProgress)
-    .select("course_id, completed, progress_status")
-    .eq("student_id", studentId);
-  if (signal) query = query.abortSignal(signal);
-  const { data, error } = await query;
-
-  if (error) throw error;
-  return new Set(
-    ((data as ViewStudentCourseProgressRow[] | null | undefined) ?? [])
-      .filter(
-        (r) =>
-          r.completed == null ||
-          r.completed === true ||
-          String(r.progress_status ?? "").toUpperCase() === "COMPLETED"
-      )
-      .map((r) => Number(r.course_id))
-  );
-}
-
-export async function fetchStudentCourseProgress(
-  studentId: number
-): Promise<ViewStudentCourseProgressRow[]> {
-  const supabase = createClient();
   const { data, error } = await supabase
-    .from(DB_VIEWS.studentCourseProgress)
-    .select("student_id, course_id, plan_id, term_id, completed, grade, progress_status")
+    .from(DB_TABLES.studentCourseHistory)
+    .select("course_id")
     .eq("student_id", studentId);
 
   if (error) throw error;
-  return (data as ViewStudentCourseProgressRow[] | null | undefined) ?? [];
-}
-
-export async function fetchBreadthPackageId(
-  studentId: number
-): Promise<string | null> {
-  const supabase = createClient();
-  const { data, error } = await supabase
-    .from(DB_VIEWS.studentProfile)
-    .select("breadth_package_id")
-    .eq("student_id", studentId)
-    .maybeSingle();
-
-  if (error) throw error;
-  return data?.breadth_package_id ?? null;
-}
-
-export async function updateBreadthPackageId(
-  studentId: number,
-  packageId: string | null
-): Promise<void> {
-  const supabase = createClient();
-  const { error } = await supabase
-    .from(DB_TABLES.students)
-    .update({ [STUDENT_COLUMNS.breadthPackageId]: packageId })
-    .eq(STUDENT_COLUMNS.id, studentId);
-
-  if (error) throw error;
+  return new Set((data ?? []).map((r: any) => Number(r.course_id)));
 }
 
 // ── Auto-generate helpers ────────────────────────────────
@@ -646,23 +677,38 @@ export async function fetchGenEdBucketsWithCourses(): Promise<GenEdBucketWithCou
 
   const { data, error } = await supabase
     .from(DB_VIEWS.genEdBucketCourses)
-    .select(
-      "bucket_id, bucket_code, bucket_name, bucket_credits_required, courses"
-    )
-    .order("bucket_id");
+    .select(`
+      bucket_id,
+      bucket_code,
+      bucket_name,
+      bucket_credits_required,
+      course_ids,
+      courses
+    `)
+    .order("bucket_code", { ascending: true });
 
   if (error) throw error;
   if (!data?.length) return [];
 
-  return (data as ViewGenEdBucketCoursesRow[]).map((bucket) => {
-    return {
-      id: Number(bucket.bucket_id),
-      code: bucket.bucket_code,
-      name: bucket.bucket_name,
-      credits_required: Number(bucket.bucket_credits_required ?? 0),
-      courses: (bucket.courses ?? []).map(toCourseFromGenEdItem),
-    } as GenEdBucketWithCourses;
-  });
+  return (data as GenEdBucketCourseViewRow[])
+    .map((row) => {
+      if (row.bucket_id == null) return null;
+      const code = row.bucket_code ?? row.code ?? null;
+      const name = row.bucket_name ?? row.name ?? null;
+      if (!code || !name) return null;
+
+      return {
+        id: parseNumber(row.bucket_id, 0),
+        code,
+        name,
+        credits_required: parseNumber(
+          row.bucket_credits_required ?? row.credits_required,
+          0
+        ),
+        courses: parseCourseArray(row.courses),
+      } as GenEdBucketWithCourses;
+    })
+    .filter((row): row is GenEdBucketWithCourses => row !== null);
 }
 
 export async function batchSavePlanCourses(

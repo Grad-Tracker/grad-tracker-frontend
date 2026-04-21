@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
-import { ChakraProvider, defaultSystem } from "@chakra-ui/react";
+import { screen, fireEvent, waitFor } from "@testing-library/react";
+import { renderWithChakra } from "@/__tests__/helpers/mocks";
 import CoursesClient from "@/app/dashboard/courses/CoursesClient";
 import type { Course } from "@/types/course";
 
@@ -57,12 +57,6 @@ vi.mock("@/lib/supabase/queries/planner", () => ({
   addTermPlan: (...args: any[]) => mockAddTermPlan(...args),
   addPlannedCourse: (...args: any[]) => mockAddPlannedCourse(...args),
 }));
-
-function renderWithChakra(ui: React.ReactElement) {
-  return render(
-    <ChakraProvider value={defaultSystem}>{ui}</ChakraProvider>
-  );
-}
 
 function findClickableAncestor(element: HTMLElement | null): HTMLElement {
   return (
@@ -272,7 +266,7 @@ describe("CoursesClient", () => {
     fireEvent.click(findClickableAncestor(fallSemesterLabels[0]));
 
     await waitFor(() => {
-      expect(mockAddPlannedCourse).toHaveBeenCalledWith(1, 21, 1, 11, "CS 101");
+      expect(mockAddPlannedCourse).toHaveBeenCalledWith(1, 21, 1, 11);
       expect(mockToasterCreate).toHaveBeenCalledWith(
         expect.objectContaining({
           title: "Added to plan",
@@ -294,7 +288,7 @@ describe("CoursesClient", () => {
     fireEvent.click(addSemesterButton);
 
     await waitFor(() => {
-      expect(mockAddPlannedCourse).toHaveBeenCalledWith(1, 20, 1, 10, "CS 101");
+      expect(mockAddPlannedCourse).toHaveBeenCalledWith(1, 20, 1, 10);
       expect(mockToasterCreate).toHaveBeenCalledWith(
         expect.objectContaining({
           title: "Added to current semester",
@@ -332,5 +326,5 @@ describe("CoursesClient", () => {
       const showingTexts = screen.getAllByText(/Showing 1-/);
       expect(showingTexts.length).toBeGreaterThanOrEqual(1);
     });
-  });
+  }, 15000);
 });

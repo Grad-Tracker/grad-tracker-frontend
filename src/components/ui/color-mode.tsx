@@ -10,22 +10,13 @@ import { LuMoon, LuSun } from "react-icons/lu"
 export interface ColorModeProviderProps extends ThemeProviderProps {}
 
 export function ColorModeProvider({ children, ...props }: ColorModeProviderProps) {
-  const [mounted, setMounted] = React.useState(false)
-
-  React.useEffect(() => {
-    setMounted(true)
-  }, [])
-
-  if (!mounted) {
-    return <>{children}</>
-  }
-
   return (
     <ThemeProvider
       attribute="class"
       disableTransitionOnChange
-      enableSystem={false}
-      defaultTheme="light"
+      enableSystem
+      defaultTheme="system"
+      storageKey="theme"
       {...props}
     >
       {children}
@@ -34,21 +25,24 @@ export function ColorModeProvider({ children, ...props }: ColorModeProviderProps
 }
 
 export type ColorMode = "light" | "dark"
+export type ThemePreference = "light" | "dark" | "system"
 
 export interface UseColorModeReturn {
   colorMode: ColorMode
-  setColorMode: (colorMode: ColorMode) => void
+  themePreference: ThemePreference
+  setColorMode: (colorMode: string) => void
   toggleColorMode: () => void
 }
 
 export function useColorMode(): UseColorModeReturn {
-  const { resolvedTheme, setTheme, forcedTheme } = useTheme()
+  const { theme, resolvedTheme, setTheme, forcedTheme } = useTheme()
   const colorMode = forcedTheme || resolvedTheme
   const toggleColorMode = () => {
     setTheme(resolvedTheme === "dark" ? "light" : "dark")
   }
   return {
     colorMode: colorMode as ColorMode,
+    themePreference: (theme ?? "system") as ThemePreference,
     setColorMode: setTheme,
     toggleColorMode,
   }

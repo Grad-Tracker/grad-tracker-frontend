@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
-import { createClient } from "@/lib/supabase/server";
+import { requireAuthUser } from "@/lib/auth-helpers.server";
 import { resolveStudentProfile } from "@/lib/ai-advisor/data";
 import { buildSystemPrompt, PROMPT_VERSION } from "@/lib/ai-advisor/prompt";
 import {
@@ -31,11 +31,11 @@ function parseRequestBody(body: unknown): AdvisorChatRequest | null {
   if (!body || typeof body !== "object") return null;
   const candidate = body as Record<string, unknown>;
 
-  if (typeof candidate.message !== "string" || candidate.message.trim().length === 0) {
+  if (typeof candidate.message !== "string" || candidate.message.trim().length === 0 || candidate.message.length > 10_000) {
     return null;
   }
 
-  if (!Array.isArray(candidate.history) || !candidate.history.every(isHistoryItem)) {
+  if (!Array.isArray(candidate.history) || candidate.history.length > 100 || !candidate.history.every(isHistoryItem)) {
     return null;
   }
 
@@ -50,7 +50,7 @@ function parseRequestBody(body: unknown): AdvisorChatRequest | null {
   return {
     message: candidate.message.trim(),
     history: candidate.history,
-    activePlanId: (candidate.activePlanId as number | null | undefined) ?? null,
+    activePlanId: (candidate.activePlanId ?? null) as number | null,
   };
 }
 
@@ -70,26 +70,16 @@ export async function POST(request: Request) {
     );
   }
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
-
-  if (authError || !user) {
-    return NextResponse.json(
-      { error: "Unauthorized." },
-      { status: 401 }
-    );
-  }
+  const { user, supabase, errorResponse } = await requireAuthUser();
+  if (errorResponse) return errorResponse;
 
   let profile;
   try {
     profile = await resolveStudentProfile(supabase, user.id);
   } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown profile error";
+    console.error("Failed to load student profile:", error);
     return NextResponse.json(
-      { error: `Failed to load student profile: ${message}` },
+      { error: "Unable to load student profile." },
       { status: 500 }
     );
   }
@@ -177,8 +167,7 @@ export async function POST(request: Request) {
             system: systemPromptWithJsonInstruction,
             tools: CLAUDE_TOOL_DEFINITIONS,
             messages,
-            signal: request.signal,
-          });
+          }, { signal: request.signal });
 
           let turnHasToolUse = false;
 
@@ -222,7 +211,7 @@ export async function POST(request: Request) {
               break;
             }
 
-            send({ type: "status", text: `Looking up ${toolUse.name.replace(/_/g, " ")}...` });
+            send({ type: "status", text: `Looking up ${toolUse.name.replaceAll("_", " ")}...` });
             try {
               const toolInput = (toolUse.input ?? {}) as Record<string, unknown>;
               const toolName = toolUse.name as AdvisorToolName;
@@ -273,9 +262,8 @@ export async function POST(request: Request) {
           send({ type: "done", response: fallback });
         }
       } catch (error) {
-        const message =
-          error instanceof Error ? error.message : "Unexpected streaming error";
-        send({ type: "error", message });
+        console.error("AI advisor stream error:", error);
+        send({ type: "error", message: "Unable to process request." });
       } finally {
         try {
           controller.close();

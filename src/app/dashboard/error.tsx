@@ -13,10 +13,10 @@ import Link from "next/link";
 export default function DashboardError({
   error,
   reset,
-}: {
+}: Readonly<{
   error: Error & { digest?: string };
   reset: () => void;
-}) {
+}>) {
   return (
     <Box
       flex="1"
@@ -36,7 +36,7 @@ export default function DashboardError({
           <Text
             fontWeight="700"
             fontSize="xl"
-            fontFamily="var(--font-outfit), sans-serif"
+            fontFamily="var(--font-dm-sans), sans-serif"
             letterSpacing="-0.02em"
           >
             Something went wrong

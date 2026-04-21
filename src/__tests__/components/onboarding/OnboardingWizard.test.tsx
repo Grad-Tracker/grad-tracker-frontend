@@ -1,7 +1,7 @@
 import React from "react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, waitFor, act, fireEvent } from "@testing-library/react";
-import { ChakraProvider, defaultSystem } from "@chakra-ui/react";
+import { screen, waitFor, act, fireEvent } from "@testing-library/react";
+import { renderWithChakra } from "@/__tests__/helpers/mocks";
 
 const {
   mockPush,
@@ -158,10 +158,6 @@ vi.mock("@/components/onboarding/WizardNavigation", () => ({
 
 import OnboardingWizard from "@/components/onboarding/OnboardingWizard";
 import { createClient } from "@/lib/supabase/client";
-
-function renderWithChakra(ui: React.ReactElement) {
-  return render(<ChakraProvider value={defaultSystem}>{ui}</ChakraProvider>);
-}
 
 describe("OnboardingWizard", () => {
   beforeEach(() => {

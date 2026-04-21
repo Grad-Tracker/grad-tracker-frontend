@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { screen } from "@testing-library/react";
 import ClassSelectionStep from "@/components/onboarding/ClassSelectionStep";
-import { ChakraProvider, defaultSystem } from "@chakra-ui/react";
+import { renderWithChakra } from "@/__tests__/helpers/mocks";
 import type { RequirementBlock } from "@/types/onboarding";
 
 const mockBlocks: RequirementBlock[] = [
@@ -29,10 +29,6 @@ const mockBlocks: RequirementBlock[] = [
     ],
   },
 ];
-
-function renderWithChakra(ui: React.ReactElement) {
-  return render(<ChakraProvider value={defaultSystem}>{ui}</ChakraProvider>);
-}
 
 describe("ClassSelectionStep", () => {
   it("renders requirement block headings", () => {

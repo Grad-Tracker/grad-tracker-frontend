@@ -1,5 +1,5 @@
-import { render, cleanup, screen, fireEvent } from "@testing-library/react";
-import { ChakraProvider, defaultSystem } from "@chakra-ui/react";
+import { cleanup, screen, fireEvent } from "@testing-library/react";
+import { renderWithChakra } from "@/__tests__/helpers/mocks";
 import { describe, it, expect, afterEach, vi } from "vitest";
 import CourseDetailDrawer from "@/components/planner/CourseDetailDrawer";
 
@@ -8,10 +8,6 @@ afterEach(() => cleanup());
 vi.mock("@/components/ui/close-button", () => ({
   CloseButton: (props: any) => <button data-testid="close-button" {...props} />,
 }));
-
-function renderWithChakra(ui: React.ReactElement) {
-  return render(<ChakraProvider value={defaultSystem}>{ui}</ChakraProvider>);
-}
 
 const baseCourse = {
   id: 1,
