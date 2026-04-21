@@ -21,6 +21,8 @@ vi.mock("@/lib/ai-advisor/tools", () => ({
   createAdvisorToolDependencies: (...args: any[]) =>
     mockCreateAdvisorToolDependencies(...args),
   generateAdvisorResponse: (...args: any[]) => mockGenerateAdvisorResponse(...args),
+  CLAUDE_TOOL_DEFINITIONS: [],
+  CATALOG_TOOL_DEFINITIONS: [],
 }));
 
 import { POST } from "@/app/api/ai-advisor/chat/route";
@@ -79,7 +81,7 @@ describe("POST /api/ai-advisor/chat", () => {
     expect(response.status).toBe(409);
   });
 
-  it("returns 409 when onboarding is not completed", async () => {
+  it("returns 200 with catalog tools when onboarding is not completed", async () => {
     mockGetUser.mockResolvedValue({
       data: { user: { id: "auth-1" } },
       error: null,
@@ -95,15 +97,25 @@ describe("POST /api/ai-advisor/chat", () => {
       programs: [],
       primaryProgram: null,
     });
+    mockCreateAdvisorToolDependencies.mockReturnValue({ dep: true });
+    mockGenerateAdvisorResponse.mockResolvedValue({
+      answer: "Here are some courses you can explore.",
+      recommendations: [],
+      risks: [],
+      missingData: [],
+      citations: [],
+    });
 
     const response = await POST(
       makeRequest({
-        message: "hello",
+        message: "What courses are available for CS?",
         history: [],
       })
     );
 
-    expect(response.status).toBe(409);
+    expect(response.status).toBe(200);
+    const payload = await response.json();
+    expect(payload.answer).toBeTruthy();
   });
 
   it("returns 200 and assistant payload for successful requests", async () => {
