@@ -25,24 +25,23 @@ export default async function AssignmentsPage() {
     throw new Error(`Failed to load programs: ${programsError.message}`);
   }
 
-  // Fetch current advisor's assignments
+  // Fetch current advisor's assignments. Some environments still use the
+  // legacy advisor_id column — fall back to it when staff_id is missing.
   const primaryAssignments = await supabase
     .from(DB_TABLES.programAdvisors)
     .select("program_id")
     .eq("staff_id", staffId);
 
-  const fallbackAssignments =
+  const assignmentsResult =
     primaryAssignments.error &&
     isMissingColumnError(primaryAssignments.error, "staff_id")
       ? await supabase
           .from(DB_TABLES.programAdvisors)
           .select("program_id")
           .eq("advisor_id", staffId)
-      : null;
+      : primaryAssignments;
 
-  const assignments = fallbackAssignments?.data ?? primaryAssignments.data;
-  const assignmentsError =
-    fallbackAssignments?.error ?? primaryAssignments.error;
+  const { data: assignments, error: assignmentsError } = assignmentsResult;
 
   if (assignmentsError) {
     console.error("Failed to load advisor assignments:", assignmentsError);
