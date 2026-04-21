@@ -51,10 +51,12 @@ vi.mock("next/link", () => ({
 
 // Lightweight Field wrapper so label text is rendered
 vi.mock("@/components/ui/field", () => ({
-  Field: ({ label, children }: any) => (
+  Field: ({ label, children, helperText, errorText }: any) => (
     <div>
       {label && <label>{label}</label>}
       {children}
+      {helperText && <div>{helperText}</div>}
+      {errorText && <div role="alert">{errorText}</div>}
     </div>
   ),
 }));
@@ -295,7 +297,7 @@ describe("SettingsPage", () => {
     });
   });
 
-  it("Save Graduation Info shows error toast for year below 2000", async () => {
+  it("Save Graduation Info shows inline validation for year below 2000", async () => {
     setupMocks();
     await act(async () => { renderSettings(); });
     await waitFor(() => screen.getByPlaceholderText("e.g. 2026"));
@@ -306,12 +308,10 @@ describe("SettingsPage", () => {
       fireEvent.click(screen.getByText("Save Graduation Info"));
     });
 
-    expect(mockToasterCreate).toHaveBeenCalledWith(
-      expect.objectContaining({ title: "Enter a valid graduation year", type: "error" })
-    );
+    expect(screen.getByRole("alert")).toHaveTextContent("Enter a year between 2000 and 2100.");
   });
 
-  it("Save Graduation Info shows error toast for year above 2100", async () => {
+  it("Save Graduation Info shows inline validation for year above 2100", async () => {
     setupMocks();
     await act(async () => { renderSettings(); });
     await waitFor(() => screen.getByPlaceholderText("e.g. 2026"));
@@ -322,9 +322,7 @@ describe("SettingsPage", () => {
       fireEvent.click(screen.getByText("Save Graduation Info"));
     });
 
-    expect(mockToasterCreate).toHaveBeenCalledWith(
-      expect.objectContaining({ title: "Enter a valid graduation year", type: "error" })
-    );
+    expect(screen.getByRole("alert")).toHaveTextContent("Enter a year between 2000 and 2100.");
   });
 
   /* Notification Preferences section is commented out — tests skipped until re-enabled */
@@ -400,6 +398,10 @@ describe("SettingsPage", () => {
     );
     expect(screen.getByPlaceholderText("you@example.com")).toHaveValue("updated@uwp.edu");
     expect(screen.getByText("Update Email")).toBeDisabled();
+    expect(screen.getByText("Pending verification")).toBeInTheDocument();
+    expect(
+      screen.getByText(/Your sign-in email will stay test@uwp\.edu until you confirm updated@uwp\.edu\./i)
+    ).toBeInTheDocument();
   });
 
   it("shows an error toast when updating the email fails", async () => {
@@ -638,6 +640,9 @@ describe("SettingsPage", () => {
       const link = screen.getByRole("link", { name: /Reset Password/i });
       expect(link).toBeInTheDocument();
       expect(link).toHaveAttribute("href", "/reset-password");
+      expect(
+        screen.getByText(/Selecting this opens the reset flow and sends a reset link to your account email\./i)
+      ).toBeInTheDocument();
     });
   });
 });

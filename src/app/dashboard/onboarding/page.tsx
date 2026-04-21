@@ -152,9 +152,10 @@ export default function OnboardingPage() {
                     gap="4"
                     align="start"
                     p="4"
-                    bg="bg.subtle"
+                    bg={index === 0 ? `${step.color}.subtle` : "bg.subtle"}
                     borderRadius="xl"
-                    opacity={index === 0 ? 1 : 0.6}
+                    borderWidth="1px"
+                    borderColor={index === 0 ? `${step.color}.muted` : "border.subtle"}
                   >
                     <Flex
                       align="center"
@@ -173,10 +174,17 @@ export default function OnboardingPage() {
                       <HStack gap="2" mb="1">
                         <Badge
                           colorPalette={step.color}
-                          variant="surface"
+                          variant={index === 0 ? "solid" : "surface"}
                           size="sm"
                         >
                           Step {step.number}
+                        </Badge>
+                        <Badge
+                          colorPalette={index === 0 ? "blue" : "gray"}
+                          variant="subtle"
+                          size="sm"
+                        >
+                          {index === 0 ? "Current" : index === 1 ? "Up next" : "Final step"}
                         </Badge>
                       </HStack>
                       <Text fontWeight="600" fontSize="md" mb="1">

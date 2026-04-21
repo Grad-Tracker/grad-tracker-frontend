@@ -192,7 +192,12 @@ describe("shared planner views", () => {
 
     expect(screen.getByText("Shared read-only plan")).toBeInTheDocument();
     expect(screen.getByText("Back to Shared Plans")).toBeInTheDocument();
+    expect(screen.getByText("View-only shared plan")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /compare with my plan/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /compare with my plan/i }).parentElement).toHaveAttribute(
+      "data-scope",
+      "tooltip"
+    );
     expect(screen.getByRole("link", { name: /open planner/i })).toHaveAttribute(
       "href",
       "/dashboard/planner"
@@ -241,6 +246,9 @@ describe("shared planner views", () => {
 
     expect(screen.getByText("COMPARE PICKER selected=null")).toBeInTheDocument();
     expect(screen.getByText("No semesters have been added yet")).toBeInTheDocument();
+    expect(
+      screen.getByText("This shared plan is available, but the owner has not added any semesters or courses yet.")
+    ).toBeInTheDocument();
   });
 
   it("renders the non-planner CTA branch when planner actions are hidden", () => {

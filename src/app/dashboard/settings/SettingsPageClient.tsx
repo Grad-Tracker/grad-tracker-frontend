@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import {
+  Alert,
   Box,
   Button,
   chakra,
@@ -83,6 +84,7 @@ export default function SettingsPage() {
   const [pendingEmail, setPendingEmail] = useState<string | null>(null);
   const [gradSemester, setGradSemester] = useState("");
   const [gradYear, setGradYear] = useState("");
+  const [gradYearError, setGradYearError] = useState("");
   const [notifPrefs, setNotifPrefs] = useState<NotifPrefs>(DEFAULT_PREFS);
   const [studentId, setStudentId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
@@ -210,13 +212,21 @@ export default function SettingsPage() {
     }
   };
 
+  const validateGradYear = (value: string): string => {
+    if (!value.trim()) return "";
+    const parsed = parseInt(value, 10);
+    if (Number.isNaN(parsed) || parsed < 2000 || parsed > 2100) {
+      return "Enter a year between 2000 and 2100.";
+    }
+    return "";
+  };
+
   const handleSaveGrad = async () => {
     if (!studentId) return;
+    const yearError = validateGradYear(gradYear);
+    setGradYearError(yearError);
+    if (yearError) return;
     const yearNum = gradYear ? parseInt(gradYear, 10) : null;
-    if (gradYear && (isNaN(yearNum!) || yearNum! < 2000 || yearNum! > 2100)) {
-      toaster.create({ title: "Enter a valid graduation year", type: "error" });
-      return;
-    }
     setSavingGrad(true);
     try {
       const supabase = createClient();
@@ -445,7 +455,14 @@ export default function SettingsPage() {
               </Card.Header>
               <Card.Body p="5" pt="2">
                 <Stack gap="4">
-                  <Field label="Email">
+                  <Field
+                    label="Email"
+                    helperText={
+                      pendingEmail
+                        ? `Pending verification: ${pendingEmail}`
+                        : `Current sign-in email: ${email || "Not available"}`
+                    }
+                  >
                     <Input
                       type="email"
                       value={newEmail}
@@ -454,6 +471,17 @@ export default function SettingsPage() {
                       borderRadius="lg"
                     />
                   </Field>
+                  {pendingEmail ? (
+                    <Alert.Root status="warning" borderRadius="lg">
+                      <Alert.Indicator />
+                      <Alert.Content>
+                        <Alert.Title>Pending verification</Alert.Title>
+                        <Alert.Description>
+                          Your sign-in email will stay {email} until you confirm {pendingEmail}.
+                        </Alert.Description>
+                      </Alert.Content>
+                    </Alert.Root>
+                  ) : null}
                   <Button
                     colorPalette="blue"
                     onClick={handleSaveEmail}
@@ -512,11 +540,17 @@ export default function SettingsPage() {
                         <option value="Winter">Winter</option>
                       </chakra.select>
                     </Field>
-                    <Field label="Year" flex="1">
+                    <Field label="Year" flex="1" invalid={!!gradYearError} errorText={gradYearError}>
                       <Input
                         type="number"
                         value={gradYear}
-                        onChange={(e) => setGradYear(e.target.value)}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          setGradYear(value);
+                          if (gradYearError) {
+                            setGradYearError(validateGradYear(value));
+                          }
+                        }}
                         placeholder="e.g. 2026"
                         borderRadius="lg"
                         min={2000}
@@ -651,22 +685,27 @@ export default function SettingsPage() {
                   Password
                 </Heading>
                 <Text fontSize="sm" color="fg.muted" mt="1">
-                  You'll be guided through a secure password reset flow.
+                  We&apos;ll send a password reset email so you can choose a new password securely.
                 </Text>
               </Card.Header>
               <Card.Body p="5" pt="2">
-                <Button asChild colorPalette="blue" alignSelf="flex-start" borderRadius="lg">
-                  <Link href="/reset-password">
-                    <Icon mr="2">
-                      <LuLock />
-                    </Icon>
-                    Reset Password
-                  </Link>
-                </Button>
+                <Stack gap="3" align="start">
+                  <Text fontSize="sm" color="fg.muted">
+                    Selecting this opens the reset flow and sends a reset link to your account email.
+                  </Text>
+                  <Button asChild colorPalette="blue" alignSelf="flex-start" borderRadius="lg">
+                    <Link href="/reset-password">
+                      <Icon mr="2">
+                        <LuLock />
+                      </Icon>
+                      Reset Password
+                    </Link>
+                  </Button>
+                </Stack>
               </Card.Body>
             </Card.Root>
             {/* Danger Zone */}
-            <Card.Root bg="bg" borderRadius="xl" borderWidth="1px" borderColor="red.muted">
+            <Card.Root bg="red.subtle" borderRadius="xl" borderWidth="1px" borderColor="red.muted">
               <Card.Header p="5" pb="3">
                 <Heading size="md" fontWeight="600" color="red.fg">
                   Danger Zone
@@ -676,9 +715,18 @@ export default function SettingsPage() {
                 </Text>
               </Card.Header>
               <Card.Body p="5" pt="2">
+                <Alert.Root status="error" variant="subtle" borderRadius="lg" mb="4">
+                  <Alert.Indicator />
+                  <Alert.Content>
+                    <Alert.Title>This action is destructive</Alert.Title>
+                    <Alert.Description>
+                      Resetting progress removes your saved planning data and sends you back through setup.
+                    </Alert.Description>
+                  </Alert.Content>
+                </Alert.Root>
                 {!resetConfirming ? (
                   <Button
-                    variant="outline"
+                    variant="solid"
                     colorPalette="red"
                     alignSelf="flex-start"
                     borderRadius="lg"
