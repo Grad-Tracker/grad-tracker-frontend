@@ -9,13 +9,15 @@
 ---
 
 ## Sprint Work Completed (Done)
-- **GT-187** — Implemented auto-plan improvements: enhanced the auto-generate workflow with better course selection logic and improved reliability of plan generation for students  
+- **GT-187** — Auto-plan algorithm improvements: enhanced the auto-generate workflow with better course selection logic and improved reliability of plan generation for students  
+- **GT-193** — Removed notification preferences dead code from the settings page; cleaned up unused infrastructure that no longer serves an active feature  
+- **GT-194** — Removed duplicate Gen-Ed parsing logic; consolidated into the shared Supabase query helper introduced earlier in the sprint  
 
-## Sprint Work Remaining (To Do / In Progress)
-- **GT-192** — Reduce `any` types across the codebase; improve TypeScript strictness and type safety  
-- **GT-193** — Remove notification dead code; clean up unused notification infrastructure that no longer serves an active feature  
-- **GT-194** — Remove duplicate Gen-Ed logic introduced from parallel development; consolidate into the shared query helper  
-- **GT-195** — Plan workspace polish: UX and visual improvements to the main plan editing workspace  
+## Sprint Work In Review
+- **GT-195** — Plan workspace polish: drag-and-drop refinements, empty state improvements, and rough edge fixes in the main plan editing workspace  
+
+## Sprint Work Remaining (To Do)
+- **GT-192** — Reduce `any` type usage in key files; improve TypeScript strictness and type safety across the codebase  
 
 ---
 
@@ -24,18 +26,18 @@
 | Metric | Count |
 |---|---:|
 | Issues committed at sprint start | 5 |
-| Issues completed | 1 |
-| Issues not completed | 4 |
+| Issues completed | 3 |
+| Issues not completed | 2 |
 | Issues added mid-sprint | 0 |
 
 ---
 
 ## Issue Breakdown by Type
 
-| Type | To Do | In Progress | Done |
+| Type | To Do | In Review | Done |
 |---|---:|---:|---:|
-| Story | 1 | 0 | 1 |
-| Task | 3 | 0 | 0 |
+| Story | 0 | 1 | 1 |
+| Task | 1 | 0 | 2 |
 | Bug | 0 | 0 | 0 |
 
 ---
@@ -44,7 +46,7 @@
 
 | Student | Issues Assigned | Issues Completed |
 |---|---:|---:|
-| CJ Shane | 5 | 1 |
+| CJ Shane | 5 | 3 (+ 1 In Review) |
 
 ---
 
@@ -54,21 +56,21 @@
 |---|---:|
 | Total story points committed | N/A |
 | Total story points completed | N/A |
-| Completion % | 20% |
+| Completion % | 60% Done / 80% Done or In Review |
 
 ---
 
 ## Workflow Discipline
-- ☑ Issues moved through workflow states (To Do → In Progress → Done)  
-- ☐ Sprint not fully closed — 4 issues remain in To Do  
+- ☑ Issues moved through workflow states (To Do → In Progress → Done / In Review)  
 - ☑ Completed issues closed only after acceptance criteria met  
+- ☐ Sprint not fully closed — 1 issue To Do, 1 In Review  
 
 ---
 
 ## Blockers & Scope Changes
-- **Major blockers:** GT-192 through GT-195 are cleanup/polish tasks with broad scope; dependency on other team members' merges (particularly the Gen-Ed refactor in GT-194) may have contributed to incomplete delivery.  
+- **Major blockers:** GT-192 (type cleanup) is broad in scope and touches many files; likely deprioritized in favor of higher-impact feature work. GT-195 is in review pending merge approval.  
 - **Scope changes:** N/A  
-- **Why work spilled over:** The 4 remaining tasks (type cleanup, dead code removal, duplicate logic removal, workspace polish) appear to have been deprioritized in favor of the higher-impact GT-187 auto-plan improvements. These are likely queued for Sprint 6.  
+- **Why work spilled over:** GT-192 is a code-quality task with wide surface area. GT-195 is development-complete and awaiting review. Both are candidates for Sprint 6 resolution.  
 
 ---
 

@@ -9,14 +9,12 @@
 ---
 
 ## Sprint Work Completed (Done)
-- **GT-171** — Removed duplicate admin routes: identified and eliminated redundant route definitions in the admin area that caused navigation inconsistencies  
-
-## Sprint Work In Review
-- **GT-176** — Add favicon: created and wired up the application favicon so the browser tab displays the Grad Tracker icon  
-- **GT-179** — Plan flow UX improvements: refined the plan creation and editing user flow including drawer interactions, confirmation dialogs, and transition states  
-- **GT-180** — Student visibility in advisor dashboard: surfaced student plan data and progress indicators within the advisor dashboard so advisors can view student academic standing  
-- **GT-188** — Advisor dashboard UI polish: visual and layout improvements to the advisor dashboard including header, sidebar, and student list presentation  
-- **GT-198** — Add breadcrumbs: implemented breadcrumb navigation across admin and advisor pages to improve wayfinding for multi-level routes  
+- **GT-171** — Removed duplicate admin routes and fixed sidebar nav: identified and eliminated redundant route definitions in the admin area that caused navigation inconsistencies  
+- **GT-176** — Added favicon to the application: created and wired up the browser tab icon so the Grad Tracker brand appears in tabs and bookmarks  
+- **GT-179** — Create plan flow UX improvements: refined the plan creation and editing user flow including drawer interactions, confirmation dialogs, and transition states  
+- **GT-180** — Added student visibility to advisor dashboard: surfaced student plan data and progress indicators within the advisor dashboard so advisors can view academic standing  
+- **GT-188** — Advisor dashboard UI polish: improved loading states, empty states, and error handling across the advisor dashboard; applied consistent layout and visual treatment  
+- **GT-198** — Added breadcrumbs to nested pages: implemented breadcrumb navigation across admin and advisor pages to improve wayfinding for multi-level routes  
 
 ---
 
@@ -25,8 +23,8 @@
 | Metric | Count |
 |---|---:|
 | Issues committed at sprint start | 6 |
-| Issues completed | 1 |
-| Issues not completed | 5 |
+| Issues completed | 6 |
+| Issues not completed | 0 |
 | Issues added mid-sprint | 0 |
 
 ---
@@ -35,8 +33,8 @@
 
 | Type | To Do | In Progress | Done |
 |---|---:|---:|---:|
-| Story | 0 (In Review: 4) | 0 | 1 |
-| Task | 0 (In Review: 1) | 0 | 1 |
+| Story | 0 | 0 | 5 |
+| Task | 0 | 0 | 1 |
 | Bug | 0 | 0 | 0 |
 
 ---
@@ -45,7 +43,7 @@
 
 | Student | Issues Assigned | Issues Completed |
 |---|---:|---:|
-| Jack Miller | 6 | 1 (+ 5 In Review) |
+| Jack Miller | 6 | 6 |
 
 ---
 
@@ -55,21 +53,21 @@
 |---|---:|
 | Total story points committed | N/A |
 | Total story points completed | N/A |
-| Completion % | 17% (Done) / 100% (Done + In Review) |
+| Completion % | 100% |
 
 ---
 
 ## Workflow Discipline
-- ☑ Issues moved through workflow states (To Do → In Progress → In Review)  
-- ☑ Issues in review awaiting final approval before closing  
-- ☑ Work submitted and under code review — not abandoned  
+- ☑ Issues moved through workflow states (To Do → In Progress → Done)  
+- ☑ Issues closed only after acceptance criteria met  
+- ☑ Sprint completed/closed in Jira  
 
 ---
 
 ## Blockers & Scope Changes
-- **Major blockers:** GT-180 (student visibility in advisor dashboard) is a complex cross-feature story requiring coordination between the advisor dashboard and student data queries. Code review cycles (CodeRabbit + peer review) are the primary gate for all 5 In Review issues.  
+- **Major blockers:** GT-180 (student visibility in advisor dashboard) required cross-feature coordination between the advisor dashboard and student data queries; review cycles added some lead time before merge.  
 - **Scope changes:** N/A  
-- **Why work spilled over:** All 5 "In Review" issues represent completed development work awaiting merge approval. The 1 "Done" issue (GT-171) was straightforward route cleanup. The remaining work is in review, not unstarted — delivery is effectively complete pending merge.  
+- **Why work spilled over (if any):** N/A — all 6 issues completed within the sprint.  
 
 ---
 
