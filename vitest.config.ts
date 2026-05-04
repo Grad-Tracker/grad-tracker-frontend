@@ -36,7 +36,7 @@ export default defineConfig({
         // AI advisor Anthropic-SDK glue: streaming, tool dispatch, and large prompt/context
         // assembly. Mocking the SDK at the granularity needed to cover these is more brittle
         // than the value; keep them in analysis but out of the coverage gate.
-        "src/lib/ai-advisor/tools.ts",
+        "src/lib/ai-advisor/tools/**",
         "src/lib/ai-advisor/data.ts",
         // Test files themselves
         "src/__tests__/**",
