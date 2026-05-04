@@ -1,4 +1,5 @@
 # GradTracker Frontend
+-- this is a demo edit for cloud computing to show the deployment steps.
 
 GradTracker is a graduation planning app for university students. It helps users set up their program, track requirement progress, and build semester-by-semester plans.
 
