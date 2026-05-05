@@ -167,7 +167,7 @@ stages:
   - stage: Deploy_Demo
     displayName: 'Deploy to Demo'
     dependsOn: Build
-    condition: and(succeeded(), eq(variables['Build.SourceBranchName'], 'demo/cloud-computing'))
+    condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/demo/cloud-computing'))
     variables:
       - group: gradtracker-dev-vars
     jobs:
