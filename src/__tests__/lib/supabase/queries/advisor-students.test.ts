@@ -109,6 +109,76 @@ describe("listStudentsForAdvisor", () => {
     });
     expect(rows[1].majorProgressPct).toBe(0); // Alan has no completed courses
   });
+
+  it("falls back to advisor_id when staff_id column is missing", async () => {
+    let call = 0;
+    const supabase = makeSupabase({
+      program_advisors: () => {
+        call++;
+        if (call === 1) {
+          const c: any = chain([]);
+          c.then = (resolve: any) =>
+            resolve({
+              data: null,
+              error: { message: 'column "staff_id" does not exist' },
+            });
+          return c;
+        }
+        return chain([{ program_id: 10 }]);
+      },
+      student_programs: () => chain([]),
+    });
+
+    const rows = await listStudentsForAdvisor(supabase as any, 1);
+    expect(rows).toEqual([]);
+  });
+
+  it("throws when advisor assignment query fails for reasons other than missing staff_id column", async () => {
+    const supabase = makeSupabase({
+      program_advisors: () => {
+        const c: any = chain([]);
+        c.then = (resolve: any) =>
+          resolve({
+            data: null,
+            error: { message: "permission denied" },
+          });
+        return c;
+      },
+    });
+
+    await expect(listStudentsForAdvisor(supabase as any, 1)).rejects.toThrow(
+      /Failed to load advisor assignments: permission denied/
+    );
+  });
+
+  it("throws when both staff_id and advisor_id assignment lookups fail", async () => {
+    let call = 0;
+    const supabase = makeSupabase({
+      program_advisors: () => {
+        call++;
+        const c: any = chain([]);
+        if (call === 1) {
+          c.then = (resolve: any) =>
+            resolve({
+              data: null,
+              error: { message: 'column "staff_id" does not exist' },
+            });
+          return c;
+        }
+
+        c.then = (resolve: any) =>
+          resolve({
+            data: null,
+            error: { message: "legacy lookup failed" },
+          });
+        return c;
+      },
+    });
+
+    await expect(listStudentsForAdvisor(supabase as any, 1)).rejects.toThrow(
+      /Failed to load advisor assignments: legacy lookup failed/
+    );
+  });
 });
 
 import { getStudentOverview } from "@/lib/supabase/queries/advisor-students";

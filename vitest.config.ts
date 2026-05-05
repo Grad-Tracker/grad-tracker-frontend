@@ -33,6 +33,11 @@ export default defineConfig({
         // Large shared-plan seed/fallback dataset; covered selectively via focused tests,
         // but excluded from global thresholds to avoid static seed branches dominating totals.
         "src/lib/supabase/queries/shared-plans.ts",
+        // AI advisor Anthropic-SDK glue: streaming, tool dispatch, and large prompt/context
+        // assembly. Mocking the SDK at the granularity needed to cover these is more brittle
+        // than the value; keep them in analysis but out of the coverage gate.
+        "src/lib/ai-advisor/tools/**",
+        "src/lib/ai-advisor/data.ts",
         // Test files themselves
         "src/__tests__/**",
         "**/*.test.ts",

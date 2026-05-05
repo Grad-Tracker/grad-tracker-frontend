@@ -46,6 +46,9 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
+# local coverage analysis scripts
+coverage-*.mjs
+
 # claude code local settings
 .claude/settings.local.json
 .claude/worktrees/
@@ -65,4 +68,4 @@ supabase/.temp/
 
 .claude/worktrees/
 
-.claude/worktrees/
+.vscode/

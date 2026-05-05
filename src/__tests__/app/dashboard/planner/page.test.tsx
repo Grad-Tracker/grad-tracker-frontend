@@ -88,6 +88,7 @@ vi.mock("@/lib/supabase/queries/planner", () => ({
   fetchAvailableCourses: mockFetchAvailableCourses,
   fetchCompletedCourseIds: mockFetchCompletedCourseIds,
   fetchGenEdBucketsWithCourses: mockFetchGenEdBucketsWithCourses,
+  fetchCourseOfferings: vi.fn().mockResolvedValue([]),
   createPlan: mockCreatePlan,
   updatePlan: mockUpdatePlan,
   deletePlan: mockDeletePlan,

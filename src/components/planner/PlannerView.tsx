@@ -48,9 +48,18 @@ import {
   removePlannedCourse,
   movePlannedCourse,
   fetchGenEdBucketsWithCourses,
+  fetchCourseOfferings,
 } from "@/lib/supabase/queries/planner";
 import { DB_TABLES, PLANNED_COURSE_STATUS } from "@/lib/supabase/queries/schema";
 import { logStudentActivity } from "@/lib/supabase/queries/activity";
+import { buildAvailabilityMap, isAvailable } from "@/lib/planner/auto-generate";
+import { extractPrereqEdges } from "@/lib/planner/prereq-graph";
+import {
+  arePrereqsSatisfied,
+  findBrokenDependents,
+  buildCourseTermIndex,
+  termSortKey,
+} from "@/lib/planner/prereq-validation";
 
 import type {
   Term,
@@ -63,6 +72,7 @@ import type {
 import {
   deduplicateBlocks,
   getGraduateTracks,
+  computePerProgramCreditTarget,
   BREADTH_PACKAGES,
 } from "@/types/planner";
 import type { Course } from "@/types/course";
@@ -129,6 +139,10 @@ export default function PlannerView({
   const [blocks, setBlocks] = useState<RequirementBlockWithCourses[]>([]);
   const [completedIds, setCompletedIds] = useState<Set<number>>(new Set());
   const [genEdBuckets, setGenEdBuckets] = useState<GenEdBucketWithCourses[]>([]);
+  const [availabilityMap, setAvailabilityMap] = useState<Map<number, Set<string>>>(
+    new Map()
+  );
+  const [prereqEdges, setPrereqEdges] = useState<Map<number, Set<number>>>(new Map());
 
   // Breadth package selection (persisted on students row)
   const [selectedBreadthPackageId, setSelectedBreadthPackageId] = useState<
@@ -208,6 +222,23 @@ export default function PlannerView({
     () => new Set(plannedCourses.map((pc) => pc.course_id)),
     [plannedCourses]
   );
+  const courseTermIndex = useMemo(
+    () => buildCourseTermIndex(plannedCourses, terms),
+    [plannedCourses, terms]
+  );
+  const courseById = useMemo(() => {
+    const map = new Map<number, Course>();
+    for (const b of blocks) {
+      for (const c of b.courses) map.set(c.id, c);
+    }
+    for (const bucket of genEdBuckets) {
+      for (const c of bucket.courses ?? []) map.set(c.id, c as Course);
+    }
+    for (const pc of plannedCourses) {
+      if (pc.course) map.set(pc.course.id, pc.course);
+    }
+    return map;
+  }, [blocks, genEdBuckets, plannedCourses]);
   const graduateTracks: GraduateTrack[] = useMemo(
     () => (isGraduatePlan ? getGraduateTracks(blocks) : []),
     [blocks, isGraduatePlan]
@@ -275,6 +306,17 @@ export default function PlannerView({
     [plannerPoolBlocks, selectedBreadthPackage, isGraduatePlan, selectedTrackId]
   );
 
+  const degreeCreditTarget = useMemo(() => {
+    if (displayBlocks.length === 0) return undefined;
+    return computePerProgramCreditTarget(displayBlocks, {
+      selectedPackage: isGraduatePlan ? null : selectedBreadthPackage,
+      isGraduate: isGraduatePlan,
+      selectedTrackId: isGraduatePlan ? selectedTrackId : null,
+      minimumUndergradCredits: isGraduatePlan ? 0 : 120,
+      useLegacyElectivePoolForTotal: !isGraduatePlan,
+    });
+  }, [displayBlocks, isGraduatePlan, selectedBreadthPackage, selectedTrackId]);
+
   // ── Load plan-specific data ────────────────────────────
   const loadAbortRef = useRef<AbortController | null>(null);
 
@@ -309,11 +351,30 @@ export default function PlannerView({
 
         if (signal.aborted) return;
 
+        // Course IDs present in this plan's universe — drives the prereq
+        // graph and availability lookups used by drag-and-drop validation.
+        const allCourseIds = Array.from(
+          new Set<number>([
+            ...blocksData.flatMap((b) => b.courses.map((c) => c.id)),
+            ...genEdData.flatMap((bucket) => (bucket.courses ?? []).map((c) => c.id)),
+            ...coursesData.map((pc) => pc.course_id),
+          ])
+        );
+
+        const [offerings, edges] = await Promise.all([
+          fetchCourseOfferings(allCourseIds),
+          extractPrereqEdges(allCourseIds),
+        ]);
+
+        if (signal.aborted) return;
+
         setTerms(termsData);
         setPlannedCourses(coursesData);
         setBlocks(blocksData);
         setCompletedIds(completedData);
         setGenEdBuckets(genEdData);
+        setAvailabilityMap(buildAvailabilityMap(offerings));
+        setPrereqEdges(edges);
         if (!graduate) {
           const savedPkg = localStorage.getItem(
             `gradtracker:breadthPackage:${sid}:${planId}`
@@ -336,6 +397,8 @@ export default function PlannerView({
         setBlocks([]);
         setCompletedIds(new Set());
         setGenEdBuckets([]);
+        setAvailabilityMap(new Map());
+        setPrereqEdges(new Map());
       } finally {
         if (!signal.aborted) {
           setPlanDataLoading(false);
@@ -712,8 +775,61 @@ export default function PlannerView({
       if (!toTermId) return;
       if (fromTermId === toTermId) return;
 
+      const toTerm = terms.find((t) => t.id === toTermId);
+      if (!toTerm) return;
+      const targetSortKey = termSortKey(toTerm);
+
+      const labelFor = (id: number) => {
+        const c = courseById.get(id);
+        return c ? `${c.subject} ${c.number}` : `Course #${id}`;
+      };
+
       if (fromTermId) {
-        // MOVE: optimistic update
+        // MOVE: validate then optimistic update
+
+        // 1) Does this course's own prereqs still hold at the destination?
+        const prereqResult = arePrereqsSatisfied(
+          course.id,
+          targetSortKey,
+          prereqEdges,
+          courseTermIndex,
+          completedIds
+        );
+        if (!prereqResult.satisfied) {
+          toaster.create({
+            title: `Can't move ${getCourseActivityLabel(course)} there`,
+            description: `Requires: ${prereqResult.missing.map(labelFor).join(", ")}`,
+            type: "error",
+          });
+          return;
+        }
+
+        // 2) Would moving this break any dependents that take it later?
+        const broken = findBrokenDependents(
+          course.id,
+          targetSortKey,
+          prereqEdges,
+          courseTermIndex,
+          completedIds
+        );
+        if (broken.length > 0) {
+          toaster.create({
+            title: `Can't move ${getCourseActivityLabel(course)} there`,
+            description: `Would break prerequisites for: ${broken.map(labelFor).join(", ")}`,
+            type: "error",
+          });
+          return;
+        }
+
+        // 3) Soft warning when the course isn't typically offered that term.
+        if (!isAvailable(course.id, toTerm.season, toTerm.year, availabilityMap)) {
+          toaster.create({
+            title: `${getCourseActivityLabel(course)} may not be offered in ${toTerm.season} ${toTerm.year}`,
+            description: "Verify with your advisor that this section is being taught.",
+            type: "warning",
+          });
+        }
+
         setPlannedCourses((prev) =>
           prev.map((pc) =>
             pc.course_id === course.id && pc.term_id === fromTermId
@@ -739,8 +855,32 @@ export default function PlannerView({
           });
         }
       } else {
-        // ADD: optimistic update
+        // ADD: validate then optimistic update
         if (plannedCourseIds.has(course.id)) return;
+
+        const prereqResult = arePrereqsSatisfied(
+          course.id,
+          targetSortKey,
+          prereqEdges,
+          courseTermIndex,
+          completedIds
+        );
+        if (!prereqResult.satisfied) {
+          toaster.create({
+            title: `Can't add ${getCourseActivityLabel(course)}`,
+            description: `Requires: ${prereqResult.missing.map(labelFor).join(", ")}`,
+            type: "error",
+          });
+          return;
+        }
+
+        if (!isAvailable(course.id, toTerm.season, toTerm.year, availabilityMap)) {
+          toaster.create({
+            title: `${getCourseActivityLabel(course)} may not be offered in ${toTerm.season} ${toTerm.year}`,
+            description: "Verify with your advisor that this section is being taught.",
+            type: "warning",
+          });
+        }
 
         setPlannedCourses((prev) => [
           ...prev,
@@ -964,6 +1104,7 @@ export default function PlannerView({
                     <CoursePanel
                       blocks={displayBlocks}
                       allDedupedBlocks={allDedupedBlocks}
+                      degreeCreditTarget={degreeCreditTarget}
                       completedCourseIds={completedIds}
                       plannedCourseIds={plannedCourseIds}
                       plannedCourses={plannedCourses}
@@ -1062,6 +1203,7 @@ export default function PlannerView({
                 plannedCourses={plannedCourses}
                 blocks={displayBlocks}
                 completedCourseIds={completedIds}
+                degreeCreditTarget={degreeCreditTarget}
                 isGraduatePlan={isGraduatePlan}
               />
             </>
@@ -1111,7 +1253,7 @@ export default function PlannerView({
         />
       )}
 
-      {canEdit && studentId && (
+      {canEdit && (
         <AutoGenerateDialog
           open={autoGenerateDialogOpen}
           onOpenChange={setAutoGenerateDialogOpen}
@@ -1119,6 +1261,7 @@ export default function PlannerView({
           programIds={
             plans.find((p) => p.id === activePlanId)?.program_ids ?? []
           }
+          degreeCreditTarget={degreeCreditTarget}
           plans={plans}
           activePlanId={activePlanId}
           onComplete={async (planId) => {

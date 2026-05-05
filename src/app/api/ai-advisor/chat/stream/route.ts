@@ -11,6 +11,7 @@ import {
   tryParseJson,
   makeFallbackResponse,
   CLAUDE_TOOL_DEFINITIONS,
+  CATALOG_TOOL_DEFINITIONS,
   TOOL_NAMES,
 } from "@/lib/ai-advisor/tools";
 import { serverListStudentPlans } from "@/lib/ai-advisor/plan-mutations";
@@ -93,13 +94,6 @@ export async function POST(request: Request) {
     );
   }
 
-  if (!profile.hasCompletedOnboarding) {
-    return NextResponse.json(
-      { error: "Onboarding not completed." },
-      { status: 409 }
-    );
-  }
-
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
     return NextResponse.json(
@@ -120,6 +114,9 @@ export async function POST(request: Request) {
   }
 
   const requestBody = parsedBody;
+  const activeToolDefinitions = profile.hasCompletedOnboarding
+    ? CLAUDE_TOOL_DEFINITIONS
+    : CATALOG_TOOL_DEFINITIONS;
 
   const stream = new ReadableStream({
     async start(controller) {
@@ -167,7 +164,7 @@ export async function POST(request: Request) {
           { role: "user" as const, content: requestBody.message },
         ];
 
-        const maxTurns = 6;
+        const maxTurns = 20;
         let completedWithResponse = false;
 
         for (let turn = 0; turn < maxTurns; turn++) {
@@ -175,9 +172,9 @@ export async function POST(request: Request) {
 
           const messageStream = client.messages.stream({
             model,
-            max_tokens: 1024,
+            max_tokens: 5000,
             system: systemPromptWithJsonInstruction,
-            tools: CLAUDE_TOOL_DEFINITIONS,
+            tools: activeToolDefinitions,
             messages,
           }, { signal: request.signal });
 

@@ -4,7 +4,6 @@ import { useMemo, useState } from "react";
 import {
   Badge,
   Box,
-  Button,
   Card,
   Flex,
   Heading,
@@ -18,7 +17,6 @@ import {
   VStack,
 } from "@chakra-ui/react";
 import {
-  LuCheck,
   LuPlus,
   LuSearch,
   LuTarget,
