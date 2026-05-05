@@ -29,7 +29,7 @@ stages:
               SUPABASE_PUBLISHABLE_KEY=$(az keyvault secret show --vault-name GradTracker-dev-kv --name NEXT-PUBLIC-SUPABASE-PUBLISHABLE-DEFAULT-KEY --query value -o tsv)
               ANTHROPIC_KEY=$(az keyvault secret show --vault-name GradTracker-dev-kv --name ANTHROPIC-API-KEY --query value -o tsv)
               DB_PASS=$(az keyvault secret show --vault-name GradTracker-dev-kv --name DB-PASSWORD --query value -o tsv)
-              ADVISOR_SIGNUP=$(az keyvault secret show --vault-name GradTracker-dev-kv --name ADVISOR-SIGNUP-CODE --query value -o tsv)
+              ADVISOR_SIGNUP=$(az keyvault secret show --vault-name GradTracker-dev-kv --name ADVISOR-SIGNUP-CODE --query value -o tsv 2>/dev/null || echo "")
 
               cat > .env.local << EOF
               NEXT_PUBLIC_SUPABASE_URL=$SUPABASE_URL
@@ -82,7 +82,7 @@ stages:
                     SUPABASE_PUBLISHABLE_KEY=$(az keyvault secret show --vault-name GradTracker-dev-kv --name NEXT-PUBLIC-SUPABASE-PUBLISHABLE-DEFAULT-KEY --query value -o tsv)
                     ANTHROPIC_KEY=$(az keyvault secret show --vault-name GradTracker-dev-kv --name ANTHROPIC-API-KEY --query value -o tsv)
                     DB_PASS=$(az keyvault secret show --vault-name GradTracker-dev-kv --name DB-PASSWORD --query value -o tsv)
-                    ADVISOR_SIGNUP=$(az keyvault secret show --vault-name GradTracker-dev-kv --name ADVISOR-SIGNUP-CODE --query value -o tsv)
+                    ADVISOR_SIGNUP=$(az keyvault secret show --vault-name GradTracker-dev-kv --name ADVISOR-SIGNUP-CODE --query value -o tsv 2>/dev/null || echo "")
 
                     cat > /var/www/gradtracker/.env.local << EOF
                     NEXT_PUBLIC_SUPABASE_URL=$SUPABASE_URL
@@ -151,7 +151,7 @@ stages:
                     export ADVISOR_SIGNUP_CODE=$(az keyvault secret show \
                       --vault-name GradTracker-prod-kv \
                       --name ADVISOR-SIGNUP-CODE \
-                      --query value -o tsv)
+                      --query value -o tsv 2>/dev/null || echo "")
 
                     sudo mkdir -p /var/www/gradtracker
                     sudo cp -r $(Pipeline.Workspace)/gradtracker-build/. /var/www/gradtracker/
@@ -188,7 +188,7 @@ stages:
                     SUPABASE_PUBLISHABLE_KEY=$(az keyvault secret show --vault-name GradTracker-dev-kv --name NEXT-PUBLIC-SUPABASE-PUBLISHABLE-DEFAULT-KEY --query value -o tsv)
                     ANTHROPIC_KEY=$(az keyvault secret show --vault-name GradTracker-dev-kv --name ANTHROPIC-API-KEY --query value -o tsv)
                     DB_PASS=$(az keyvault secret show --vault-name GradTracker-dev-kv --name DB-PASSWORD --query value -o tsv)
-                    ADVISOR_SIGNUP=$(az keyvault secret show --vault-name GradTracker-dev-kv --name ADVISOR-SIGNUP-CODE --query value -o tsv)
+                    ADVISOR_SIGNUP=$(az keyvault secret show --vault-name GradTracker-dev-kv --name ADVISOR-SIGNUP-CODE --query value -o tsv 2>/dev/null || echo "")
 
                     cat > /var/www/gradtracker/.env.local << EOF
                     NEXT_PUBLIC_SUPABASE_URL=$SUPABASE_URL
