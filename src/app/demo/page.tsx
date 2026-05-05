@@ -33,13 +33,13 @@ export default function DemoPage() {
             Atlas
           </Text>
           <Badge colorPalette="blue" variant="subtle" size="sm">
-            v1.5
+            v2.0
           </Badge>
         </HStack>
 
         <VStack gap="4" p="8" align="start">
           <Text fontSize="lg" fontWeight="600">
-            Grad Tracker — Cloud Computing Demo
+            Grad Tracker — Cloud Computing Demo lklkdasflkjadfskl
           </Text>
           <Text fontSize="sm" color="fg.muted">
             This page is deployed via Azure DevOps CI/CD pipeline. Changes pushed
