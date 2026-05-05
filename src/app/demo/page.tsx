@@ -33,7 +33,7 @@ export default function DemoPage() {
             Atlas
           </Text>
           <Badge colorPalette="blue" variant="subtle" size="sm">
-            v1.0
+            v1.5
           </Badge>
         </HStack>
 
