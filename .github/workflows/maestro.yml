@@ -1,0 +1,64 @@
+name: Maestro E2E
+
+on:
+  pull_request:
+    branches: [dev]
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+
+    env:
+      MAESTRO_BASE_URL: http://localhost:3000
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Maestro CLI
+        run: |
+          export MAESTRO_VERSION=1.39.0
+          curl -Ls "https://get.maestro.mobile.dev" | bash
+          echo "$HOME/.maestro/bin" >> $GITHUB_PATH
+
+      - name: Install Chromium and Xvfb
+        run: sudo apt-get update && sudo apt-get install -y chromium-browser xvfb
+
+      - name: Start virtual display
+        run: |
+          Xvfb :99 -screen 0 1280x1024x24 &
+          echo "DISPLAY=:99" >> $GITHUB_ENV
+
+      - name: Start Next.js dev server
+        run: npm run dev &
+
+      - name: Wait for server to be ready
+        run: npx wait-on http://localhost:3000 --timeout 60000
+
+      - name: Run Maestro flows
+        env:
+          MAESTRO_TEST_EMAIL: ${{ secrets.MAESTRO_TEST_EMAIL }}
+          MAESTRO_TEST_PASSWORD: ${{ secrets.MAESTRO_TEST_PASSWORD }}
+        run: |
+          maestro test .maestro/flows/ \
+            --format junit \
+            --output maestro-report.xml
+
+      - name: Upload Maestro report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: maestro-e2e-report
+          path: |
+            maestro-report.xml
+            ~/.maestro/tests/
+          retention-days: 14

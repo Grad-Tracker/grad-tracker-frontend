@@ -69,3 +69,7 @@ supabase/.temp/
 .claude/worktrees/
 
 .vscode/
+
+# Maestro E2E artifacts
+.maestro/tests/
+maestro-report.xml

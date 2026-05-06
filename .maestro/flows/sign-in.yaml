@@ -1,0 +1,15 @@
+appId: browser
+---
+- launchApp:
+    clearState: true
+- openLink: "${MAESTRO_BASE_URL}/signin"
+- assertVisible: "Welcome back,"
+- tapOn: "Email"
+- inputText: "${MAESTRO_TEST_EMAIL}"
+- tapOn: "Password"
+- inputText: "${MAESTRO_TEST_PASSWORD}"
+- tapOn:
+    text: "Sign In"
+    index: 0
+- waitForAnimationToEnd
+- assertVisible: "Dashboard"
