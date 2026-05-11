@@ -3,6 +3,11 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { fetchGenEdBucketsWithCourses } from "@/lib/supabase/queries/gen-ed";
 
+export const metadata = {
+  title: "Gen-Ed | Admin | GradTracker",
+  description: "Manage general education buckets and course mappings in the GradTracker admin workspace.",
+};
+
 export default async function AdminGenEdPage() {
   const supabase = await createClient();
   const {

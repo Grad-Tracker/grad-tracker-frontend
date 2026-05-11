@@ -10,6 +10,23 @@ body {
   overflow-x: hidden;
 }
 
+.skip-link {
+  position: absolute;
+  left: 1rem;
+  top: -3rem;
+  z-index: 1000;
+  padding: 0.75rem 1rem;
+  border-radius: 0.5rem;
+  background: #1c1d1f;
+  color: #f9f9f7;
+  text-decoration: none;
+  transition: top 0.2s ease;
+}
+
+.skip-link:focus {
+  top: 1rem;
+}
+
 /* ── Custom palette overrides (Navy + Warm Gray) ── */
 .light {
   --chakra-colors-bg: #F9F9F7;

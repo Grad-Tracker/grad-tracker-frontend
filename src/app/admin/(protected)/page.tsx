@@ -16,6 +16,11 @@ import { LuArrowRight, LuBookOpen, LuGraduationCap, LuLayers } from "react-icons
 import { createClient } from "@/lib/supabase/server";
 import { DB_TABLES } from "@/lib/supabase/queries/schema";
 
+export const metadata = {
+  title: "Admin | GradTracker",
+  description: "Review assigned programs and advisor activity in the GradTracker admin workspace.",
+};
+
 // ── types ────────────────────────────────────────────────────────────────────
 
 type ProgramType = "MAJOR" | "MINOR" | "CERTIFICATE" | "GRADUATE";

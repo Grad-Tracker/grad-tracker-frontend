@@ -13,6 +13,11 @@ import {
   requireAdvisorAccess,
 } from "./server-helpers";
 
+export const metadata = {
+  title: "Programs | Admin | GradTracker",
+  description: "Review and manage assigned academic programs in the GradTracker admin workspace.",
+};
+
 export default async function AdminProgramsPage() {
   const supabase = await createClient();
   const { staffId } = await requireAdvisorAccess(supabase);

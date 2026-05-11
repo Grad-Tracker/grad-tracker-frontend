@@ -52,6 +52,16 @@ interface ProgramDetailClientProps {
   blocks: Block[];
 }
 
+function handleKeyboardActivate(
+  e: React.KeyboardEvent,
+  onActivate: () => void
+) {
+  if (e.key === "Enter" || e.key === " ") {
+    e.preventDefault();
+    onActivate();
+  }
+}
+
 function isBreadthBlock(blockName: string): boolean {
   return /breadth/i.test(blockName);
 }
@@ -66,18 +76,14 @@ function CourseTable({
   crossPairs?: number[][];
 }>) {
   const handleRowKeyDown = (event: KeyboardEvent<HTMLTableRowElement>, course: Course) => {
-    if (event.key === "Enter" || event.key === " ") {
-      event.preventDefault();
-      onCourseClick(course);
-    }
+    handleKeyboardActivate(event, () => onCourseClick(course));
   };
 
   const handleAltKeyDown = (event: KeyboardEvent<HTMLSpanElement>, course: Course) => {
-    if (event.key === "Enter" || event.key === " ") {
-      event.preventDefault();
+    handleKeyboardActivate(event, () => {
       event.stopPropagation();
       onCourseClick(course);
-    }
+    });
   };
 
   // Map every course id to its full cross-pair group

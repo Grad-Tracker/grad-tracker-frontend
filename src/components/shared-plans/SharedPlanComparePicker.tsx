@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import type * as React from "react";
 import { useRouter } from "next/navigation";
 import {
   Badge,
@@ -28,6 +29,16 @@ type SharedPlanComparePickerProps = {
   sharedPlans: SharedPlanSummary[];
   ownPlans: OwnPlanSummary[];
 };
+
+function handleKeyboardActivate(
+  e: React.KeyboardEvent,
+  onActivate: () => void
+) {
+  if (e.key === "Enter" || e.key === " ") {
+    e.preventDefault();
+    onActivate();
+  }
+}
 
 function formatPrograms(programNames: string[]) {
   return programNames.length > 0 ? programNames.join(" / ") : "Program details unavailable";
@@ -126,12 +137,9 @@ export default function SharedPlanComparePicker({
                       bg={isSelected ? "blue.900" : "gray.900"}
                       cursor="pointer"
                       onClick={() => handleSharedPlanSelect(plan.shareToken)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" || e.key === " ") {
-                          e.preventDefault();
-                          handleSharedPlanSelect(plan.shareToken);
-                        }
-                      }}
+                      onKeyDown={(e) =>
+                        handleKeyboardActivate(e, () => handleSharedPlanSelect(plan.shareToken))
+                      }
                     >
                       <Card.Body p="5">
                         <Stack gap="3">
@@ -175,12 +183,9 @@ export default function SharedPlanComparePicker({
                       bg={isSelected ? "blue.900" : "gray.900"}
                       cursor="pointer"
                       onClick={() => handleOwnPlanSelect(plan.planId)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" || e.key === " ") {
-                          e.preventDefault();
-                          handleOwnPlanSelect(plan.planId);
-                        }
-                      }}
+                      onKeyDown={(e) =>
+                        handleKeyboardActivate(e, () => handleOwnPlanSelect(plan.planId))
+                      }
                     >
                       <Card.Body p="5">
                         <Stack gap="3">

@@ -23,7 +23,12 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning className={dmSans.variable}>
       <body suppressHydrationWarning>
         <Provider>
-          {children}
+          <a href="#main-content" className="skip-link">
+            Skip to main content
+          </a>
+          <main id="main-content" role="main">
+            {children}
+          </main>
           <Toaster />
         </Provider>
       </body>

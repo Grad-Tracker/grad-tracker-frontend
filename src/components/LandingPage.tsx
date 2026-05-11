@@ -36,50 +36,19 @@ export default function LandingPage() {
       fontFamily="var(--font-dm-sans), sans-serif"
       position="relative"
     >
-      {/* ===== HERO — Campus photo background ===== */}
       <Box
-        position="relative"
-        minH={{ base: "600px", md: "700px", lg: "90vh" }}
-        display="flex"
-        flexDirection="column"
-        alignItems="center"
-        justifyContent="center"
-        textAlign="center"
-        px={{ base: "6", md: "12" }}
-        py={{ base: "20", md: "24" }}
-        overflow="hidden"
+        as="header"
+        position="absolute"
+        top="0"
+        left="0"
+        right="0"
+        zIndex="10"
       >
-        {/* Campus background image */}
-        <Image
-          src="/landing/Parkside_Hero.jpg"
-          alt="UW-Parkside Campus aerial view"
-          fill
-          style={{ objectFit: "cover", objectPosition: "center" }}
-          priority
-
-        />
-
-        {/* Dark overlay */}
-        <Box
-          position="absolute"
-          inset="0"
-          zIndex="1"
-          style={{
-            background: "linear-gradient(to bottom, rgba(15,23,42,0.5) 0%, rgba(15,23,42,0.6) 40%, rgba(15,23,42,0.8) 100%)",
-          }}
-        />
-
-        {/* Floating top bar: logo + sign in */}
         <Flex
-          position="absolute"
-          top="0"
-          left="0"
-          right="0"
           justify="space-between"
           align="center"
           px={{ base: "6", md: "12" }}
           py="5"
-          zIndex="10"
         >
           <HStack gap="3">
             <Flex
@@ -114,9 +83,43 @@ export default function LandingPage() {
             Sign In
           </LinkButton>
         </Flex>
+      </Box>
 
-        {/* Hero content */}
-        <VStack gap="7" position="relative" zIndex="2" maxW="700px">
+      <Box>
+        {/* ===== HERO — Campus photo background ===== */}
+        <Box
+          position="relative"
+          minH={{ base: "600px", md: "700px", lg: "90vh" }}
+          display="flex"
+          flexDirection="column"
+          alignItems="center"
+          justifyContent="center"
+          textAlign="center"
+          px={{ base: "6", md: "12" }}
+          py={{ base: "20", md: "24" }}
+          overflow="hidden"
+        >
+          {/* Campus background image */}
+          <Image
+            src="/landing/Parkside_Hero.jpg"
+            alt="UW-Parkside Campus aerial view"
+            fill
+            style={{ objectFit: "cover", objectPosition: "center" }}
+            priority
+          />
+
+          {/* Dark overlay */}
+          <Box
+            position="absolute"
+            inset="0"
+            zIndex="1"
+            style={{
+              background: "linear-gradient(to bottom, rgba(15,23,42,0.5) 0%, rgba(15,23,42,0.6) 40%, rgba(15,23,42,0.8) 100%)",
+            }}
+          />
+
+          {/* Hero content */}
+          <VStack gap="7" position="relative" zIndex="2" maxW="700px">
           {/* Headline */}
           <Heading
             fontFamily="var(--font-dm-sans), sans-serif"
@@ -243,18 +246,18 @@ export default function LandingPage() {
         >
           UW-Parkside Campus
         </Text>
-      </Box>
+        </Box>
 
-      {/* ===== PRODUCT SCREENSHOT — overlaps hero ===== */}
-      <Box position="relative" zIndex="3">
-      <FadeIn>
-      <Box
-        px={{ base: "4", md: "12" }}
-        mt={{ base: "-8", md: "-12" }}
-        textAlign="center"
-        maxW="960px"
-        mx="auto"
-      >
+        {/* ===== PRODUCT SCREENSHOT — overlaps hero ===== */}
+        <Box position="relative" zIndex="3">
+        <FadeIn>
+        <Box
+          px={{ base: "4", md: "12" }}
+          mt={{ base: "-8", md: "-12" }}
+          textAlign="center"
+          maxW="960px"
+          mx="auto"
+        >
           <Box
             borderRadius="xl"
             borderWidth="1px"
@@ -302,12 +305,12 @@ export default function LandingPage() {
               style={{ width: "100%", height: "auto", display: "block" }}
             />
           </Box>
-      </Box>
-      </FadeIn>
-      </Box>
+        </Box>
+        </FadeIn>
+        </Box>
 
-      {/* ===== HOW IT WORKS ===== */}
-      <Box id="how-it-works" py={{ base: "16", md: "24" }} scrollMarginTop="4">
+        {/* ===== HOW IT WORKS ===== */}
+        <Box id="how-it-works" py={{ base: "16", md: "24" }} scrollMarginTop="4">
         <Container maxW="960px" mx="auto" px={{ base: "4", md: "6" }}>
           <FadeIn>
           <VStack gap="3" textAlign="center" mb={{ base: "12", md: "16" }}>
@@ -415,10 +418,10 @@ export default function LandingPage() {
             ))}
           </Grid>
         </Container>
-      </Box>
+        </Box>
 
-      {/* ===== FEATURES — Bento Grid ===== */}
-      <Box py={{ base: "10", md: "20" }} borderTopWidth="1px" borderColor="border.subtle">
+        {/* ===== FEATURES — Bento Grid ===== */}
+        <Box py={{ base: "10", md: "20" }} borderTopWidth="1px" borderColor="border.subtle">
         <Container maxW="960px" mx="auto" px={{ base: "4", md: "6" }}>
           <FadeIn>
           <VStack gap="3" textAlign="center" mb={{ base: "10", md: "14" }}>
@@ -602,9 +605,110 @@ export default function LandingPage() {
           </Grid>
           </FadeIn>
         </Container>
+        </Box>
+
+        {/* ===== CTA ===== */}
+        <Box
+          position="relative"
+          overflow="hidden"
+          style={{
+            background: "linear-gradient(to bottom, #0F172A 0%, #0B1120 100%)",
+          }}
+        >
+          {/* Background glow */}
+          <Box
+            position="absolute"
+            top="-200px"
+            left="50%"
+            transform="translateX(-50%)"
+            w="800px"
+            h="600px"
+            borderRadius="full"
+            style={{
+              background: "radial-gradient(circle, rgba(59,130,246,0.15) 0%, rgba(139,92,246,0.08) 40%, transparent 70%)",
+            }}
+            pointerEvents="none"
+          />
+          {/* Grid pattern overlay */}
+          <Box
+            position="absolute"
+            inset="0"
+            opacity="0.03"
+            style={{
+              backgroundImage: "linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)",
+              backgroundSize: "40px 40px",
+            }}
+            pointerEvents="none"
+          />
+
+          <Box
+            py={{ base: "20", md: "28" }}
+            textAlign="center"
+            position="relative"
+          >
+            <FadeIn>
+            <Container maxW="lg" mx="auto">
+              <VStack gap="6">
+                <Heading
+                  fontFamily="var(--font-dm-sans), sans-serif"
+                  fontSize={{ base: "3xl", md: "5xl" }}
+                  fontWeight="400"
+                  letterSpacing="-0.03em"
+                  lineHeight="1.1"
+                  color="white"
+                >
+                  Your graduation roadmap
+                  <br />
+                  <Text
+                    as="span"
+                    style={{
+                      background: "linear-gradient(135deg, #93C5FD, #C4B5FD)",
+                      WebkitBackgroundClip: "text",
+                      WebkitTextFillColor: "transparent",
+                    }}
+                  >
+                    starts here
+                  </Text>
+                </Heading>
+                <Text
+                  fontSize="md"
+                  color="whiteAlpha.600"
+                  lineHeight="1.6"
+                  maxW="420px"
+                >
+                  Free for all UW-Parkside students. Set up in under 2 minutes.
+                  No credit card required.
+                </Text>
+                <Link href="/signup">
+                  <Button
+                    size="lg"
+                    bg="white"
+                    color="#0F172A"
+                    rounded="full"
+                    px="10"
+                    fontWeight="600"
+                    fontSize="md"
+                    _hover={{
+                      bg: "whiteAlpha.900",
+                      transform: "translateY(-2px)",
+                      boxShadow: "0 8px 30px rgba(255,255,255,0.15)",
+                    }}
+                    transition="all 0.2s"
+                  >
+                    Get Started Free
+                    <Icon ml="2">
+                      <LuArrowRight />
+                    </Icon>
+                  </Button>
+                </Link>
+              </VStack>
+            </Container>
+            </FadeIn>
+          </Box>
+        </Box>
       </Box>
 
-      {/* ===== CTA + FOOTER — single dark section ===== */}
+      {/* ===== FOOTER ===== */}
       <Box
         position="relative"
         overflow="hidden"
@@ -637,72 +741,6 @@ export default function LandingPage() {
           }}
           pointerEvents="none"
         />
-
-        {/* CTA */}
-        <Box
-          py={{ base: "20", md: "28" }}
-          textAlign="center"
-          position="relative"
-        >
-          <FadeIn>
-          <Container maxW="lg" mx="auto">
-            <VStack gap="6">
-              <Heading
-                fontFamily="var(--font-dm-sans), sans-serif"
-                fontSize={{ base: "3xl", md: "5xl" }}
-                fontWeight="400"
-                letterSpacing="-0.03em"
-                lineHeight="1.1"
-                color="white"
-              >
-                Your graduation roadmap
-                <br />
-                <Text
-                  as="span"
-                  bgGradient="to-r"
-                  gradientFrom="blue.200"
-                  gradientTo="purple.200"
-                  backgroundClip="text"
-                  color="transparent"
-                >
-                  starts here
-                </Text>
-              </Heading>
-              <Text
-                fontSize="md"
-                color="whiteAlpha.600"
-                lineHeight="1.6"
-                maxW="420px"
-              >
-                Free for all UW-Parkside students. Set up in under 2 minutes.
-                No credit card required.
-              </Text>
-              <Link href="/signup">
-                <Button
-                  size="lg"
-                  bg="white"
-                  color="gray.900"
-                  rounded="full"
-                  px="10"
-                  fontWeight="600"
-                  fontSize="md"
-                  _hover={{
-                    bg: "whiteAlpha.900",
-                    transform: "translateY(-2px)",
-                    boxShadow: "0 8px 30px rgba(255,255,255,0.15)",
-                  }}
-                  transition="all 0.2s"
-                >
-                  Get Started Free
-                  <Icon ml="2">
-                    <LuArrowRight />
-                  </Icon>
-                </Button>
-              </Link>
-            </VStack>
-          </Container>
-          </FadeIn>
-        </Box>
 
         {/* Footer */}
         <Box

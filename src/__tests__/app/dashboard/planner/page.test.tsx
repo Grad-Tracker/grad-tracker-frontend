@@ -221,13 +221,13 @@ vi.mock("@/components/planner/RemoveSemesterDialog", () => ({
     ) : null,
 }));
 
-vi.mock("@/components/planner/CreatePlanDialog", () => ({
+vi.mock("@/components/planner/CreatePlanDrawer", () => ({
   default: ({ open, onCreatePlan }: any) =>
     open ? (
-      <div data-testid="create-plan-dialog">
+      <div data-testid="create-plan-drawer">
         <button
           data-testid="submit-create-plan"
-          onClick={() => onCreatePlan("New Plan", "desc", [1])}
+          onClick={() => onCreatePlan("New Plan", "desc", [1], false)}
         >
           Submit
         </button>
@@ -559,7 +559,7 @@ describe("PlannerPage", () => {
     await waitFor(() => expect(screen.getByTestId("plans-hub")).toBeInTheDocument());
 
     await act(async () => fireEvent.click(screen.getByTestId("create-plan-btn")));
-    await waitFor(() => expect(screen.getByTestId("create-plan-dialog")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByTestId("create-plan-drawer")).toBeInTheDocument());
 
     await act(async () => fireEvent.click(screen.getByTestId("submit-create-plan")));
 
@@ -697,7 +697,7 @@ describe("PlannerPage", () => {
     await waitFor(() => expect(screen.getByTestId("plans-hub")).toBeInTheDocument());
 
     await act(async () => fireEvent.click(screen.getByTestId("create-plan-btn")));
-    await waitFor(() => expect(screen.getByTestId("create-plan-dialog")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByTestId("create-plan-drawer")).toBeInTheDocument());
 
     await act(async () => fireEvent.click(screen.getByTestId("submit-create-plan")));
 

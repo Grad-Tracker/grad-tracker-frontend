@@ -3,6 +3,11 @@ import { DB_VIEWS } from "@/lib/supabase/queries/schema";
 import ProgramsClient, { type Program } from "./ProgramsClient";
 import type { ViewProgramCatalogRow } from "@/lib/supabase/queries/view-types";
 
+export const metadata = {
+  title: "Requirements | Grad Tracker",
+  description: "Track your graduation progress in Grad Tracker.",
+};
+
 export default async function RequirementsPage() {
   const supabase = await createClient();
 

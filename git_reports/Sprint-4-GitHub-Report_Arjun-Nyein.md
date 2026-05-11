@@ -2,12 +2,12 @@
 
 Repository URL: https://github.com/Grad-Tracker/grad-tracker-frontend
 
-## PRs Merged During Reporting Window (2026-03-18 to 2026-04-07)
+## PRs Worked On During Reporting Window (2026-03-18 to 2026-04-07)
 
 ### 1) Role-based sign-in UX + Advisor gated signup
 - Author: ArjunNyein  
 - Reviewers: Jack Miller, Mekhi Walker  
-- Merge Date: N/A  
+- Merge Date: Not merged (N/A)  
 
 **Summary of work:**
 - Built a clearer role-based sign-in experience so users can choose **Student** vs **Advisor** without confusion.
@@ -21,7 +21,7 @@ Repository URL: https://github.com/Grad-Tracker/grad-tracker-frontend
 ### 2) Admin discovery improvements (Programs + Gen-Ed)
 - Author: ArjunNyein  
 - Reviewers: Jack Miller, Mekhi Walker  
-- Merge Date: N/A  
+- Merge Date: Not merged (N/A)  
 
 **Summary of work:**
 - Added client-side **sorting** controls for `/admin/programs` to make large program lists easier to scan.

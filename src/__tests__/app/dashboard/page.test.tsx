@@ -308,6 +308,18 @@ describe("Dashboard", () => {
     });
   });
 
+  it("renders quick action links to live dashboard routes", async () => {
+    await act(async () => {
+      renderWithChakra(<Dashboard />);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByRole("link", { name: /Generate Progress Report/i })).toHaveAttribute("href", "/dashboard");
+      expect(screen.getByRole("link", { name: /Plan Next Semester/i })).toHaveAttribute("href", "/dashboard/planner");
+      expect(screen.getByRole("link", { name: /Review Requirements/i })).toHaveAttribute("href", "/dashboard/requirements");
+    });
+  });
+
   it("shows degree requirements section", async () => {
     await act(async () => {
       renderWithChakra(<Dashboard />);
@@ -371,34 +383,6 @@ describe("Dashboard", () => {
     });
 
     expect(mockPush).toHaveBeenCalledWith("/dashboard/courses");
-  });
-
-  it("navigates to planner when Plan Next Semester is clicked", async () => {
-    await act(async () => {
-      renderWithChakra(<Dashboard />);
-    });
-
-    const plannerButton = await screen.findByRole("button", { name: /Plan Next Semester/i });
-
-    await act(async () => {
-      fireEvent.click(plannerButton);
-    });
-
-    expect(mockPush).toHaveBeenCalledWith("/dashboard/planner");
-  });
-
-  it("navigates to requirements when Review Requirements is clicked", async () => {
-    await act(async () => {
-      renderWithChakra(<Dashboard />);
-    });
-
-    const requirementsButton = await screen.findByRole("button", { name: /Review Requirements/i });
-
-    await act(async () => {
-      fireEvent.click(requirementsButton);
-    });
-
-    expect(mockPush).toHaveBeenCalledWith("/dashboard/requirements");
   });
 
   it("renders waitlist and planned status badges for courses", async () => {
@@ -490,6 +474,42 @@ describe("Dashboard", () => {
       expect(screen.getAllByText("Unknown").length).toBeGreaterThanOrEqual(1);
       expect(screen.getByText("No degree requirements yet")).toBeInTheDocument();
       expect(screen.getByText("Select a program to see required credits")).toBeInTheDocument();
+    });
+  });
+
+  it("caps completed credits per block before aggregating requirement totals", async () => {
+    setupHappyPath({
+      progressRows: [
+        { student_id: 1, course_id: 101, completed: true, progress_status: "COMPLETED" },
+        { student_id: 1, course_id: 102, completed: true, progress_status: "COMPLETED" },
+      ],
+      blockRows: [
+        {
+          block_id: 1,
+          block_name: "Major Core A",
+          credits_required: 3,
+          courses: [
+            { course_id: 101, subject: "CS", number: "101", title: "One", credits: 3 },
+            { course_id: 102, subject: "CS", number: "102", title: "Two", credits: 3 },
+          ],
+        },
+        {
+          block_id: 2,
+          block_name: "Major Core B",
+          credits_required: 3,
+          courses: [
+            { course_id: 201, subject: "CS", number: "201", title: "Three", credits: 3 },
+          ],
+        },
+      ],
+    });
+
+    await act(async () => {
+      renderWithChakra(<Dashboard />);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText("3/6 credits")).toBeInTheDocument();
     });
   });
 

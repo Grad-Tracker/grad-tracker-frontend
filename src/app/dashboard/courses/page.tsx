@@ -4,6 +4,11 @@ import type { Course } from "@/types/course";
 import { DB_VIEWS } from "@/lib/supabase/queries/schema";
 import type { ViewCourseCatalogRow } from "@/lib/supabase/queries/view-types";
 
+export const metadata = {
+  title: "Courses | Grad Tracker",
+  description: "Track your graduation progress in Grad Tracker.",
+};
+
 export default async function CoursesPage() {
   const supabase = await createClient();
 
