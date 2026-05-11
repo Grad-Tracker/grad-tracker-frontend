@@ -1,0 +1,8 @@
+executionOrder:
+  continueOnFailure: false
+  flowsOrder:
+    - auth-redirect
+    - sign-in
+    - dashboard-nav
+    - requirements-view
+    - planner-view

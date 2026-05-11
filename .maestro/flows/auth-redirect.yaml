@@ -1,8 +1,7 @@
-appId: browser
+url: "${MAESTRO_BASE_URL}/dashboard"
 ---
 - launchApp:
     clearState: true
-- openLink: "${MAESTRO_BASE_URL}/dashboard"
 - waitForAnimationToEnd
 - assertVisible: "Welcome back,"
 - assertNotVisible: "Degree Requirements"

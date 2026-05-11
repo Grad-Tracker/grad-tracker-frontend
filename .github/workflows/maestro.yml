@@ -10,6 +10,7 @@ jobs:
 
     env:
       MAESTRO_BASE_URL: http://localhost:3000
+      MAESTRO_CLI_NO_ANALYTICS: "true"
       NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
       NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
 

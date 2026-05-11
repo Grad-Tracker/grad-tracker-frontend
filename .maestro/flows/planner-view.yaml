@@ -1,17 +1,21 @@
-appId: browser
+url: "${MAESTRO_BASE_URL}/signin"
 ---
 - launchApp:
     clearState: true
-- openLink: "${MAESTRO_BASE_URL}/signin"
-- tapOn: "Email"
-- inputText: "${MAESTRO_TEST_EMAIL}"
-- tapOn: "Password"
-- inputText: "${MAESTRO_TEST_PASSWORD}"
-- tapOn:
-    text: "Sign In"
-    index: 0
+- waitForAnimationToEnd
+- runFlow:
+    when:
+      visible: "Email"
+    commands:
+      - tapOn: "Email"
+      - inputText: "${MAESTRO_TEST_EMAIL}"
+      - tapOn: "Password"
+      - inputText: "${MAESTRO_TEST_PASSWORD}"
+      - tapOn:
+          text: "Sign In"
+          index: 1
 - waitForAnimationToEnd
 - openLink: "${MAESTRO_BASE_URL}/dashboard/planner"
 - waitForAnimationToEnd
-- assertVisible: "Planner"
+- assertVisible: "Your Plans"
 - assertNotVisible: "Welcome back,"
