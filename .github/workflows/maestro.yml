@@ -11,6 +11,7 @@ jobs:
     env:
       MAESTRO_BASE_URL: http://localhost:3000
       MAESTRO_CLI_NO_ANALYTICS: "true"
+      MAESTRO_CLI_ANALYSIS_NOTIFICATION_DISABLED: "true"
       NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
       NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
 
@@ -27,7 +28,7 @@ jobs:
 
       - name: Install Maestro CLI
         run: |
-          export MAESTRO_VERSION=1.39.0
+          export MAESTRO_VERSION=2.5.1
           curl -Ls "https://get.maestro.mobile.dev" | bash
           echo "$HOME/.maestro/bin" >> $GITHUB_PATH
 
