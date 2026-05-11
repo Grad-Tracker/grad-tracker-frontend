@@ -1,5 +1,10 @@
 # GradTracker Frontend
 
+[![Coverage Gate](https://github.com/Grad-Tracker/grad-tracker-frontend/actions/workflows/coverage-gate.yml/badge.svg?branch=dev)](https://github.com/Grad-Tracker/grad-tracker-frontend/actions/workflows/coverage-gate.yml)
+[![Maestro E2E](https://github.com/Grad-Tracker/grad-tracker-frontend/actions/workflows/maestro.yml/badge.svg?branch=dev)](https://github.com/Grad-Tracker/grad-tracker-frontend/actions/workflows/maestro.yml)
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=Grad-Tracker_grad-tracker-frontend&metric=alert_status)](https://sonarcloud.io/project/overview?id=Grad-Tracker_grad-tracker-frontend)
+[![Coverage](https://sonarcloud.io/api/project_badges/measure?project=Grad-Tracker_grad-tracker-frontend&metric=coverage)](https://sonarcloud.io/project/overview?id=Grad-Tracker_grad-tracker-frontend)
+
 GradTracker is a graduation planning app for university students. It helps users set up their program, track requirement progress, and build semester-by-semester plans.
 
 ## Current Features
@@ -77,6 +82,63 @@ Open `http://localhost:3000`.
 - Coverage gate workflow runs on pull requests to `dev` and enforces 80% thresholds for lines/functions/branches/statements
 - Main branch PRs run SonarCloud analysis and test coverage
 - CodeRabbit auto-reviews pull requests targeting `dev` (and `main`)
+- Maestro E2E workflow runs on pull requests to `dev` and exercises key user journeys against a locally built app
+
+## End-to-End Testing (Maestro)
+
+UI/browser flows are tested with [Maestro](https://maestro.mobile.dev), which drives a real Chromium browser against the running Next.js app.
+
+### Flows
+
+| Flow | File | What It Tests |
+|------|------|---------------|
+| Sign In | `.maestro/flows/sign-in.yaml` | Student login → dashboard redirect |
+| Auth Redirect | `.maestro/flows/auth-redirect.yaml` | Unauthenticated access to `/dashboard` redirects to `/signin` |
+| Dashboard Nav | `.maestro/flows/dashboard-nav.yaml` | Sidebar: Dashboard → Requirements → Planner → Dashboard |
+| Requirements View | `.maestro/flows/requirements-view.yaml` | Requirements page renders after authentication |
+| Planner View | `.maestro/flows/planner-view.yaml` | Planner page renders after authentication |
+
+### Running Locally
+
+Install the Maestro CLI:
+
+```bash
+curl -Ls "https://get.maestro.mobile.dev" | bash
+```
+
+Start the app:
+
+```bash
+npm run dev
+```
+
+In a separate terminal, run all flows:
+
+```bash
+MAESTRO_BASE_URL=http://localhost:3000 \
+MAESTRO_TEST_EMAIL=your@email.com \
+MAESTRO_TEST_PASSWORD=yourpassword \
+maestro test .maestro/flows/
+```
+
+Run a single flow:
+
+```bash
+maestro test .maestro/flows/sign-in.yaml
+```
+
+### CI Behavior
+
+The `maestro.yml` workflow runs on every pull request to `dev`. It starts the Next.js dev server on port 3000, waits for it to be ready, then runs all five flows using a headless Chromium browser. The JUnit report is uploaded as an artifact (retained 14 days).
+
+### Test Account Setup
+
+The flows require a pre-seeded Supabase test user. Create one in your Supabase dashboard, complete onboarding for that user, then add these GitHub Actions secrets:
+
+- `MAESTRO_TEST_EMAIL` — the test user's email
+- `MAESTRO_TEST_PASSWORD` — the test user's password
+- `NEXT_PUBLIC_SUPABASE_URL` — same as your `.env.local`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY` — same as your `.env.local`
 
 ## Project Structure
 
