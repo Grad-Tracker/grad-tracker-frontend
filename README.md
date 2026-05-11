@@ -1,5 +1,10 @@
 # GradTracker — Frontend
 
+[![Coverage Gate](https://github.com/Grad-Tracker/grad-tracker-frontend/actions/workflows/coverage-gate.yml/badge.svg?branch=dev)](https://github.com/Grad-Tracker/grad-tracker-frontend/actions/workflows/coverage-gate.yml)
+[![Maestro E2E](https://github.com/Grad-Tracker/grad-tracker-frontend/actions/workflows/maestro.yml/badge.svg?branch=dev)](https://github.com/Grad-Tracker/grad-tracker-frontend/actions/workflows/maestro.yml)
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=Grad-Tracker_grad-tracker-frontend&metric=alert_status)](https://sonarcloud.io/project/overview?id=Grad-Tracker_grad-tracker-frontend)
+[![Coverage](https://sonarcloud.io/api/project_badges/measure?project=Grad-Tracker_grad-tracker-frontend&metric=coverage)](https://sonarcloud.io/project/overview?id=Grad-Tracker_grad-tracker-frontend)
+
 GradTracker is a university graduation planning application. Students use it to track degree requirements, build semester-by-semester course plans, and get AI-powered academic advising. Academic advisors use the admin portal to oversee their students' progress, manage programs, and administer the course catalog.
 
 This repo is the **frontend**. A separate backend repo handles server-side data processing. This README is written for developers taking over or joining the project.
@@ -16,8 +21,9 @@ This repo is the **frontend**. A separate backend repo handles server-side data 
 8. [User Roles](#user-roles)
 9. [Branching, PRs, and CI](#branching-prs-and-ci)
 10. [Testing](#testing)
-11. [Cross-Agent Skills](#cross-agent-skills)
-12. [Resources](#resources)
+11. [End-to-End Testing (Maestro)](#end-to-end-testing-maestro)
+12. [Cross-Agent Skills](#cross-agent-skills)
+13. [Resources](#resources)
 
 ---
 
@@ -33,6 +39,7 @@ This repo is the **frontend**. A separate backend repo handles server-side data 
 | Drag-and-Drop | dnd-kit (`@dnd-kit/core`, `@dnd-kit/sortable`) |
 | Rich Text | TipTap v3 |
 | Testing | Vitest 3 + Testing Library + jsdom |
+| E2E Testing | Maestro (Chromium browser flows) |
 | Linting | ESLint 9 |
 | CI | GitHub Actions, SonarCloud, CodeRabbit |
 
@@ -94,7 +101,7 @@ ANTHROPIC_API_KEY=<your-anthropic-api-key>
 | `npm run start` | Serve the production build |
 | `npm run lint` | Run ESLint |
 
-### Testing
+### Test Scripts
 
 | Script | What it does |
 | --- | --- |
@@ -135,7 +142,7 @@ These scripts maintain academic data integrity in the database. Run them when se
 
 ## Project Structure
 
-```
+```text
 src/
 ├── app/                          # Next.js App Router
 │   ├── layout.tsx                # Root layout (Chakra Provider, fonts)
@@ -285,24 +292,31 @@ scripts/
 ## Features
 
 ### Authentication
+
 Email/password sign-in and sign-up via Supabase Auth. Includes forgot-password and reset-password flows. Route protection is enforced by `src/proxy.ts` (Next.js 16's replacement for `middleware.ts`). After first sign-up, students are redirected to the onboarding wizard.
 
 > **Supabase sign-up quirk:** `supabase.auth.signUp()` does not return an error when the email already exists (to prevent enumeration). Detect duplicates by checking `data.user?.identities?.length === 0`.
 
 ### Onboarding Wizard
+
 Three-step wizard at `/dashboard/onboarding/wizard` for new students: select a degree program, mark completed coursework, and confirm. Runs once on first login; students can revisit from Settings.
 
 ### Dashboard
+
 Student home at `/dashboard`. Shows a progress summary (credits completed, requirement-block completion), a breakdown of requirement categories, current-semester courses, and quick-action shortcuts.
 
 ### Requirements View
+
 Full degree audit at `/dashboard/requirements`. Lists every requirement block (major core, gen-ed categories, electives) and shows which courses satisfy each block. Drill into a specific block at `/dashboard/requirements/:id`.
 
 ### Course Catalog
+
 Searchable, filterable course browser at `/dashboard/courses`. Displays course title, credits, subject, and prerequisite status relative to the student's history.
 
 ### Semester Planner
+
 Multi-plan drag-and-drop planner at `/dashboard/planner`. Students can:
+
 - Create and switch between named plans
 - Add and remove semesters
 - Drag courses between semesters (dnd-kit)
@@ -310,11 +324,12 @@ Multi-plan drag-and-drop planner at `/dashboard/planner`. Students can:
 - See inline prerequisite warnings
 - Share a read-only link to any plan
 
-### Atlas AI Advisor
-AI chat assistant embedded in the dashboard — see [Atlas AI Advisor](#atlas-ai-advisor).
+**Atlas AI Advisor** — AI chat assistant embedded in the dashboard. See the [Atlas AI Advisor](#atlas-ai-advisor) section for full details.
 
 ### Admin Portal
+
 Advisor-facing area at `/admin`. Advisors must sign up at `/admin/signup` with a one-time gate code. Features:
+
 - **Students** — list all assigned students; open any student's planner in read/write mode
 - **Programs** — create and edit degree programs and requirement blocks
 - **Courses** — manage the course catalog
@@ -322,6 +337,7 @@ Advisor-facing area at `/admin`. Advisors must sign up at `/admin/signup` with a
 - **Assignments** — assign students to specific advisors
 
 ### Plan Sharing
+
 Students can generate a shareable link to a plan. Anyone with the link can view it at `/shared/plan/:token` and compare two shared plans side-by-side.
 
 ---
@@ -331,6 +347,7 @@ Students can generate a shareable link to a plan. Anyone with the link can view 
 Atlas is the AI academic advisor embedded in the student dashboard. It is built on the **Anthropic SDK** and uses **streaming responses**.
 
 **Architecture:**
+
 - The floating action button (`AtlasFAB`) opens a slide-in panel (`AtlasPanel`) from any dashboard page
 - The panel hosts `ChatInterface`, which streams from `/api/ai-advisor/chat/stream`
 - Conversations are stored in Supabase and listed in `ConversationList`
@@ -376,16 +393,21 @@ Students sign up with an email and password. Advisors must enter a one-time gate
 ## Branching, PRs, and CI
 
 **Branch strategy:**
-```
+
+```text
 feature/* → dev → main
 ```
+
 - No direct pushes to `dev` or `main` — all changes go through pull requests.
 - Name feature branches `feature/<short-description>`.
 
 **CI on PRs to `dev`:**
+
 - **Coverage gate:** 80% lines, functions, branches, and statements (enforced by Vitest coverage). Failing coverage blocks merge.
+- **Maestro E2E:** All five browser flows run against a locally built app. Failing flows block merge.
 
 **CI on PRs/pushes to `main`:**
+
 - **SonarCloud** static analysis runs automatically.
 - **CodeRabbit** posts an automated code review on every PR.
 
@@ -413,6 +435,58 @@ npm run test:coverage     # With V8 coverage report
 
 ---
 
+## End-to-End Testing (Maestro)
+
+UI/browser flows are tested with [Maestro](https://maestro.mobile.dev), which drives a real Chromium browser against the running Next.js app.
+
+### Flows
+
+| Flow | File | What It Tests |
+| --- | --- | --- |
+| Sign In | `.maestro/flows/sign-in.yaml` | Student login → dashboard redirect |
+| Auth Redirect | `.maestro/flows/auth-redirect.yaml` | Unauthenticated access to `/dashboard` redirects to `/signin` |
+| Dashboard Nav | `.maestro/flows/dashboard-nav.yaml` | Sidebar: Dashboard → Requirements → Planner → Dashboard |
+| Requirements View | `.maestro/flows/requirements-view.yaml` | Requirements page renders after authentication |
+| Planner View | `.maestro/flows/planner-view.yaml` | Planner page renders after authentication |
+
+### Running Locally
+
+Install the Maestro CLI:
+
+```bash
+curl -Ls "https://get.maestro.mobile.dev" | bash
+```
+
+Start the app, then in a separate terminal run all flows:
+
+```bash
+MAESTRO_BASE_URL=http://localhost:3000 \
+MAESTRO_TEST_EMAIL=your@email.com \
+MAESTRO_TEST_PASSWORD=yourpassword \
+maestro test .maestro/flows/
+```
+
+Run a single flow:
+
+```bash
+maestro test .maestro/flows/sign-in.yaml
+```
+
+### CI Behavior
+
+The `maestro.yml` workflow runs on every pull request to `dev`. It starts the Next.js dev server on port 3000, waits for it to be ready, then runs all five flows using a headless Chromium browser. The JUnit report is uploaded as an artifact (retained 14 days).
+
+### Test Account Setup
+
+The flows require a pre-seeded Supabase test user. Create one in your Supabase dashboard, complete onboarding for that user, then add these GitHub Actions secrets:
+
+- `MAESTRO_TEST_EMAIL` — the test user's email
+- `MAESTRO_TEST_PASSWORD` — the test user's password
+- `NEXT_PUBLIC_SUPABASE_URL` — same as your `.env.local`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY` — same as your `.env.local`
+
+---
+
 ## Cross-Agent Skills
 
 Claude Code skills are defined canonically in `.agents/skills/` and automatically mirrored to `.claude/skills/`.
@@ -420,6 +494,7 @@ Claude Code skills are defined canonically in `.agents/skills/` and automaticall
 **Never hand-edit files in `.claude/skills/`** — they are overwritten on the next sync.
 
 **Workflow:**
+
 1. Edit skill definitions in `.agents/skills/<skill-name>/SKILL.md`
 2. Keep `.agents/skills/manifest.json` updated with every skill folder name
 3. Validate: `npm run skills:validate`
@@ -440,12 +515,13 @@ CI enforces sync via `npm run skills:check`. A failed check on a PR means `.agen
 
 ## Resources
 
-| Resource | URL |
+| Resource | Link |
 | --- | --- |
-| Next.js Docs | https://nextjs.org/docs |
-| Chakra UI v3 Docs | https://www.chakra-ui.com/docs/get-started/installation |
-| Supabase Docs | https://supabase.com/docs |
-| Vitest Docs | https://vitest.dev/guide/ |
-| Anthropic SDK Docs | https://docs.anthropic.com/en/api/getting-started |
-| dnd-kit Docs | https://docs.dndkit.com |
-| TipTap Docs | https://tiptap.dev/docs/introduction |
+| Next.js Docs | [nextjs.org/docs](https://nextjs.org/docs) |
+| Chakra UI v3 Docs | [chakra-ui.com/docs](https://www.chakra-ui.com/docs/get-started/installation) |
+| Supabase Docs | [supabase.com/docs](https://supabase.com/docs) |
+| Vitest Docs | [vitest.dev/guide](https://vitest.dev/guide/) |
+| Anthropic SDK Docs | [docs.anthropic.com](https://docs.anthropic.com/en/api/getting-started) |
+| dnd-kit Docs | [docs.dndkit.com](https://docs.dndkit.com) |
+| TipTap Docs | [tiptap.dev/docs](https://tiptap.dev/docs/introduction) |
+| Maestro Docs | [maestro.mobile.dev/docs](https://maestro.mobile.dev/docs) |

@@ -1,0 +1,7 @@
+url: "${MAESTRO_BASE_URL}/dashboard"
+---
+- launchApp:
+    clearState: true
+- waitForAnimationToEnd
+- assertVisible: "Welcome back,"
+- assertNotVisible: "Degree Requirements"
