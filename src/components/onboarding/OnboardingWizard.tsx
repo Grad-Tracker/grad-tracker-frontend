@@ -55,6 +55,18 @@ const INITIAL_STATE: OnboardingState = {
   expectedGradYear: null,
 };
 
+function getErrorMessage(error: unknown): string {
+  if (error instanceof Error && error.message) return error.message;
+  if (typeof error === "string" && error.trim().length > 0) return error;
+  if (error && typeof error === "object") {
+    const maybeMessage = (error as { message?: unknown }).message;
+    if (typeof maybeMessage === "string" && maybeMessage.trim().length > 0) {
+      return maybeMessage;
+    }
+  }
+  return "Please try again.";
+}
+
 export default function OnboardingWizard() {
   const router = useRouter();
   const [state, setState] = useState<OnboardingState>(INITIAL_STATE);
@@ -285,7 +297,7 @@ export default function OnboardingWizard() {
 
       toaster.error({
         title: "Failed to save selections",
-        description: "Please try again.",
+        description: getErrorMessage(err),
       });
     } finally {
       setSaving(false);

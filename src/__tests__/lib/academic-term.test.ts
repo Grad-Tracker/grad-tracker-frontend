@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { getCurrentAcademicTerm } from "@/lib/academic-term";
+import { getCurrentAcademicTerm, getNextSemester } from "@/lib/academic-term";
 
 describe("getCurrentAcademicTerm", () => {
   afterEach(() => {
@@ -46,5 +46,23 @@ describe("getCurrentAcademicTerm", () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date(2025, 11, 20)); // December
     expect(getCurrentAcademicTerm()).toEqual({ season: "Fall", year: 2025 });
+  });
+});
+
+describe("getNextSemester", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("returns Fall this year when month is before August (index < 8)", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 3, 1)); // April
+    expect(getNextSemester()).toEqual({ season: "Fall", year: 2026 });
+  });
+
+  it("returns Spring next year when month is August or later (index >= 8)", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 8, 1)); // September
+    expect(getNextSemester()).toEqual({ season: "Spring", year: 2027 });
   });
 });

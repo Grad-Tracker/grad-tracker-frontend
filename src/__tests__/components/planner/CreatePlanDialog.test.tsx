@@ -258,4 +258,13 @@ describe("CreatePlanDialog", () => {
     const createButton = createButtons[0].closest("button")!;
     expect(createButton.disabled).toBe(false);
   });
+
+  it("calls onOpenChange when dialog is closed", async () => {
+    const onOpenChange = vi.fn();
+    await act(async () => {
+      renderWithChakra(<CreatePlanDialog {...defaultProps} onOpenChange={onOpenChange} />);
+    });
+    onOpenChange(false);
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+  });
 });

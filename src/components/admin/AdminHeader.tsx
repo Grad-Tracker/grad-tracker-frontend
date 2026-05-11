@@ -1,16 +1,12 @@
 "use client";
 
-import { Avatar, Badge, Box, Button, Flex, HStack, Text } from "@chakra-ui/react";
-import { useRouter } from "next/navigation";
-import { LuLogOut, LuShield } from "react-icons/lu";
+import { Avatar, Badge, Box, Flex, HStack, Text } from "@chakra-ui/react";
+import { LuShield } from "react-icons/lu";
 import { ColorModeButton } from "@/components/ui/color-mode";
-import { signOutAndRedirect } from "@/lib/auth-helpers";
 import { useUserProfile } from "@/lib/hooks/useUserProfile";
 
 export default function AdminHeader() {
-  const router = useRouter();
   const { userName: advisorName } = useUserProfile();
-  const handleSignOut = () => signOutAndRedirect(router.push);
 
   return (
     <Box
@@ -69,10 +65,6 @@ export default function AdminHeader() {
             </HStack>
           )}
           <ColorModeButton variant="ghost" size="sm" />
-          <Button aria-label="Sign Out" variant="outline" borderRadius="lg" onClick={handleSignOut}>
-            <LuLogOut />
-            <Text display={{ base: "none", md: "inline" }}>Sign Out</Text>
-          </Button>
         </HStack>
       </Flex>
     </Box>

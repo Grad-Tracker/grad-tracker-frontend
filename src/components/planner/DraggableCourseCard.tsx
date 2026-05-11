@@ -14,6 +14,7 @@ interface DraggableCourseCardProps {
   isCompleted?: boolean;
   isPlanned?: boolean;
   dragContextId?: string | number;
+  dragDisabled?: boolean;
 }
 
 function CourseTooltipContent({ course }: { course: Course }) {
@@ -65,13 +66,14 @@ function DraggableCourseCard({
   isCompleted = false,
   isPlanned = false,
   dragContextId,
+  dragDisabled = false,
 }: DraggableCourseCardProps) {
   const poolScope = dragContextId != null ? `panel-${dragContextId}` : "panel";
   const { attributes, listeners, setNodeRef, transform, isDragging } =
     useDraggable({
       id: `course-${course.id}-term-${termId ?? poolScope}`,
       data: { course, fromTermId: termId },
-      disabled: isCompleted,
+      disabled: isCompleted || dragDisabled,
     });
 
   const style = transform
@@ -97,7 +99,7 @@ function DraggableCourseCard({
       borderRadius="lg"
       px="3"
       py="2"
-      cursor={isCompleted ? "not-allowed" : "grab"}
+      cursor={isCompleted ? "not-allowed" : dragDisabled ? "default" : "grab"}
       opacity={isCompleted ? 0.5 : isDragging ? 0.01 : 1}
       _hover={
         isCompleted

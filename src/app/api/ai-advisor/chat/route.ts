@@ -4,6 +4,8 @@ import { resolveStudentProfile } from "@/lib/ai-advisor/data";
 import {
   createAdvisorToolDependencies,
   generateAdvisorResponse,
+  CATALOG_TOOL_DEFINITIONS,
+  CLAUDE_TOOL_DEFINITIONS,
 } from "@/lib/ai-advisor/tools";
 import type {
   AdvisorChatHistoryItem,
@@ -81,10 +83,10 @@ export async function POST(request: Request) {
     );
   }
 
-  if (!profile.hasCompletedOnboarding) {
+  if (!process.env.ANTHROPIC_API_KEY) {
     return NextResponse.json(
-      { error: "Onboarding not completed." },
-      { status: 409 }
+      { error: "AI advisor is not configured." },
+      { status: 503 }
     );
   }
 
@@ -99,6 +101,9 @@ export async function POST(request: Request) {
         studentId: profile.studentId,
         profile,
       }),
+      toolDefinitions: profile.hasCompletedOnboarding
+        ? CLAUDE_TOOL_DEFINITIONS
+        : CATALOG_TOOL_DEFINITIONS,
     });
 
     return NextResponse.json(response, { status: 200 });

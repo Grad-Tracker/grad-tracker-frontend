@@ -19,12 +19,19 @@ export interface AdvisorRecommendation {
   confidence: AdvisorConfidence;
 }
 
+export interface AdvisorSideEffect {
+  type: "plan_created";
+  planId: number;
+  planName: string;
+}
+
 export interface AdvisorChatResponse {
   answer: string;
   recommendations: AdvisorRecommendation[];
   risks: string[];
   missingData: string[];
   citations: string[];
+  sideEffects?: AdvisorSideEffect[];
 }
 
 export interface AdvisorPromptContext {
@@ -34,6 +41,7 @@ export interface AdvisorPromptContext {
   catalogYear: string | null;
   expectedGraduation: string | null;
   hasCompletedOnboarding: boolean;
+  activePlanName?: string | null;
 }
 
 export type AdvisorStreamEvent =
@@ -57,4 +65,10 @@ export interface AdvisorPersistedMessage {
   content: string;
   metadata: Record<string, unknown>;
   createdAt: string;
+}
+
+export interface AdvisorPlanSummary {
+  id: number;
+  name: string;
+  updatedAt: string;
 }

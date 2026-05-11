@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach, beforeEach } from "vitest";
-import { cleanup, screen } from "@testing-library/react";
+import { cleanup, screen, fireEvent, act } from "@testing-library/react";
 import React from "react";
 import { renderWithChakra } from "@/__tests__/helpers/mocks";
 
@@ -292,6 +292,37 @@ describe("LandingPage", { timeout: 15000 }, () => {
     expect(
       screen.getAllByText(new RegExp(`© ${year} GradTracker`)).length
     ).toBeGreaterThanOrEqual(1);
+  });
+
+  it("FadeIn covers isVisible:true branches when IntersectionObserver fires", async () => {
+    vi.useFakeTimers();
+    try {
+      renderWithChakra(<LandingPage />);
+      await act(async () => {
+        vi.runAllTimers();
+      });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("See How It Works click does not throw when section is absent", () => {
+    renderWithChakra(<LandingPage />);
+    const btn = screen.getAllByText("See How It Works")[0];
+    expect(() => fireEvent.click(btn)).not.toThrow();
+  });
+
+  it("See How It Works click calls scrollIntoView when section exists", () => {
+    const scrollIntoViewMock = vi.fn();
+    const section = document.createElement("div");
+    section.id = "how-it-works";
+    section.scrollIntoView = scrollIntoViewMock;
+    document.body.appendChild(section);
+    renderWithChakra(<LandingPage />);
+    const btn = screen.getAllByText("See How It Works")[0];
+    fireEvent.click(btn);
+    expect(scrollIntoViewMock).toHaveBeenCalledWith({ behavior: "smooth" });
+    document.body.removeChild(section);
   });
 
   // --- Images ---

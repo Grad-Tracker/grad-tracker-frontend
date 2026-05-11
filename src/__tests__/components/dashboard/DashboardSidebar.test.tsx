@@ -1,8 +1,13 @@
-import { describe, it, expect, vi } from "vitest";
-import { screen } from "@testing-library/react";
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { screen, fireEvent } from "@testing-library/react";
 import React from "react";
 import { ChakraProvider, defaultSystem } from "@chakra-ui/react";
 import { render } from "@testing-library/react";
+
+const { mockUseUserProfile, mockSignOutAndRedirect } = vi.hoisted(() => ({
+  mockUseUserProfile: vi.fn(),
+  mockSignOutAndRedirect: vi.fn(),
+}));
 
 vi.mock("next/navigation", () => ({
   usePathname: () => "/dashboard",
@@ -14,21 +19,17 @@ vi.mock("next/link", () => ({
     React.createElement("a", { href }, children),
 }));
 
-vi.mock("@/lib/supabase/client", () => ({
-  createClient: vi.fn(() => ({
-    auth: { getUser: vi.fn().mockResolvedValue({ data: { user: null } }), signOut: vi.fn() },
-    from: vi.fn(() => ({ select: vi.fn(() => ({ eq: vi.fn(() => ({ maybeSingle: vi.fn().mockResolvedValue({ data: null }) })) })) })),
-    storage: { from: vi.fn(() => ({ createSignedUrl: vi.fn() })) },
-  })),
+vi.mock("@/lib/hooks/useUserProfile", () => ({
+  useUserProfile: mockUseUserProfile,
 }));
 
-vi.mock("@/components/ui/toaster", () => ({
-  toaster: { create: vi.fn() },
+vi.mock("@/lib/auth-helpers", () => ({
+  signOutAndRedirect: (...args: any[]) => mockSignOutAndRedirect(...args),
 }));
 
 vi.mock("@/components/ui/menu", () => ({
   MenuContent: ({ children }: any) => <div>{children}</div>,
-  MenuItem: ({ children }: any) => <div>{children}</div>,
+  MenuItem: ({ children, onClick }: any) => <div onClick={onClick}>{children}</div>,
   MenuItemText: ({ children }: any) => <span>{children}</span>,
   MenuRoot: ({ children }: any) => <div>{children}</div>,
   MenuSeparator: () => <hr />,
@@ -46,6 +47,11 @@ function renderSidebar() {
     )
   );
 }
+
+beforeEach(() => {
+  vi.clearAllMocks();
+  mockUseUserProfile.mockReturnValue({ userName: "", avatarUrl: "", loading: false });
+});
 
 describe("DashboardSidebar", () => {
 
@@ -76,5 +82,23 @@ describe("DashboardSidebar", () => {
     renderSidebar();
     expect(screen.getAllByText("Settings").length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText("Sign Out").length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("calls signOutAndRedirect when Sign Out is clicked", () => {
+    renderSidebar();
+    const signOutItems = screen.getAllByText("Sign Out");
+    fireEvent.click(signOutItems[0]);
+    expect(mockSignOutAndRedirect).toHaveBeenCalled();
+  });
+
+  it("renders Avatar.Image elements when avatarUrl is provided", () => {
+    mockUseUserProfile.mockReturnValue({
+      userName: "Jane Doe",
+      avatarUrl: "https://example.com/jane.jpg",
+      loading: false,
+    });
+    const { container } = renderSidebar();
+    const imgs = container.querySelectorAll("img[src*='jane.jpg']");
+    expect(imgs.length).toBeGreaterThan(0);
   });
 });

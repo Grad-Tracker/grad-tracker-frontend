@@ -189,40 +189,6 @@ describe("RoleSignInForm", () => {
     expect(mockToaster.create).toHaveBeenCalledWith(expect.objectContaining({ title: "Missing fields" }));
   });
 
-  it("student sign-in blocks advisor-domain emails", async () => {
-    renderWithChakra(<RoleSignInForm defaultRole="student" />);
-
-    fireEvent.change(screen.getByPlaceholderText("you@example.com"), { target: { value: "advisor@uwp.edu" } });
-    fireEvent.change(screen.getByTestId("password-input"), { target: { value: "password123" } });
-
-    const buttons = screen.getAllByText("Sign In");
-    const btn = buttons.find((el) => el.closest("button") !== null);
-    await act(async () => {
-      fireEvent.click(btn!);
-    });
-
-    expect(mockSignInWithPassword).not.toHaveBeenCalled();
-    expect(mockToaster.create).toHaveBeenCalledWith(expect.objectContaining({ title: "Invalid email domain" }));
-  });
-
-  it("advisor sign-in blocks student-domain emails", async () => {
-    renderWithChakra(<RoleSignInForm defaultRole="advisor" />);
-
-    fireEvent.change(screen.getByPlaceholderText("you@example.com"), {
-      target: { value: "student@rangers.uwp.edu" },
-    });
-    fireEvent.change(screen.getByTestId("password-input"), { target: { value: "password123" } });
-
-    const buttons = screen.getAllByText("Sign In");
-    const btn = buttons.find((el) => el.closest("button") !== null);
-    await act(async () => {
-      fireEvent.click(btn!);
-    });
-
-    expect(mockSignInWithPassword).not.toHaveBeenCalled();
-    expect(mockToaster.create).toHaveBeenCalledWith(expect.objectContaining({ title: "Invalid email domain" }));
-  });
-
   it("calls signInWithPassword with correct credentials", async () => {
     mockSignInWithPassword.mockResolvedValue({ data: {}, error: null });
     renderWithChakra(<RoleSignInForm defaultRole="student" />);

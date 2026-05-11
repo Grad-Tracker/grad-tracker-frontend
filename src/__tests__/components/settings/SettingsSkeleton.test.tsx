@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import { screen } from "@testing-library/react";
 import { renderWithChakra } from "@/__tests__/helpers/mocks";
 import { SettingsSkeleton, ClassHistorySkeleton } from "@/components/settings/SettingsSkeleton";
+import { SkeletonList } from "@/components/shared/SkeletonParts";
 
 describe("SettingsSkeleton", () => {
   it("renders without crashing", () => {
@@ -42,5 +43,18 @@ describe("ClassHistorySkeleton", () => {
     renderWithChakra(<ClassHistorySkeleton />);
     expect(screen.queryByText("General Education")).not.toBeInTheDocument();
     expect(screen.queryByText("Major Requirements")).not.toBeInTheDocument();
+  });
+});
+
+describe("SkeletonList", () => {
+  it("renders the default number of skeleton rows", () => {
+    const { container } = renderWithChakra(<SkeletonList />);
+    expect(container.firstChild).toBeTruthy();
+    expect(container.querySelectorAll("div").length).toBeGreaterThan(0);
+  });
+
+  it("renders a custom count of rows", () => {
+    const { container } = renderWithChakra(<SkeletonList count={5} />);
+    expect(container.querySelectorAll("div").length).toBeGreaterThan(0);
   });
 });

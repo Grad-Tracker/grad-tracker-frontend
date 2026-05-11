@@ -10,17 +10,20 @@ interface DraggableCourseRowProps {
   course: Course;
   termId: number;
   onCourseClick: (course: Course, termId: number) => void;
+  canEdit?: boolean;
 }
 
 export default function DraggableCourseRow({
   course,
   termId,
   onCourseClick,
+  canEdit = true,
 }: Readonly<DraggableCourseRowProps>) {
   const { attributes, listeners, setNodeRef, transform, isDragging } =
     useDraggable({
       id: `course-${course.id}-term-${termId}`,
       data: { course, fromTermId: termId },
+      disabled: !canEdit,
     });
 
   const style = transform

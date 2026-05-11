@@ -15,6 +15,7 @@ interface SemesterGridProps {
   onRemoveCourse?: (course: Course, termId: number) => void | Promise<void>;
   isRemovingCourse?: boolean;
   isGraduatePlan?: boolean;
+  canEdit?: boolean;
 }
 
 function getAcademicYear(term: Term): string {
@@ -38,6 +39,7 @@ export default function SemesterGrid({
   onRemoveCourse,
   isRemovingCourse = false,
   isGraduatePlan = false,
+  canEdit = true,
 }: SemesterGridProps) {
   const [collapsedSummers, setCollapsedSummers] = useState<Set<number>>(
     () => new Set(terms.filter((t) => t.season === "Summer").map((t) => t.id))
@@ -165,6 +167,7 @@ export default function SemesterGrid({
                       onRemoveTerm={onRemoveTerm}
                       onCourseClick={handleCourseClick}
                       isGraduatePlan={isGraduatePlan}
+                      canEdit={canEdit}
                     />
                   </Box>
                 )}
@@ -176,6 +179,7 @@ export default function SemesterGrid({
                       onRemoveTerm={onRemoveTerm}
                       onCourseClick={handleCourseClick}
                       isGraduatePlan={isGraduatePlan}
+                      canEdit={canEdit}
                     />
                   </Box>
                 )}
@@ -192,6 +196,7 @@ export default function SemesterGrid({
                         toggleSummerCollapse(group.summer!.id)
                       }
                       isGraduatePlan={isGraduatePlan}
+                      canEdit={canEdit}
                     />
                   </Box>
                 )}
@@ -210,6 +215,7 @@ export default function SemesterGrid({
                       toggleSummerCollapse(group.summer!.id)
                     }
                     isGraduatePlan={isGraduatePlan}
+                    canEdit={canEdit}
                   />
                 </Box>
               )}

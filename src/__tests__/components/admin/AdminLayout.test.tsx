@@ -122,10 +122,9 @@ describe("Admin layout components", () => {
   // ── AdminHeader ───────────────────────────────────────────────────────────
 
   describe("AdminHeader", () => {
-    it("renders title and sign-out button", () => {
+    it("renders the Advisor Tools title", () => {
       renderWithChakra(<AdminHeader />);
       expect(screen.getByText("Advisor Tools")).toBeInTheDocument();
-      expect(screen.getByRole("button", { name: /sign out/i })).toBeInTheDocument();
     });
 
     it("displays advisor name after loading from user metadata", async () => {
@@ -145,19 +144,6 @@ describe("Admin layout components", () => {
       // Name and Advisor badge should not be rendered when metadata has no first/last name
       expect(screen.queryByText("Advisor")).not.toBeInTheDocument();
       expect(screen.queryByRole("img", { name: /avatar/i })).not.toBeInTheDocument();
-    });
-
-    it("calls signOut and redirects on sign-out click", async () => {
-      renderWithChakra(<AdminHeader />);
-      fireEvent.click(screen.getByRole("button", { name: /sign out/i }));
-
-      await waitFor(() => {
-        expect(mockSignOut).toHaveBeenCalled();
-        expect(mockToasterCreate).toHaveBeenCalledWith(
-          expect.objectContaining({ title: "Signed out", type: "success" })
-        );
-        expect(mockPush).toHaveBeenCalledWith("/signin");
-      });
     });
   });
 

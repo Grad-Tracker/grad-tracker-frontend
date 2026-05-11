@@ -25,7 +25,13 @@ vi.stubGlobal("crypto", {
 import { ChatInterface } from "@/components/dashboard/ai-advisor/ChatInterface";
 
 function renderChat() {
-  return renderWithChakra(<ChatInterface />);
+  return renderWithChakra(
+    <ChatInterface
+      conversationId={null}
+      onConversationCreated={() => {}}
+      activePlanId={null}
+    />
+  );
 }
 
 /**
@@ -111,7 +117,13 @@ describe("ChatInterface", () => {
 
   it("renders the Atlas greeting message on mount", () => {
     renderChat();
-    const matches = screen.getAllByText(/I'm Atlas, your AI Academic Advisor/i);
+    // ReactMarkdown splits "I'm **Atlas**, your AI Academic Advisor." across nodes.
+    // The `content` arg in getAllByText only covers direct text nodes, so we must
+    // check element.textContent (fully recursive) via the second argument.
+    const matches = screen.getAllByText(
+      (_, element) => /I'm Atlas, your AI Academic Advisor/i.test(element?.textContent ?? ""),
+      { selector: "p" }
+    );
     expect(matches.length).toBeGreaterThanOrEqual(1);
   });
 
@@ -137,7 +149,7 @@ describe("ChatInterface", () => {
       "What should I take next semester?",
       "Am I on track to graduate?",
       "Show my remaining requirements",
-      "Can I take CSCI 340?",
+      "Create a graduation plan",
     ];
     for (const chip of chips) {
       expect(screen.getAllByText(chip).length).toBeGreaterThanOrEqual(1);
@@ -238,7 +250,10 @@ describe("ChatInterface", () => {
     // The greeting should still be visible
     await waitFor(() => {
       expect(
-        screen.getAllByText(/I'm Atlas, your AI Academic Advisor/i).length
+        screen.getAllByText(
+          (_, element) => /I'm Atlas, your AI Academic Advisor/i.test(element?.textContent ?? ""),
+          { selector: "p" }
+        ).length
       ).toBeGreaterThanOrEqual(1);
     });
   });
@@ -366,8 +381,19 @@ describe("ChatInterface", () => {
   });
 
   it("processes a status event and shows it as placeholder text", async () => {
-    // Create a stream that only has a status event, then closes
-    const stream = createSSEStream([{ type: "status", text: "Looking up requirements..." }]);
+    // Stream that emits a status event but never closes — status text is only
+    // visible while loading is true, so we must keep the stream open.
+    const encoder = new TextEncoder();
+    const stream = new ReadableStream({
+      start(controller) {
+        controller.enqueue(
+          encoder.encode(
+            `data: ${JSON.stringify({ type: "status", text: "Looking up requirements..." })}\n\n`
+          )
+        );
+        // Intentionally do NOT close — keeps loading=true so the status bar shows the text.
+      },
+    });
 
     mockFetch.mockImplementation((url: string) => {
       if (url === "/api/ai-advisor/chat/stream") {

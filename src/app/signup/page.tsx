@@ -17,7 +17,7 @@ import { LuArrowRight, LuLoader } from "react-icons/lu";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { isStudentEmail, normalizeEmail } from "@/lib/email-validation";
+import { normalizeEmail } from "@/lib/email-validation";
 import AuthPageLayout from "@/components/auth/AuthPageLayout";
 import PasswordStrength from "@/components/auth/PasswordStrength";
 
@@ -122,15 +122,6 @@ export default function SignupPage() {
     }
 
     const normalized = normalizeEmail(email);
-
-    if (!isStudentEmail(normalized)) {
-      toaster.create({
-        title: "Invalid email domain",
-        description: "Student sign up requires a @rangers.uwp.edu email address.",
-        type: "error",
-      });
-      return;
-    }
 
     setLoading(true);
 

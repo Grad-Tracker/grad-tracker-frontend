@@ -133,7 +133,7 @@ describe("evaluatePrereqsForCourses additional branches", () => {
 
     expect(result.get(COURSE_ID)).toEqual({
       unlocked: false,
-      summary: ["Requires CSCI 240"],
+      summary: ["Requires CSCI 240", "Student has not taken CSCI 240"],
     });
   });
 

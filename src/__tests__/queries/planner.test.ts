@@ -555,14 +555,20 @@ describe("planner queries", () => {
   // ─────────────────────────────────────────────────────────────────────────
   describe("fetchAvailableCourses", () => {
     it("returns [] when view returns empty rows", async () => {
-      mockFrom.mockReturnValueOnce(mockChain([]));
+      mockFrom
+        .mockReturnValueOnce(mockChain({ id: 1 }))
+        .mockReturnValueOnce(mockChain([{ program_id: 1 }]))
+        .mockReturnValueOnce(mockChain([]));
 
       const result = await fetchAvailableCourses(1, 1);
       expect(result).toEqual([]);
     });
 
     it("returns [] when view returns null", async () => {
-      mockFrom.mockReturnValueOnce(mockChain(null));
+      mockFrom
+        .mockReturnValueOnce(mockChain({ id: 1 }))
+        .mockReturnValueOnce(mockChain([{ program_id: 1 }]))
+        .mockReturnValueOnce(mockChain(null));
 
       const result = await fetchAvailableCourses(1, 1);
       expect(result).toEqual([]);
@@ -601,6 +607,7 @@ describe("planner queries", () => {
       ];
 
       mockFrom
+        .mockReturnValueOnce(mockChain({ id: 1 }))
         .mockReturnValueOnce(mockChain([{ program_id: 1 }]))
         .mockReturnValueOnce(mockChain(rows));
 
@@ -628,6 +635,7 @@ describe("planner queries", () => {
       ];
 
       mockFrom
+        .mockReturnValueOnce(mockChain({ id: 1 }))
         .mockReturnValueOnce(mockChain([{ program_id: 1 }]))
         .mockReturnValueOnce(mockChain(rows));
 
@@ -654,6 +662,7 @@ describe("planner queries", () => {
 
       const viewChain = mockChain(rows);
       mockFrom
+        .mockReturnValueOnce(mockChain({ id: 1 }))
         .mockReturnValueOnce(mockChain([{ program_id: 1 }]))
         .mockReturnValueOnce(viewChain);
 
@@ -677,6 +686,7 @@ describe("planner queries", () => {
       ];
 
       mockFrom
+        .mockReturnValueOnce(mockChain({ id: 1 }))
         .mockReturnValueOnce(mockChain([{ program_id: 1 }]))
         .mockReturnValueOnce(mockChain(rows));
 
@@ -690,15 +700,17 @@ describe("planner queries", () => {
 
     it("reads from v_program_block_courses", async () => {
       mockFrom
+        .mockReturnValueOnce(mockChain({ id: 1 }))
         .mockReturnValueOnce(mockChain([{ program_id: 1 }]))
         .mockReturnValueOnce(mockChain([]));
       await fetchAvailableCourses(1, 1);
-      expect(mockFrom).toHaveBeenNthCalledWith(2, "v_program_block_courses");
+      expect(mockFrom).toHaveBeenNthCalledWith(3, "v_program_block_courses");
     });
 
     it("throws on view error", async () => {
       const err = { message: "view error" };
       mockFrom
+        .mockReturnValueOnce(mockChain({ id: 1 }))
         .mockReturnValueOnce(mockChain([{ program_id: 1 }]))
         .mockReturnValueOnce(mockChain(null, err));
 
@@ -1075,16 +1087,20 @@ describe("planner queries", () => {
   // -------------------------------------------------------------------------
   describe("fetchCompletedCourseIds", () => {
     it("returns a Set of course_id numbers", async () => {
-      const data = [{ course_id: 100 }, { course_id: 200 }, { course_id: 300 }];
+      const data = [
+        { course_id: 100, completed: true, progress_status: "IN_PROGRESS" },
+        { course_id: 200, completed: false, progress_status: "COMPLETED" },
+        { course_id: 300, completed: false, progress_status: "IN_PROGRESS" },
+      ];
       mockFrom.mockReturnValueOnce(mockChain(data));
 
       const result = await fetchCompletedCourseIds(1);
 
       expect(result).toBeInstanceOf(Set);
-      expect(result.size).toBe(3);
+      expect(result.size).toBe(2);
       expect(result.has(100)).toBe(true);
       expect(result.has(200)).toBe(true);
-      expect(result.has(300)).toBe(true);
+      expect(result.has(300)).toBe(false);
     });
 
     it("returns empty Set when no data", async () => {
@@ -1114,7 +1130,10 @@ describe("planner queries", () => {
 
     it("converts course_id values to numbers via Number()", async () => {
       // Simulate bigint-like string values coming from DB
-      const data = [{ course_id: "100" }, { course_id: "200" }];
+      const data = [
+        { course_id: "100", completed: true, progress_status: "IN_PROGRESS" },
+        { course_id: "200", completed: false, progress_status: "COMPLETED" },
+      ];
       mockFrom.mockReturnValueOnce(mockChain(data));
 
       const result = await fetchCompletedCourseIds(1);

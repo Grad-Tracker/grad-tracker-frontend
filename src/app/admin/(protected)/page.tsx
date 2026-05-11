@@ -154,7 +154,13 @@ export default async function AdminDashboardPage() {
       {/* Stats row */}
       <SimpleGrid columns={{ base: 2, md: 4 }} gap="4">
         {TYPE_ORDER.map((type) => (
-          <Card.Root key={type} borderWidth="1px" borderColor="border.subtle">
+          <Card.Root
+            key={type}
+            bg="bg"
+            borderRadius="xl"
+            borderWidth="1px"
+            borderColor="border.subtle"
+          >
             <Card.Body p="4">
               <Text fontSize="xs" color="fg.muted" fontWeight="500" mb="1">
                 {TYPE_LABELS[type]}s
@@ -169,7 +175,13 @@ export default async function AdminDashboardPage() {
 
       {/* Program groups */}
       {totalPrograms === 0 ? (
-        <Card.Root borderWidth="1px" borderColor="border.subtle" borderStyle="dashed">
+        <Card.Root
+          bg="bg"
+          borderRadius="xl"
+          borderWidth="1px"
+          borderColor="border.subtle"
+          borderStyle="dashed"
+        >
           <Card.Body py="16" textAlign="center">
             <Icon boxSize="10" color="fg.subtle" mx="auto" mb="3">
               <LuGraduationCap />
@@ -206,6 +218,8 @@ export default async function AdminDashboardPage() {
                   style={{ textDecoration: "none" }}
                 >
                   <Card.Root
+                    bg="bg"
+                    borderRadius="xl"
                     borderWidth="1px"
                     borderColor="border.subtle"
                     cursor="pointer"

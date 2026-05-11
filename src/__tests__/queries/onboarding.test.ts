@@ -19,6 +19,7 @@ function createChainMock(overrides: Record<string, unknown> = {}) {
   chain.eq = vi.fn().mockReturnValue(chain);
   chain.in = vi.fn().mockReturnValue(chain);
   chain.order = vi.fn().mockReturnValue(chain);
+  chain.limit = vi.fn().mockReturnValue(chain);
 
   // ✅ Added for new onboarding implementation:
   // saveOnboardingSelections now uses delete().eq(...) and upsert(...)
@@ -339,7 +340,9 @@ describe("onboarding queries", () => {
           }),
         });
 
-        if (table === "student_programs" || table === "student_course_history") {
+        if (table === "v_terms_chronological") {
+          chain.single = vi.fn().mockResolvedValue({ data: { term_id: 1 }, error: null });
+        } else if (table === "student_programs" || table === "student_course_history") {
           chain.upsert = vi.fn().mockImplementation((data: unknown, options?: unknown) => {
             upsertCalls.push({ table, data, options });
             return { error: null };
@@ -383,11 +386,11 @@ describe("onboarding queries", () => {
       const coursesUpsert = upsertCalls.find((c) => c.table === "student_course_history");
       expect(coursesUpsert).toBeTruthy();
       expect(coursesUpsert?.data).toEqual([
-        { student_id: 1, course_id: 100, completed: true },
-        { student_id: 1, course_id: 101, completed: true },
+        { student_id: 1, course_id: 100, term_id: 1, completed: true },
+        { student_id: 1, course_id: 101, term_id: 1, completed: true },
       ]);
       expect(coursesUpsert?.options).toEqual({
-        onConflict: "student_id,course_id",
+        onConflict: "student_id,course_id,term_id",
         ignoreDuplicates: false,
       });
 
@@ -399,6 +402,7 @@ describe("onboarding queries", () => {
       // Should call from() for programs, course_history, and students
       expect(mockFrom).toHaveBeenCalledWith("student_programs");
       expect(mockFrom).toHaveBeenCalledWith("student_course_history");
+      expect(mockFrom).toHaveBeenCalledWith("v_terms_chronological");
       expect(mockFrom).toHaveBeenCalledWith("students");
     });
 

@@ -22,6 +22,7 @@ interface RequirementProgressProps {
   blocks: RequirementBlockWithCourses[];
   plannedCourses: PlannedCourseWithDetails[];
   completedCourseIds: Set<number>;
+  completedCourses?: Course[];
   degreeCreditTarget?: number;
   hasBreadthPackageSelected?: boolean;
   isGraduatePlan?: boolean;
@@ -120,6 +121,7 @@ export default function RequirementProgress({
   blocks,
   plannedCourses,
   completedCourseIds,
+  completedCourses = [],
   degreeCreditTarget,
   hasBreadthPackageSelected = true,
   isGraduatePlan = false,
@@ -175,9 +177,36 @@ export default function RequirementProgress({
     return stats;
   }, [blocks, completedCourseIds, plannedCourseIdSet, hasBreadthPackageSelected, isGraduatePlan]);
 
-  if (blocks.length === 0) return null;
+  const totalCompleted = useMemo(() => {
+    if (completedCourses.length > 0) {
+      const unique = new Map<number, Course>();
+      for (const course of completedCourses) {
+        unique.set(course.id, course);
+      }
+      return Array.from(unique.values()).reduce((sum, course) => sum + course.credits, 0);
+    }
 
-  const totalCompleted = blockStats.reduce((s, b) => s + b.completedCredits, 0);
+    const countedCompletedIds = new Set<number>();
+    let completedCredits = 0;
+
+    for (const block of blocks) {
+      const breadthNoSelection = isBreadthBlock(block) && !hasBreadthPackageSelected;
+      if (breadthNoSelection) continue;
+
+      const blockCourses =
+        block.rule === "ALL_OF"
+          ? canonicalAllOfCourses(block.courses)
+          : block.courses;
+
+      for (const course of blockCourses) {
+        if (!completedCourseIds.has(course.id) || countedCompletedIds.has(course.id)) continue;
+        countedCompletedIds.add(course.id);
+        completedCredits += course.credits;
+      }
+    }
+
+    return completedCredits;
+  }, [blocks, completedCourseIds, hasBreadthPackageSelected, completedCourses]);
   const fallbackTotalRequired = blockStats.reduce((s, b) => s + b.totalRequired, 0);
   const totalRequired = isGraduatePlan
     ? GRADUATE_TOTAL_CREDITS
@@ -186,6 +215,30 @@ export default function RequirementProgress({
   const overallPct = totalRequired > 0
     ? Math.min(100, Math.round((overallCoveredCredits / totalRequired) * 100))
     : 0;
+
+  const creditBuckets = useMemo(() => {
+    if (isGraduatePlan) return [];
+
+    const allCoursesById = new Map<number, Course>();
+    for (const course of completedCourses) allCoursesById.set(course.id, course);
+    for (const planned of plannedCourses) {
+      if (planned.course) allCoursesById.set(planned.course_id, planned.course);
+    }
+    const allCourses = Array.from(allCoursesById.values());
+
+    const totalDegreeCredits = allCourses.reduce((sum, course) => sum + course.credits, 0);
+    const upperDivisionCredits = allCourses.reduce((sum, course) => {
+      const level = parseInt(course.number, 10);
+      return Number.isFinite(level) && level >= 300 ? sum + course.credits : sum;
+    }, 0);
+
+    return [
+      { id: "degree-hours", label: "Degree Credit Hours", required: 120, covered: totalDegreeCredits },
+      { id: "upper-division", label: "Upper-Division Credits (300+)", required: 36, covered: upperDivisionCredits },
+    ];
+  }, [completedCourses, plannedCourses, isGraduatePlan]);
+
+  if (blocks.length === 0) return null;
 
   return (
     <Box
@@ -242,6 +295,34 @@ export default function RequirementProgress({
             </HStack>
           </Box>
         ))}
+
+        {creditBuckets.length > 0 && (
+          <Box pt="1">
+            <Text fontSize="2xs" color="fg.muted" textTransform="uppercase" letterSpacing="0.05em" mb="2">
+              Credit Buckets
+            </Text>
+            <VStack align="stretch" gap="2">
+              {creditBuckets.map((bucket) => {
+                const pct = bucket.required > 0
+                  ? Math.min(100, Math.round((bucket.covered / bucket.required) * 100))
+                  : 0;
+                return (
+                  <Box key={bucket.id}>
+                    <HStack justify="space-between" mb="1">
+                      <Text fontSize="xs" color="fg.muted">{bucket.label}</Text>
+                      <Text fontSize="xs" color="fg.muted">
+                        {Math.min(bucket.covered, bucket.required)}/{bucket.required} cr
+                      </Text>
+                    </HStack>
+                    <ProgressRoot value={pct} colorPalette="blue" size="xs">
+                      <ProgressBar borderRadius="full" />
+                    </ProgressRoot>
+                  </Box>
+                );
+              })}
+            </VStack>
+          </Box>
+        )}
       </VStack>
     </Box>
   );
